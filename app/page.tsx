@@ -388,6 +388,23 @@ export default function BattleGeneratorPage() {
     setSingleBattle((prev) => ({ ...prev, ...changes }));
   }
 
+  function clearSinglePoster() {
+    setSingleBattle(createBattle(`single-${stableId}`));
+    setSinglePaste("");
+    setSingleDay("");
+    setSingleMonth("4");
+    setSelectedId("");
+  }
+
+  function clearMassPosters() {
+    setPaste("");
+    setBattles([]);
+    setSelectedId("");
+    setMassDay("");
+    setMassMonth("4");
+    setMassDate("");
+  }
+
   async function fetchTikTokAvatar(username: string) {
     if (!username) return "";
 
@@ -468,28 +485,34 @@ export default function BattleGeneratorPage() {
   }
 
   async function parseSingleBattleRow(row: string) {
-    const parts = row.split(/\t+/);
+  const parts = row.split(/\t+/);
 
-    const date = formatDate(parts[0] || "");
-    const name1Raw = (parts[1] || "").toLowerCase().replace("@", "");
-    const manager = formatDate(parts[2] || BRAND.manager);
-    const name2Raw = getTikTokUsername(parts[6] || "");
-    const time = formatTime(parts[7] || "");
+  const selectedDate =
+    singleBattle.date || massDate || formatDateFromParts(singleDay, singleMonth);
 
-    const image1 = await fetchTikTokAvatar(name1Raw);
-    const image2 = await fetchTikTokAvatar(name2Raw);
+  const name1Raw =
+    getTikTokUsername(parts[3] || "") ||
+    String(parts[0] || "").replace("@", "").trim().toLowerCase();
 
-    return {
-      id: makeId(),
-      date,
-      manager,
-      name1: formatName(name1Raw),
-      name2: formatName(name2Raw),
-      time,
-      image1,
-      image2,
-    };
-  }
+  const name2Raw = getTikTokUsername(parts[5] || "");
+
+  const time = formatTime(parts[6] || parts[4] || "");
+  const manager = formatDate(parts[1] || BRAND.manager);
+
+  const image1 = await fetchTikTokAvatar(name1Raw);
+  const image2 = await fetchTikTokAvatar(name2Raw);
+
+  return {
+    id: makeId(),
+    date: selectedDate,
+    manager,
+    name1: formatName(name1Raw),
+    name2: formatName(name2Raw),
+    time,
+    image1,
+    image2,
+  };
+}
 
   async function parseMassBattleRow(row: string, selectedDate: string) {
     const parts = row.split(/\t+/);
@@ -561,18 +584,20 @@ export default function BattleGeneratorPage() {
   }
 
   async function makePosterBlob(battle: Battle) {
-    const node = posterRefs.current[battle.id];
-    if (!node) return null;
+  await document.fonts.ready;
 
-    const dataUrl = await htmlToImage.toPng(node, {
-      quality: 1,
-      cacheBust: true,
-      pixelRatio: 2,
-      skipFonts: true,
-    });
+  const node = posterRefs.current[battle.id];
+  if (!node) return null;
 
-    return await fetch(dataUrl).then((res) => res.blob());
-  }
+  const dataUrl = await htmlToImage.toPng(node, {
+    quality: 1,
+    cacheBust: true,
+    pixelRatio: 2,
+    skipFonts: false,
+  });
+
+  return await fetch(dataUrl).then((res) => res.blob());
+}
 
   function getPosterFileName(battle: Battle) {
     const creator1 = battle.name1 || "CREATOR1";
@@ -1131,6 +1156,14 @@ export default function BattleGeneratorPage() {
                 >
                   Download Poster
                 </button>
+
+                <button
+                  type="button"
+                  onClick={clearSinglePoster}
+                  className="w-full bg-white/10 hover:bg-white/20 transition text-white font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-white/20"
+                >
+                  Clear Single Poster
+                </button>
               </div>
 
               <div className="bg-black/35 border border-white/15 rounded-xl p-5 space-y-4">
@@ -1190,11 +1223,11 @@ export default function BattleGeneratorPage() {
                   className="w-full h-72 bg-black/40 border border-white/20 text-white p-5 rounded-lg text-sm outline-none focus:border-yellow-300"
                 />
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   <button
                     type="button"
                     onClick={readRows}
-                    className="bg-yellow-300 hover:bg-yellow-200 transition text-black font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest"
+                    className="bg-yellow-300 hover:bg-yellow-200 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     {loading ? "Loading..." : "Read Rows"}
                   </button>
@@ -1203,7 +1236,7 @@ export default function BattleGeneratorPage() {
                     type="button"
                     onClick={downloadAllPosters}
                     disabled={battles.length === 0}
-                    className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 transition text-black font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest"
+                    className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     Download ZIP
                   </button>
@@ -1212,9 +1245,17 @@ export default function BattleGeneratorPage() {
                     type="button"
                     onClick={saveAllToFolder}
                     disabled={battles.length === 0 || saving}
-                    className="bg-green-400 hover:bg-green-300 disabled:opacity-40 transition text-black font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest"
+                    className="bg-green-400 hover:bg-green-300 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     {saving ? "Saving..." : "Save Folder"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={clearMassPosters}
+                    className="bg-white/10 hover:bg-white/20 transition text-white font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest border border-white/20"
+                  >
+                    Clear
                   </button>
                 </div>
               </div>
@@ -1233,9 +1274,7 @@ export default function BattleGeneratorPage() {
                 </p>
               </div>
 
-              <div className="hidden xl:block fixed left-[150px] top-[430px] w-[460px] z-40 max-h-[calc(100vh-460px)] overflow-y-auto">
-                <SelectedPosterEditor />
-              </div>
+              <SelectedPosterEditor />
             </section>
 
             <section>
