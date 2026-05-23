@@ -820,7 +820,7 @@ export default function BattleGeneratorPage() {
                   letterSpacing: "1px",
                   fontSize: `clamp(
                     26px,
-                    ${58 - battle.name1.length * 1.35}px,
+                    ${58 - battle.name1.length * 0.9}px,
                     58px
                   )`,
                 }}
@@ -841,7 +841,7 @@ export default function BattleGeneratorPage() {
                   letterSpacing: "1px",
                   fontSize: `clamp(
                     26px,
-                    ${58 - battle.name2.length * 1.35}px,
+                    ${58 - battle.name2.length * 0.9}px,
                     58px
                   )`,
                 }}
