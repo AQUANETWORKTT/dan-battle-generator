@@ -593,7 +593,6 @@ export default function BattleGeneratorPage() {
     const blob = await htmlToImage.toBlob(node, {
       cacheBust: true,
       pixelRatio: 2,
-      useCORS: true,
       backgroundColor: "#000000",
     });
 
