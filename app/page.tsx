@@ -589,14 +589,19 @@ export default function BattleGeneratorPage() {
   const node = posterRefs.current[battle.id];
   if (!node) return null;
 
-  const dataUrl = await htmlToImage.toPng(node, {
-    quality: 1,
-    cacheBust: true,
-    pixelRatio: 2,
-    skipFonts: false,
-  });
+  try {
+    const blob = await htmlToImage.toBlob(node, {
+      cacheBust: true,
+      pixelRatio: 2,
+      useCORS: true,
+      backgroundColor: "#000000",
+    });
 
-  return await fetch(dataUrl).then((res) => res.blob());
+    return blob;
+  } catch (err) {
+    console.error("POSTER EXPORT ERROR:", err);
+    return null;
+  }
 }
 
   function getPosterFileName(battle: Battle) {
@@ -796,6 +801,7 @@ export default function BattleGeneratorPage() {
 
             {battle.image1 && (
               <img
+                crossOrigin="anonymous"
                 src={battle.image1}
                 className="absolute left-[82px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
@@ -804,6 +810,7 @@ export default function BattleGeneratorPage() {
 
             {battle.image2 && (
               <img
+                crossOrigin="anonymous"
                 src={battle.image2}
                 className="absolute left-[651px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
