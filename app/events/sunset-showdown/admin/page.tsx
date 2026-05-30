@@ -55,6 +55,58 @@ type ScoreRow = {
   score: number;
 };
 
+async function fetchTikTokAvatar(username: string) {
+  if (!username) return "";
+
+  try {
+    const res = await fetch("/api/tiktok-avatar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+    });
+
+    const json = await res.json();
+    return json.avatar || "";
+  } catch {
+    return "";
+  }
+}
+
+function CreatorAvatar({ username }: { username: string }) {
+  const fallbackSrc = "/creators/default.jpg";
+  const localSrc = `/creators/${encodeURIComponent(username)}.jpg`;
+  const [src, setSrc] = useState(fallbackSrc);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAvatar() {
+      const localImg = new window.Image();
+      localImg.src = localSrc;
+
+      localImg.onload = () => {
+        if (!cancelled) setSrc(localSrc);
+      };
+
+      localImg.onerror = async () => {
+        const scrapedAvatar = await fetchTikTokAvatar(username);
+
+        if (!cancelled) {
+          setSrc(scrapedAvatar || fallbackSrc);
+        }
+      };
+    }
+
+    loadAvatar();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [username, localSrc]);
+
+  return <img src={src} alt={username} className="h-full w-full object-cover" />;
+}
+
 export default function SunsetShowdownAdminPage() {
   const [roundNumber, setRoundNumber] = useState(1);
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -143,9 +195,9 @@ export default function SunsetShowdownAdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-6 text-white">
+    <main className="min-h-screen bg-black px-3 py-5 text-white sm:px-4 sm:py-6">
       <section className="mx-auto max-w-4xl">
-        <div className="mb-6 rounded-2xl border border-orange-500/50 bg-zinc-950 p-5 shadow-[0_0_24px_rgba(249,115,22,0.25)]">
+        <div className="mb-5 rounded-2xl border border-orange-500/50 bg-zinc-950 p-4 shadow-[0_0_24px_rgba(249,115,22,0.25)] sm:mb-6 sm:p-5">
           <p className="text-xs font-black uppercase tracking-[0.25em] text-orange-400">
             Sunset Showdown
           </p>
@@ -204,41 +256,47 @@ export default function SunsetShowdownAdminPage() {
             {creatorNames.map((username, index) => (
               <div
                 key={username}
-                className="grid grid-cols-[52px_1fr_150px_130px] items-center gap-3 rounded-2xl border border-orange-500/35 bg-zinc-950/90 p-3 shadow-[0_0_14px_rgba(249,115,22,0.12)]"
+                className="rounded-2xl border border-orange-500/35 bg-zinc-950/90 p-3 shadow-[0_0_14px_rgba(249,115,22,0.12)]"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-lg font-black italic text-white">
-                  {index + 1}
+                <div className="grid grid-cols-[44px_44px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[52px_52px_1fr_150px_130px]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-lg font-black italic text-white sm:h-11 sm:w-11">
+                    {index + 1}
+                  </div>
+
+                  <div className="h-11 w-11 overflow-hidden rounded-full border-2 border-orange-500 bg-zinc-950 shadow-[0_0_12px_rgba(249,115,22,0.5)] sm:h-12 sm:w-12">
+                    <CreatorAvatar username={username} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="break-all text-sm font-black uppercase italic leading-tight text-white sm:truncate sm:text-lg">
+                      {username}
+                    </p>
+                  </div>
+
+                  <input
+                    type="number"
+                    min="0"
+                    value={scores[username] ?? 0}
+                    onChange={(e) => updateScore(username, e.target.value)}
+                    className="mt-3 w-full rounded-xl border border-orange-500/50 bg-black px-4 py-3 text-right text-lg font-black text-orange-400 outline-none focus:border-orange-300 sm:mt-0"
+                  />
+
+                  <button
+                    onClick={() => saveSingleScore(username)}
+                    disabled={saving[username]}
+                    className={`mt-3 w-full rounded-xl px-4 py-3 text-sm font-black uppercase text-white shadow-[0_0_16px_rgba(249,115,22,0.25)] disabled:opacity-50 sm:mt-0 ${
+                      saved[username]
+                        ? "bg-emerald-600"
+                        : "bg-orange-600 hover:bg-orange-500"
+                    }`}
+                  >
+                    {saving[username]
+                      ? "Saving..."
+                      : saved[username]
+                      ? "Saved"
+                      : "Save Score"}
+                  </button>
                 </div>
-
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-black uppercase italic">
-                    {username}
-                  </p>
-                </div>
-
-                <input
-                  type="number"
-                  min="0"
-                  value={scores[username] ?? 0}
-                  onChange={(e) => updateScore(username, e.target.value)}
-                  className="w-full rounded-xl border border-orange-500/50 bg-black px-4 py-3 text-right text-lg font-black text-orange-400 outline-none focus:border-orange-300"
-                />
-
-                <button
-                  onClick={() => saveSingleScore(username)}
-                  disabled={saving[username]}
-                  className={`rounded-xl px-4 py-3 text-sm font-black uppercase text-white shadow-[0_0_16px_rgba(249,115,22,0.25)] disabled:opacity-50 ${
-                    saved[username]
-                      ? "bg-emerald-600"
-                      : "bg-orange-600 hover:bg-orange-500"
-                  }`}
-                >
-                  {saving[username]
-                    ? "Saving..."
-                    : saved[username]
-                    ? "Saved"
-                    : "Save Score"}
-                </button>
               </div>
             ))}
           </div>
