@@ -258,8 +258,8 @@ export default function SunsetShowdownAdminPage() {
                 key={username}
                 className="rounded-2xl border border-orange-500/35 bg-zinc-950/90 p-3 shadow-[0_0_14px_rgba(249,115,22,0.12)]"
               >
-                <div className="grid grid-cols-[44px_44px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[52px_52px_1fr_150px_130px]">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-lg font-black italic text-white sm:h-11 sm:w-11">
+                <div className="grid grid-cols-[44px_44px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[52px_52px_1fr_170px_150px]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-lg font-black italic text-white">
                     {index + 1}
                   </div>
 
@@ -273,29 +273,34 @@ export default function SunsetShowdownAdminPage() {
                     </p>
                   </div>
 
-                  <input
-                    type="number"
-                    min="0"
-                    value={scores[username] ?? 0}
-                    onChange={(e) => updateScore(username, e.target.value)}
-                    className="mt-3 w-full rounded-xl border border-orange-500/50 bg-black px-4 py-3 text-right text-lg font-black text-orange-400 outline-none focus:border-orange-300 sm:mt-0"
-                  />
+                  <div className="col-span-3 mt-3 grid grid-cols-1 gap-3 sm:col-span-1 sm:mt-0">
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={scores[username] ?? 0}
+                      onChange={(e) => updateScore(username, e.target.value)}
+                      className="h-14 w-full rounded-xl border border-orange-500/50 bg-black px-4 text-right text-xl font-black text-orange-400 outline-none focus:border-orange-300"
+                    />
+                  </div>
 
-                  <button
-                    onClick={() => saveSingleScore(username)}
-                    disabled={saving[username]}
-                    className={`mt-3 w-full rounded-xl px-4 py-3 text-sm font-black uppercase text-white shadow-[0_0_16px_rgba(249,115,22,0.25)] disabled:opacity-50 sm:mt-0 ${
-                      saved[username]
-                        ? "bg-emerald-600"
-                        : "bg-orange-600 hover:bg-orange-500"
-                    }`}
-                  >
-                    {saving[username]
-                      ? "Saving..."
-                      : saved[username]
-                      ? "Saved"
-                      : "Save Score"}
-                  </button>
+                  <div className="col-span-3 grid grid-cols-1 sm:col-span-1">
+                    <button
+                      onClick={() => saveSingleScore(username)}
+                      disabled={saving[username]}
+                      className={`h-14 w-full whitespace-nowrap rounded-xl px-4 text-sm font-black uppercase text-white shadow-[0_0_16px_rgba(249,115,22,0.25)] disabled:opacity-50 ${
+                        saved[username]
+                          ? "bg-emerald-600"
+                          : "bg-orange-600 hover:bg-orange-500"
+                      }`}
+                    >
+                      {saving[username]
+                        ? "Saving..."
+                        : saved[username]
+                        ? "Saved"
+                        : "Save Score"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
