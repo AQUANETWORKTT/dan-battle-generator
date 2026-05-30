@@ -12,7 +12,6 @@ const creatorNames = [
   "ateamxo",
   "chakrawitch_jane",
   "corie.watkins",
-  "daveoakley900",
   "demza2.0xx",
   "emeliaclairexoxx",
   "goldengun_2",
@@ -35,6 +34,7 @@ const creatorNames = [
   "shadybaby_79",
   "skyekyleigh20",
   "soph.x19x",
+  "thechaoticspoon_02",
   "xleah.vk",
 ];
 
