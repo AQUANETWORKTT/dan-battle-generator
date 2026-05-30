@@ -1,11 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-console.log(
-  "SUPABASE URL:",
-  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL || "";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY || "";
 
 export const submissionsSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY!
+  supabaseUrl || "https://dxupgmsscysvztxdtaku.supabase.co",
+  supabaseAnonKey
 );
