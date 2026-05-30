@@ -4,38 +4,38 @@ import { useEffect, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 const creatorNames = [
-  "jdmpixxie",
-  "emeliaclairexoxx",
-  "paigeoliviaax1",
-  "jaro_addict",
+  "_iamr4f_",
+  "aaronsingssongs",
+  "aidanjh.21",
+  "antsworld505",
+  "aron270724",
+  "ateamxo",
+  "chakrawitch_jane",
   "corie.watkins",
+  "daveoakley900",
+  "demza2.0xx",
+  "emeliaclairexoxx",
+  "goldengun_2",
+  "itsjazz69",
+  "jaro_addict",
+  "jdmpixxie",
+  "joshstream_",
+  "justmacgaming",
+  "kat_k180",
+  "lewisjxrrad",
+  "livsm_888x",
+  "michelle_sen_mom",
+  "mikemcgee1235",
+  "momomeehan",
+  "mrsmrsmcdermott1",
   "official.braay",
+  "paigeoliviaax1",
+  "s.isbackbaby69",
+  "sh4yne17",
+  "shadybaby_79",
+  "skyekyleigh20",
   "soph.x19x",
   "xleah.vk",
-  "s.isbackbaby69",
-  "skyekyleigh20",
-  "goldengun_2",
-  "joshstream_",
-  "mrsmrsmcdermott1",
-  "chakrawitch_jane",
-  "ateamxo",
-  "itsjazz69",
-  "sh4yne17",
-  "lewisjxrrad",
-  "aron270724",
-  "antsworld505",
-  "kat_k180",
-  "shadybaby_79",
-  "momomeehan",
-  "aaronsingssongs",
-  "_iamr4f_",
-  "livsm_888x",
-  "justmacgaming",
-  "demza2.0xx",
-  "aidanjh.21",
-  "mikemcgee1235",
-  "michelle_sen_mom",
-  "daveoakley900",
 ];
 
 const rounds = [
@@ -109,7 +109,7 @@ function CreatorAvatar({ username }: { username: string }) {
 
 export default function SunsetShowdownAdminPage() {
   const [roundNumber, setRoundNumber] = useState(1);
-  const [scores, setScores] = useState<Record<string, number>>({});
+  const [scores, setScores] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -136,14 +136,15 @@ export default function SunsetShowdownAdminPage() {
       return;
     }
 
-    const nextScores: Record<string, number> = {};
+    const nextScores: Record<string, string> = {};
 
     creatorNames.forEach((username) => {
-      nextScores[username] = 0;
+      nextScores[username] = "";
     });
 
     ((data || []) as ScoreRow[]).forEach((row) => {
-      nextScores[row.username] = Number(row.score || 0);
+      const score = Number(row.score || 0);
+      nextScores[row.username] = score === 0 ? "" : String(score);
     });
 
     setScores(nextScores);
@@ -152,11 +153,11 @@ export default function SunsetShowdownAdminPage() {
   }
 
   function updateScore(username: string, value: string) {
-    const numberValue = Math.max(0, Number(value) || 0);
+    const cleanedValue = value.replace(/[^\d]/g, "");
 
     setScores((current) => ({
       ...current,
-      [username]: numberValue,
+      [username]: cleanedValue,
     }));
 
     setSaved((current) => ({
@@ -175,7 +176,7 @@ export default function SunsetShowdownAdminPage() {
         {
           username,
           round_number: roundNumber,
-          score: scores[username] || 0,
+          score: Number(scores[username] || 0),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "username,round_number" }
@@ -275,12 +276,12 @@ export default function SunsetShowdownAdminPage() {
 
                   <div className="col-span-3 mt-3 grid grid-cols-1 gap-3 sm:col-span-1 sm:mt-0">
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
                       inputMode="numeric"
-                      value={scores[username] ?? 0}
+                      placeholder="Enter score"
+                      value={scores[username] ?? ""}
                       onChange={(e) => updateScore(username, e.target.value)}
-                      className="h-14 w-full rounded-xl border border-orange-500/50 bg-black px-4 text-right text-xl font-black text-orange-400 outline-none focus:border-orange-300"
+                      className="h-14 w-full rounded-xl border border-orange-500/50 bg-black px-4 text-right text-xl font-black text-orange-400 outline-none placeholder:text-orange-400/35 focus:border-orange-300"
                     />
                   </div>
 
