@@ -35,7 +35,7 @@ const baseCreators = [
   "aidanjh.21",
   "mikemcgee1235",
   "michelle_sen_mom",
-  "daveoakley900",
+  "thechaoticspoon_02",
 ];
 
 type ScoreRow = {
