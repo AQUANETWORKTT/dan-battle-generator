@@ -27,7 +27,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-black px-4">
       <div className="w-full max-w-md rounded-3xl border border-yellow-400/30 bg-zinc-950 p-8">
         <h1 className="mb-6 text-center text-4xl font-black text-yellow-300">
-          Dan's Space
+          Dans Space
         </h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
