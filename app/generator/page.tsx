@@ -420,28 +420,27 @@ export default function BattleGeneratorPage() {
     const refreshKey = Date.now();
 
     try {
-      const res = await fetch(
-        `/api/tiktok-avatar?username=${encodeURIComponent(
-          cleanUsername
-        )}&refresh=${refreshKey}`,
-        {
-          method: "POST",
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-          body: JSON.stringify({
-            username: cleanUsername,
-            forceRefresh: true,
-            refresh: refreshKey,
-          }),
-        }
-      );
+      const res = await fetch("/api/tiktok-avatar", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+        body: JSON.stringify({
+          username: cleanUsername,
+          forceRefresh: true,
+          refresh: refreshKey,
+        }),
+      });
 
       const json = await res.json();
-      return addCacheBustToImageUrl(json.avatar || "", refreshKey);
+      if (!json.avatar) return "";
+
+      return `/api/tiktok-avatar-image?url=${encodeURIComponent(
+        json.avatar
+      )}&refresh=${refreshKey}`;
     } catch {
       return "";
     }
