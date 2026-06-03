@@ -160,6 +160,14 @@ function cleanFileName(value: string) {
     .replaceAll("@", "");
 }
 
+
+function addCacheBustToImageUrl(url: string, key?: string | number) {
+  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}avatarRefresh=${key || Date.now()}`;
+}
+
 function TextInput({
   label,
   value,
@@ -406,19 +414,34 @@ export default function BattleGeneratorPage() {
   }
 
   async function fetchTikTokAvatar(username: string) {
-    if (!username) return "";
+    const cleanUsername = username.replace("@", "").trim().toLowerCase();
+    if (!cleanUsername) return "";
+
+    const refreshKey = Date.now();
 
     try {
-      const res = await fetch("/api/tiktok-avatar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username }),
-      });
+      const res = await fetch(
+        `/api/tiktok-avatar?username=${encodeURIComponent(
+          cleanUsername
+        )}&refresh=${refreshKey}`,
+        {
+          method: "POST",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+          body: JSON.stringify({
+            username: cleanUsername,
+            forceRefresh: true,
+            refresh: refreshKey,
+          }),
+        }
+      );
 
       const json = await res.json();
-      return json.avatar || "";
+      return addCacheBustToImageUrl(json.avatar || "", refreshKey);
     } catch {
       return "";
     }
@@ -435,6 +458,39 @@ export default function BattleGeneratorPage() {
     if (!avatar) return;
 
     updateSingleBattle({ [field]: avatar });
+  }
+
+  async function autoFillBattleAvatar(
+    id: string,
+    field: "image1" | "image2",
+    username: string
+  ) {
+    const cleanUsername = username.replace("@", "").trim();
+    if (!cleanUsername) return;
+
+    const avatar = await fetchTikTokAvatar(cleanUsername);
+    if (!avatar) return;
+
+    updateBattle(id, { [field]: avatar });
+  }
+
+  async function refreshTikTokAvatar(
+    battle: Battle,
+    field: "image1" | "image2",
+    single = false
+  ) {
+    const username = field === "image1" ? battle.name1 : battle.name2;
+    const cleanUsername = username.replace("@", "").trim();
+    if (!cleanUsername) return;
+
+    const avatar = await fetchTikTokAvatar(cleanUsername);
+    if (!avatar) return;
+
+    if (single) {
+      updateSingleBattle({ [field]: avatar });
+    } else {
+      updateBattle(battle.id, { [field]: avatar });
+    }
   }
 
   function uploadImageFile(
@@ -734,7 +790,7 @@ export default function BattleGeneratorPage() {
 
         {image ? (
           <img
-            src={image}
+            src={addCacheBustToImageUrl(image, `${battle.id}-${field}-${field === "image1" ? battle.name1 : battle.name2}`)}
             alt=""
             className="w-24 h-24 rounded-full object-cover mx-auto mt-3 border-2 border-yellow-300"
           />
@@ -748,12 +804,23 @@ export default function BattleGeneratorPage() {
           Drag photo here or click to choose
         </p>
 
-        <label
-          htmlFor={inputId}
-          className="mt-3 inline-block cursor-pointer bg-yellow-300 text-black font-black px-4 py-2 rounded uppercase text-xs"
-        >
-          Choose Image
-        </label>
+        <div className="mt-3 flex flex-col gap-2 items-center">
+          <label
+            htmlFor={inputId}
+            className="inline-block cursor-pointer bg-yellow-300 text-black font-black px-4 py-2 rounded uppercase text-xs"
+          >
+            Choose Image
+          </label>
+
+          <button
+            type="button"
+            onClick={() => refreshTikTokAvatar(battle, field, single)}
+            disabled={!(field === "image1" ? battle.name1 : battle.name2)}
+            className="bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-2 rounded uppercase text-xs"
+          >
+            Refresh TikTok Photo
+          </button>
+        </div>
 
         <input
           id={inputId}
@@ -801,7 +868,7 @@ export default function BattleGeneratorPage() {
             {battle.image1 && (
               <img
                 crossOrigin="anonymous"
-                src={battle.image1}
+                src={addCacheBustToImageUrl(battle.image1, `${battle.id}-image1-${battle.name1}`)}
                 className="absolute left-[82px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
               />
@@ -810,7 +877,7 @@ export default function BattleGeneratorPage() {
             {battle.image2 && (
               <img
                 crossOrigin="anonymous"
-                src={battle.image2}
+                src={addCacheBustToImageUrl(battle.image2, `${battle.id}-image2-${battle.name2}`)}
                 className="absolute left-[651px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
               />
@@ -912,7 +979,15 @@ export default function BattleGeneratorPage() {
             onChange={(value) =>
               updateBattle(selectedBattle.id, {
                 name1: formatName(value),
+                image1: "",
               })
+            }
+            onBlur={() =>
+              autoFillBattleAvatar(
+                selectedBattle.id,
+                "image1",
+                selectedBattle.name1
+              )
             }
           />
 
@@ -922,7 +997,15 @@ export default function BattleGeneratorPage() {
             onChange={(value) =>
               updateBattle(selectedBattle.id, {
                 name2: formatName(value),
+                image2: "",
               })
+            }
+            onBlur={() =>
+              autoFillBattleAvatar(
+                selectedBattle.id,
+                "image2",
+                selectedBattle.name2
+              )
             }
           />
 
