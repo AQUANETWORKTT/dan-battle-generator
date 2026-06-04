@@ -30,16 +30,17 @@ export async function POST(req: Request) {
     }
 
     const refreshKey = Date.now();
+    const randomKey = Math.random();
 
     const response = await fetch(
-      `https://www.tiktok.com/@${cleanUsername}?_t=${refreshKey}&_r=${Math.random()}`,
+      `https://www.tiktok.com/@${cleanUsername}?_t=${refreshKey}&_r=${randomKey}`,
       {
         method: "GET",
         cache: "no-store",
         next: { revalidate: 0 },
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
           "Accept-Language": "en-GB,en;q=0.9",
@@ -57,13 +58,13 @@ export async function POST(req: Request) {
       html.match(/"avatarThumb":"(.*?)"/);
 
     if (!match) {
-      console.log("Profile picture not found:", cleanUsername);
-
       return NextResponse.json(
         {
           error: "Profile picture not found",
           username: cleanUsername,
           sourceStatus: response.status,
+          sourceUrl: response.url,
+          htmlLength: html.length,
         },
         {
           status: 404,
@@ -87,10 +88,12 @@ export async function POST(req: Request) {
         username: cleanUsername,
         refreshed: true,
         timestamp: refreshKey,
+        randomKey,
         sourceStatus: response.status,
         sourceUrl: response.url,
         htmlLength: html.length,
         avatarId: avatar.split("/").pop()?.split("?")[0],
+        scrapeMode: "mobile-iphone",
       },
       {
         headers: {
