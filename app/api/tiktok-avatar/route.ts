@@ -20,7 +20,8 @@ export async function POST(req: Request) {
         {
           status: 400,
           headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
             Pragma: "no-cache",
             Expires: "0",
           },
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     const refreshKey = Date.now();
 
     const response = await fetch(
-      `https://www.tiktok.com/@${cleanUsername}?refresh=${refreshKey}`,
+      `https://www.tiktok.com/@${cleanUsername}?_t=${refreshKey}&_r=${Math.random()}`,
       {
         method: "GET",
         cache: "no-store",
@@ -59,11 +60,16 @@ export async function POST(req: Request) {
       console.log("Profile picture not found:", cleanUsername);
 
       return NextResponse.json(
-        { error: "Profile picture not found", username: cleanUsername },
+        {
+          error: "Profile picture not found",
+          username: cleanUsername,
+          sourceStatus: response.status,
+        },
         {
           status: 404,
           headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
             Pragma: "no-cache",
             Expires: "0",
           },
@@ -81,6 +87,10 @@ export async function POST(req: Request) {
         username: cleanUsername,
         refreshed: true,
         timestamp: refreshKey,
+        sourceStatus: response.status,
+        sourceUrl: response.url,
+        htmlLength: html.length,
+        avatarId: avatar.split("/").pop()?.split("?")[0],
       },
       {
         headers: {
@@ -99,7 +109,8 @@ export async function POST(req: Request) {
       {
         status: 500,
         headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
           Pragma: "no-cache",
           Expires: "0",
         },
