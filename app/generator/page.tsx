@@ -405,20 +405,42 @@ export default function BattleGeneratorPage() {
     setMassDate("");
   }
 
+  function addCacheBustToImageUrl(url: string, key?: string | number) {
+    if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
+
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}avatarRefresh=${key || Date.now()}`;
+  }
+
   async function fetchTikTokAvatar(username: string) {
-    if (!username) return "";
+    const cleanUsername = username.replace("@", "").trim().toLowerCase();
+    if (!cleanUsername) return "";
+
+    const refreshKey = Date.now();
 
     try {
-      const res = await fetch("/api/tiktok-avatar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username }),
-      });
+      const res = await fetch(
+        `/api/tiktok-avatar?username=${encodeURIComponent(
+          cleanUsername
+        )}&refresh=${refreshKey}`,
+        {
+          method: "POST",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+          body: JSON.stringify({
+            username: cleanUsername,
+            forceRefresh: true,
+            refresh: refreshKey,
+          }),
+        }
+      );
 
       const json = await res.json();
-      return json.avatar || "";
+      return addCacheBustToImageUrl(json.avatar || "", refreshKey);
     } catch {
       return "";
     }
@@ -435,6 +457,71 @@ export default function BattleGeneratorPage() {
     if (!avatar) return;
 
     updateSingleBattle({ [field]: avatar });
+  }
+
+  async function autoFillBattleAvatar(
+    id: string,
+    field: "image1" | "image2",
+    username: string
+  ) {
+    const cleanUsername = username.replace("@", "").trim();
+    if (!cleanUsername) return;
+
+    const avatar = await fetchTikTokAvatar(cleanUsername);
+    if (!avatar) return;
+
+    updateBattle(id, { [field]: avatar });
+  }
+
+  async function refreshTikTokAvatar(
+    battle: Battle,
+    field: "image1" | "image2",
+    single = false
+  ) {
+    const username = field === "image1" ? battle.name1 : battle.name2;
+    const cleanUsername = username.replace("@", "").trim();
+    if (!cleanUsername) return;
+
+    const avatar = await fetchTikTokAvatar(cleanUsername);
+    if (!avatar) return;
+
+    if (single) {
+      updateSingleBattle({ [field]: avatar });
+    } else {
+      updateBattle(battle.id, { [field]: avatar });
+    }
+  }
+
+  async function rescrapeSinglePoster() {
+    if (singlePaste.trim()) {
+      await readSinglePaste();
+      return;
+    }
+
+    const name1 = singleBattle.name1.replace("@", "").trim();
+    const name2 = singleBattle.name2.replace("@", "").trim();
+
+    setLoading(true);
+
+    const [image1, image2] = await Promise.all([
+      name1 ? fetchTikTokAvatar(name1) : Promise.resolve(""),
+      name2 ? fetchTikTokAvatar(name2) : Promise.resolve(""),
+    ]);
+
+    updateSingleBattle({
+      image1: image1 || singleBattle.image1,
+      image2: image2 || singleBattle.image2,
+    });
+
+    setLoading(false);
+  }
+
+  async function rescrapeFeed() {
+    if (!paste.trim()) return;
+
+    setBattles([]);
+    setSelectedId("");
+    await readRows();
   }
 
   function uploadImageFile(
@@ -748,12 +835,23 @@ export default function BattleGeneratorPage() {
           Drag photo here or click to choose
         </p>
 
-        <label
-          htmlFor={inputId}
-          className="mt-3 inline-block cursor-pointer bg-yellow-300 text-black font-black px-4 py-2 rounded uppercase text-xs"
-        >
-          Choose Image
-        </label>
+        <div className="mt-3 flex flex-col gap-2 items-center">
+          <label
+            htmlFor={inputId}
+            className="inline-block cursor-pointer bg-yellow-300 text-black font-black px-4 py-2 rounded uppercase text-xs"
+          >
+            Choose Image
+          </label>
+
+          <button
+            type="button"
+            onClick={() => refreshTikTokAvatar(battle, field, single)}
+            disabled={!(field === "image1" ? battle.name1 : battle.name2)}
+            className="bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-2 rounded uppercase text-xs"
+          >
+            Refresh TikTok Photo
+          </button>
+        </div>
 
         <input
           id={inputId}
@@ -912,7 +1010,15 @@ export default function BattleGeneratorPage() {
             onChange={(value) =>
               updateBattle(selectedBattle.id, {
                 name1: formatName(value),
+                image1: "",
               })
+            }
+            onBlur={() =>
+              autoFillBattleAvatar(
+                selectedBattle.id,
+                "image1",
+                selectedBattle.name1
+              )
             }
           />
 
@@ -922,7 +1028,15 @@ export default function BattleGeneratorPage() {
             onChange={(value) =>
               updateBattle(selectedBattle.id, {
                 name2: formatName(value),
+                image2: "",
               })
+            }
+            onBlur={() =>
+              autoFillBattleAvatar(
+                selectedBattle.id,
+                "image2",
+                selectedBattle.name2
+              )
             }
           />
 
@@ -1206,6 +1320,15 @@ export default function BattleGeneratorPage() {
                 >
                   {loading ? "Reading..." : "Read Single Row"}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={rescrapeSinglePoster}
+                  disabled={loading || (!singlePaste.trim() && !singleBattle.name1 && !singleBattle.name2)}
+                  className="w-full bg-white/10 hover:bg-white/20 disabled:opacity-40 transition text-white font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-white/20"
+                >
+                  Rescrape Single
+                </button>
               </div>
             </section>
 
@@ -1244,7 +1367,7 @@ export default function BattleGeneratorPage() {
                   className="w-full h-72 bg-black/40 border border-white/20 text-white p-5 rounded-lg text-sm outline-none focus:border-yellow-300"
                 />
 
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-5 gap-3">
                   <button
                     type="button"
                     onClick={readRows}
@@ -1269,6 +1392,15 @@ export default function BattleGeneratorPage() {
                     className="bg-green-400 hover:bg-green-300 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     {saving ? "Saving..." : "Save Folder"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={rescrapeFeed}
+                    disabled={!paste.trim() || loading}
+                    className="bg-cyan-300 hover:bg-cyan-200 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
+                  >
+                    Rescrape Feed
                   </button>
 
                   <button
