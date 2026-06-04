@@ -19,48 +19,13 @@ type Battle = {
 type Mode = "single" | "mass";
 
 const BRAND = {
-  name: "Honeybloom Battle Generator",
-  manager: "HONEYBLOOM",
-  posterBackground: "/posters/honeybloom/background.png",
-  zipName: "Honeybloom-Battle-Posters.zip",
+  name: "Dan's Battle Generator",
+  manager: "DAN",
+  posterBackground: "/posters/dan-battle/background.png",
+  zipName: "Dan-Battle-Posters.zip",
 };
 
 const DEFAULT_YEAR = 2026;
-
-const POSTER_FONT_CSS = `
-@font-face {
-  font-family: "Poster Cooper Black";
-  src: url("/fonts/CooperBlack.woff2") format("woff2"),
-       url("/fonts/CooperBlack.ttf") format("truetype");
-  font-weight: 900;
-  font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: "Poster Luckiest Guy";
-  src: url("/fonts/LuckiestGuy-Regular.woff2") format("woff2"),
-       url("/fonts/LuckiestGuy-Regular.ttf") format("truetype");
-  font-weight: 900;
-  font-style: normal;
-  font-display: block;
-}
-
-.poster-export,
-.poster-export * {
-  font-synthesis: none !important;
-  text-rendering: geometricPrecision;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-`;
-
-const POSTER_NAME_FONT =
-  '"Poster Cooper Black", "Poster Luckiest Guy", serif';
-
-const POSTER_DATE_FONT =
-  '"Poster Luckiest Guy", "Poster Cooper Black", serif';
-
 
 const MONTHS = [
   { label: "January", value: 0 },
@@ -195,14 +160,6 @@ function cleanFileName(value: string) {
     .replaceAll("@", "");
 }
 
-
-function addCacheBustToImageUrl(url: string, key?: string | number) {
-  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
-
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}avatarRefresh=${key || Date.now()}`;
-}
-
 function TextInput({
   label,
   value,
@@ -218,7 +175,7 @@ function TextInput({
 }) {
   return (
     <label className="block">
-      <p className="text-[#783e12]/65 text-xs font-black uppercase tracking-widest mb-2">
+      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
         {label}
       </p>
       <input
@@ -226,7 +183,7 @@ function TextInput({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        className="w-full bg-white/70 border border-[#e6a52b]/40 text-[#783e12] p-3 rounded-lg outline-none focus:border-[#d98705] placeholder:text-[#783e12]/35"
+        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-yellow-300"
       />
     </label>
   );
@@ -247,7 +204,7 @@ function DayMonthDateSelect({
 
   return (
     <div>
-      <p className="text-[#783e12]/65 text-xs font-black uppercase tracking-widest mb-2">
+      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
         Date
       </p>
 
@@ -255,7 +212,7 @@ function DayMonthDateSelect({
         <select
           value={day}
           onChange={(e) => onDayChange(e.target.value)}
-          className="w-full bg-white/70 border border-[#e6a52b]/40 text-[#783e12] p-3 rounded-lg outline-none focus:border-[#d98705]"
+          className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-yellow-300"
         >
           <option value="">Day</option>
           {Array.from({ length: daysInMonth }, (_, index) => {
@@ -271,7 +228,7 @@ function DayMonthDateSelect({
         <select
           value={month}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="w-full bg-white/70 border border-[#e6a52b]/40 text-[#783e12] p-3 rounded-lg outline-none focus:border-[#d98705]"
+          className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-yellow-300"
         >
           <option value="">Month</option>
           {MONTHS.map((monthOption) => (
@@ -298,13 +255,13 @@ function TimeSelect({
 
   return (
     <label className="block">
-      <p className="text-[#783e12]/65 text-xs font-black uppercase tracking-widest mb-2">
+      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
         {label}
       </p>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white/70 border border-[#e6a52b]/40 text-[#783e12] p-3 rounded-lg outline-none focus:border-[#d98705]"
+        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-yellow-300"
       >
         <option value="">Select time</option>
         {options.map((time) => (
@@ -449,34 +406,19 @@ export default function BattleGeneratorPage() {
   }
 
   async function fetchTikTokAvatar(username: string) {
-    const cleanUsername = username.replace("@", "").trim().toLowerCase();
-    if (!cleanUsername) return "";
-
-    const refreshKey = Date.now();
+    if (!username) return "";
 
     try {
-      const res = await fetch(
-        `/api/tiktok-avatar?username=${encodeURIComponent(
-          cleanUsername
-        )}&refresh=${refreshKey}`,
-        {
-          method: "POST",
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-          body: JSON.stringify({
-            username: cleanUsername,
-            forceRefresh: true,
-            refresh: refreshKey,
-          }),
-        }
-      );
+      const res = await fetch("/api/tiktok-avatar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username }),
+      });
 
       const json = await res.json();
-      return addCacheBustToImageUrl(json.avatar || "", refreshKey);
+      return json.avatar || "";
     } catch {
       return "";
     }
@@ -493,39 +435,6 @@ export default function BattleGeneratorPage() {
     if (!avatar) return;
 
     updateSingleBattle({ [field]: avatar });
-  }
-
-  async function autoFillBattleAvatar(
-    id: string,
-    field: "image1" | "image2",
-    username: string
-  ) {
-    const cleanUsername = username.replace("@", "").trim();
-    if (!cleanUsername) return;
-
-    const avatar = await fetchTikTokAvatar(cleanUsername);
-    if (!avatar) return;
-
-    updateBattle(id, { [field]: avatar });
-  }
-
-  async function refreshTikTokAvatar(
-    battle: Battle,
-    field: "image1" | "image2",
-    single = false
-  ) {
-    const username = field === "image1" ? battle.name1 : battle.name2;
-    const cleanUsername = username.replace("@", "").trim();
-    if (!cleanUsername) return;
-
-    const avatar = await fetchTikTokAvatar(cleanUsername);
-    if (!avatar) return;
-
-    if (single) {
-      updateSingleBattle({ [field]: avatar });
-    } else {
-      updateBattle(battle.id, { [field]: avatar });
-    }
   }
 
   function uploadImageFile(
@@ -576,62 +485,46 @@ export default function BattleGeneratorPage() {
   }
 
   async function parseSingleBattleRow(row: string) {
-    const parts = row.split(/	+/);
+  const parts = row.split(/\t+/);
 
-    const selectedDate =
-      singleBattle.date || massDate || formatDateFromParts(singleDay, singleMonth);
+  const selectedDate =
+    singleBattle.date || massDate || formatDateFromParts(singleDay, singleMonth);
 
-    // Honeybloom sheet format:
-    // A = manager, B = predicted diamonds ignored, C = creator username,
-    // D ignored, E = battle time, F ignored, G = opponent name, H/agency ignored.
-    const manager = formatDate(parts[0] || BRAND.manager);
+  const name1Raw =
+    getTikTokUsername(parts[3] || "") ||
+    String(parts[0] || "").replace("@", "").trim().toLowerCase();
 
-    const name1Raw = String(parts[2] || parts[0] || "")
-      .replace("@", "")
-      .trim()
-      .toLowerCase();
+  const name2Raw = getTikTokUsername(parts[5] || "");
 
-    const name2Raw = String(parts[6] || "")
-      .replace("@", "")
-      .trim()
-      .toLowerCase();
+  const time = formatTime(parts[6] || parts[4] || "");
+  const manager = formatDate(parts[1] || BRAND.manager);
 
-    const time = formatTime(parts[4] || "");
+  const image1 = await fetchTikTokAvatar(name1Raw);
+  const image2 = await fetchTikTokAvatar(name2Raw);
 
-    const image1 = await fetchTikTokAvatar(name1Raw);
-    const image2 = await fetchTikTokAvatar(name2Raw);
-
-    return {
-      id: makeId(),
-      date: selectedDate,
-      manager,
-      name1: formatName(name1Raw),
-      name2: formatName(name2Raw),
-      time,
-      image1,
-      image2,
-    };
-  }
+  return {
+    id: makeId(),
+    date: selectedDate,
+    manager,
+    name1: formatName(name1Raw),
+    name2: formatName(name2Raw),
+    time,
+    image1,
+    image2,
+  };
+}
 
   async function parseMassBattleRow(row: string, selectedDate: string) {
-    const parts = row.split(/	+/);
+    const parts = row.split(/\t+/);
 
-    // Honeybloom sheet format:
-    // A = manager, B = predicted diamonds ignored, C = creator username,
-    // D ignored, E = battle time, F ignored, G = opponent name, H/agency ignored.
-    const manager = formatDate(parts[0] || BRAND.manager);
+    const name1Raw =
+      getTikTokUsername(parts[3] || "") ||
+      String(parts[0] || "").replace("@", "").trim().toLowerCase();
 
-    const name1Raw = String(parts[2] || "")
-      .replace("@", "")
-      .trim()
-      .toLowerCase();
+    const name2Raw = getTikTokUsername(parts[5] || "");
 
-    const name2Raw = String(parts[6] || "")
-      .replace("@", "")
-      .trim()
-      .toLowerCase();
-
-    const time = formatTime(parts[4] || "");
+    const time = formatTime(parts[6] || parts[4] || "");
+    const manager = formatDate(parts[1] || BRAND.manager);
 
     const image1 = await fetchTikTokAvatar(name1Raw);
     const image2 = await fetchTikTokAvatar(name2Raw);
@@ -690,63 +583,25 @@ export default function BattleGeneratorPage() {
     setLoading(false);
   }
 
-  async function refreshScrapedFeed() {
-    if (!paste.trim()) {
-      alert("Paste your Honeybloom battle sheet rows first.");
-      return;
-    }
-
-    if (!massDate) {
-      alert("Please select a date for the mass posters first.");
-      return;
-    }
-
-    setBattles([]);
-    setSelectedId("");
-    await readRows();
-  }
-
-  async function waitForPosterAssets(node: HTMLElement) {
-    await document.fonts.ready;
-
-    const images = Array.from(node.querySelectorAll("img"));
-
-    await Promise.all(
-      images.map((image) => {
-        if (image.complete && image.naturalWidth > 0) return Promise.resolve();
-
-        return new Promise<void>((resolve) => {
-          image.onload = () => resolve();
-          image.onerror = () => resolve();
-        });
-      })
-    );
-
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-  }
-
   async function makePosterBlob(battle: Battle) {
-    const node = posterRefs.current[battle.id];
-    if (!node) return null;
+  await document.fonts.ready;
 
-    try {
-      await waitForPosterAssets(node);
+  const node = posterRefs.current[battle.id];
+  if (!node) return null;
 
-      const fontEmbedCSS = await htmlToImage.getFontEmbedCSS(node);
+  try {
+    const blob = await htmlToImage.toBlob(node, {
+      cacheBust: true,
+      pixelRatio: 2,
+      backgroundColor: "#000000",
+    });
 
-      const blob = await htmlToImage.toBlob(node, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: "#fff8ea",
-        fontEmbedCSS,
-      });
-
-      return blob;
-    } catch (err) {
-      console.error("POSTER EXPORT ERROR:", err);
-      return null;
-    }
+    return blob;
+  } catch (err) {
+    console.error("POSTER EXPORT ERROR:", err);
+    return null;
   }
+}
 
   function getPosterFileName(battle: Battle) {
     const creator1 = battle.name1 || "CREATOR1";
@@ -871,9 +726,9 @@ export default function BattleGeneratorPage() {
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, battle.id, field, single)}
-        className="rounded-lg border-2 border-dashed border-[#d98705]/45 bg-white/55 p-4 text-center hover:border-[#d98705] transition"
+        className="rounded-lg border-2 border-dashed border-yellow-300/40 bg-black/45 p-4 text-center hover:border-yellow-300 transition"
       >
-        <p className="text-[#783e12] font-black uppercase text-sm tracking-widest">
+        <p className="text-yellow-300 font-black uppercase text-sm tracking-widest">
           {label}
         </p>
 
@@ -881,35 +736,24 @@ export default function BattleGeneratorPage() {
           <img
             src={image}
             alt=""
-            className="w-24 h-24 rounded-full object-cover mx-auto mt-3 border-2 border-[#d98705]"
+            className="w-24 h-24 rounded-full object-cover mx-auto mt-3 border-2 border-yellow-300"
           />
         ) : (
-          <div className="w-24 h-24 rounded-full bg-[#fff8ea] mx-auto mt-3 border border-[#e6a52b]/40 flex items-center justify-center text-[#783e12]/35 text-xs">
+          <div className="w-24 h-24 rounded-full bg-black/60 mx-auto mt-3 border border-white/10 flex items-center justify-center text-white/25 text-xs">
             No image
           </div>
         )}
 
-        <p className="text-[#783e12]/55 text-xs mt-3">
+        <p className="text-white/45 text-xs mt-3">
           Drag photo here or click to choose
         </p>
 
-        <div className="mt-3 grid grid-cols-1 gap-2">
-          <label
-            htmlFor={inputId}
-            className="inline-block cursor-pointer bg-[#f4aa24] text-[#783e12] font-black px-4 py-2 rounded uppercase text-xs"
-          >
-            Choose Image
-          </label>
-
-          <button
-            type="button"
-            onClick={() => refreshTikTokAvatar(battle, field, single)}
-            disabled={!(field === "image1" ? battle.name1 : battle.name2)}
-            className="bg-white/75 disabled:opacity-40 disabled:cursor-not-allowed text-[#783e12] font-black px-4 py-2 rounded uppercase text-xs border border-[#e6a52b]/45 hover:bg-white"
-          >
-            Refresh TikTok Photo
-          </button>
-        </div>
+        <label
+          htmlFor={inputId}
+          className="mt-3 inline-block cursor-pointer bg-yellow-300 text-black font-black px-4 py-2 rounded uppercase text-xs"
+        >
+          Choose Image
+        </label>
 
         <input
           id={inputId}
@@ -924,7 +768,7 @@ export default function BattleGeneratorPage() {
 
   function PosterPreview({
     battle,
-    scale = 0.5,
+    scale = 0.3,
   }: {
     battle: Battle;
     scale?: number;
@@ -935,7 +779,7 @@ export default function BattleGeneratorPage() {
         : battle.date || battle.time;
 
     return (
-      <div className="w-[540px] h-[540px] max-w-full overflow-hidden mx-auto bg-[#fff8ea] rounded-lg">
+      <div className="w-[324px] h-[576px] overflow-hidden mx-auto bg-black rounded-lg">
         <div
           style={{
             transform: `scale(${scale})`,
@@ -946,11 +790,11 @@ export default function BattleGeneratorPage() {
             ref={(el) => {
               posterRefs.current[battle.id] = el;
             }}
-            className="poster-export relative w-[1080px] h-[1090px] overflow-hidden bg-[#fff8ea]"
+            className="relative w-[1080px] h-[1920px] overflow-hidden bg-black"
           >
             <img
               src={BRAND.posterBackground}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full"
               alt=""
             />
 
@@ -958,7 +802,7 @@ export default function BattleGeneratorPage() {
               <img
                 crossOrigin="anonymous"
                 src={battle.image1}
-                className="absolute left-[176px] top-[397px] w-[195px] h-[195px] rounded-full object-cover"
+                className="absolute left-[82px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
               />
             )}
@@ -967,24 +811,23 @@ export default function BattleGeneratorPage() {
               <img
                 crossOrigin="anonymous"
                 src={battle.image2}
-                className="absolute left-[672px] top-[397px] w-[195px] h-[195px] rounded-full object-cover"
+                className="absolute left-[651px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
               />
             )}
 
             {battle.name1 && (
               <div
-                className="absolute left-[52px] top-[595px] w-[450px] h-[80px] flex items-center justify-center text-[#934918]"
+                className="absolute left-[17px] top-[953px] w-[480px] h-[70px] flex items-center justify-center text-[#5CEEFF]"
                 style={{
-                  fontFamily: POSTER_NAME_FONT,
-                  fontWeight: 900,
-                  WebkitTextStroke: "0px transparent",
-                  textShadow: "none",
-                  letterSpacing: "-1px",
+                  fontFamily: "'Luckiest Guy', sans-serif",
+                  WebkitTextStroke: "2px black",
+                  textShadow: "2px 2px 0px black",
+                  letterSpacing: "1px",
                   fontSize: `clamp(
                     26px,
-                    ${70 - battle.name1.length * 1.1}px,
-                    26px
+                    ${58 - battle.name1.length * 0.9}px,
+                    58px
                   )`,
                 }}
               >
@@ -996,17 +839,16 @@ export default function BattleGeneratorPage() {
 
             {battle.name2 && (
               <div
-                className="absolute left-[547px] top-[595px] w-[450px] h-[80px] flex items-center justify-center text-[#934918]"
+                className="absolute left-[585px] top-[953px] w-[480px] h-[70px] flex items-center justify-center text-[#5CEEFF]"
                 style={{
-                  fontFamily: POSTER_NAME_FONT,
-                  fontWeight: 900,
-                  WebkitTextStroke: "0px transparent",
-                  textShadow: "none",
-                  letterSpacing: "-1px",
+                  fontFamily: "'Luckiest Guy', sans-serif",
+                  WebkitTextStroke: "2px black",
+                  textShadow: "2px 2px 0px black",
+                  letterSpacing: "1px",
                   fontSize: `clamp(
                     26px,
-                    ${70 - battle.name2.length * 1.1}px,
-                    26px
+                    ${58 - battle.name2.length * 0.9}px,
+                    58px
                   )`,
                 }}
               >
@@ -1018,26 +860,24 @@ export default function BattleGeneratorPage() {
 
             {combinedDateTime && (
               <div
-                className="absolute top-[695px] left-[90px] w-[900px] h-[90px] flex items-center justify-center text-[#ffc83d]"
+                 className="absolute top-[1337px] left-[155px] w-[770px] h-[70px] flex items-center justify-center text-[#5CEEFF]"
                 style={{
-                  fontFamily: POSTER_DATE_FONT,
-                  fontWeight: 900,
-                  WebkitTextStroke: "6px #934918",
-                  paintOrder: "stroke fill",
-                  textShadow: "2px 2px 0px #934918",
+                  fontFamily: "'Luckiest Guy', sans-serif",
+                  WebkitTextStroke: "2px black",
+                  textShadow: "3px 3px 0px black",
                   letterSpacing: "1px",
                   fontSize: `clamp(
-                    32px,
-                    ${62 - combinedDateTime.length * 1.05}px,
-                    58px
+                    55px,
+                    ${62 - combinedDateTime.length * 1.5}px,
+                    62px
                   )`,
                 }}
               >
-                <span className="leading-none text-center whitespace-nowrap">
-                  {combinedDateTime.toUpperCase()}
-                </span>
-              </div>
-            )}
+                 <span className="leading-none text-center whitespace-nowrap">
+      		  {combinedDateTime.toUpperCase()}
+   		   </span>
+ 		  </div>
+		 )}
           </div>
         </div>
       </div>
@@ -1048,15 +888,15 @@ export default function BattleGeneratorPage() {
     if (!selectedBattle) return null;
 
     return (
-      <div className="bg-white/60 border border-[#e6a52b]/35 rounded-lg p-5 space-y-4 shadow-[0_14px_35px_rgba(120,62,18,0.10)]">
-        <h2 className="text-[#783e12] font-black uppercase tracking-widest">
+      <div className="bg-black/35 border border-yellow-300/25 rounded-lg p-5 space-y-4">
+        <h2 className="text-yellow-300 font-black uppercase tracking-widest">
           Selected Poster Editor
         </h2>
 
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full bg-white/80 border border-[#e6a52b]/45 text-[#783e12] p-3 rounded"
+          className="w-full bg-black/50 border border-white/20 text-white p-3 rounded"
         >
           {battles.map((battle) => (
             <option key={battle.id} value={battle.id}>
@@ -1072,15 +912,7 @@ export default function BattleGeneratorPage() {
             onChange={(value) =>
               updateBattle(selectedBattle.id, {
                 name1: formatName(value),
-                image1: "",
               })
-            }
-            onBlur={() =>
-              autoFillBattleAvatar(
-                selectedBattle.id,
-                "image1",
-                selectedBattle.name1
-              )
             }
           />
 
@@ -1090,15 +922,7 @@ export default function BattleGeneratorPage() {
             onChange={(value) =>
               updateBattle(selectedBattle.id, {
                 name2: formatName(value),
-                image2: "",
               })
-            }
-            onBlur={() =>
-              autoFillBattleAvatar(
-                selectedBattle.id,
-                "image2",
-                selectedBattle.name2
-              )
             }
           />
 
@@ -1152,7 +976,7 @@ export default function BattleGeneratorPage() {
         <button
           type="button"
           onClick={downloadSelectedPoster}
-          className="w-full bg-[#f4aa24] hover:bg-[#ffd477] transition text-[#783e12] font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest"
+          className="w-full bg-yellow-400 hover:bg-yellow-300 transition text-black font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest"
         >
           Download Selected Poster
         </button>
@@ -1163,9 +987,9 @@ export default function BattleGeneratorPage() {
   function PosterGrid({ previewBattle }: { previewBattle?: Battle }) {
     if (previewBattle) {
       return (
-        <section className="grid grid-cols-1 gap-x-28 gap-y-16">
-          <div className="bg-white/55 p-4 rounded-xl text-left border border-[#e6a52b]/35 shadow-[0_14px_35px_rgba(120,62,18,0.10)] w-fit max-w-full">
-            <div className="text-xs text-[#783e12] font-black mb-3">
+        <section className="grid grid-cols-1 2xl:grid-cols-2 gap-x-28 gap-y-16">
+          <div className="bg-black/30 p-4 rounded-xl text-left border border-yellow-300/20">
+            <div className="text-xs text-yellow-200 font-black mb-3">
               LIVE TEMPLATE PREVIEW
             </div>
 
@@ -1177,9 +1001,9 @@ export default function BattleGeneratorPage() {
 
     if (battles.length === 0) {
       return (
-        <section className="grid grid-cols-1 gap-x-28 gap-y-16">
-          <div className="bg-white/55 p-4 rounded-xl text-left border border-[#e6a52b]/35 shadow-[0_14px_35px_rgba(120,62,18,0.10)] w-fit max-w-full">
-            <div className="text-xs text-[#783e12] font-black mb-3">
+        <section className="grid grid-cols-1 2xl:grid-cols-2 gap-x-28 gap-y-16">
+          <div className="bg-black/30 p-4 rounded-xl text-left border border-yellow-300/20">
+            <div className="text-xs text-yellow-200 font-black mb-3">
               BLANK TEMPLATE PREVIEW
             </div>
 
@@ -1190,19 +1014,19 @@ export default function BattleGeneratorPage() {
     }
 
     return (
-      <section className="grid grid-cols-1 2xl:grid-cols-2 gap-x-10 gap-y-10">
+      <section className="grid grid-cols-1 2xl:grid-cols-2 gap-x-28 gap-y-16">
         {battles.map((battle) => (
           <button
             key={battle.id}
             type="button"
             onClick={() => setSelectedId(battle.id)}
-            className={`bg-white/55 p-4 rounded-xl text-left border transition shadow-[0_14px_35px_rgba(120,62,18,0.10)] w-fit max-w-full ${
+            className={`bg-black/30 p-4 rounded-xl text-left border transition ${
               selectedId === battle.id
-                ? "border-[#d98705]"
-                : "border-[#e6a52b]/25 hover:border-[#d98705]/70"
+                ? "border-yellow-300"
+                : "border-transparent hover:border-white/25"
             }`}
           >
-            <div className="text-xs text-[#783e12] font-black mb-3">
+            <div className="text-xs text-yellow-200 font-black mb-3">
               {battle.manager} • {battle.name1 || "CREATOR 1"} VS{" "}
               {battle.name2 || "CREATOR 2"}
             </div>
@@ -1215,62 +1039,30 @@ export default function BattleGeneratorPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#fff8ea] text-[#783e12] p-8">
-      <style>{POSTER_FONT_CSS}</style>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#fff1c8_0%,#fff8ea_45%,#f8eedb_100%)]" />
+    <div className="min-h-screen bg-[#080806] text-white p-8">
+      <div className="max-w-[1700px] mx-auto space-y-6">
+	<div className="flex gap-3 mb-4">
+  <a
+    href="/"
+    className="bg-yellow-300 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest hover:bg-yellow-200 transition"
+  >
+    Home
+  </a>
 
-      <img
-        src="/honeycomb-corner.png"
-        alt=""
-        className="pointer-events-none absolute -left-8 -top-8 w-64 opacity-70"
-        style={{
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-          WebkitMaskComposite: "source-in",
-          maskImage:
-            "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-          maskComposite: "intersect",
-        }}
-      />
-
-      <img
-        src="/honeycomb-corner.png"
-        alt=""
-        className="pointer-events-none absolute -bottom-8 -right-8 w-72 rotate-180 opacity-70"
-        style={{
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-          WebkitMaskComposite: "source-in",
-          maskImage:
-            "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-          maskComposite: "intersect",
-        }}
-      />
-
-      <div className="relative z-10 max-w-[1700px] mx-auto space-y-6">
-        <div className="flex flex-wrap gap-3 mb-4">
-          <a
-            href="/"
-            className="bg-[#f4aa24] text-[#783e12] font-black px-4 py-3 rounded-lg uppercase tracking-widest hover:bg-[#ffd477] transition"
-          >
-            Home
-          </a>
-
-          <a
-            href="/schedule"
-            className="bg-white/65 text-[#783e12] font-black px-4 py-3 rounded-lg uppercase tracking-widest border border-[#e6a52b]/45 hover:bg-white/90 hover:border-[#d98705] transition"
-          >
-            Schedule Generator
-          </a>
-        </div>
-
+  <a
+    href="/events"
+    className="bg-black/40 border border-white/20 text-white font-black px-4 py-3 rounded-lg uppercase tracking-widest hover:border-yellow-300 transition"
+  >
+    Events
+  </a>
+</div>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="text-[#783e12] text-3xl font-black tracking-[0.18em] uppercase">
+            <h1 className="text-yellow-300 text-3xl font-black tracking-[0.18em] uppercase">
               {BRAND.name}
             </h1>
 
-            <p className="text-[#783e12]/60 text-sm mt-2">
+            <p className="text-white/45 text-sm mt-2">
               Single posters by default. Mass generator is kept in its own section.
             </p>
           </div>
@@ -1281,8 +1073,8 @@ export default function BattleGeneratorPage() {
               onClick={() => setActiveMode("single")}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "single"
-                  ? "bg-[#f4aa24] text-[#783e12]"
-                  : "bg-white/55 text-[#783e12] border border-[#e6a52b]/40 hover:border-[#d98705]"
+                  ? "bg-yellow-300 text-black"
+                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
               }`}
             >
               Single Poster
@@ -1293,8 +1085,8 @@ export default function BattleGeneratorPage() {
               onClick={() => setActiveMode("mass")}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "mass"
-                  ? "bg-[#f4aa24] text-[#783e12]"
-                  : "bg-white/55 text-[#783e12] border border-[#e6a52b]/40 hover:border-[#d98705]"
+                  ? "bg-yellow-300 text-black"
+                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
               }`}
             >
               Mass Poster Generator
@@ -1305,8 +1097,8 @@ export default function BattleGeneratorPage() {
         {activeMode === "single" && (
           <div className="grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-8 items-start">
             <section className="space-y-6">
-              <div className="bg-white/60 border border-[#e6a52b]/35 rounded-xl p-5 space-y-4 shadow-[0_14px_35px_rgba(120,62,18,0.10)]">
-                <h2 className="text-[#783e12] font-black uppercase tracking-widest">
+              <div className="bg-black/35 border border-yellow-300/20 rounded-xl p-5 space-y-4">
+                <h2 className="text-yellow-300 font-black uppercase tracking-widest">
                   Single Poster
                 </h2>
 
@@ -1353,11 +1145,11 @@ export default function BattleGeneratorPage() {
                   onChange={(value) => updateSingleBattle({ time: value })}
                 />
 
-                <div className="bg-white/60 border border-[#e6a52b]/30 rounded-lg p-3">
-                  <p className="text-[#783e12]/55 text-xs uppercase tracking-widest font-black">
+                <div className="bg-black/30 border border-white/10 rounded-lg p-3">
+                  <p className="text-white/45 text-xs uppercase tracking-widest font-black">
                     Selected Date
                   </p>
-                  <p className="text-[#783e12] font-black mt-1">
+                  <p className="text-yellow-300 font-black mt-1">
                     {singleBattle.date || "NO DATE SELECTED"}
                   </p>
                 </div>
@@ -1381,7 +1173,7 @@ export default function BattleGeneratorPage() {
                 <button
                   type="button"
                   onClick={downloadSinglePoster}
-                  className="w-full bg-[#f4aa24] hover:bg-[#ffd477] transition text-[#783e12] font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest"
+                  className="w-full bg-yellow-400 hover:bg-yellow-300 transition text-black font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest"
                 >
                   Download Poster
                 </button>
@@ -1389,14 +1181,14 @@ export default function BattleGeneratorPage() {
                 <button
                   type="button"
                   onClick={clearSinglePoster}
-                  className="w-full bg-white/65 hover:bg-white/85 transition text-[#783e12] font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-[#e6a52b]/35"
+                  className="w-full bg-white/10 hover:bg-white/20 transition text-white font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-white/20"
                 >
                   Clear Single Poster
                 </button>
               </div>
 
-              <div className="bg-white/60 border border-[#e6a52b]/35 rounded-xl p-5 space-y-4 shadow-[0_14px_35px_rgba(120,62,18,0.10)]">
-                <h2 className="text-[#783e12] font-black uppercase tracking-widest">
+              <div className="bg-black/35 border border-white/15 rounded-xl p-5 space-y-4">
+                <h2 className="text-yellow-300 font-black uppercase tracking-widest">
                   Or Paste One Battle Line
                 </h2>
 
@@ -1404,13 +1196,13 @@ export default function BattleGeneratorPage() {
                   value={singlePaste}
                   onChange={(e) => setSinglePaste(e.target.value)}
                   placeholder="Paste one battle row here"
-                  className="w-full h-36 bg-white/70 border border-[#e6a52b]/40 text-[#783e12] p-5 rounded-lg text-sm outline-none focus:border-[#d98705] placeholder:text-[#783e12]/35"
+                  className="w-full h-36 bg-black/40 border border-white/20 text-white p-5 rounded-lg text-sm outline-none focus:border-yellow-300"
                 />
 
                 <button
                   type="button"
                   onClick={readSinglePaste}
-                  className="w-full bg-[#f4aa24] hover:bg-[#ffd477] transition text-[#783e12] font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest"
+                  className="w-full bg-yellow-300 hover:bg-yellow-200 transition text-black font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest"
                 >
                   {loading ? "Reading..." : "Read Single Row"}
                 </button>
@@ -1424,8 +1216,8 @@ export default function BattleGeneratorPage() {
         {activeMode === "mass" && (
           <div className="grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-8 items-start">
             <section className="space-y-6">
-              <div className="bg-white/60 border border-[#e6a52b]/35 rounded-xl p-5 space-y-4 shadow-[0_14px_35px_rgba(120,62,18,0.10)]">
-                <h2 className="text-[#783e12] font-black uppercase tracking-widest">
+              <div className="bg-black/35 border border-yellow-300/20 rounded-xl p-5 space-y-4">
+                <h2 className="text-yellow-300 font-black uppercase tracking-widest">
                   Mass Poster Generator
                 </h2>
 
@@ -1436,11 +1228,11 @@ export default function BattleGeneratorPage() {
                   onMonthChange={handleMassMonthChange}
                 />
 
-                <div className="bg-white/60 border border-[#e6a52b]/30 rounded-lg p-3">
-                  <p className="text-[#783e12]/55 text-xs uppercase tracking-widest font-black">
+                <div className="bg-black/30 border border-white/10 rounded-lg p-3">
+                  <p className="text-white/45 text-xs uppercase tracking-widest font-black">
                     Mass Poster Date
                   </p>
-                  <p className="text-[#783e12] font-black mt-1">
+                  <p className="text-yellow-300 font-black mt-1">
                     {massDate || "NO DATE SELECTED"}
                   </p>
                 </div>
@@ -1448,34 +1240,24 @@ export default function BattleGeneratorPage() {
                 <textarea
                   value={paste}
                   onChange={(e) => setPaste(e.target.value)}
-                  placeholder="Paste Honeybloom battle sheet rows here"
-                  className="w-full h-72 bg-white/70 border border-[#e6a52b]/40 text-[#783e12] p-5 rounded-lg text-sm outline-none focus:border-[#d98705] placeholder:text-[#783e12]/35"
+                  placeholder="Paste Daniel battle sheet rows here"
+                  className="w-full h-72 bg-black/40 border border-white/20 text-white p-5 rounded-lg text-sm outline-none focus:border-yellow-300"
                 />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <button
                     type="button"
                     onClick={readRows}
-                    disabled={loading}
-                    className="bg-[#f4aa24] hover:bg-[#ffd477] disabled:opacity-40 disabled:cursor-not-allowed transition text-[#783e12] font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
+                    className="bg-yellow-300 hover:bg-yellow-200 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     {loading ? "Loading..." : "Read Rows"}
                   </button>
 
                   <button
                     type="button"
-                    onClick={refreshScrapedFeed}
-                    disabled={!paste.trim() || loading}
-                    className="bg-white/65 hover:bg-white/85 disabled:opacity-40 disabled:cursor-not-allowed transition text-[#783e12] font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest border border-[#e6a52b]/35"
-                  >
-                    Refresh Scrape
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={downloadAllPosters}
                     disabled={battles.length === 0}
-                    className="bg-[#f4aa24] hover:bg-[#ffd477] disabled:opacity-40 transition text-[#783e12] font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
+                    className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     Download ZIP
                   </button>
@@ -1484,7 +1266,7 @@ export default function BattleGeneratorPage() {
                     type="button"
                     onClick={saveAllToFolder}
                     disabled={battles.length === 0 || saving}
-                    className="bg-[#8fcf68] hover:bg-[#a8e57d] disabled:opacity-40 transition text-[#2f4f16] font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
+                    className="bg-green-400 hover:bg-green-300 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     {saving ? "Saving..." : "Save Folder"}
                   </button>
@@ -1492,24 +1274,24 @@ export default function BattleGeneratorPage() {
                   <button
                     type="button"
                     onClick={clearMassPosters}
-                    className="bg-white/65 hover:bg-white/85 transition text-[#783e12] font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest border border-[#e6a52b]/35"
+                    className="bg-white/10 hover:bg-white/20 transition text-white font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest border border-white/20"
                   >
                     Clear
                   </button>
                 </div>
               </div>
 
-              <div className="bg-white/60 border border-[#e6a52b]/35 rounded-lg p-5 shadow-[0_14px_35px_rgba(120,62,18,0.10)]">
-                <p className="text-[#783e12]/75 text-sm">
+              <div className="bg-black/35 border border-white/15 rounded-lg p-5">
+                <p className="text-white/70 text-sm">
                   Posters generated:{" "}
-                  <span className="text-[#783e12] font-black">
+                  <span className="text-yellow-300 font-black">
                     {battles.length}
                   </span>
                 </p>
 
-                <p className="text-[#783e12]/55 text-xs mt-2">
-                  Format: manager, predicted diamonds, creator username, ignored
-                  column, time, ignored column, opponent name, agency. Select the date above first.
+                <p className="text-white/50 text-xs mt-2">
+                  Format: creator username, manager, creator link, opponent
+                  link, second time. Select the date above first.
                 </p>
               </div>
 
