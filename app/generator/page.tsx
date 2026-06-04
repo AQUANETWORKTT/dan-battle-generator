@@ -420,7 +420,7 @@ export default function BattleGeneratorPage() {
     const refreshKey = Date.now();
 
     try {
-      const res = await fetch("/api/tiktok-avatar", {
+      const res = await fetch("/api/tiktok-avatar-v2", {
         method: "POST",
         cache: "no-store",
         headers: {
