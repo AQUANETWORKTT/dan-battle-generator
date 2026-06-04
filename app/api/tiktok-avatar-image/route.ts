@@ -13,10 +13,12 @@ export async function GET(req: Request) {
   try {
     const imageRes = await fetch(url, {
       cache: "no-store",
+      next: { revalidate: 0 },
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        Accept:
+          "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
         Referer: "https://www.tiktok.com/",
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
@@ -35,6 +37,8 @@ export async function GET(req: Request) {
       headers: {
         "Content-Type": imageRes.headers.get("content-type") || "image/jpeg",
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
       },
     });
   } catch (err) {

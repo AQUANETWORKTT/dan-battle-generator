@@ -6,7 +6,8 @@ export const fetchCache = "force-no-store";
 
 export async function POST(req: Request) {
   try {
-    const { username, forceRefresh } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const username = body.username;
 
     const cleanUsername = String(username || "")
       .replace("@", "")
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
           status: 400,
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            Pragma: "no-cache",
+            Expires: "0",
           },
         }
       );
@@ -36,6 +39,9 @@ export async function POST(req: Request) {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-GB,en;q=0.9",
           "Cache-Control": "no-cache",
           Pragma: "no-cache",
         },
@@ -50,12 +56,16 @@ export async function POST(req: Request) {
       html.match(/"avatarThumb":"(.*?)"/);
 
     if (!match) {
+      console.log("Profile picture not found:", cleanUsername);
+
       return NextResponse.json(
-        { error: "Profile picture not found" },
+        { error: "Profile picture not found", username: cleanUsername },
         {
           status: 404,
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            Pragma: "no-cache",
+            Expires: "0",
           },
         }
       );
@@ -69,7 +79,7 @@ export async function POST(req: Request) {
       {
         avatar,
         username: cleanUsername,
-        refreshed: Boolean(forceRefresh),
+        refreshed: true,
         timestamp: refreshKey,
       },
       {
@@ -90,6 +100,8 @@ export async function POST(req: Request) {
         status: 500,
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
         },
       }
     );
