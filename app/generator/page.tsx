@@ -638,25 +638,99 @@ export default function BattleGeneratorPage() {
     setLoading(false);
   }
 
-  async function makePosterBlob(battle: Battle) {
-  await document.fonts.ready;
+  async function imageToDataUrl(src: string) {
+    if (!src || src.startsWith("data:")) return src;
 
-  const node = posterRefs.current[battle.id];
-  if (!node) return null;
+    try {
+      const res = await fetch(src, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
 
-  try {
-    const blob = await htmlToImage.toBlob(node, {
-      cacheBust: true,
-      pixelRatio: 2,
-      backgroundColor: "#000000",
-    });
+      if (!res.ok) return src;
 
-    return blob;
-  } catch (err) {
-    console.error("POSTER EXPORT ERROR:", err);
-    return null;
+      const blob = await res.blob();
+
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          resolve(String(reader.result || src));
+        };
+
+        reader.onerror = () => {
+          resolve(src);
+        };
+
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return src;
+    }
   }
-}
+
+  async function waitForPosterImages(node: HTMLElement) {
+    const images = Array.from(node.querySelectorAll("img"));
+
+    await Promise.all(
+      images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+
+        return new Promise<void>((resolve) => {
+          image.onload = () => resolve();
+          image.onerror = () => resolve();
+        });
+      }),
+    );
+
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+
+  async function makePosterBlob(battle: Battle) {
+    await document.fonts.ready;
+
+    const node = posterRefs.current[battle.id];
+    if (!node) return null;
+
+    const originalImageSrcs: Array<{ image: HTMLImageElement; src: string }> = [];
+
+    try {
+      const images = Array.from(node.querySelectorAll("img"));
+
+      for (const image of images) {
+        originalImageSrcs.push({ image, src: image.src });
+
+        if (
+          image.src.includes("/api/tiktok-avatar-image") ||
+          image.src.includes("tikcdn") ||
+          image.src.includes("tiktok")
+        ) {
+          image.src = await imageToDataUrl(image.src);
+        }
+      }
+
+      await waitForPosterImages(node);
+
+      const blob = await htmlToImage.toBlob(node, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#000000",
+      });
+
+      return blob;
+    } catch (err) {
+      console.error("POSTER EXPORT ERROR:", err);
+      return null;
+    } finally {
+      for (const item of originalImageSrcs) {
+        item.image.src = item.src;
+      }
+    }
+  }
 
   function getPosterFileName(battle: Battle) {
     const creator1 = battle.name1 || "CREATOR1";
