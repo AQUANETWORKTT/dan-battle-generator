@@ -160,6 +160,14 @@ function cleanFileName(value: string) {
     .replaceAll("@", "");
 }
 
+
+function addCacheBustToImageUrl(url: string, key?: string | number) {
+  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}avatarRefresh=${key || Date.now()}`;
+}
+
 function TextInput({
   label,
   value,
@@ -405,13 +413,6 @@ export default function BattleGeneratorPage() {
     setMassDate("");
   }
 
-  function addCacheBustToImageUrl(url: string, key?: string | number) {
-    if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
-
-    const separator = url.includes("?") ? "&" : "?";
-    return `${url}${separator}avatarRefresh=${key || Date.now()}`;
-  }
-
   async function fetchTikTokAvatar(username: string) {
     const cleanUsername = username.replace("@", "").trim().toLowerCase();
     if (!cleanUsername) return "";
@@ -419,28 +420,27 @@ export default function BattleGeneratorPage() {
     const refreshKey = Date.now();
 
     try {
-      const res = await fetch(
-        `/api/tiktok-avatar?username=${encodeURIComponent(
-          cleanUsername
-        )}&refresh=${refreshKey}`,
-        {
-          method: "POST",
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-          body: JSON.stringify({
-            username: cleanUsername,
-            forceRefresh: true,
-            refresh: refreshKey,
-          }),
-        }
-      );
+      const res = await fetch("/api/tiktok-avatar", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+        body: JSON.stringify({
+          username: cleanUsername,
+          forceRefresh: true,
+          refresh: refreshKey,
+        }),
+      });
 
       const json = await res.json();
-      return addCacheBustToImageUrl(json.avatar || "", refreshKey);
+      if (!json.avatar) return "";
+
+      return `/api/tiktok-avatar-image?url=${encodeURIComponent(
+        json.avatar
+      )}&refresh=${refreshKey}`;
     } catch {
       return "";
     }
@@ -490,38 +490,6 @@ export default function BattleGeneratorPage() {
     } else {
       updateBattle(battle.id, { [field]: avatar });
     }
-  }
-
-  async function rescrapeSinglePoster() {
-    if (singlePaste.trim()) {
-      await readSinglePaste();
-      return;
-    }
-
-    const name1 = singleBattle.name1.replace("@", "").trim();
-    const name2 = singleBattle.name2.replace("@", "").trim();
-
-    setLoading(true);
-
-    const [image1, image2] = await Promise.all([
-      name1 ? fetchTikTokAvatar(name1) : Promise.resolve(""),
-      name2 ? fetchTikTokAvatar(name2) : Promise.resolve(""),
-    ]);
-
-    updateSingleBattle({
-      image1: image1 || singleBattle.image1,
-      image2: image2 || singleBattle.image2,
-    });
-
-    setLoading(false);
-  }
-
-  async function rescrapeFeed() {
-    if (!paste.trim()) return;
-
-    setBattles([]);
-    setSelectedId("");
-    await readRows();
   }
 
   function uploadImageFile(
@@ -821,7 +789,7 @@ export default function BattleGeneratorPage() {
 
         {image ? (
           <img
-            src={image}
+            src={addCacheBustToImageUrl(image, `${battle.id}-${field}-${field === "image1" ? battle.name1 : battle.name2}`)}
             alt=""
             className="w-24 h-24 rounded-full object-cover mx-auto mt-3 border-2 border-yellow-300"
           />
@@ -899,7 +867,7 @@ export default function BattleGeneratorPage() {
             {battle.image1 && (
               <img
                 crossOrigin="anonymous"
-                src={battle.image1}
+                src={addCacheBustToImageUrl(battle.image1, `${battle.id}-image1-${battle.name1}`)}
                 className="absolute left-[82px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
               />
@@ -908,7 +876,7 @@ export default function BattleGeneratorPage() {
             {battle.image2 && (
               <img
                 crossOrigin="anonymous"
-                src={battle.image2}
+                src={addCacheBustToImageUrl(battle.image2, `${battle.id}-image2-${battle.name2}`)}
                 className="absolute left-[651px] top-[570px] w-[346px] h-[346px] rounded-full object-cover"
                 alt=""
               />
@@ -1320,15 +1288,6 @@ export default function BattleGeneratorPage() {
                 >
                   {loading ? "Reading..." : "Read Single Row"}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={rescrapeSinglePoster}
-                  disabled={loading || (!singlePaste.trim() && !singleBattle.name1 && !singleBattle.name2)}
-                  className="w-full bg-white/10 hover:bg-white/20 disabled:opacity-40 transition text-white font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-white/20"
-                >
-                  Rescrape Single
-                </button>
               </div>
             </section>
 
@@ -1367,7 +1326,7 @@ export default function BattleGeneratorPage() {
                   className="w-full h-72 bg-black/40 border border-white/20 text-white p-5 rounded-lg text-sm outline-none focus:border-yellow-300"
                 />
 
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <button
                     type="button"
                     onClick={readRows}
@@ -1392,15 +1351,6 @@ export default function BattleGeneratorPage() {
                     className="bg-green-400 hover:bg-green-300 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
                   >
                     {saving ? "Saving..." : "Save Folder"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={rescrapeFeed}
-                    disabled={!paste.trim() || loading}
-                    className="bg-cyan-300 hover:bg-cyan-200 disabled:opacity-40 transition text-black font-black px-2 py-4 text-sm rounded-lg cursor-pointer uppercase tracking-widest"
-                  >
-                    Rescrape Feed
                   </button>
 
                   <button
