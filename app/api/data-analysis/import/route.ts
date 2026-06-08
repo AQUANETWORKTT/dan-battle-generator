@@ -104,39 +104,6 @@ function getTeam(group: string) {
   return agency === "First Class" ? "Unassigned First Class" : agency;
 }
 
-function normalise(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[’']/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function findColumn(headers: string[], names: string[]) {
-  const cleanNames = names.map(normalise);
-  const cleanHeaders = headers.map(normalise);
-
-  const exactIndex = cleanHeaders.findIndex((header) =>
-    cleanNames.includes(header)
-  );
-
-  if (exactIndex !== -1) return exactIndex;
-
-  return cleanHeaders.findIndex((header) =>
-    cleanNames.some((name) => header.includes(name))
-  );
-}
-
-function getValue(
-  row: Record<string, unknown>,
-  headers: string[],
-  names: string[]
-) {
-  const index = findColumn(headers, names);
-  if (index === -1) return "";
-  return row[headers[index]];
-}
-
 function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
   const workbook = XLSX.read(buffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
@@ -145,45 +112,35 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
 
   const sheet = workbook.Sheets[firstSheetName];
 
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+  const rows = XLSX.utils.sheet_to_json<any[]>(sheet, {
+    header: 1,
+    raw: false,
+    blankrows: false,
     defval: "",
   });
 
-  if (!rows.length) return [];
+  const dataRows = rows.filter(
+    (row) =>
+      Array.isArray(row) &&
+      row.length > 2 &&
+      cleanText(row[2]) !== "" &&
+      cleanText(row[2]).toLowerCase() !== "creator's username"
+  );
 
-  const headers = Object.keys(rows[0] || {});
+  console.log("TOTAL EXCEL ROWS:", rows.length);
+  console.log("TOTAL DATA ROWS:", dataRows.length);
 
-  return rows
+  return dataRows
     .map((row) => {
-      const username = cleanText(
-        getValue(row, headers, [
-          "creators username",
-          "creator username",
-          "username",
-        ])
-      ).replace("@", "");
-
-      const email = cleanText(
-        getValue(row, headers, [
-          "creator network manager",
-          "manager email",
-          "email",
-          "manager",
-        ])
-      );
-
-      const groupName = cleanText(
-        getValue(row, headers, ["group", "agency", "sub agency"])
-      );
-
-      const liveDuration = cleanText(
-        getValue(row, headers, [
-          "live duration",
-          "duration",
-          "live time",
-          "hours",
-        ])
-      );
+      const username = cleanText(row[2]).replace("@", ""); // Column C
+      const groupName = cleanText(row[3]); // Column D
+      const email = cleanText(row[4]); // Column E
+      const daysSinceJoining = toNumber(row[6]); // Column G
+      const diamonds = toNumber(row[7]); // Column H
+      const liveDuration = cleanText(row[8]); // Column I
+      const followers = toNumber(row[10]); // Column K
+      const liveStreams = toNumber(row[11]); // Column L
+      const matches = toNumber(row[12]); // Column M
 
       return {
         stat_date: statDate,
@@ -192,23 +149,13 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
         group_name: groupName || null,
         agency: getAgency(groupName),
         team: getTeam(groupName),
-        diamonds: toNumber(getValue(row, headers, ["diamonds", "diamond"])),
+        diamonds,
         live_duration: liveDuration || null,
         live_hours: durationToHours(liveDuration),
-        matches: toNumber(getValue(row, headers, ["matches", "match"])),
-        live_streams: toNumber(
-          getValue(row, headers, ["live streams", "live stream", "streams"])
-        ),
-        followers: toNumber(
-          getValue(row, headers, ["new followers", "followers", "follower"])
-        ),
-        days_since_joining: toNumber(
-          getValue(row, headers, [
-            "days since joining",
-            "days joined",
-            "joining",
-          ])
-        ),
+        matches,
+        live_streams: liveStreams,
+        followers,
+        days_since_joining: daysSinceJoining,
       };
     })
     .filter((row) => row.creator_username);
@@ -264,18 +211,32 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error } = await submissionsSupabase
-      .from("creator_daily_stats")
-      .insert(allRows);
+    const chunkSize = 250;
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    for (let i = 0; i < allRows.length; i += chunkSize) {
+      const chunk = allRows.slice(i, i + chunkSize);
+
+      const { error } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .insert(chunk);
+
+      if (error) {
+        return NextResponse.json(
+          {
+            error: `Insert failed on rows ${i + 1}-${i + chunk.length}: ${
+              error.message
+            }`,
+          },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({
       success: true,
       filesImported: fileSummaries.length,
       totalRows: allRows.length,
+      parsedRows: allRows.length,
       files: fileSummaries,
     });
   } catch (error) {
