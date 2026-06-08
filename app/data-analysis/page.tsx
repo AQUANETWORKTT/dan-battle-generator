@@ -200,7 +200,7 @@ function MiniBarChart({
       </div>
 
       {data.length ? (
-        <div className="flex h-64 items-end gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="flex h-96 items-end gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           {data.map((item) => {
             const value = Number(item[valueKey]) || 0;
             const height = Math.max(5, (value / maxValue) * 100);
@@ -210,7 +210,7 @@ function MiniBarChart({
                 <div className="hidden rounded-lg bg-black px-2 py-1 text-center text-[10px] font-bold text-white group-hover:block">
                   {item.label}<br />{valueFormatter(value)}
                 </div>
-                <div className="flex h-44 w-full items-end">
+                <div className="flex h-72 w-full items-end">
                   <div
                     className={`w-full rounded-t-xl ${
                       item.isWeekend ? "bg-red-300/70" : "bg-yellow-300/80"
@@ -734,7 +734,7 @@ export default function DataAnalysisPage() {
           </div>
         </section>
 
-        <section className="mb-6 grid gap-4 xl:grid-cols-3">
+        <section className="mb-6 space-y-4">
           <MiniBarChart
             title="Daily Diamonds"
             subtitle="Shows peaks and drops across the selected range. Red bars are weekend days."
