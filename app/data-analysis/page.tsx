@@ -77,6 +77,7 @@ export default function DataAnalysisPage() {
         .gte("stat_date", startDate)
         .lte("stat_date", endDate)
         .order("stat_date", { ascending: true });
+        .range(0, 50000);
 
       if (error) {
         console.error(error);
