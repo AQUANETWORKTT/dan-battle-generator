@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const agencies = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Strive"];
 
 const teams = [
@@ -24,18 +26,29 @@ export default function DataAnalysisPage() {
     <main className="min-h-screen bg-[#070707] px-4 py-6 text-white">
       <div className="mx-auto max-w-7xl">
         <section className="mb-8 rounded-[2rem] border border-yellow-300/30 bg-gradient-to-br from-black via-[#111] to-[#1b1300] p-6 shadow-2xl shadow-yellow-900/20">
-          <p className="text-xs font-black uppercase tracking-[0.35em] text-yellow-300/70">
-            First Class Intelligence
-          </p>
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.35em] text-yellow-300/70">
+                First Class Intelligence
+              </p>
 
-          <h1 className="mt-3 text-4xl font-black uppercase tracking-tight text-yellow-300 md:text-6xl">
-            AI Data Analysis
-          </h1>
+              <h1 className="mt-3 text-4xl font-black uppercase tracking-tight text-yellow-300 md:text-6xl">
+                AI Data Analysis
+              </h1>
 
-          <p className="mt-4 max-w-3xl text-white/60">
-            Analyse creator performance, weekend drops, agency activity, live
-            hours, diamonds, matches and creator trends.
-          </p>
+              <p className="mt-4 max-w-3xl text-white/60">
+                Analyse creator performance, weekend drops, agency activity, live
+                hours, diamonds, matches and creator trends.
+              </p>
+            </div>
+
+            <Link
+              href="/data-analysis/upload"
+              className="shrink-0 rounded-xl bg-yellow-300 px-6 py-3 text-center font-black uppercase text-black transition hover:scale-[1.02] hover:bg-yellow-200"
+            >
+              Upload Data
+            </Link>
+          </div>
         </section>
 
         <section className="mb-6 grid gap-4 rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-4">

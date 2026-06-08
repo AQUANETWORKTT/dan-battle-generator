@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 type DayFileMap = Record<number, File | null>;
@@ -62,6 +63,15 @@ export default function DataAnalysisUploadPage() {
   return (
     <main className="min-h-screen bg-[#070707] px-4 py-8 text-white">
       <div className="mx-auto max-w-7xl">
+        <div className="mb-4">
+          <Link
+            href="/data-analysis"
+            className="inline-flex rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-black uppercase text-white transition hover:bg-white/10"
+          >
+            ← Back to Analysis
+          </Link>
+        </div>
+
         <div className="mb-8 rounded-[2rem] border border-yellow-300/30 bg-gradient-to-br from-black via-[#111] to-[#1b1300] p-6">
           <h1 className="text-4xl font-black uppercase text-yellow-300">
             Upload May Creator Stats
