@@ -114,11 +114,17 @@ function normalise(value: string) {
 
 function findColumn(headers: string[], names: string[]) {
   const cleanNames = names.map(normalise);
+  const cleanHeaders = headers.map(normalise);
 
-  return headers.findIndex((header) => {
-    const cleanHeader = normalise(header);
-    return cleanNames.some((name) => cleanHeader.includes(name));
-  });
+  const exactIndex = cleanHeaders.findIndex((header) =>
+    cleanNames.includes(header)
+  );
+
+  if (exactIndex !== -1) return exactIndex;
+
+  return cleanHeaders.findIndex((header) =>
+    cleanNames.some((name) => header.includes(name))
+  );
 }
 
 function getValue(
@@ -151,12 +157,9 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
     .map((row) => {
       const username = cleanText(
         getValue(row, headers, [
-          "creator username",
           "creators username",
+          "creator username",
           "username",
-          "creator",
-          "tiktok",
-          "account",
         ])
       ).replace("@", "");
 
@@ -197,11 +200,7 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
           getValue(row, headers, ["live streams", "live stream", "streams"])
         ),
         followers: toNumber(
-          getValue(row, headers, [
-            "new followers",
-            "followers",
-            "follower",
-          ])
+          getValue(row, headers, ["new followers", "followers", "follower"])
         ),
         days_since_joining: toNumber(
           getValue(row, headers, [

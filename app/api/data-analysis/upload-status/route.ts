@@ -7,10 +7,11 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month") || "2026-05";
 
-  const startDate = `${month}-01`;
   const year = Number(month.split("-")[0]);
   const monthNumber = Number(month.split("-")[1]);
   const lastDay = new Date(year, monthNumber, 0).getDate();
+
+  const startDate = `${month}-01`;
   const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
 
   const { data, error } = await submissionsSupabase

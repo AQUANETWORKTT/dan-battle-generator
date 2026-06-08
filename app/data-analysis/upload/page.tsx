@@ -167,7 +167,7 @@ export default function DataAnalysisUploadPage() {
             <p className="mt-2 text-3xl font-black text-green-300">
               {statusLoading
                 ? "..."
-                : Object.keys(existingDays).length}/{selectedMonth.days}
+                : `${Object.keys(existingDays).length}/${selectedMonth.days}`}
             </p>
           </div>
         </div>
