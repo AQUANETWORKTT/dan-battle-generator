@@ -76,7 +76,7 @@ export default function DataAnalysisPage() {
         .select("*")
         .gte("stat_date", startDate)
         .lte("stat_date", endDate)
-        .order("stat_date", { ascending: true });
+        .order("stat_date", { ascending: true })
         .range(0, 50000);
 
       if (error) {
