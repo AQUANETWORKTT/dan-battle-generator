@@ -29,7 +29,8 @@ export default function DataAnalysisUploadPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[4];
+  const selectedMonth =
+    MONTHS.find((item) => item.value === month) || MONTHS[4];
 
   const days = useMemo(
     () => Array.from({ length: selectedMonth.days }, (_, index) => index + 1),
@@ -46,17 +47,29 @@ export default function DataAnalysisUploadPage() {
   async function loadExistingDays() {
     setStatusLoading(true);
 
-    const res = await fetch(`/api/data-analysis/upload-status?month=${month}`);
-    const json = await res.json();
+    try {
+      const res = await fetch(
+        `/api/data-analysis/upload-status?month=${month}&t=${Date.now()}`,
+        {
+          cache: "no-store",
+        }
+      );
 
-    setStatusLoading(false);
+      const json = await res.json();
 
-    if (!res.ok) {
+      if (!res.ok) {
+        setExistingDays({});
+        setStatusLoading(false);
+        return;
+      }
+
+      setExistingDays(json.days || {});
+      setStatusLoading(false);
+    } catch (error) {
+      console.error(error);
       setExistingDays({});
-      return;
+      setStatusLoading(false);
     }
-
-    setExistingDays(json.days || {});
   }
 
   function setDayFile(day: number, file: File | null) {
@@ -91,6 +104,7 @@ export default function DataAnalysisUploadPage() {
     const res = await fetch("/api/data-analysis/import", {
       method: "POST",
       body: formData,
+      cache: "no-store",
     });
 
     const json = await res.json();
@@ -174,6 +188,14 @@ export default function DataAnalysisUploadPage() {
 
         <div className="mb-6 flex flex-wrap items-center justify-end gap-3 rounded-3xl border border-white/10 bg-white/[0.03] p-4">
           <button
+            onClick={loadExistingDays}
+            disabled={statusLoading || loading}
+            className="rounded-xl border border-green-300/30 bg-green-400/10 px-5 py-3 font-black uppercase text-green-300 disabled:opacity-40"
+          >
+            {statusLoading ? "Refreshing..." : "Refresh Uploaded Days"}
+          </button>
+
+          <button
             onClick={handleImport}
             disabled={loading}
             className="rounded-xl bg-yellow-300 px-6 py-3 font-black uppercase text-black disabled:opacity-40"
@@ -191,12 +213,17 @@ export default function DataAnalysisUploadPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {days.map((day) => {
             const file = files[day];
-            const existingRowCount = existingDays[day];
+            const existingRowCount = Number(existingDays[day] || 0);
+            const hasExistingUpload = existingRowCount > 0;
 
             return (
               <div
                 key={day}
-                className="rounded-3xl border border-yellow-300/20 bg-black/60 p-4"
+                className={`rounded-3xl border p-4 ${
+                  hasExistingUpload && !file
+                    ? "border-green-300/40 bg-green-400/10"
+                    : "border-yellow-300/20 bg-black/60"
+                }`}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
@@ -213,7 +240,7 @@ export default function DataAnalysisUploadPage() {
                     <span className="rounded-full bg-yellow-400/20 px-3 py-1 text-xs font-black uppercase text-yellow-300">
                       Replace
                     </span>
-                  ) : existingRowCount ? (
+                  ) : hasExistingUpload ? (
                     <span className="rounded-full bg-green-400/20 px-3 py-1 text-xs font-black uppercase text-green-300">
                       Uploaded
                     </span>
@@ -224,10 +251,10 @@ export default function DataAnalysisUploadPage() {
                   )}
                 </div>
 
-                {existingRowCount && !file ? (
+                {hasExistingUpload && !file ? (
                   <p className="mb-3 rounded-xl bg-green-400/10 px-3 py-2 text-xs font-bold text-green-200">
-                    {existingRowCount} rows saved. Upload a new file here to
-                    overwrite this day.
+                    ✅ Existing upload found: {existingRowCount} rows saved.
+                    Upload a new file here to overwrite this day.
                   </p>
                 ) : null}
 
@@ -249,6 +276,15 @@ export default function DataAnalysisUploadPage() {
                       </p>
                       <p className="mt-2 text-xs text-white/40">
                         Click to replace before importing
+                      </p>
+                    </>
+                  ) : hasExistingUpload ? (
+                    <>
+                      <p className="text-sm font-bold text-green-200">
+                        Existing file uploaded
+                      </p>
+                      <p className="mt-2 text-xs text-green-300/70">
+                        Click to replace this day
                       </p>
                     </>
                   ) : (
