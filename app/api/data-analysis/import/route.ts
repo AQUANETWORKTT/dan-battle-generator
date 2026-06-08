@@ -218,6 +218,7 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
+    const month = String(formData.get("month") || "2026-05");
 
     const allRows: ParsedRow[] = [];
     const fileSummaries: { day: number; rows: number; filename: string }[] = [];
@@ -228,7 +229,7 @@ export async function POST(req: Request) {
       if (!(file instanceof File)) continue;
 
       const buffer = await file.arrayBuffer();
-      const statDate = `2026-05-${String(day).padStart(2, "0")}`;
+      const statDate = `${month}-${String(day).padStart(2, "0")}`;
 
       const rows = parseWorkbook(buffer, statDate);
 
@@ -248,11 +249,25 @@ export async function POST(req: Request) {
       );
     }
 
+    for (const summary of fileSummaries) {
+      const statDate = `${month}-${String(summary.day).padStart(2, "0")}`;
+
+      const { error: deleteError } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .delete()
+        .eq("stat_date", statDate);
+
+      if (deleteError) {
+        return NextResponse.json(
+          { error: deleteError.message },
+          { status: 500 }
+        );
+      }
+    }
+
     const { error } = await submissionsSupabase
       .from("creator_daily_stats")
-      .upsert(allRows, {
-        onConflict: "stat_date,creator_username",
-      });
+      .insert(allRows);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
