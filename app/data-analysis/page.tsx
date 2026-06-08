@@ -71,21 +71,40 @@ export default function DataAnalysisPage() {
       const startDate = `${month}-01`;
       const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
 
-      const { data, error } = await submissionsSupabase
-        .from("creator_daily_stats")
-        .select("*")
-        .gte("stat_date", startDate)
-        .lte("stat_date", endDate)
-        .order("stat_date", { ascending: true })
-        .range(0, 50000);
+      const allData: CreatorStat[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
 
-      if (error) {
-        console.error(error);
-        setRows([]);
-      } else {
-        setRows((data || []) as CreatorStat[]);
+      while (hasMore) {
+        const to = from + pageSize - 1;
+
+        const { data, error } = await submissionsSupabase
+          .from("creator_daily_stats")
+          .select("*")
+          .gte("stat_date", startDate)
+          .lte("stat_date", endDate)
+          .order("stat_date", { ascending: true })
+          .range(from, to);
+
+        if (error) {
+          console.error(error);
+          setRows([]);
+          setLoading(false);
+          return;
+        }
+
+        const batch = (data || []) as CreatorStat[];
+        allData.push(...batch);
+
+        if (batch.length < pageSize) {
+          hasMore = false;
+        } else {
+          from += pageSize;
+        }
       }
 
+      setRows(allData);
       setLoading(false);
     }
 
@@ -383,7 +402,7 @@ export default function DataAnalysisPage() {
 
         {loading && (
           <div className="mb-6 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-yellow-100">
-            Loading month data...
+            Loading all month data...
           </div>
         )}
 
