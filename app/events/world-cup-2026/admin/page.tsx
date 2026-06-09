@@ -18,16 +18,18 @@ type ScoreData = {
   penaltyCurrent: string;
   penaltyAdd: string;
   bonusMatchWin: string;
+  bonusWins: string;
+  bonusDraws: string;
 };
 
 const agencies: { name: Agency; logo: string; colour: string }[] = [
-  { name: "Aqua", logo: "/world-cup-2026/agencies/aqua.png", colour: "cyan" },
-  { name: "Atlas", logo: "/world-cup-2026/agencies/atlas.png", colour: "green" },
   {
     name: "First Class",
     logo: "/world-cup-2026/agencies/first-class.png",
     colour: "red",
   },
+  { name: "Aqua", logo: "/world-cup-2026/agencies/aqua.png", colour: "cyan" },
+  { name: "Atlas", logo: "/world-cup-2026/agencies/atlas.png", colour: "green" },
   {
     name: "Paradise",
     logo: "/world-cup-2026/agencies/paradise.png",
@@ -95,6 +97,16 @@ const creators: Creator[] = [
   { username: "itsjazz69", agency: "Atlas", country: "South Africa" },
 ];
 
+const emptyScoreData: ScoreData = {
+  fifaFever: "",
+  finalWhistle: "",
+  penaltyCurrent: "",
+  penaltyAdd: "",
+  bonusMatchWin: "",
+  bonusWins: "",
+  bonusDraws: "",
+};
+
 export default function WorldCupAdminPage() {
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
   const [scores, setScores] = useState<Record<string, ScoreData>>({});
@@ -138,12 +150,20 @@ export default function WorldCupAdminPage() {
     creators.forEach((creator) => {
       const row = data?.find((item) => item.username === creator.username);
 
+      const bonusPoints = toNumber(
+        row?.bonus_match_win ? String(row.bonus_match_win) : ""
+      );
+      const bonusWins = Math.floor(bonusPoints / 1000);
+      const bonusDraws = Math.floor((bonusPoints - bonusWins * 1000) / 500);
+
       nextScores[creator.username] = {
         fifaFever: row?.fifa_fever ? String(row.fifa_fever) : "",
         finalWhistle: row?.final_whistle ? String(row.final_whistle) : "",
         penaltyCurrent: row?.penalty_shootout ? String(row.penalty_shootout) : "",
         penaltyAdd: "",
-        bonusMatchWin: row?.bonus_match_win ? String(row.bonus_match_win) : "",
+        bonusMatchWin: bonusPoints ? String(bonusPoints) : "",
+        bonusWins: bonusWins ? String(bonusWins) : "",
+        bonusDraws: bonusDraws ? String(bonusDraws) : "",
       };
     });
 
@@ -163,12 +183,67 @@ export default function WorldCupAdminPage() {
     }));
   }
 
-  function setBonus(username: string, amount: number) {
+  function updateBonusResult(
+    username: string,
+    key: "bonusWins" | "bonusDraws",
+    value: string
+  ) {
+    const cleanValue = value.replace(/[^\d]/g, "");
+    const nextCount = toNumber(cleanValue);
+
+    setScores((current) => {
+      const currentCreatorScores = current[username] || emptyScoreData;
+      const nextWins =
+        key === "bonusWins" ? nextCount : toNumber(currentCreatorScores.bonusWins);
+      const nextDraws =
+        key === "bonusDraws" ? nextCount : toNumber(currentCreatorScores.bonusDraws);
+      const nextBonusPoints = nextWins * 1000 + nextDraws * 500;
+
+      return {
+        ...current,
+        [username]: {
+          ...currentCreatorScores,
+          [key]: cleanValue,
+          bonusMatchWin: nextBonusPoints ? String(nextBonusPoints) : "",
+        },
+      };
+    });
+  }
+
+  function addBonusResult(
+    username: string,
+    key: "bonusWins" | "bonusDraws",
+    amount: number
+  ) {
+    setScores((current) => {
+      const currentCreatorScores = current[username] || emptyScoreData;
+      const currentCount = toNumber(currentCreatorScores[key]);
+      const nextCount = Math.max(0, currentCount + amount);
+      const nextWins =
+        key === "bonusWins" ? nextCount : toNumber(currentCreatorScores.bonusWins);
+      const nextDraws =
+        key === "bonusDraws" ? nextCount : toNumber(currentCreatorScores.bonusDraws);
+      const nextBonusPoints = nextWins * 1000 + nextDraws * 500;
+
+      return {
+        ...current,
+        [username]: {
+          ...currentCreatorScores,
+          [key]: nextCount ? String(nextCount) : "",
+          bonusMatchWin: nextBonusPoints ? String(nextBonusPoints) : "",
+        },
+      };
+    });
+  }
+
+  function clearBonus(username: string) {
     setScores((current) => ({
       ...current,
       [username]: {
-        ...current[username],
-        bonusMatchWin: String(amount),
+        ...(current[username] || emptyScoreData),
+        bonusMatchWin: "",
+        bonusWins: "",
+        bonusDraws: "",
       },
     }));
   }
@@ -184,7 +259,9 @@ export default function WorldCupAdminPage() {
     const penaltyCurrent = toNumber(current?.penaltyCurrent);
     const penaltyAdd = toNumber(current?.penaltyAdd);
     const penaltyShootout = penaltyCurrent + penaltyAdd;
-    const bonusMatchWin = toNumber(current?.bonusMatchWin);
+    const bonusWins = toNumber(current?.bonusWins);
+    const bonusDraws = toNumber(current?.bonusDraws);
+    const bonusMatchWin = bonusWins * 1000 + bonusDraws * 500;
 
     const { error } = await submissionsSupabase
       .from("world_cup_2026_scores")
@@ -295,13 +372,7 @@ export default function WorldCupAdminPage() {
         ) : (
           <div className="space-y-4">
             {selectedCreators.map((creator) => {
-              const data = scores[creator.username] || {
-                fifaFever: "",
-                finalWhistle: "",
-                penaltyCurrent: "",
-                penaltyAdd: "",
-                bonusMatchWin: "",
-              };
+              const data = scores[creator.username] || emptyScoreData;
 
               return (
                 <article
@@ -327,7 +398,7 @@ export default function WorldCupAdminPage() {
                     </button>
                   </div>
 
-                  <div className="grid gap-3 lg:grid-cols-4">
+                  <div className="grid gap-3 lg:grid-cols-3">
                     <ScoreInput
                       title="Final Whistle"
                       value={data.finalWhistle}
@@ -395,37 +466,89 @@ export default function WorldCupAdminPage() {
                         Bonus Match Win
                       </p>
 
-                      <input
-                        value={data.bonusMatchWin}
-                        onChange={(event) =>
-                          updateScore(
-                            creator.username,
-                            "bonusMatchWin",
-                            event.target.value
-                          )
-                        }
-                        inputMode="numeric"
-                        placeholder=""
-                        className="mb-3 w-full rounded-xl border border-white/10 bg-white px-3 py-3 text-xl font-black text-zinc-950 outline-none"
-                      />
+                      <div className="mb-3 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-center">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
+                          Bonus Points
+                        </p>
+                        <p className="text-2xl font-black text-white">
+                          {data.bonusMatchWin || "0"}
+                        </p>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-white/45">
+                          {toNumber(data.bonusWins)} wins · {toNumber(data.bonusDraws)} draws
+                        </p>
+                      </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                        <label>
+                          <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
+                            Wins
+                          </span>
+                          <input
+                            value={data.bonusWins}
+                            onChange={(event) =>
+                              updateBonusResult(
+                                creator.username,
+                                "bonusWins",
+                                event.target.value
+                              )
+                            }
+                            inputMode="numeric"
+                            placeholder="0"
+                            className="w-full rounded-xl border border-white/10 bg-white px-3 py-3 text-xl font-black text-zinc-950 outline-none"
+                          />
+                        </label>
+
+                        <label>
+                          <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
+                            Draws
+                          </span>
+                          <input
+                            value={data.bonusDraws}
+                            onChange={(event) =>
+                              updateBonusResult(
+                                creator.username,
+                                "bonusDraws",
+                                event.target.value
+                              )
+                            }
+                            inputMode="numeric"
+                            placeholder="0"
+                            className="w-full rounded-xl border border-white/10 bg-white px-3 py-3 text-xl font-black text-zinc-950 outline-none"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-5 gap-2">
                         <button
-                          onClick={() => setBonus(creator.username, 1000)}
+                          onClick={() => addBonusResult(creator.username, "bonusWins", 1)}
                           className="rounded-xl bg-green-400 px-3 py-3 text-xs font-black uppercase text-green-950"
                         >
-                          Win
+                          + Win
                         </button>
 
                         <button
-                          onClick={() => setBonus(creator.username, 500)}
+                          onClick={() => addBonusResult(creator.username, "bonusWins", -1)}
+                          className="rounded-xl bg-green-950 px-3 py-3 text-xs font-black uppercase text-green-200"
+                        >
+                          - Win
+                        </button>
+
+                        <button
+                          onClick={() => addBonusResult(creator.username, "bonusDraws", 1)}
                           className="rounded-xl bg-yellow-300 px-3 py-3 text-xs font-black uppercase text-yellow-950"
                         >
-                          Draw
+                          + Draw
                         </button>
 
                         <button
-                          onClick={() => setBonus(creator.username, 0)}
+                          onClick={() => addBonusResult(creator.username, "bonusDraws", -1)}
+                          className="rounded-xl bg-yellow-950 px-3 py-3 text-xs font-black uppercase text-yellow-200"
+                        >
+                          - Draw
+                        </button>
+
+                        <button
+                          onClick={() => clearBonus(creator.username)}
                           className="rounded-xl bg-red-400 px-3 py-3 text-xs font-black uppercase text-red-950"
                         >
                           Clear
