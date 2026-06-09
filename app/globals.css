@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
 @import "tailwindcss";
+@import "flag-icons/css/flag-icons.min.css";
 
 * {
   box-sizing: border-box;
@@ -14,3 +15,5 @@ body {
 body {
   background: #080806;
 }
+
+
