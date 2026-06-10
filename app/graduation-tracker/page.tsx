@@ -223,6 +223,24 @@ export default function GraduationTrackerPage() {
     return ["All Teams", ...uniqueTeams];
   }, [rowsUntilEndDay]);
 
+  const latestGraduationUploadDay = useMemo(() => {
+    const uploadedDayNumbers = rowsUntilEndDay
+      .filter(
+        (row) =>
+          safeNumber(row.diamonds) > 0 ||
+          safeNumber(row.live_hours) > 0 ||
+          safeNumber(row.matches) > 0
+      )
+      .map((row) => getDayNumber(row.stat_date))
+      .filter((dayNumber) => dayNumber > 0);
+
+    if (!uploadedDayNumbers.length) {
+      return Math.min(endDay, lastDay);
+    }
+
+    return Math.min(Math.max(...uploadedDayNumbers), lastDay);
+  }, [rowsUntilEndDay, endDay, lastDay]);
+
   const graduationTrackerRows = useMemo<GraduationTrackerRow[]>(() => {
     const currentTotals = new Map<string, number>();
 
@@ -235,8 +253,13 @@ export default function GraduationTrackerPage() {
 
     const eligibleMonthRows = rowsUntilEndDay
       .filter((row) => {
-        const agencyMatch = agency === "All" || row.agency === agency;
-        const teamMatch = team === "All Teams" || row.team === team;
+        const rowAgency = String(row.agency || "").trim().toLowerCase();
+        const selectedAgency = String(agency || "").trim().toLowerCase();
+        const rowTeam = String(row.team || "").trim().toLowerCase();
+        const selectedTeam = String(team || "").trim().toLowerCase();
+
+        const agencyMatch = agency === "All" || rowAgency === selectedAgency;
+        const teamMatch = team === "All Teams" || rowTeam === selectedTeam;
 
         const searchText = [
           row.creator_username,
@@ -269,7 +292,7 @@ export default function GraduationTrackerPage() {
       }
     }
 
-    const currentMonthDay = Math.min(endDay, lastDay);
+    const currentMonthDay = Math.min(latestGraduationUploadDay, lastDay);
     const targetToDate = (GRADUATION_TARGET / lastDay) * currentMonthDay;
     const remainingDays = Math.max(lastDay - currentMonthDay, 0);
 
@@ -291,7 +314,7 @@ export default function GraduationTrackerPage() {
         } else if (pacePercent >= 100) {
           status = "green";
           statusLabel = "On Target";
-        } else if (pacePercent >= 70) {
+        } else if (pacePercent >= 75) {
           status = "amber";
           statusLabel = "Slightly Behind";
         }
@@ -325,13 +348,15 @@ export default function GraduationTrackerPage() {
 
         return a.remainingDiamonds - b.remainingDiamonds;
       });
-  }, [rowsUntilEndDay, agency, team, search, endDay, lastDay]);
+  }, [rowsUntilEndDay, agency, team, search, latestGraduationUploadDay, lastDay]);
 
   const graduationReportRows = useMemo(() => {
     return graduationTrackerRows
       .filter((creator) => {
         const agencyMatch =
-          graduationReportAgency === "All" || creator.agency === graduationReportAgency;
+          graduationReportAgency === "All" ||
+          String(creator.agency || "").trim().toLowerCase() ===
+            String(graduationReportAgency || "").trim().toLowerCase();
         const hasGraduationChance = creator.progressPercent >= REPORT_MINIMUM_PROGRESS;
         const stillNeedsToGraduate = creator.diamonds < GRADUATION_TARGET;
 
@@ -558,7 +583,7 @@ export default function GraduationTrackerPage() {
           <div className="rounded-3xl border border-green-300/20 bg-black/60 p-5">
             <p className="text-xs font-black uppercase text-white/40">Target Pace</p>
             <p className="mt-3 text-3xl font-black text-green-300">
-              {formatNumber((GRADUATION_TARGET / lastDay) * Math.min(endDay, lastDay))}
+              {formatNumber((GRADUATION_TARGET / lastDay) * Math.min(latestGraduationUploadDay, lastDay))}
             </p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-black/60 p-5">
@@ -572,12 +597,12 @@ export default function GraduationTrackerPage() {
             <div>
               <h2 className="text-2xl font-black uppercase text-green-300">Graduation Eligibility Tracker</h2>
               <p className="mt-2 text-sm text-white/50">
-                Creators are added once they have an eligible graduation status and have reached 1,000+ diamonds month-to-date. They stay on the tracker for the rest of the selected month view.
+                Creators are added once they have an eligible graduation status and have reached 1,000+ diamonds month-to-date. Pace is judged against the latest uploaded day, not the full selected month.
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/60">
-              Target pace by day {endDay}: <strong className="text-green-200">{formatNumber((GRADUATION_TARGET / lastDay) * Math.min(endDay, lastDay))}</strong>
+              Target pace by latest upload day {latestGraduationUploadDay}: <strong className="text-green-200">{formatNumber((GRADUATION_TARGET / lastDay) * Math.min(latestGraduationUploadDay, lastDay))}</strong>
             </div>
           </div>
 
