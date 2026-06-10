@@ -17,6 +17,7 @@ type CreatorStat = {
   live_streams: number | null;
   followers: number | null;
   days_since_joining: number | null;
+  graduation_status: string | null;
 };
 
 type DailyStat = {
@@ -39,11 +40,29 @@ type AgencySummary = {
   matches: number;
   active: number;
   dph: number;
+  agencyDph24: number;
   avgDailyDiamonds: number;
-  weekdayAverage: number;
+  dailyAverage: number;
   weekendAverage: number;
+  weekdayAverage: number;
   weekendDrop: number;
   uploadedDays: number;
+};
+
+type GraduationTrackerRow = {
+  username: string;
+  agency: string;
+  team: string;
+  daysSinceJoining: number;
+  diamonds: number;
+  targetToDate: number;
+  remainingDiamonds: number;
+  remainingDays: number;
+  avgNeededPerDay: number;
+  progressPercent: number;
+  pacePercent: number;
+  status: "green" | "amber" | "red";
+  statusLabel: string;
 };
 
 const MONTHS = [
@@ -63,6 +82,7 @@ const MONTHS = [
 
 const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Strive"];
 const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Strive"];
+const GRADUATION_TARGET = 200000;
 
 function safeNumber(value: number | null | undefined) {
   return Number(value || 0);
@@ -154,12 +174,15 @@ function buildDailyStats(rows: CreatorStat[]): DailyStat[] {
 }
 
 function getFairWeekendDrop(dailyStats: DailyStat[]) {
-  const weekdayDays = dailyStats.filter((day) => !day.isWeekend);
-  const weekendDays = dailyStats.filter((day) => day.isWeekend);
+  const uploadedDays = dailyStats.filter((day) => day.diamonds > 0 || day.hours > 0);
+  const weekdayDays = uploadedDays.filter((day) => !day.isWeekend);
+  const weekendDays = uploadedDays.filter((day) => day.isWeekend);
 
+  const totalDiamonds = uploadedDays.reduce((sum, day) => sum + day.diamonds, 0);
   const weekdayDiamonds = weekdayDays.reduce((sum, day) => sum + day.diamonds, 0);
   const weekendDiamonds = weekendDays.reduce((sum, day) => sum + day.diamonds, 0);
 
+  const dailyAverage = uploadedDays.length > 0 ? totalDiamonds / uploadedDays.length : 0;
   const weekdayAverage = weekdayDays.length > 0 ? weekdayDiamonds / weekdayDays.length : 0;
   const weekendAverage = weekendDays.length > 0 ? weekendDiamonds / weekendDays.length : 0;
 
@@ -167,12 +190,30 @@ function getFairWeekendDrop(dailyStats: DailyStat[]) {
     weekdayAverage > 0 ? ((weekdayAverage - weekendAverage) / weekdayAverage) * 100 : 0;
 
   return {
+    dailyAverage,
     weekdayAverage,
     weekendAverage,
     weekendDrop,
+    uploadedDays: uploadedDays.length,
     weekdayDays: weekdayDays.length,
     weekendDays: weekendDays.length,
   };
+}
+
+function isGraduationEligibleStatus(status: string | null | undefined) {
+  const cleanStatus = String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]/g, " ")
+    .replace(/\s+/g, " ");
+
+  if (!cleanStatus) return false;
+
+  return (
+    cleanStatus.includes("not graduated") ||
+    cleanStatus.includes("not reached") ||
+    cleanStatus.includes("not yet")
+  );
 }
 
 function MiniBarChart({
@@ -241,6 +282,7 @@ export default function DataAnalysisPage() {
   const [agency, setAgency] = useState("All");
   const [team, setTeam] = useState("All Teams");
   const [search, setSearch] = useState("");
+  const [graduationReportAgency, setGraduationReportAgency] = useState("All");
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -431,6 +473,8 @@ export default function DataAnalysisPage() {
       activeCreators,
       diamondsPerHour: totalHours > 0 ? totalDiamonds / totalHours : 0,
       avgDailyDiamonds: dailyStats.length > 0 ? totalDiamonds / dailyStats.length : 0,
+      agencyDph24:
+        dailyStats.length > 0 ? totalDiamonds / dailyStats.length / 24 : 0,
       bestDay,
       worstDay,
       bestDphDay,
@@ -460,9 +504,12 @@ export default function DataAnalysisPage() {
         matches,
         active,
         dph: hours > 0 ? diamonds / hours : 0,
+        agencyDph24:
+          agencyDailyStats.length > 0 ? diamonds / agencyDailyStats.length / 24 : 0,
         avgDailyDiamonds: agencyDailyStats.length > 0 ? diamonds / agencyDailyStats.length : 0,
-        weekdayAverage: fairDrop.weekdayAverage,
+        dailyAverage: fairDrop.dailyAverage,
         weekendAverage: fairDrop.weekendAverage,
+        weekdayAverage: fairDrop.weekdayAverage,
         weekendDrop: fairDrop.weekendDrop,
         uploadedDays: agencyDailyStats.length,
       };
@@ -477,13 +524,13 @@ export default function DataAnalysisPage() {
 
   const bestWeekendRetentionAgency = useMemo(() => {
     return [...agencyCards]
-      .filter((agencyItem) => agencyItem.weekdayAverage > 0 && agencyItem.weekendAverage > 0)
+      .filter((agencyItem) => agencyItem.dailyAverage > 0 && agencyItem.weekendAverage > 0)
       .sort((a, b) => a.weekendDrop - b.weekendDrop)[0];
   }, [agencyCards]);
 
   const worstWeekendRetentionAgency = useMemo(() => {
     return [...agencyCards]
-      .filter((agencyItem) => agencyItem.weekdayAverage > 0)
+      .filter((agencyItem) => agencyItem.dailyAverage > 0)
       .sort((a, b) => b.weekendDrop - a.weekendDrop)[0];
   }, [agencyCards]);
 
@@ -494,11 +541,14 @@ export default function DataAnalysisPage() {
         username: string;
         agency: string;
         team: string;
-        weekdayHours: number;
-        weekendHours: number;
-        weekdayDiamonds: number;
-        weekendDiamonds: number;
-        issue: string;
+        dayStats: Map<
+          string,
+          {
+            hours: number;
+            diamonds: number;
+            isWeekend: boolean;
+          }
+        >;
       }
     >();
 
@@ -507,46 +557,248 @@ export default function DataAnalysisPage() {
         username: row.creator_username,
         agency: row.agency || "—",
         team: row.team || "—",
-        weekdayHours: 0,
-        weekendHours: 0,
-        weekdayDiamonds: 0,
-        weekendDiamonds: 0,
-        issue: "",
+        dayStats: new Map<
+          string,
+          {
+            hours: number;
+            diamonds: number;
+            isWeekend: boolean;
+          }
+        >(),
       };
 
-      if (isWeekend(row.stat_date)) {
-        existing.weekendHours += safeNumber(row.live_hours);
-        existing.weekendDiamonds += safeNumber(row.diamonds);
-      } else {
-        existing.weekdayHours += safeNumber(row.live_hours);
-        existing.weekdayDiamonds += safeNumber(row.diamonds);
-      }
+      const day = existing.dayStats.get(row.stat_date) || {
+        hours: 0,
+        diamonds: 0,
+        isWeekend: isWeekend(row.stat_date),
+      };
 
+      day.hours += safeNumber(row.live_hours);
+      day.diamonds += safeNumber(row.diamonds);
+
+      existing.dayStats.set(row.stat_date, day);
       byCreator.set(row.creator_username, existing);
     }
 
     return Array.from(byCreator.values())
       .map((creator) => {
+        const uploadedDays = Array.from(creator.dayStats.values()).filter(
+          (day) => day.hours > 0 || day.diamonds > 0
+        );
+        const weekdayDays = uploadedDays.filter((day) => !day.isWeekend);
+        const weekendDays = uploadedDays.filter((day) => day.isWeekend);
+
+        const weekdayHours = weekdayDays.reduce((sum, day) => sum + day.hours, 0);
+        const weekendHours = weekendDays.reduce((sum, day) => sum + day.hours, 0);
+        const weekdayDiamonds = weekdayDays.reduce((sum, day) => sum + day.diamonds, 0);
+        const weekendDiamonds = weekendDays.reduce((sum, day) => sum + day.diamonds, 0);
+
+        const avgDailyHours = weekdayDays.length > 0 ? weekdayHours / weekdayDays.length : 0;
+        const avgWeekendHours = weekendDays.length > 0 ? weekendHours / weekendDays.length : 0;
+        const avgDailyDiamonds =
+          weekdayDays.length > 0 ? weekdayDiamonds / weekdayDays.length : 0;
+        const avgWeekendDiamonds =
+          weekendDays.length > 0 ? weekendDiamonds / weekendDays.length : 0;
+
         const weekendDrop =
-          creator.weekdayDiamonds > 0
-            ? ((creator.weekdayDiamonds - creator.weekendDiamonds) / creator.weekdayDiamonds) * 100
+          avgDailyDiamonds > 0
+            ? ((avgDailyDiamonds - avgWeekendDiamonds) / avgDailyDiamonds) * 100
             : 0;
 
         let issue = "";
-        if (creator.weekdayHours > 0 && creator.weekendHours === 0) {
+        if (avgDailyHours > 0 && avgWeekendHours === 0) {
           issue = "No weekend streams";
-        } else if (creator.weekdayHours > 0 && creator.weekendHours < creator.weekdayHours * 0.25) {
-          issue = "Low weekend hours";
-        } else if (creator.weekdayDiamonds > 0 && weekendDrop > 50) {
-          issue = "Weekend diamonds down 50%+";
+        } else if (avgDailyHours > 0 && avgWeekendHours < avgDailyHours * 0.5) {
+          issue = "Weekend hours below weekday average";
+        } else if (avgDailyDiamonds > 0 && weekendDrop > 50) {
+          issue = "Weekend diamonds down 50%+ vs weekdays";
         }
 
-        return { ...creator, issue };
+        return {
+          username: creator.username,
+          agency: creator.agency,
+          team: creator.team,
+          avgDailyHours,
+          avgWeekendHours,
+          avgDailyDiamonds,
+          avgWeekendDiamonds,
+          issue,
+        };
       })
       .filter((creator) => creator.issue)
-      .sort((a, b) => b.weekdayDiamonds - a.weekdayDiamonds)
+      .sort((a, b) => b.avgDailyDiamonds - a.avgDailyDiamonds)
       .slice(0, 20);
   }, [filteredRows]);
+
+  const graduationTrackerRows = useMemo<GraduationTrackerRow[]>(() => {
+    const eligibleMonthRows = rows
+      .filter((row) => {
+        const agencyMatch = agency === "All" || row.agency === agency;
+        const teamMatch = team === "All Teams" || row.team === team;
+
+        const searchText = [
+          row.creator_username,
+          row.email,
+          row.agency,
+          row.team,
+          row.group_name,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        const searchMatch =
+          !search.trim() || searchText.includes(search.toLowerCase());
+
+        return (
+          agencyMatch &&
+          teamMatch &&
+          searchMatch &&
+          isGraduationEligibleStatus(row.graduation_status)
+        );
+      })
+      .sort((a, b) => a.stat_date.localeCompare(b.stat_date));
+
+    const startingCohort = new Map<string, CreatorStat>();
+
+    for (const row of eligibleMonthRows) {
+      if (!startingCohort.has(row.creator_username)) {
+        startingCohort.set(row.creator_username, row);
+      }
+    }
+
+    const currentTotals = new Map<string, number>();
+
+    for (const row of dateRangeRows) {
+      currentTotals.set(
+        row.creator_username,
+        (currentTotals.get(row.creator_username) || 0) + safeNumber(row.diamonds)
+      );
+    }
+
+    const currentMonthDay = Math.min(endDay, lastDay);
+    const targetToDate = (GRADUATION_TARGET / lastDay) * currentMonthDay;
+    const remainingDays = Math.max(lastDay - currentMonthDay, 0);
+
+    return Array.from(startingCohort.values())
+      .map((creator) => {
+        const diamonds = currentTotals.get(creator.creator_username) || 0;
+        const remainingDiamonds = Math.max(GRADUATION_TARGET - diamonds, 0);
+        const avgNeededPerDay =
+          remainingDays > 0 ? remainingDiamonds / remainingDays : remainingDiamonds;
+        const progressPercent = Math.min((diamonds / GRADUATION_TARGET) * 100, 100);
+        const pacePercent = targetToDate > 0 ? (diamonds / targetToDate) * 100 : 0;
+
+        let status: GraduationTrackerRow["status"] = "red";
+        let statusLabel = "Far Behind";
+
+        if (diamonds >= GRADUATION_TARGET) {
+          status = "green";
+          statusLabel = "Graduated";
+        } else if (pacePercent >= 100) {
+          status = "green";
+          statusLabel = "On Target";
+        } else if (pacePercent >= 70) {
+          status = "amber";
+          statusLabel = "Slightly Behind";
+        }
+
+        return {
+          username: creator.creator_username,
+          agency: creator.agency || "—",
+          team: creator.team || "—",
+          daysSinceJoining: safeNumber(creator.days_since_joining),
+          diamonds,
+          targetToDate,
+          remainingDiamonds,
+          remainingDays,
+          avgNeededPerDay,
+          progressPercent,
+          pacePercent,
+          status,
+          statusLabel,
+        };
+      })
+      .sort((a, b) => {
+        if (a.status !== b.status) {
+          const order = { green: 0, amber: 1, red: 2 }
+          return order[a.status] - order[b.status];
+        }
+
+        return a.remainingDiamonds - b.remainingDiamonds;
+      });
+  }, [rows, dateRangeRows, agency, team, search, endDay, lastDay]);
+
+  const graduationReportRows = useMemo(() => {
+    return graduationTrackerRows
+      .filter((creator) => {
+        const agencyMatch =
+          graduationReportAgency === "All" || creator.agency === graduationReportAgency;
+        const hasGraduationChance = creator.progressPercent >= 15;
+        const stillNeedsToGraduate = creator.diamonds < GRADUATION_TARGET;
+
+        return agencyMatch && hasGraduationChance && stillNeedsToGraduate;
+      })
+      .sort((a, b) => {
+        if (a.status !== b.status) {
+          const order = { green: 0, amber: 1, red: 2 };
+          return order[a.status] - order[b.status];
+        }
+
+        return b.progressPercent - a.progressPercent;
+      });
+  }, [graduationTrackerRows, graduationReportAgency]);
+
+  const graduationWhatsappReport = useMemo(() => {
+    const header = [
+      "🎓 Graduation Eligibility Report",
+      `Agency: ${graduationReportAgency}`,
+      `Minimum progress: 15%`,
+      `Target: ${formatNumber(GRADUATION_TARGET)} diamonds`,
+      "",
+    ];
+
+    if (!graduationReportRows.length) {
+      return [
+        ...header,
+        "No graduation report creators found for this agency at 15%+ progress.",
+      ].join("\n");
+    }
+
+    const creatorLines = graduationReportRows.map((creator) => {
+      return [
+        `➡️ ${creator.username}`,
+        `🏢 ${creator.agency} · ${creator.team}`,
+        `💎 ${formatNumber(creator.diamonds)} / ${formatNumber(GRADUATION_TARGET)}`,
+        `📈 Needed: ${formatNumber(creator.remainingDiamonds)}`,
+        `📅 Needed/day: ${formatNumber(creator.avgNeededPerDay)}`,
+      ].join("\n");
+    });
+
+    return [...header, ...creatorLines].join("\n\n");
+  }, [graduationReportRows, graduationReportAgency]);
+
+  async function copyGraduationWhatsappReport() {
+    try {
+      await navigator.clipboard.writeText(graduationWhatsappReport);
+      window.alert("Graduation report copied.");
+    } catch (error) {
+      console.error(error);
+      window.alert("Copy failed. You can still select and copy the text manually.");
+    }
+  }
+
+  function downloadGraduationWhatsappReport() {
+    const blob = new Blob([graduationWhatsappReport], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `graduation-report-${month}-${graduationReportAgency.replace(/\s+/g, "-").toLowerCase()}-15-percent-plus.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
   function handleMonthChange(newMonth: string) {
     const newLastDay = getLastDayForMonth(newMonth);
@@ -679,9 +931,9 @@ export default function DataAnalysisPage() {
           {[
             ["Total Diamonds", formatNumber(totals.totalDiamonds)],
             ["Total Hours", formatHours(totals.totalHours)],
-            ["Agency DPH", formatNumber(totals.diamondsPerHour)],
+            ["Agency DPH / 24h", formatNumber(totals.agencyDph24)],
             ["Active Creators", formatNumber(totals.activeCreators)],
-            ["Avg Weekday", formatNumber(fairWeekend.weekdayAverage)],
+            ["Avg Daily", formatNumber(totals.avgDailyDiamonds)],
             ["Avg Weekend", formatNumber(fairWeekend.weekendAverage)],
           ].map(([title, value]) => (
             <div key={title} className="rounded-3xl border border-yellow-300/20 bg-black/60 p-5">
@@ -696,12 +948,12 @@ export default function DataAnalysisPage() {
 
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-2xl bg-black/40 p-4">
-              Fair weekend drop: <strong className="text-yellow-200">{formatPercent(fairWeekend.weekendDrop)}</strong>.
-              This compares average weekday diamonds per uploaded day against average weekend diamonds per uploaded day.
+              Weekend change: <strong className="text-yellow-200">{formatPercent(fairWeekend.weekendDrop)}</strong>.
+              This compares average daily diamonds across the selected range against average weekend diamonds per uploaded weekend day.
             </div>
 
             <div className="rounded-2xl bg-black/40 p-4">
-              Average diamonds per live hour across this filter: <strong className="text-yellow-200">{formatNumber(totals.diamondsPerHour)}</strong>.
+              Agency diamonds per hour across a 24-hour day: <strong className="text-yellow-200">{formatNumber(totals.agencyDph24)}</strong>.
             </div>
 
             <div className="rounded-2xl bg-black/40 p-4">
@@ -721,16 +973,161 @@ export default function DataAnalysisPage() {
             </div>
 
             <div className="rounded-2xl bg-black/40 p-4">
-              Best weekend retention: <strong className="text-yellow-200">{bestWeekendRetentionAgency ? `${bestWeekendRetentionAgency.agency} (${formatPercent(bestWeekendRetentionAgency.weekendDrop)})` : "No data"}</strong>.
+              Best weekend performance: <strong className="text-yellow-200">{bestWeekendRetentionAgency ? `${bestWeekendRetentionAgency.agency} (${formatPercent(bestWeekendRetentionAgency.weekendDrop)})` : "No data"}</strong>.
             </div>
 
             <div className="rounded-2xl bg-black/40 p-4">
-              Biggest weekend drop: <strong className="text-yellow-200">{worstWeekendRetentionAgency ? `${worstWeekendRetentionAgency.agency} (${formatPercent(worstWeekendRetentionAgency.weekendDrop)})` : "No data"}</strong>.
+              Biggest weekend change: <strong className="text-yellow-200">{worstWeekendRetentionAgency ? `${worstWeekendRetentionAgency.agency} (${formatPercent(worstWeekendRetentionAgency.weekendDrop)})` : "No data"}</strong>.
             </div>
 
             <div className="rounded-2xl bg-black/40 p-4">
               Weekend issue creators found: <strong className="text-yellow-200">{weekendProblemRows.length}</strong>.
             </div>
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-3xl border border-green-400/30 bg-green-500/10 p-6">
+          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-2xl font-black uppercase text-green-300">Graduation Eligibility Tracker</h2>
+              <p className="mt-2 text-sm text-white/50">
+                Shows creators who appear at any point in the selected month with an eligible graduation status, then tracks them towards 200,000 diamonds. Creators stay on here even when they hit the target.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/60">
+              Target pace by day {endDay}: <strong className="text-green-200">{formatNumber((GRADUATION_TARGET / lastDay) * Math.min(endDay, lastDay))}</strong>
+            </div>
+          </div>
+
+          <div className="mb-4 rounded-2xl border border-green-400/20 bg-black/40 p-4">
+            <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-lg font-black uppercase text-green-200">WhatsApp Graduation Report</h3>
+                <p className="mt-1 text-sm text-white/45">
+                  Select an agency for this report. Only creators at 15%+ progress and under 200k diamonds are included.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="min-w-[220px]">
+                  <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
+                    Report Agency
+                  </span>
+                  <select
+                    value={graduationReportAgency}
+                    onChange={(event) => setGraduationReportAgency(event.target.value)}
+                    className="w-full rounded-xl border border-green-300/20 bg-black px-3 py-3 text-sm font-bold text-white outline-none"
+                  >
+                    {AGENCIES.map((agencyName) => (
+                      <option key={`graduation-report-${agencyName}`} value={agencyName}>
+                        {agencyName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-bold uppercase text-white/50">
+                  {graduationReportRows.length} target creators
+                </div>
+
+                <button
+                  type="button"
+                  onClick={copyGraduationWhatsappReport}
+                  className="rounded-xl bg-green-400 px-4 py-3 text-xs font-black uppercase text-green-950 transition hover:scale-[1.02]"
+                >
+                  Copy WhatsApp Text
+                </button>
+
+                <button
+                  type="button"
+                  onClick={downloadGraduationWhatsappReport}
+                  className="rounded-xl border border-green-300/40 bg-green-300/10 px-4 py-3 text-xs font-black uppercase text-green-200 transition hover:bg-green-300/20"
+                >
+                  Download Report
+                </button>
+              </div>
+            </div>
+
+            <textarea
+              readOnly
+              value={graduationWhatsappReport}
+              className="h-72 w-full resize-y rounded-xl border border-white/10 bg-black px-4 py-3 font-mono text-sm text-white outline-none"
+            />
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full min-w-[1200px] text-left text-sm">
+              <thead className="bg-black/60 text-white/40">
+                <tr>
+                  <th className="p-3">Creator</th>
+                  <th className="p-3">Agency</th>
+                  <th className="p-3">Team</th>
+                  <th className="p-3">Days Joined</th>
+                  <th className="p-3">Diamonds</th>
+                  <th className="p-3">Progress</th>
+                  <th className="p-3">Pace</th>
+                  <th className="p-3">Needed</th>
+                  <th className="p-3">Days Left</th>
+                  <th className="p-3">Avg Needed / Day</th>
+                  <th className="p-3">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {graduationTrackerRows.length ? (
+                  graduationTrackerRows.map((creator) => (
+                    <tr key={creator.username} className="border-t border-white/10">
+                      <td className="p-3 font-bold">{creator.username}</td>
+                      <td className="p-3">{creator.agency}</td>
+                      <td className="p-3">{creator.team}</td>
+                      <td className="p-3">{formatNumber(creator.daysSinceJoining)}</td>
+                      <td className="p-3 text-green-200">{formatNumber(creator.diamonds)}</td>
+                      <td className="p-3">
+                        <div className="h-3 w-40 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className={`h-full ${
+                              creator.status === "green"
+                                ? "bg-green-400"
+                                : creator.status === "amber"
+                                  ? "bg-orange-300"
+                                  : "bg-red-400"
+                            }`}
+                            style={{ width: `${creator.progressPercent}%` }}
+                          />
+                        </div>
+                        <span className="mt-1 block text-xs text-white/45">
+                          {formatPercent(creator.progressPercent)}
+                        </span>
+                      </td>
+                      <td className="p-3">{formatPercent(creator.pacePercent)}</td>
+                      <td className="p-3">{formatNumber(creator.remainingDiamonds)}</td>
+                      <td className="p-3">{formatNumber(creator.remainingDays)}</td>
+                      <td className="p-3 font-bold text-yellow-200">{formatNumber(creator.avgNeededPerDay)}</td>
+                      <td className="p-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
+                            creator.status === "green"
+                              ? "bg-green-400 text-green-950"
+                              : creator.status === "amber"
+                                ? "bg-orange-300 text-orange-950"
+                                : "bg-red-400 text-red-950"
+                          }`}
+                        >
+                          {creator.statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-t border-white/10">
+                    <td className="p-3 text-white/50" colSpan={11}>
+                      No eligible graduation creators found for this month/filter. Check that day 1 has been uploaded and that the data includes graduation_status.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -751,7 +1148,7 @@ export default function DataAnalysisPage() {
           />
           <MiniBarChart
             title="Daily DPH"
-            subtitle="Diamonds generated per live hour by day."
+            subtitle="Live DPH by day. Agency DPH / 24h is shown in the summary cards."
             data={dailyStats}
             valueKey="dph"
             valueFormatter={formatNumber}
@@ -765,9 +1162,10 @@ export default function DataAnalysisPage() {
               <div className="mt-4 space-y-2 text-sm text-white/60">
                 <p>Diamonds: <span className="text-yellow-200">{formatNumber(card.diamonds)}</span></p>
                 <p>Hours: <span className="text-yellow-200">{formatHours(card.hours)}</span></p>
-                <p>DPH: <span className="text-yellow-200">{formatNumber(card.dph)}</span></p>
+                <p>Live DPH: <span className="text-yellow-200">{formatNumber(card.dph)}</span></p>
+                <p>Agency DPH / 24h: <span className="text-yellow-200">{formatNumber(card.agencyDph24)}</span></p>
                 <p>Avg Daily Diamonds: <span className="text-yellow-200">{formatNumber(card.avgDailyDiamonds)}</span></p>
-                <p>Weekend Drop: <span className="text-yellow-200">{formatPercent(card.weekendDrop)}</span></p>
+                <p>Weekend Change: <span className="text-yellow-200">{formatPercent(card.weekendDrop)}</span></p>
                 <p>Active Creators: <span className="text-yellow-200">{formatNumber(card.active)}</span></p>
               </div>
             </div>
@@ -784,9 +1182,10 @@ export default function DataAnalysisPage() {
                   <th className="p-3">Agency</th>
                   <th className="p-3">Diamonds</th>
                   <th className="p-3">Hours</th>
-                  <th className="p-3">DPH</th>
+                  <th className="p-3">Live DPH</th>
+                  <th className="p-3">Agency DPH / 24h</th>
                   <th className="p-3">Avg Daily Diamonds</th>
-                  <th className="p-3">Weekend Drop</th>
+                  <th className="p-3">Weekend Change</th>
                 </tr>
               </thead>
               <tbody>
@@ -798,13 +1197,14 @@ export default function DataAnalysisPage() {
                       <td className="p-3">{formatNumber(item.diamonds)}</td>
                       <td className="p-3">{formatHours(item.hours)}</td>
                       <td className="p-3">{formatNumber(item.dph)}</td>
+                      <td className="p-3">{formatNumber(item.agencyDph24)}</td>
                       <td className="p-3">{formatNumber(item.avgDailyDiamonds)}</td>
                       <td className="p-3">{formatPercent(item.weekendDrop)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr className="border-t border-white/10">
-                    <td className="p-3 text-white/50" colSpan={7}>No agency data for this filter.</td>
+                    <td className="p-3 text-white/50" colSpan={8}>No agency data for this filter.</td>
                   </tr>
                 )}
               </tbody>
@@ -815,7 +1215,7 @@ export default function DataAnalysisPage() {
         <section className="mb-6 rounded-3xl border border-red-400/30 bg-red-500/10 p-6">
           <h2 className="text-2xl font-black uppercase text-red-300">Weekend Problem Finder</h2>
           <p className="mt-2 text-sm text-white/50">
-            Finds creators with no weekend streams, low weekend hours, or weekend diamond drops above 50% in the selected range.
+            Finds creators where weekend daily averages are below weekday daily averages in the selected range.
           </p>
 
           <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
@@ -825,10 +1225,10 @@ export default function DataAnalysisPage() {
                   <th className="p-3">Creator</th>
                   <th className="p-3">Agency</th>
                   <th className="p-3">Team</th>
-                  <th className="p-3">Weekday Hrs</th>
-                  <th className="p-3">Weekend Hrs</th>
-                  <th className="p-3">Weekday Diamonds</th>
-                  <th className="p-3">Weekend Diamonds</th>
+                  <th className="p-3">Avg Weekday Hrs</th>
+                  <th className="p-3">Avg Weekend Hrs</th>
+                  <th className="p-3">Avg Weekday Diamonds</th>
+                  <th className="p-3">Avg Weekend Diamonds</th>
                   <th className="p-3">Issue</th>
                 </tr>
               </thead>
@@ -839,10 +1239,10 @@ export default function DataAnalysisPage() {
                       <td className="p-3 font-bold">{creator.username}</td>
                       <td className="p-3">{creator.agency}</td>
                       <td className="p-3">{creator.team}</td>
-                      <td className="p-3">{formatHours(creator.weekdayHours)}</td>
-                      <td className="p-3">{formatHours(creator.weekendHours)}</td>
-                      <td className="p-3">{formatNumber(creator.weekdayDiamonds)}</td>
-                      <td className="p-3">{formatNumber(creator.weekendDiamonds)}</td>
+                      <td className="p-3">{formatHours(creator.avgDailyHours)}</td>
+                      <td className="p-3">{formatHours(creator.avgWeekendHours)}</td>
+                      <td className="p-3">{formatNumber(creator.avgDailyDiamonds)}</td>
+                      <td className="p-3">{formatNumber(creator.avgWeekendDiamonds)}</td>
                       <td className="p-3 text-red-300">{creator.issue}</td>
                     </tr>
                   ))

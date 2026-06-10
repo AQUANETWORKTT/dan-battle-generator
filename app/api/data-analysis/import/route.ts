@@ -18,6 +18,7 @@ type ParsedRow = {
   live_streams: number;
   followers: number;
   days_since_joining: number;
+  graduation_status: string | null;
 };
 
 function cleanText(value: unknown) {
@@ -104,6 +105,20 @@ function getTeam(group: string) {
   return agency === "First Class" ? "Unassigned First Class" : agency;
 }
 
+function getColumnByHeader(
+  row: unknown[],
+  headerMap: Map<string, number>,
+  possibleHeaders: string[],
+  fallbackIndex: number
+) {
+  for (const header of possibleHeaders) {
+    const index = headerMap.get(header.toLowerCase());
+    if (typeof index === "number") return row[index];
+  }
+
+  return row[fallbackIndex];
+}
+
 function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
   const workbook = XLSX.read(buffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
@@ -118,6 +133,22 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
     blankrows: false,
     defval: "",
   });
+
+  const headerRow = rows.find((row) =>
+    Array.isArray(row) &&
+    row.some(
+      (cell) => cleanText(cell).toLowerCase() === "creator's username"
+    )
+  );
+
+  const headerMap = new Map<string, number>();
+
+  if (headerRow) {
+    headerRow.forEach((cell, index) => {
+      const cleanHeader = cleanText(cell).toLowerCase();
+      if (cleanHeader) headerMap.set(cleanHeader, index);
+    });
+  }
 
   const dataRows = rows.filter(
     (row) =>
@@ -142,6 +173,21 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
       const liveStreams = toNumber(row[11]); // Column L
       const matches = toNumber(row[12]); // Column M
 
+      // Column R is index 17. Header lookup is included so it still works if columns move.
+      const graduationStatus = cleanText(
+        getColumnByHeader(
+          row,
+          headerMap,
+          [
+            "graduation status",
+            "graduation_status",
+            "graduation",
+            "graduation eligibility",
+          ],
+          17
+        )
+      );
+
       return {
         stat_date: statDate,
         creator_username: username.toLowerCase(),
@@ -156,6 +202,7 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
         live_streams: liveStreams,
         followers,
         days_since_joining: daysSinceJoining,
+        graduation_status: graduationStatus || null,
       };
     })
     .filter((row) => row.creator_username);
@@ -232,11 +279,16 @@ export async function POST(req: Request) {
       }
     }
 
+    const graduationStatusCount = allRows.filter(
+      (row) => row.graduation_status
+    ).length;
+
     return NextResponse.json({
       success: true,
       filesImported: fileSummaries.length,
       totalRows: allRows.length,
       parsedRows: allRows.length,
+      graduationStatusRows: graduationStatusCount,
       files: fileSummaries,
     });
   } catch (error) {
