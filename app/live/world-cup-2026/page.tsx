@@ -3,17 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "World Cup 2026",
-  description: "World Cup 2026 live leaderboard",
-  openGraph: {
-    title: "World Cup 2026",
-    description: "View the live World Cup 2026 rankings.",
-    images: ["/world-cup/logo.png"],
-  },
-};
 
 type Agency = "Honeybloom" | "Aqua" | "First Class" | "Paradise" | "Atlas";
 

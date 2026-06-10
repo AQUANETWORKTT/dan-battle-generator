@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Layout({
+export default function WorldCupLayout({
   children,
 }: {
   children: React.ReactNode;
