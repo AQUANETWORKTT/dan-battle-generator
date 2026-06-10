@@ -1,24 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
 export const metadata: Metadata = {
   title: "Dan's Space",
-  description: "Sunset Showdown live leaderboard",
+  description: "Creator events, leaderboards and analytics",
   openGraph: {
-    title: "Sunset Showdown Leaderboard",
-    description: "View the live Sunset Showdown rankings.",
-    images: ["/sunset-showdown/logo.png"],
+    title: "Dan's Space",
+    description: "Creator events, leaderboards and analytics",
+    images: ["/logo.png"],
   },
 };
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
