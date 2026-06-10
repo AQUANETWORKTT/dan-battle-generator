@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
 export const metadata: Metadata = {
   title: "Dan's Space",
   description: "Creator events, leaderboards and analytics",
@@ -7,3 +10,15 @@ export const metadata: Metadata = {
     images: ["/logo.png"],
   },
 };
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
