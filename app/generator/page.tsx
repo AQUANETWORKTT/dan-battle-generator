@@ -294,10 +294,10 @@ export default function BattleGeneratorPage() {
     createBattle(`single-${stableId}`)
   );
   const [singleDay, setSingleDay] = useState("");
-  const [singleMonth, setSingleMonth] = useState("4");
+  const [singleMonth, setSingleMonth] = useState("5");
 
   const [massDay, setMassDay] = useState("");
-  const [massMonth, setMassMonth] = useState("4");
+  const [massMonth, setMassMonth] = useState("5");
   const [massDate, setMassDate] = useState("");
 
   const [battles, setBattles] = useState<Battle[]>([]);
@@ -400,7 +400,7 @@ export default function BattleGeneratorPage() {
     setSingleBattle(createBattle(`single-${stableId}`));
     setSinglePaste("");
     setSingleDay("");
-    setSingleMonth("4");
+    setSingleMonth("5");
     setSelectedId("");
   }
 
@@ -409,7 +409,7 @@ export default function BattleGeneratorPage() {
     setBattles([]);
     setSelectedId("");
     setMassDay("");
-    setMassMonth("4");
+    setMassMonth("5");
     setMassDate("");
   }
 
