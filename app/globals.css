@@ -16,4 +16,10 @@ body {
   background: #080806;
 }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 
