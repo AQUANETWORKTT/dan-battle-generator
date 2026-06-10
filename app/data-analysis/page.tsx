@@ -276,9 +276,9 @@ function MiniBarChart({
 }
 
 export default function DataAnalysisPage() {
-  const [month, setMonth] = useState("2026-05");
+  const [month, setMonth] = useState("2026-06");
   const [startDay, setStartDay] = useState(1);
-  const [endDay, setEndDay] = useState(getLastDayForMonth("2026-05"));
+  const [endDay, setEndDay] = useState(getLastDayForMonth("2026-06"));
   const [agency, setAgency] = useState("All");
   const [team, setTeam] = useState("All Teams");
   const [search, setSearch] = useState("");
