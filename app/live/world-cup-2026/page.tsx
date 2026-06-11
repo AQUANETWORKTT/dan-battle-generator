@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
-
-
 type Agency = "Honeybloom" | "Aqua" | "First Class" | "Paradise" | "Atlas";
 
 type Creator = {
@@ -35,7 +33,7 @@ const creators: Creator[] = [
   { username: "sammybaby42", displayName: "sammybaby42", agency: "Honeybloom", country: "Panama", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
   { username: "michelle_sen_mom", displayName: "michelle_sen_mom", agency: "Honeybloom", country: "Saudi Arabia", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
   { username: "aidanjh.21", displayName: "aidanjh.21", agency: "Honeybloom", country: "Portugal", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
-  { username: "gethinmayers", displayName: "gethinmayers", agency: "Honeybloom", country: "South Korea", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
+  { username: "gethinmayers", displayName: "gethinmayers", agency: "First Class", country: "South Korea", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
   { username: "emilyselflove", displayName: "emilyselflove", agency: "Honeybloom", country: "Norway", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
   { username: "c0urtnzy", displayName: "c0urtnzy", agency: "Honeybloom", country: "Netherlands", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
   { username: "jasonroberts958", displayName: "jasonroberts958", agency: "Honeybloom", country: "Ivory Coast", fifaFever: 0, finalWhistle: 0, penaltyShootout: 0, bonusMatchWin: 0 },
