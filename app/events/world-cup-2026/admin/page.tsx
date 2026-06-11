@@ -52,7 +52,7 @@ const creators: Creator[] = [
   { username: "sammybaby42", agency: "Honeybloom", country: "Panama" },
   { username: "michelle_sen_mom", agency: "Honeybloom", country: "Saudi Arabia" },
   { username: "aidanjh.21", agency: "Honeybloom", country: "Portugal" },
-  { username: "gethinmayers", agency: "Honeybloom", country: "South Korea" },
+  { username: "gethinmayers", agency: "First Class", country: "South Korea" },
   { username: "emilyselflove", agency: "Honeybloom", country: "Norway" },
   { username: "c0urtnzy", agency: "Honeybloom", country: "Netherlands" },
   { username: "jasonroberts958", agency: "Honeybloom", country: "Ivory Coast" },
