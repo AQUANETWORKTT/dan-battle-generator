@@ -20,7 +20,6 @@ type Battle = {
 
 type Mode = "single" | "mass";
 
-//jj 
 
 
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
@@ -55,6 +54,9 @@ type PosterTemplateRow = {
   background_url: string | null;
   template_json: PosterTemplateJson;
 };
+
+//ujhuyifu
+
 
 const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1920;
