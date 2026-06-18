@@ -1,12 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
+  "https://dxupgmsscysvztxdtaku.supabase.co";
 
-console.log("SUBMISSIONS URL =", JSON.stringify(url));
-console.log("SUBMISSIONS KEY EXISTS =", !!key);
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
+  "sb_publishable_C6sf3uuc6zW9_RAtxb7UbA_G4S3G-h_";
 
 export const submissionsSupabase = createClient(
-  url || "https://dxupgmsscysvztxdtaku.supabase.co",
-  key || "missing"
+  supabaseUrl,
+  supabaseAnonKey
 );
