@@ -20,6 +20,9 @@ type Battle = {
 
 type Mode = "single" | "mass";
 
+//jj 
+
+
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
 
 type PosterElement = {
