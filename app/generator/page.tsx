@@ -587,7 +587,7 @@ export default function BattleGeneratorPage() {
       setSelectedTemplateId(local.id);
       if (!editingTemplateName) setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
-      setTemplateStatus("Supabase env not found. Using local template only.");
+      setTemplateStatus(`URL=${url ? "YES" : "NO"} KEY=${anonKey ? "YES" : "NO"}`);
       return;
     }
 
