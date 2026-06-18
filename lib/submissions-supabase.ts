@@ -1,16 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY;
+const url =
+  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
+  "https://dxupgmsscysvztxdtaku.supabase.co";
 
-export function getSubmissionsSupabase() {
-  if (!url || !url.startsWith("https://")) {
-    return null;
-  }
+const key = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY || "";
 
-  if (!key) {
-    return null;
-  }
-
-  return createClient(url, key);
-}
+export const submissionsSupabase = createClient(url, key);
