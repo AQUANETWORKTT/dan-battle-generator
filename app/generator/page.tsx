@@ -189,10 +189,19 @@ function normalizeTemplateJson(input: Partial<PosterTemplateJson> | null | undef
 }
 
 function getPosterSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url =
+    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    "https://dxupgmsscysvztxdtaku.supabase.co";
 
-  if (!url || !anonKey) return null;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!anonKey) {
+    console.error("Missing Supabase anon key");
+    return null;
+  }
 
   return createClient(url, anonKey);
 }
@@ -587,9 +596,7 @@ export default function BattleGeneratorPage() {
       setSelectedTemplateId(local.id);
       if (!editingTemplateName) setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
-      setTemplateStatus(
- 	 `URL=${url ? "YES" : "NO"} KEY=${anonKey ? "YES" : "NO"}`
-	);
+      setTemplateStatus("Supabase env not found. Using local template only.");
       return;
     }
 
