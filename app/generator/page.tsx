@@ -191,16 +191,21 @@ function normalizeTemplateJson(input: Partial<PosterTemplateJson> | null | undef
 function getPosterSupabaseClient() {
   const url =
     process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    "https://dxupgmsscysvztxdtaku.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   const anonKey =
     process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  console.log("SUPABASE URL:", url);
+  console.log("SUPABASE KEY:", anonKey ? "FOUND" : "MISSING");
+
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL missing");
+  }
+
   if (!anonKey) {
-    console.error("Missing Supabase anon key");
-    return null;
+    throw new Error("NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY missing");
   }
 
   return createClient(url, anonKey);
