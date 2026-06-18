@@ -6,7 +6,7 @@ export default function HomePage() {
       <div className="w-full max-w-7xl">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black uppercase tracking-wider text-yellow-300">
-            Dan's Space
+            First Class Hub
           </h1>
 
           <p className="mt-4 text-white/60">
