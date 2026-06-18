@@ -20,8 +20,6 @@ type Battle = {
 
 type Mode = "single" | "mass";
 
-
-
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
 
 type PosterElement = {
@@ -54,9 +52,6 @@ type PosterTemplateRow = {
   background_url: string | null;
   template_json: PosterTemplateJson;
 };
-
-//ujhuyifu
-
 
 const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1920;
@@ -98,7 +93,7 @@ const FONT_OPTIONS = [
 const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "date"];
 
 const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
-  backgroundUrl: "",
+  backgroundUrl: "/posters/dan-battle/background.png",
   avatar1: { x: 82, y: 570, width: 346, height: 346 },
   avatar2: { x: 651, y: 570, width: 346, height: 346 },
   username1: {
@@ -160,17 +155,10 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
   },
 };
 
-function createBlankTemplateJson(): PosterTemplateJson {
-  return normalizeTemplateJson({
-    ...structuredClone(DEFAULT_TEMPLATE_JSON),
-    backgroundUrl: "",
-  });
-}
-
 function createLocalTemplate(): PosterTemplateRow {
   return {
     id: "local-default",
-    name: "Battle Template",
+    name: "Dan Battle Default",
     background_url: DEFAULT_TEMPLATE_JSON.backgroundUrl || BRAND.posterBackground,
     template_json: structuredClone(DEFAULT_TEMPLATE_JSON),
   };
@@ -187,35 +175,24 @@ function normalizeTemplateJson(input: Partial<PosterTemplateJson> | null | undef
     username2: { ...DEFAULT_TEMPLATE_JSON.username2, ...(incoming.username2 || {}) },
     date: { ...DEFAULT_TEMPLATE_JSON.date, ...(incoming.date || {}) },
     backgroundUrl:
-      Object.prototype.hasOwnProperty.call(incoming, "backgroundUrl")
-        ? incoming.backgroundUrl
-        : DEFAULT_TEMPLATE_JSON.backgroundUrl || BRAND.posterBackground,
+      incoming.backgroundUrl ||
+      input?.backgroundUrl ||
+      DEFAULT_TEMPLATE_JSON.backgroundUrl ||
+      BRAND.posterBackground,
   };
 }
 
 function getPosterSupabaseClient() {
-  try {
-    const url =
-      process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
-      process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    const anonKey =
-      process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
 
-    if (!url || !anonKey) {
-      alert(`URL=${url ? "YES" : "NO"} | KEY=${anonKey ? "YES" : "NO"}`);
-      return null;
-    }
-
-    return createClient(url, anonKey);
-  } catch {
-    return null;
-  }
+  return createClient(url, anonKey);
 }
 
 const BRAND = {
-  name: "Battle Generator",
+  name: "Dan's Battle Generator",
   manager: "DAN",
   posterBackground: "/posters/dan-battle/background.png",
   zipName: "Dan-Battle-Posters.zip",
@@ -387,10 +364,6 @@ function TextInput({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === "Enter") e.preventDefault();
-        }}
         className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-yellow-300"
       />
     </label>
@@ -509,14 +482,11 @@ export default function BattleGeneratorPage() {
   const [templates, setTemplates] = useState<PosterTemplateRow[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("local-default");
   const [selectedElement, setSelectedElement] = useState<PosterElementKey>("avatar1");
-  const [templateName, setTemplateName] = useState("Battle Template");
-  const [editingTemplateName, setEditingTemplateName] = useState(false);
+  const [templateName, setTemplateName] = useState("Dan Battle Default");
   const [templateJson, setTemplateJson] = useState<PosterTemplateJson>(() =>
     normalizeTemplateJson(DEFAULT_TEMPLATE_JSON)
   );
   const [templateStatus, setTemplateStatus] = useState("Not saved yet");
-  const [undoStack, setUndoStack] = useState<PosterTemplateJson[]>([]);
-  const [redoStack, setRedoStack] = useState<PosterTemplateJson[]>([]);
 
   const selectedBattle = battles.find((b) => b.id === selectedId) || null;
 
@@ -536,63 +506,21 @@ export default function BattleGeneratorPage() {
     templates.find((template) => template.id === selectedTemplateId) ||
     createLocalTemplate();
 
-  function addUndoSnapshot(snapshot: PosterTemplateJson) {
-    setUndoStack((prev) => [...prev.slice(-24), structuredClone(snapshot)]);
-    setRedoStack([]);
-  }
-
   function updateTemplateElement(
     key: PosterElementKey,
-    changes: Partial<PosterElement>,
-    recordUndo = true
+    changes: Partial<PosterElement>
   ) {
-    setTemplateJson((prev) => {
-      if (recordUndo) addUndoSnapshot(prev);
-      return {
-        ...prev,
-        [key]: {
-          ...prev[key],
-          ...changes,
-        },
-      };
-    });
+    setTemplateJson((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        ...changes,
+      },
+    }));
   }
 
-  function updateWholeTemplateJson(nextJson: PosterTemplateJson, recordUndo = false) {
-    setTemplateJson((prev) => {
-      if (recordUndo) addUndoSnapshot(prev);
-      return normalizeTemplateJson(nextJson);
-    });
-  }
-
-  function undoLastTemplateChange() {
-    setUndoStack((prev) => {
-      const previous = prev[prev.length - 1];
-      if (!previous) {
-        setTemplateStatus("Nothing to undo.");
-        return prev;
-      }
-
-      setRedoStack((redoPrev) => [...redoPrev.slice(-24), structuredClone(templateJson)]);
-      setTemplateJson(normalizeTemplateJson(previous));
-      setTemplateStatus("Undo applied. Press Save to keep it.");
-      return prev.slice(0, -1);
-    });
-  }
-
-  function redoLastTemplateChange() {
-    setRedoStack((prev) => {
-      const next = prev[prev.length - 1];
-      if (!next) {
-        setTemplateStatus("Nothing to redo.");
-        return prev;
-      }
-
-      setUndoStack((undoPrev) => [...undoPrev.slice(-24), structuredClone(templateJson)]);
-      setTemplateJson(normalizeTemplateJson(next));
-      setTemplateStatus("Redo applied. Press Save to keep it.");
-      return prev.slice(0, -1);
-    });
+  function updateWholeTemplateJson(nextJson: PosterTemplateJson) {
+    setTemplateJson(normalizeTemplateJson(nextJson));
   }
 
   async function loadPosterTemplates() {
@@ -602,7 +530,7 @@ export default function BattleGeneratorPage() {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
-      if (!editingTemplateName) setTemplateName(local.name);
+      setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus("Supabase env not found. Using local template only.");
       return;
@@ -617,7 +545,7 @@ export default function BattleGeneratorPage() {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
-      if (!editingTemplateName) setTemplateName(local.name);
+      setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus(
         error ? `Template load failed: ${error.message}` : "No templates found. Using local default."
@@ -632,7 +560,7 @@ export default function BattleGeneratorPage() {
 
     setTemplates(rows);
     setSelectedTemplateId(rows[0].id);
-    if (!editingTemplateName) setTemplateName(rows[0].name);
+    setTemplateName(rows[0].name);
     updateWholeTemplateJson(rows[0].template_json);
     setTemplateStatus("Templates loaded.");
   }
@@ -642,8 +570,7 @@ export default function BattleGeneratorPage() {
     if (!template) return;
 
     setSelectedTemplateId(template.id);
-    if (!editingTemplateName) setTemplateName(template.name);
-    setUndoStack([]);
+    setTemplateName(template.name);
     updateWholeTemplateJson(template.template_json);
     setTemplateStatus(`Loaded ${template.name}.`);
   }
@@ -657,126 +584,107 @@ export default function BattleGeneratorPage() {
       return;
     }
 
-    const localFallbackSave = (message: string) => {
+    if (!supabase) {
       const local: PosterTemplateRow = {
-        id: selectedTemplateId || `local-${makeId()}`,
+        id: selectedTemplateId || "local-default",
         name: templateName.trim(),
-        background_url: nextJson.backgroundUrl || null,
+        background_url: nextJson.backgroundUrl || BRAND.posterBackground,
         template_json: nextJson,
       };
-
       setTemplates((prev) => {
         const exists = prev.some((item) => item.id === local.id);
         return exists
           ? prev.map((item) => (item.id === local.id ? local : item))
           : [...prev, local];
       });
-      setSelectedTemplateId(local.id);
-      setUndoStack([]);
-      setTemplateStatus(message);
-    };
-
-    if (!supabase) {
-      localFallbackSave("Saved locally only. Supabase env is missing.");
+      setTemplateStatus("Saved locally only. Supabase env is missing.");
       return;
     }
 
     setTemplateStatus("Saving template...");
 
-    try {
-      if (selectedTemplateId === "local-default" || selectedTemplateId.startsWith("local-")) {
-        const { data, error } = await supabase
-          .from("poster_templates")
-          .insert({
-            name: templateName.trim(),
-            background_url: nextJson.backgroundUrl || null,
-            template_json: nextJson,
-          })
-          .select("id,name,background_url,template_json")
-          .single();
-
-        if (error || !data) {
-          setTemplateStatus(`Save failed: ${error?.message || "unknown error"}`);
-          return;
-        }
-
-        const row = {
-          ...data,
-          template_json: normalizeTemplateJson(data.template_json),
-        } as PosterTemplateRow;
-
-        setTemplates((prev) => [
-          ...prev.filter((item) => item.id !== "local-default" && item.id !== selectedTemplateId),
-          row,
-        ]);
-        setSelectedTemplateId(row.id);
-        setTemplateName(row.name);
-        setUndoStack([]);
-        updateWholeTemplateJson(row.template_json);
-        setTemplateStatus("Template saved to Supabase.");
-        return;
-      }
-
-      const { error } = await supabase
+    if (selectedTemplateId === "local-default" || selectedTemplateId.startsWith("local-")) {
+      const { data, error } = await supabase
         .from("poster_templates")
-        .update({
+        .insert({
           name: templateName.trim(),
-          background_url: nextJson.backgroundUrl || null,
+          background_url: nextJson.backgroundUrl || BRAND.posterBackground,
           template_json: nextJson,
-          updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedTemplateId);
+        .select("id,name,background_url,template_json")
+        .single();
 
-      if (error) {
-        setTemplateStatus(`Save failed: ${error.message}`);
+      if (error || !data) {
+        setTemplateStatus(`Save failed: ${error?.message || "unknown error"}`);
         return;
       }
 
-      setTemplates((prev) =>
-        prev.map((item) =>
-          item.id === selectedTemplateId
-            ? {
-                ...item,
-                name: templateName.trim(),
-                background_url: nextJson.backgroundUrl || null,
-                template_json: nextJson,
-              }
-            : item
-        )
-      );
-      setUndoStack([]);
+      const row = {
+        ...data,
+        template_json: normalizeTemplateJson(data.template_json),
+      } as PosterTemplateRow;
+
+      setTemplates((prev) => [...prev.filter((item) => item.id !== "local-default"), row]);
+      setSelectedTemplateId(row.id);
+      setTemplateName(row.name);
+      updateWholeTemplateJson(row.template_json);
       setTemplateStatus("Template saved to Supabase.");
-    } catch (error) {
-      console.error("TEMPLATE SAVE ERROR:", error);
-      const message = error instanceof Error ? error.message : "unknown error";
-      localFallbackSave(`Save failed online: ${message}. Changes are kept locally until reload.`);
+      return;
     }
+
+    const { error } = await supabase
+      .from("poster_templates")
+      .update({
+        name: templateName.trim(),
+        background_url: nextJson.backgroundUrl || BRAND.posterBackground,
+        template_json: nextJson,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedTemplateId);
+
+    if (error) {
+      setTemplateStatus(`Save failed: ${error.message}`);
+      return;
+    }
+
+    setTemplates((prev) =>
+      prev.map((item) =>
+        item.id === selectedTemplateId
+          ? {
+              ...item,
+              name: templateName.trim(),
+              background_url: nextJson.backgroundUrl || BRAND.posterBackground,
+              template_json: nextJson,
+            }
+          : item
+      )
+    );
+    setTemplateStatus("Template saved to Supabase.");
   }
 
   function resetTemplateToDefault() {
-    updateWholeTemplateJson(DEFAULT_TEMPLATE_JSON, true);
+    updateWholeTemplateJson(DEFAULT_TEMPLATE_JSON);
     setTemplateStatus("Template reset to default positions. Press Save to keep it.");
   }
 
 
   function createNewTemplate() {
-    const nextJson = createBlankTemplateJson();
+    const nextJson = normalizeTemplateJson(DEFAULT_TEMPLATE_JSON);
     const localId = `local-${makeId()}`;
     const nextTemplate: PosterTemplateRow = {
       id: localId,
       name: "New Template",
-      background_url: null,
+      background_url: nextJson.backgroundUrl || BRAND.posterBackground,
       template_json: nextJson,
     };
 
     setTemplates((prev) => [...prev, nextTemplate]);
     setSelectedTemplateId(localId);
     setTemplateName("New Template");
-    setUndoStack([]);
     updateWholeTemplateJson(nextJson);
     setSelectedElement("avatar1");
     setEditMode(true);
-    setTemplateStatus("New blank template created. Import a background, then press Save.");
+    setTemplateStatus("New template created locally. Press Save to store it in Supabase.");
   }
 
   async function duplicateCurrentTemplate() {
@@ -789,7 +697,7 @@ export default function BattleGeneratorPage() {
       const nextTemplate: PosterTemplateRow = {
         id: localId,
         name: copyName,
-        background_url: nextJson.backgroundUrl || null,
+        background_url: nextJson.backgroundUrl || BRAND.posterBackground,
         template_json: nextJson,
       };
 
@@ -807,7 +715,7 @@ export default function BattleGeneratorPage() {
       .from("poster_templates")
       .insert({
         name: copyName,
-        background_url: nextJson.backgroundUrl || null,
+        background_url: nextJson.backgroundUrl || BRAND.posterBackground,
         template_json: nextJson,
       })
       .select("id,name,background_url,template_json")
@@ -886,7 +794,7 @@ export default function BattleGeneratorPage() {
         updateWholeTemplateJson({
           ...templateJson,
           backgroundUrl: image,
-        }, true);
+        });
         setTemplateStatus("Background set locally. Supabase env is missing, so it will not persist online.");
       };
 
@@ -926,7 +834,7 @@ export default function BattleGeneratorPage() {
     updateWholeTemplateJson({
       ...templateJson,
       backgroundUrl: publicUrl,
-    }, true);
+    });
 
     setTemplateStatus("Background uploaded. Press Save to attach it to this template.");
   }
@@ -1568,7 +1476,7 @@ export default function BattleGeneratorPage() {
         : battle.date || battle.time;
 
     const activeTemplate = normalizeTemplateJson(templateJson);
-    const backgroundUrl = activeTemplate.backgroundUrl ?? BRAND.posterBackground;
+    const backgroundUrl = activeTemplate.backgroundUrl || BRAND.posterBackground;
 
     const displayName1 = editMode
       ? EDIT_PREVIEW_VALUES.username1
@@ -1713,20 +1621,11 @@ export default function BattleGeneratorPage() {
           }}
           onResizeStop={(_, __, ref, ___, position) => {
             setSelectedElement(key);
-
-            const newWidth = Math.round(ref.offsetWidth);
-            const newHeight = Math.round(ref.offsetHeight);
-            const oldHeight = element.height || newHeight;
-            const currentFontSize = element.fontSize || fallbackSize;
-            const scaleFactor = oldHeight > 0 ? newHeight / oldHeight : 1;
-            const newFontSize = Math.max(10, Math.round(currentFontSize * scaleFactor));
-
             updateTemplateElement(key, {
               x: Math.round(position.x),
               y: Math.round(position.y),
-              width: newWidth,
-              height: newHeight,
-              fontSize: newFontSize,
+              width: Math.round(ref.offsetWidth),
+              height: Math.round(ref.offsetHeight),
             });
           }}
           className={`${isSelected ? "ring-[8px] ring-yellow-300" : "ring-[5px] ring-cyan-300/45"} bg-black/10`}
@@ -1751,17 +1650,11 @@ export default function BattleGeneratorPage() {
             className="relative w-[1080px] h-[1920px] overflow-hidden bg-black"
             onMouseDown={() => editMode && setSelectedElement(selectedElement)}
           >
-            {backgroundUrl ? (
-              <img
-                src={backgroundUrl}
-                className="absolute inset-0 w-full h-full object-cover"
-                alt=""
-              />
-            ) : (
-              <div className="absolute inset-0 bg-black border-[8px] border-dashed border-white/25 flex items-center justify-center text-white/25 text-6xl font-black uppercase tracking-widest">
-                No Background
-              </div>
-            )}
+            <img
+              src={backgroundUrl}
+              className="absolute inset-0 w-full h-full"
+              alt=""
+            />
 
             {renderAvatar("avatar1", battle.image1, "Avatar 1", battle.name1)}
             {renderAvatar("avatar2", battle.image2, "Avatar 2", battle.name2)}
@@ -1777,14 +1670,11 @@ export default function BattleGeneratorPage() {
   function TemplateControls() {
     const element = templateJson[selectedElement];
     const isTextElement = TEXT_ELEMENT_KEYS.includes(selectedElement);
-    const backgroundUrl = templateJson.backgroundUrl ?? "";
+    const backgroundUrl = templateJson.backgroundUrl || BRAND.posterBackground;
     const backgroundInputId = `background-upload-${stableId}`;
 
     return (
-      <div
-        className="bg-black/35 border border-cyan-300/25 rounded-xl p-5 space-y-5"
-        onKeyDown={(e) => e.stopPropagation()}
-      >
+      <div className="bg-black/35 border border-cyan-300/25 rounded-xl p-5 space-y-5">
         <div className="flex flex-col xl:flex-row gap-4 xl:items-end xl:justify-between">
           <div className="space-y-2 flex-1">
             <h2 className="text-cyan-300 font-black uppercase tracking-widest">
@@ -1812,17 +1702,13 @@ export default function BattleGeneratorPage() {
               <TextInput
                 label="Template Name"
                 value={templateName}
-                placeholder="Battle Template"
-                onChange={(value) => {
-                  setEditingTemplateName(true);
-                  setTemplateName(value);
-                }}
-                onBlur={() => setEditingTemplateName(false)}
+                placeholder="Dan Battle Default"
+                onChange={setTemplateName}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
             <button
               type="button"
               onClick={() => setEditMode((prev) => !prev)}
@@ -1841,24 +1727,6 @@ export default function BattleGeneratorPage() {
               className="bg-black/40 hover:border-cyan-300 text-white border border-white/20 font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
               New
-            </button>
-
-            <button
-              type="button"
-              onClick={undoLastTemplateChange}
-              disabled={undoStack.length === 0}
-              className="bg-purple-400 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
-            >
-              ↶ Undo
-            </button>
-
-            <button
-              type="button"
-              onClick={redoLastTemplateChange}
-              disabled={redoStack.length === 0}
-              className="bg-purple-300 hover:bg-purple-200 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
-            >
-              ↷ Redo
             </button>
 
             <button
@@ -1909,12 +1777,12 @@ export default function BattleGeneratorPage() {
               Background
             </p>
 
-            <div className="aspect-[9/16] max-h-[320px] rounded-lg overflow-hidden border border-white/15 bg-black mx-auto">
+            <div className="h-32 rounded-lg overflow-hidden border border-white/15 bg-black">
               {backgroundUrl ? (
                 <img
                   src={backgroundUrl}
                   alt=""
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
@@ -2156,14 +2024,9 @@ export default function BattleGeneratorPage() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <p className="text-yellow-300 text-xs font-black">
-            {templateStatus}
-          </p>
-          <p className="text-white/45 text-xs">
-            In edit mode: click an item, drag it, resize from the corners, or use arrow keys. Hold Shift for 10px movement. Text boxes resize the font when you drag the corners.
-          </p>
-        </div>
+        <p className="text-white/45 text-xs">
+          {templateStatus} In edit mode: click an item, drag it, resize from the corners, or use arrow keys. Hold Shift for 10px movement.
+        </p>
       </div>
     );
   }
@@ -2260,17 +2123,17 @@ export default function BattleGeneratorPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {DropPhotoBox({
-            battle: selectedBattle,
-            field: "image1",
-            label: "Creator 1 Profile Picture",
-          })}
+          <DropPhotoBox
+            battle={selectedBattle}
+            field="image1"
+            label="Creator 1 Profile Picture"
+          />
 
-          {DropPhotoBox({
-            battle: selectedBattle,
-            field: "image2",
-            label: "Creator 2 Profile Picture",
-          })}
+          <DropPhotoBox
+            battle={selectedBattle}
+            field="image2"
+            label="Creator 2 Profile Picture"
+          />
         </div>
 
         <button
@@ -2293,7 +2156,7 @@ export default function BattleGeneratorPage() {
               LIVE TEMPLATE PREVIEW
             </div>
 
-            {PosterPreview({ battle: previewBattle })}
+            <PosterPreview battle={previewBattle} />
           </div>
         </section>
       );
@@ -2307,7 +2170,7 @@ export default function BattleGeneratorPage() {
               BLANK TEMPLATE PREVIEW
             </div>
 
-            {PosterPreview({ battle: blankPreviewBattle })}
+            <PosterPreview battle={blankPreviewBattle} />
           </div>
         </section>
       );
@@ -2331,7 +2194,7 @@ export default function BattleGeneratorPage() {
               {battle.name2 || "CREATOR 2"}
             </div>
 
-            {PosterPreview({ battle })}
+            <PosterPreview battle={battle} />
           </button>
         ))}
       </section>
@@ -2357,7 +2220,7 @@ export default function BattleGeneratorPage() {
   </a>
 </div>
 
-        {TemplateControls()}
+        <TemplateControls />
 
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
@@ -2512,7 +2375,7 @@ export default function BattleGeneratorPage() {
               </div>
             </section>
 
-            {PosterGrid({ previewBattle: singleBattle })}
+            <PosterGrid previewBattle={singleBattle} />
           </div>
         )}
 
@@ -2598,11 +2461,11 @@ export default function BattleGeneratorPage() {
                 </p>
               </div>
 
-              {SelectedPosterEditor()}
+              <SelectedPosterEditor />
             </section>
 
             <section>
-              {PosterGrid({})}
+              <PosterGrid />
             </section>
           </div>
         )}
