@@ -587,7 +587,9 @@ export default function BattleGeneratorPage() {
       setSelectedTemplateId(local.id);
       if (!editingTemplateName) setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
-      setTemplateStatus(`URL=${url ? "YES" : "NO"} KEY=${anonKey ? "YES" : "NO"}`);
+      setTemplateStatus(
+ 	 `URL=${url ? "YES" : "NO"} KEY=${anonKey ? "YES" : "NO"}`
+	);
       return;
     }
 
