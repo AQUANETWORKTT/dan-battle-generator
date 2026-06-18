@@ -521,7 +521,6 @@ export default function BattleGeneratorPage() {
 
   function addUndoSnapshot(snapshot: PosterTemplateJson) {
     setUndoStack((prev) => [...prev.slice(-24), structuredClone(snapshot)]);
-    setRedoStack([]);
   }
 
   function updateTemplateElement(
@@ -556,24 +555,8 @@ export default function BattleGeneratorPage() {
         return prev;
       }
 
-      setRedoStack((redoPrev) => [...redoPrev.slice(-24), structuredClone(templateJson)]);
       setTemplateJson(normalizeTemplateJson(previous));
       setTemplateStatus("Undo applied. Press Save to keep it.");
-      return prev.slice(0, -1);
-    });
-  }
-
-  function redoLastTemplateChange() {
-    setRedoStack((prev) => {
-      const next = prev[prev.length - 1];
-      if (!next) {
-        setTemplateStatus("Nothing to redo.");
-        return prev;
-      }
-
-      setUndoStack((undoPrev) => [...undoPrev.slice(-24), structuredClone(templateJson)]);
-      setTemplateJson(normalizeTemplateJson(next));
-      setTemplateStatus("Redo applied. Press Save to keep it.");
       return prev.slice(0, -1);
     });
   }
@@ -585,7 +568,7 @@ export default function BattleGeneratorPage() {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
-      if (!editingTemplateName) setTemplateName(local.name);
+      setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus("Supabase env not found. Using local template only.");
       return;
@@ -600,7 +583,7 @@ export default function BattleGeneratorPage() {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
-      if (!editingTemplateName) setTemplateName(local.name);
+      setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus(
         error ? `Template load failed: ${error.message}` : "No templates found. Using local default."
@@ -1696,20 +1679,11 @@ export default function BattleGeneratorPage() {
           }}
           onResizeStop={(_, __, ref, ___, position) => {
             setSelectedElement(key);
-
-            const newWidth = Math.round(ref.offsetWidth);
-            const newHeight = Math.round(ref.offsetHeight);
-            const oldHeight = element.height || newHeight;
-            const currentFontSize = element.fontSize || fallbackSize;
-            const scaleFactor = oldHeight > 0 ? newHeight / oldHeight : 1;
-            const newFontSize = Math.max(10, Math.round(currentFontSize * scaleFactor));
-
             updateTemplateElement(key, {
               x: Math.round(position.x),
               y: Math.round(position.y),
-              width: newWidth,
-              height: newHeight,
-              fontSize: newFontSize,
+              width: Math.round(ref.offsetWidth),
+              height: Math.round(ref.offsetHeight),
             });
           }}
           className={`${isSelected ? "ring-[8px] ring-yellow-300" : "ring-[5px] ring-cyan-300/45"} bg-black/10`}
@@ -1737,7 +1711,7 @@ export default function BattleGeneratorPage() {
             {backgroundUrl ? (
               <img
                 src={backgroundUrl}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full"
                 alt=""
               />
             ) : (
@@ -1805,7 +1779,7 @@ export default function BattleGeneratorPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
             <button
               type="button"
               onClick={() => setEditMode((prev) => !prev)}
@@ -1832,16 +1806,7 @@ export default function BattleGeneratorPage() {
               disabled={undoStack.length === 0}
               className="bg-purple-400 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
-              ↶ Undo
-            </button>
-
-            <button
-              type="button"
-              onClick={redoLastTemplateChange}
-              disabled={redoStack.length === 0}
-              className="bg-purple-300 hover:bg-purple-200 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
-            >
-              ↷ Redo
+              Undo
             </button>
 
             <button
@@ -1892,12 +1857,12 @@ export default function BattleGeneratorPage() {
               Background
             </p>
 
-            <div className="aspect-[9/16] max-h-[320px] rounded-lg overflow-hidden border border-white/15 bg-black mx-auto">
+            <div className="h-32 rounded-lg overflow-hidden border border-white/15 bg-black">
               {backgroundUrl ? (
                 <img
                   src={backgroundUrl}
                   alt=""
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
@@ -2139,14 +2104,9 @@ export default function BattleGeneratorPage() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <p className="text-yellow-300 text-xs font-black">
-            {templateStatus}
-          </p>
-          <p className="text-white/45 text-xs">
-            In edit mode: click an item, drag it, resize from the corners, or use arrow keys. Hold Shift for 10px movement. Text boxes resize the font when you drag the corners.
-          </p>
-        </div>
+        <p className="text-white/45 text-xs">
+          {templateStatus} In edit mode: click an item, drag it, resize from the corners, or use arrow keys. Hold Shift for 10px movement.
+        </p>
       </div>
     );
   }
@@ -2243,17 +2203,17 @@ export default function BattleGeneratorPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {DropPhotoBox({
-            battle: selectedBattle,
-            field: "image1",
-            label: "Creator 1 Profile Picture",
-          })}
+          <DropPhotoBox
+            battle={selectedBattle}
+            field="image1"
+            label="Creator 1 Profile Picture"
+          />
 
-          {DropPhotoBox({
-            battle: selectedBattle,
-            field: "image2",
-            label: "Creator 2 Profile Picture",
-          })}
+          <DropPhotoBox
+            battle={selectedBattle}
+            field="image2"
+            label="Creator 2 Profile Picture"
+          />
         </div>
 
         <button
@@ -2276,7 +2236,7 @@ export default function BattleGeneratorPage() {
               LIVE TEMPLATE PREVIEW
             </div>
 
-            {PosterPreview({ battle: previewBattle })}
+            <PosterPreview battle={previewBattle} />
           </div>
         </section>
       );
@@ -2290,7 +2250,7 @@ export default function BattleGeneratorPage() {
               BLANK TEMPLATE PREVIEW
             </div>
 
-            {PosterPreview({ battle: blankPreviewBattle })}
+            <PosterPreview battle={blankPreviewBattle} />
           </div>
         </section>
       );
@@ -2314,7 +2274,7 @@ export default function BattleGeneratorPage() {
               {battle.name2 || "CREATOR 2"}
             </div>
 
-            {PosterPreview({ battle })}
+            <PosterPreview battle={battle} />
           </button>
         ))}
       </section>
@@ -2340,7 +2300,7 @@ export default function BattleGeneratorPage() {
   </a>
 </div>
 
-        {TemplateControls()}
+        <TemplateControls />
 
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
@@ -2495,7 +2455,7 @@ export default function BattleGeneratorPage() {
               </div>
             </section>
 
-            {PosterGrid({ previewBattle: singleBattle })}
+            <PosterGrid previewBattle={singleBattle} />
           </div>
         )}
 
@@ -2581,11 +2541,11 @@ export default function BattleGeneratorPage() {
                 </p>
               </div>
 
-              {SelectedPosterEditor()}
+              <SelectedPosterEditor />
             </section>
 
             <section>
-              {PosterGrid({})}
+              <PosterGrid />
             </section>
           </div>
         )}
