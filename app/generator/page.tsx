@@ -189,26 +189,21 @@ function normalizeTemplateJson(input: Partial<PosterTemplateJson> | null | undef
 }
 
 function getPosterSupabaseClient() {
-  const url =
-    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  try {
+    const url =
+      process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  console.log("SUPABASE URL:", url);
-  console.log("SUPABASE KEY:", anonKey ? "FOUND" : "MISSING");
+    if (!url || !anonKey) return null;
 
-  if (!url) {
-    throw new Error("NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL missing");
+    return createClient(url, anonKey);
+  } catch {
+    return null;
   }
-
-  if (!anonKey) {
-    throw new Error("NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY missing");
-  }
-
-  return createClient(url, anonKey);
 }
 
 const BRAND = {
