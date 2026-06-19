@@ -40,6 +40,10 @@ type PosterElement = {
   letterSpacing?: number;
   fontWeight?: number;
   uppercase?: boolean;
+  gradientEnabled?: boolean;
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: string;
 };
 
 type PosterTemplateJson = Record<PosterElementKey, PosterElement> & {
@@ -72,6 +76,7 @@ const EDIT_PREVIEW_VALUES = {
 
 const FONT_OPTIONS = [
   "Luckiest Guy",
+  "Norwester",
   "Anton",
   "Bangers",
   "Bebas Neue",
@@ -114,6 +119,10 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
     letterSpacing: 1,
     fontWeight: 900,
     uppercase: true,
+    gradientEnabled: false,
+    gradientFrom: "#5CEEFF",
+    gradientTo: "#0044FF",
+    gradientDirection: "to bottom",
   },
   username2: {
     x: 585,
@@ -133,6 +142,10 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
     letterSpacing: 1,
     fontWeight: 900,
     uppercase: true,
+    gradientEnabled: false,
+    gradientFrom: "#5CEEFF",
+    gradientTo: "#0044FF",
+    gradientDirection: "to bottom",
   },
   date: {
     x: 155,
@@ -152,6 +165,10 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
     letterSpacing: 1,
     fontWeight: 900,
     uppercase: true,
+    gradientEnabled: false,
+    gradientFrom: "#5CEEFF",
+    gradientTo: "#0044FF",
+    gradientDirection: "to bottom",
   },
 };
 
@@ -1647,90 +1664,136 @@ export default function BattleGeneratorPage() {
       );
     }
 
-    function renderText(
-      key: "username1" | "username2" | "date",
-      value: string,
-      fallbackSize: number
-    ) {
-      if (!value) return null;
+function renderText(
+  key: "username1" | "username2" | "date",
+  value: string,
+  fallbackSize: number
+) {
+  if (!value) return null;
 
-      const element = activeTemplate[key];
-      const isSelected = editMode && selectedElement === key;
-      const fontSize = key === "date" ? element.fontSize || fallbackSize : autoFontSize(value, element, fallbackSize);
+  const element = activeTemplate[key];
+  const isSelected = editMode && selectedElement === key;
+  const fontSize =
+    key === "date"
+      ? element.fontSize || fallbackSize
+      : autoFontSize(value, element, fallbackSize);
 
-      const content = (
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{
-            color: element.color || "#5CEEFF",
-            fontFamily: `'${element.fontFamily || "Luckiest Guy"}', sans-serif`,
-            WebkitTextStroke: `${element.strokeWidth ?? 2}px ${element.strokeColor || "black"}`,
-            textShadow: `${element.shadowX ?? 2}px ${element.shadowY ?? 2}px ${element.shadowBlur ?? 0}px ${element.shadowColor || "#000000"}`,
-            letterSpacing: `${element.letterSpacing ?? 1}px`,
-            fontSize,
-            fontWeight: element.fontWeight || 900,
-            textTransform: element.uppercase === false ? "none" : "uppercase",
-          }}
-        >
-          <span className="leading-none text-center whitespace-nowrap">
-            {value}
-          </span>
-        </div>
-      );
+  const content = (
+    <div
+      className="w-full h-full flex items-center justify-center"
+      style={{
+        background: element.gradientEnabled
+          ? `linear-gradient(
+              ${element.gradientDirection || "to bottom"},
+              ${element.gradientFrom || "#5CEEFF"},
+              ${element.gradientTo || "#0044FF"}
+            )`
+          : undefined,
 
-      if (!editMode) {
-        return (
-          <div
-            className="absolute"
-            style={{
-              left: element.x,
-              top: element.y,
-              width: element.width,
-              height: element.height,
-            }}
-          >
-            {content}
-          </div>
+        WebkitBackgroundClip: element.gradientEnabled
+          ? "text"
+          : undefined,
+
+        backgroundClip: element.gradientEnabled
+          ? "text"
+          : undefined,
+
+        WebkitTextFillColor: element.gradientEnabled
+          ? "transparent"
+          : (element.color || "#5CEEFF"),
+
+        color: element.gradientEnabled
+          ? "transparent"
+          : (element.color || "#5CEEFF"),
+
+        fontFamily: `'${element.fontFamily || "Luckiest Guy"}', sans-serif`,
+        WebkitTextStroke: `${element.strokeWidth ?? 2}px ${
+          element.strokeColor || "black"
+        }`,
+        textShadow: `${element.shadowX ?? 2}px ${
+          element.shadowY ?? 2
+        }px ${element.shadowBlur ?? 0}px ${
+          element.shadowColor || "#000000"
+        }`,
+        letterSpacing: `${element.letterSpacing ?? 1}px`,
+        fontSize,
+        fontWeight: element.fontWeight || 900,
+        textTransform:
+          element.uppercase === false ? "none" : "uppercase",
+      }}
+    >
+      <span className="leading-none text-center whitespace-nowrap">
+        {value}
+      </span>
+    </div>
+  );
+
+  if (!editMode) {
+    return (
+      <div
+        className="absolute"
+        style={{
+          left: element.x,
+          top: element.y,
+          width: element.width,
+          height: element.height,
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Rnd
+      key={key}
+      scale={scale}
+      bounds="parent"
+      position={{ x: element.x, y: element.y }}
+      size={{ width: element.width, height: element.height }}
+      onMouseDown={() => setSelectedElement(key)}
+      onDragStop={(_, data) => {
+        setSelectedElement(key);
+        updateTemplateElement(key, {
+          x: Math.round(data.x),
+          y: Math.round(data.y),
+        });
+      }}
+      onResizeStop={(_, __, ref, ___, position) => {
+        setSelectedElement(key);
+
+        const newWidth = Math.round(ref.offsetWidth);
+        const newHeight = Math.round(ref.offsetHeight);
+        const oldHeight = element.height || newHeight;
+        const currentFontSize =
+          element.fontSize || fallbackSize;
+
+        const scaleFactor =
+          oldHeight > 0 ? newHeight / oldHeight : 1;
+
+        const newFontSize = Math.max(
+          10,
+          Math.round(currentFontSize * scaleFactor)
         );
-      }
 
-      return (
-        <Rnd
-          key={key}
-          scale={scale}
-          bounds="parent"
-          position={{ x: element.x, y: element.y }}
-          size={{ width: element.width, height: element.height }}
-          onMouseDown={() => setSelectedElement(key)}
-          onDragStop={(_, data) => {
-            setSelectedElement(key);
-            updateTemplateElement(key, { x: Math.round(data.x), y: Math.round(data.y) });
-          }}
-          onResizeStop={(_, __, ref, ___, position) => {
-            setSelectedElement(key);
-
-            const newWidth = Math.round(ref.offsetWidth);
-            const newHeight = Math.round(ref.offsetHeight);
-            const oldHeight = element.height || newHeight;
-            const currentFontSize = element.fontSize || fallbackSize;
-            const scaleFactor = oldHeight > 0 ? newHeight / oldHeight : 1;
-            const newFontSize = Math.max(10, Math.round(currentFontSize * scaleFactor));
-
-            updateTemplateElement(key, {
-              x: Math.round(position.x),
-              y: Math.round(position.y),
-              width: newWidth,
-              height: newHeight,
-              fontSize: newFontSize,
-            });
-          }}
-          className={`${isSelected ? "ring-[8px] ring-yellow-300" : "ring-[5px] ring-cyan-300/45"} bg-black/10`}
-        >
-          {content}
-        </Rnd>
-      );
-    }
-
+        updateTemplateElement(key, {
+          x: Math.round(position.x),
+          y: Math.round(position.y),
+          width: newWidth,
+          height: newHeight,
+          fontSize: newFontSize,
+        });
+      }}
+      className={`${
+        isSelected
+          ? "ring-[8px] ring-yellow-300"
+          : "ring-[5px] ring-cyan-300/45"
+      } bg-black/10`}
+    >
+      {content}
+    </Rnd>
+  );
+}
     return (
       <div className="w-[324px] h-[576px] overflow-hidden mx-auto bg-black rounded-lg">
         <div
@@ -2111,7 +2174,73 @@ export default function BattleGeneratorPage() {
                         className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
                       />
                     </label>
+                     <label className="flex items-end gap-2 pb-3">
+  <input
+    type="checkbox"
+    checked={element.gradientEnabled || false}
+    onChange={(e) =>
+      updateTemplateElement(selectedElement, {
+        gradientEnabled: e.target.checked,
+      })
+    }
+    className="w-5 h-5 accent-cyan-300"
+  />
+  <span className="text-white/70 text-xs font-black uppercase tracking-widest">
+    Gradient
+  </span>
+</label>
 
+<label>
+  <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
+    Gradient From
+  </p>
+  <input
+    type="color"
+    value={element.gradientFrom || "#5CEEFF"}
+    onChange={(e) =>
+      updateTemplateElement(selectedElement, {
+        gradientFrom: e.target.value,
+      })
+    }
+    className="w-full h-[46px] bg-black/45 border border-white/15 p-1 rounded-lg"
+  />
+</label>
+
+<label>
+  <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
+    Gradient To
+  </p>
+  <input
+    type="color"
+    value={element.gradientTo || "#0044FF"}
+    onChange={(e) =>
+      updateTemplateElement(selectedElement, {
+        gradientTo: e.target.value,
+      })
+    }
+    className="w-full h-[46px] bg-black/45 border border-white/15 p-1 rounded-lg"
+  />
+</label>
+
+<label>
+  <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
+    Direction
+  </p>
+  <select
+    value={element.gradientDirection || "to bottom"}
+    onChange={(e) =>
+      updateTemplateElement(selectedElement, {
+        gradientDirection: e.target.value,
+      })
+    }
+    className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg"
+  >
+    <option value="to bottom">Top → Bottom</option>
+    <option value="to top">Bottom → Top</option>
+    <option value="to right">Left → Right</option>
+    <option value="to left">Right → Left</option>
+  </select>
+</label>
                     <label>
                       <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Y</p>
                       <input
