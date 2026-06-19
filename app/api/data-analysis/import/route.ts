@@ -6,19 +6,52 @@ export const dynamic = "force-dynamic";
 
 type ParsedRow = {
   stat_date: string;
+  data_period: string | null;
+  creator_id: string | null;
   creator_username: string;
   email: string | null;
   group_name: string | null;
   agency: string;
   team: string;
+  manager_email: string | null;
+  join_time: string | null;
   diamonds: number;
   live_duration: string | null;
   live_hours: number;
+  valid_live_days: number;
+  new_followers: number;
   matches: number;
   live_streams: number;
   followers: number;
   days_since_joining: number;
+  diamonds_last_month: number;
+  live_hours_last_month: number;
+  valid_days_last_month: number;
+  followers_last_month: number;
+  live_streams_last_month: number;
+  diamonds_percentage_achieved: number;
+  live_hours_percentage_achieved: number;
+  valid_days_percentage_achieved: number;
+  followers_percentage_achieved: number;
+  live_streams_percentage_achieved: number;
+  diamonds_vs_last_month: number;
+  live_hours_vs_last_month: number;
+  valid_days_vs_last_month: number;
+  followers_vs_last_month: number;
+  live_streams_vs_last_month: number;
+  diamonds_from_matches: number;
+  new_live_creators: string | null;
+  diamonds_from_multiguest: number;
+  diamonds_from_multiguest_host: number;
+  diamonds_from_multiguest_guest: number;
   graduation_status: string | null;
+  tier_status: string | null;
+  new_fans: number;
+  fan_club_diamonds: number;
+  fan_contribution_percentage: number;
+  total_fans: number;
+  active_fans: number;
+  status: string | null;
 };
 
 function cleanText(value: unknown) {
@@ -119,6 +152,39 @@ function getColumnByHeader(
   return row[fallbackIndex];
 }
 
+function getTextColumn(
+  row: unknown[],
+  headerMap: Map<string, number>,
+  possibleHeaders: string[],
+  fallbackIndex: number
+) {
+  const value = cleanText(
+    getColumnByHeader(row, headerMap, possibleHeaders, fallbackIndex)
+  );
+
+  return value || null;
+}
+
+function getNumberColumn(
+  row: unknown[],
+  headerMap: Map<string, number>,
+  possibleHeaders: string[],
+  fallbackIndex: number
+) {
+  return toNumber(getColumnByHeader(row, headerMap, possibleHeaders, fallbackIndex));
+}
+
+function getDurationHoursColumn(
+  row: unknown[],
+  headerMap: Map<string, number>,
+  possibleHeaders: string[],
+  fallbackIndex: number
+) {
+  return durationToHours(
+    getColumnByHeader(row, headerMap, possibleHeaders, fallbackIndex)
+  );
+}
+
 function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
   const workbook = XLSX.read(buffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
@@ -127,7 +193,7 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
 
   const sheet = workbook.Sheets[firstSheetName];
 
-  const rows = XLSX.utils.sheet_to_json<any[]>(sheet, {
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     raw: false,
     blankrows: false,
@@ -163,46 +229,225 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
 
   return dataRows
     .map((row) => {
-      const username = cleanText(row[2]).replace("@", ""); // Column C
-      const groupName = cleanText(row[3]); // Column D
-      const email = cleanText(row[4]); // Column E
-      const daysSinceJoining = toNumber(row[6]); // Column G
-      const diamonds = toNumber(row[7]); // Column H
-      const liveDuration = cleanText(row[8]); // Column I
-      const followers = toNumber(row[10]); // Column K
-      const liveStreams = toNumber(row[11]); // Column L
-      const matches = toNumber(row[12]); // Column M
-
-      // Column R is index 17. Header lookup is included so it still works if columns move.
-      const graduationStatus = cleanText(
+      const dataPeriod = getTextColumn(row, headerMap, ["data period"], 0);
+      const creatorId = getTextColumn(row, headerMap, ["creator id", "creator_id"], 1);
+      const username = cleanText(
         getColumnByHeader(
           row,
           headerMap,
-          [
-            "graduation status",
-            "graduation_status",
-            "graduation",
-            "graduation eligibility",
-          ],
-          17
+          ["creator's username", "creator_username", "creator username"],
+          2
         )
+      ).replace("@", "");
+      const groupName = cleanText(
+        getColumnByHeader(row, headerMap, ["group", "group_name"], 3)
+      );
+      const managerEmail = getTextColumn(
+        row,
+        headerMap,
+        ["creator network manager", "manager_email", "manager email"],
+        4
+      );
+      const joinTime = getTextColumn(row, headerMap, ["join time", "join_time"], 5);
+      const daysSinceJoining = getNumberColumn(
+        row,
+        headerMap,
+        ["days since joining", "days_since_joining"],
+        6
+      );
+      const diamonds = getNumberColumn(row, headerMap, ["diamonds"], 7);
+      const liveDuration = cleanText(
+        getColumnByHeader(row, headerMap, ["live duration", "live_duration"], 8)
+      );
+      const validLiveDays = getNumberColumn(
+        row,
+        headerMap,
+        ["valid go live days", "valid_live_days", "valid days"],
+        9
+      );
+      const newFollowers = getNumberColumn(
+        row,
+        headerMap,
+        ["new followers", "new_followers"],
+        10
+      );
+      const liveStreams = getNumberColumn(
+        row,
+        headerMap,
+        ["live streams", "live_streams"],
+        11
+      );
+      const matches = getNumberColumn(row, headerMap, ["matches"], 27);
+      const followers = newFollowers;
+      const graduationStatus = getTextColumn(
+        row,
+        headerMap,
+        ["graduation status", "graduation_status", "graduation", "graduation eligibility"],
+        33
       );
 
       return {
         stat_date: statDate,
+        data_period: dataPeriod,
+        creator_id: creatorId,
         creator_username: username.toLowerCase(),
-        email: email || null,
+        email: managerEmail,
         group_name: groupName || null,
         agency: getAgency(groupName),
         team: getTeam(groupName),
+        manager_email: managerEmail,
+        join_time: joinTime,
         diamonds,
         live_duration: liveDuration || null,
         live_hours: durationToHours(liveDuration),
+        valid_live_days: validLiveDays,
+        new_followers: newFollowers,
         matches,
         live_streams: liveStreams,
         followers,
         days_since_joining: daysSinceJoining,
-        graduation_status: graduationStatus || null,
+        diamonds_last_month: getNumberColumn(row, headerMap, ["diamonds last month", "diamonds_last_month"], 12),
+        live_hours_last_month: getDurationHoursColumn(
+          row,
+          headerMap,
+          [
+            "live duration (hours) last month",
+            "live duration last month",
+            "live_hours_last_month",
+          ],
+          13
+        ),
+        valid_days_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["valid go live days last month", "valid_days_last_month"],
+          14
+        ),
+        followers_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["new followers last month", "followers_last_month"],
+          15
+        ),
+        live_streams_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["live streams last month", "live_streams_last_month"],
+          16
+        ),
+        diamonds_percentage_achieved: getNumberColumn(
+          row,
+          headerMap,
+          ["diamonds - percentage achieved", "diamonds percentage achieved"],
+          17
+        ),
+        live_hours_percentage_achieved: getNumberColumn(
+          row,
+          headerMap,
+          ["live duration - percentage achieved", "live duration percentage achieved"],
+          18
+        ),
+        valid_days_percentage_achieved: getNumberColumn(
+          row,
+          headerMap,
+          ["valid go live days - percentage achieved", "valid days percentage achieved"],
+          19
+        ),
+        followers_percentage_achieved: getNumberColumn(
+          row,
+          headerMap,
+          ["new followers - percentage achieved", "new followers percentage achieved"],
+          20
+        ),
+        live_streams_percentage_achieved: getNumberColumn(
+          row,
+          headerMap,
+          ["live streams - percentage achieved", "live streams percentage achieved"],
+          21
+        ),
+        diamonds_vs_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["diamonds - vs. last month", "diamonds vs last month"],
+          22
+        ),
+        live_hours_vs_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["live duration - vs. last month", "live duration vs last month"],
+          23
+        ),
+        valid_days_vs_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["valid go live days - vs. last month", "valid days vs last month"],
+          24
+        ),
+        followers_vs_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["new followers - vs. last month", "new followers vs last month"],
+          25
+        ),
+        live_streams_vs_last_month: getNumberColumn(
+          row,
+          headerMap,
+          ["live streams - vs. last month", "live streams vs last month"],
+          26
+        ),
+        diamonds_from_matches: getNumberColumn(
+          row,
+          headerMap,
+          ["diamonds from matches", "diamonds_from_matches"],
+          28
+        ),
+        new_live_creators: getTextColumn(
+          row,
+          headerMap,
+          ["new live creators", "new_live_creators"],
+          29
+        ),
+        diamonds_from_multiguest: getNumberColumn(
+          row,
+          headerMap,
+          ["diamonds from multi-guest", "diamonds_from_multiguest"],
+          30
+        ),
+        diamonds_from_multiguest_host: getNumberColumn(
+          row,
+          headerMap,
+          ["diamonds from multi-guest (as host)", "diamonds_from_multiguest_host"],
+          31
+        ),
+        diamonds_from_multiguest_guest: getNumberColumn(
+          row,
+          headerMap,
+          ["diamonds from multi-guest (as guest)", "diamonds_from_multiguest_guest"],
+          32
+        ),
+        graduation_status: graduationStatus,
+        tier_status: getTextColumn(row, headerMap, ["tier status", "tier_status"], 34),
+        new_fans: getNumberColumn(row, headerMap, ["new fans", "new_fans"], 35),
+        fan_club_diamonds: getNumberColumn(
+          row,
+          headerMap,
+          ["fan club total diamonds", "fan_club_diamonds"],
+          36
+        ),
+        fan_contribution_percentage: getNumberColumn(
+          row,
+          headerMap,
+          ["fan contribution %", "fan_contribution_percentage"],
+          37
+        ),
+        total_fans: getNumberColumn(row, headerMap, ["total fans", "total_fans"], 38),
+        active_fans: getNumberColumn(
+          row,
+          headerMap,
+          ["active fans from fan club", "active_fans"],
+          39
+        ),
+        status: getTextColumn(row, headerMap, ["status"], 40),
       };
     })
     .filter((row) => row.creator_username);
