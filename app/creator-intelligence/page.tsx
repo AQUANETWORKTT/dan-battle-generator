@@ -2104,6 +2104,143 @@ export default function CreatorIntelligencePage() {
             </div>
         </section>
 
+        {selectedCreator ? (
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase text-sky-700">Selected Creator Profile</p>
+                <h2 className="mt-1 text-3xl font-black text-slate-950 md:text-5xl">
+                  {selectedCreator.username}
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  {getCreatorMetaLine(selectedCreator)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span
+                  className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${statusClasses(
+                    selectedCreator.healthStatus
+                  )}`}
+                >
+                  Weekly performance {selectedCreator.healthScore}/100 {selectedCreator.healthStatus}
+                </span>
+                <span
+                  className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${statusClasses(
+                    selectedCreator.monthlyHealthStatus
+                  )}`}
+                >
+                  Monthly performance {selectedCreator.monthlyHealthScore}/100 {selectedCreator.monthlyHealthStatus}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => downloadReport(selectedCreator, "creator")}
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+              >
+                Download Creator Report
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadReport(selectedCreator, "internal")}
+                className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 hover:bg-sky-100"
+              >
+                Download Internal Data Report
+              </button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+              <MetricCard
+                label="Diamonds"
+                value={formatNumber(selectedCreator.diamonds)}
+                previous={selectedCreator.diamondsLastMonth}
+              />
+              <MetricCard
+                label="Live hours"
+                value={formatHours(selectedCreator.liveHours)}
+                previous={selectedCreator.liveHoursLastMonth}
+              />
+              <MetricCard
+                label="Valid days"
+                value={formatNumber(selectedCreator.validDays)}
+                previous={selectedCreator.validDaysLastMonth}
+              />
+              <MetricCard
+                label="Live streams"
+                value={formatNumber(selectedCreator.liveStreams)}
+                previous={selectedCreator.liveStreamsLastMonth}
+              />
+              <MetricCard label="Matches" value={formatNumber(selectedCreator.matches)} />
+              <MetricCard
+                label="Match diamonds"
+                value={formatNumber(selectedCreator.diamondsFromMatches)}
+              />
+              <MetricCard label="New followers" value={formatNumber(selectedCreator.newFollowers)} />
+              <MetricCard label="DPH (diamonds per hour)" value={formatNumber(selectedCreator.dph)} />
+              <MetricCard label="Graduation" value={selectedCreator.graduationStatus} />
+              <MetricCard label="Tier" value={selectedCreator.tierStatus} />
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-xl font-black uppercase text-sky-900">Health Score Breakdown</h3>
+              <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                <MetricCard
+                  label="Live days"
+                  value={`${Math.round(selectedCreator.healthBreakdown.liveDays)}/35`}
+                />
+                <MetricCard
+                  label="Live hours"
+                  value={`${Math.round(selectedCreator.healthBreakdown.liveHours)}/20`}
+                />
+                <MetricCard
+                  label="Matches"
+                  value={`${Math.round(selectedCreator.healthBreakdown.matches)}/10`}
+                />
+                <MetricCard
+                  label="DPH (diamonds per hour)"
+                  value={`${Math.round(selectedCreator.healthBreakdown.dph)}/20`}
+                />
+                <MetricCard
+                  label="Momentum"
+                  value={`${Math.round(selectedCreator.healthBreakdown.growthTrend)}/15`}
+                />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {selectedCreator.creatorTags.map((tag) => (
+                  <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-xl font-black uppercase text-sky-900">Creator Charts</h3>
+              <div className="mt-4">
+                <ComparisonChart
+                  points={selectedCreator.dailyPoints}
+                  selectedMetrics={selectedChartMetrics}
+                  onToggleMetric={toggleChartMetric}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-xl font-black uppercase text-sky-900">Creator Insights</h3>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {selectedInsights.map((insight) => (
+                  <div key={insight} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                    {insight}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
@@ -2344,142 +2481,6 @@ export default function CreatorIntelligencePage() {
             )}
           </div>
         </section>
-
-        {selectedCreator ? (
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-sm font-bold uppercase text-sky-700">Selected Creator Profile</p>
-                <h2 className="mt-1 text-3xl font-black text-slate-950 md:text-5xl">
-                  {selectedCreator.username}
-                </h2>
-                <p className="mt-2 text-sm text-slate-500">
-                  {getCreatorMetaLine(selectedCreator)}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span
-                  className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${statusClasses(
-                    selectedCreator.healthStatus
-                  )}`}
-                >
-                  Weekly performance {selectedCreator.healthScore}/100 {selectedCreator.healthStatus}
-                </span>
-                <span
-                  className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${statusClasses(
-                    selectedCreator.monthlyHealthStatus
-                  )}`}
-                >
-                  Monthly performance {selectedCreator.monthlyHealthScore}/100 {selectedCreator.monthlyHealthStatus}
-                </span>
-              </div>
-            </div>
-
-            <div className="mb-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => downloadReport(selectedCreator, "creator")}
-                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
-              >
-                Download Creator Report
-              </button>
-              <button
-                type="button"
-                onClick={() => downloadReport(selectedCreator, "internal")}
-                className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 hover:bg-sky-100"
-              >
-                Download Internal Data Report
-              </button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-              <MetricCard
-                label="Diamonds"
-                value={formatNumber(selectedCreator.diamonds)}
-                previous={selectedCreator.diamondsLastMonth}
-              />
-              <MetricCard
-                label="Live hours"
-                value={formatHours(selectedCreator.liveHours)}
-                previous={selectedCreator.liveHoursLastMonth}
-              />
-              <MetricCard
-                label="Valid days"
-                value={formatNumber(selectedCreator.validDays)}
-                previous={selectedCreator.validDaysLastMonth}
-              />
-              <MetricCard
-                label="Live streams"
-                value={formatNumber(selectedCreator.liveStreams)}
-                previous={selectedCreator.liveStreamsLastMonth}
-              />
-              <MetricCard label="Matches" value={formatNumber(selectedCreator.matches)} />
-              <MetricCard
-                label="Match diamonds"
-                value={formatNumber(selectedCreator.diamondsFromMatches)}
-              />
-              <MetricCard label="New followers" value={formatNumber(selectedCreator.newFollowers)} />
-              <MetricCard label="DPH (diamonds per hour)" value={formatNumber(selectedCreator.dph)} />
-              <MetricCard label="Graduation" value={selectedCreator.graduationStatus} />
-              <MetricCard label="Tier" value={selectedCreator.tierStatus} />
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="text-xl font-black uppercase text-sky-900">Health Score Breakdown</h3>
-              <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                <MetricCard
-                  label="Live days"
-                  value={`${Math.round(selectedCreator.healthBreakdown.liveDays)}/35`}
-                />
-                <MetricCard
-                  label="Live hours"
-                  value={`${Math.round(selectedCreator.healthBreakdown.liveHours)}/20`}
-                />
-                <MetricCard
-                  label="Matches"
-                  value={`${Math.round(selectedCreator.healthBreakdown.matches)}/10`}
-                />
-                <MetricCard
-                  label="DPH (diamonds per hour)"
-                  value={`${Math.round(selectedCreator.healthBreakdown.dph)}/20`}
-                />
-                <MetricCard
-                  label="Momentum"
-                  value={`${Math.round(selectedCreator.healthBreakdown.growthTrend)}/15`}
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {selectedCreator.creatorTags.map((tag) => (
-                  <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="text-xl font-black uppercase text-sky-900">Creator Charts</h3>
-              <div className="mt-4">
-                <ComparisonChart
-                  points={selectedCreator.dailyPoints}
-                  selectedMetrics={selectedChartMetrics}
-                  onToggleMetric={toggleChartMetric}
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="text-xl font-black uppercase text-sky-900">Creator Insights</h3>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {selectedInsights.map((insight) => (
-                  <div key={insight} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                    {insight}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
