@@ -22,4 +22,11 @@ body {
   }
 }
 
+@font-face {
+  font-family: "Norwester";
+  src: url("/fonts/Norwester.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 

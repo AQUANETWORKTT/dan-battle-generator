@@ -1678,9 +1678,28 @@ function renderText(
       ? element.fontSize || fallbackSize
       : autoFontSize(value, element, fallbackSize);
 
-  const content = (
-    <div
-      className="w-full h-full flex items-center justify-center"
+ const content = (
+  <div
+    className="w-full h-full flex items-center justify-center"
+    style={{
+      fontFamily: `'${element.fontFamily || "Luckiest Guy"}', sans-serif`,
+      WebkitTextStroke: `${element.strokeWidth ?? 2}px ${
+        element.strokeColor || "black"
+      }`,
+      textShadow: `${element.shadowX ?? 2}px ${
+        element.shadowY ?? 2
+      }px ${element.shadowBlur ?? 0}px ${
+        element.shadowColor || "#000000"
+      }`,
+      letterSpacing: `${element.letterSpacing ?? 1}px`,
+      fontSize,
+      fontWeight: element.fontWeight || 900,
+      textTransform:
+        element.uppercase === false ? "none" : "uppercase",
+    }}
+  >
+    <span
+      className="leading-none text-center whitespace-nowrap"
       style={{
         background: element.gradientEnabled
           ? `linear-gradient(
@@ -1705,28 +1724,12 @@ function renderText(
         color: element.gradientEnabled
           ? "transparent"
           : (element.color || "#5CEEFF"),
-
-        fontFamily: `'${element.fontFamily || "Luckiest Guy"}', sans-serif`,
-        WebkitTextStroke: `${element.strokeWidth ?? 2}px ${
-          element.strokeColor || "black"
-        }`,
-        textShadow: `${element.shadowX ?? 2}px ${
-          element.shadowY ?? 2
-        }px ${element.shadowBlur ?? 0}px ${
-          element.shadowColor || "#000000"
-        }`,
-        letterSpacing: `${element.letterSpacing ?? 1}px`,
-        fontSize,
-        fontWeight: element.fontWeight || 900,
-        textTransform:
-          element.uppercase === false ? "none" : "uppercase",
       }}
     >
-      <span className="leading-none text-center whitespace-nowrap">
-        {value}
-      </span>
-    </div>
-  );
+      {value}
+    </span>
+  </div>
+);
 
   if (!editMode) {
     return (
@@ -2155,101 +2158,53 @@ function renderText(
                       />
                     </label>
 
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Colour</p>
-                      <input
-                        type="color"
-                        value={element.shadowColor || "#000000"}
-                        onChange={(e) => updateTemplateElement(selectedElement, { shadowColor: e.target.value })}
-                        className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow X</p>
-                      <input
-                        type="number"
-                        value={element.shadowX ?? 2}
-                        onChange={(e) => updateTemplateElement(selectedElement, { shadowX: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-                     <label className="flex items-end gap-2 pb-3">
-  <input
-    type="checkbox"
-    checked={element.gradientEnabled || false}
-    onChange={(e) =>
-      updateTemplateElement(selectedElement, {
-        gradientEnabled: e.target.checked,
-      })
-    }
-    className="w-5 h-5 accent-cyan-300"
-  />
-  <span className="text-white/70 text-xs font-black uppercase tracking-widest">
-    Gradient
-  </span>
-</label>
-
 <label>
   <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-    Gradient From
+    Shadow Colour
   </p>
   <input
     type="color"
-    value={element.gradientFrom || "#5CEEFF"}
+    value={element.shadowColor || "#000000"}
     onChange={(e) =>
       updateTemplateElement(selectedElement, {
-        gradientFrom: e.target.value,
+        shadowColor: e.target.value,
       })
     }
-    className="w-full h-[46px] bg-black/45 border border-white/15 p-1 rounded-lg"
+    className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
   />
 </label>
 
 <label>
   <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-    Gradient To
+    Shadow X
   </p>
   <input
-    type="color"
-    value={element.gradientTo || "#0044FF"}
+    type="number"
+    value={element.shadowX ?? 2}
     onChange={(e) =>
       updateTemplateElement(selectedElement, {
-        gradientTo: e.target.value,
+        shadowX: Number(e.target.value),
       })
     }
-    className="w-full h-[46px] bg-black/45 border border-white/15 p-1 rounded-lg"
+    className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
   />
 </label>
 
 <label>
   <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-    Direction
+    Shadow Y
   </p>
-  <select
-    value={element.gradientDirection || "to bottom"}
+  <input
+    type="number"
+    value={element.shadowY ?? 2}
     onChange={(e) =>
       updateTemplateElement(selectedElement, {
-        gradientDirection: e.target.value,
+        shadowY: Number(e.target.value),
       })
     }
-    className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg"
-  >
-    <option value="to bottom">Top → Bottom</option>
-    <option value="to top">Bottom → Top</option>
-    <option value="to right">Left → Right</option>
-    <option value="to left">Right → Left</option>
-  </select>
+    className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+  />
 </label>
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Y</p>
-                      <input
-                        type="number"
-                        value={element.shadowY ?? 2}
-                        onChange={(e) => updateTemplateElement(selectedElement, { shadowY: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
 
                     <label>
                       <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Blur</p>
