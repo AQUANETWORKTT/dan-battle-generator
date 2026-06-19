@@ -152,6 +152,8 @@ export default function GraduationTrackerPage() {
   const [graduationReportAgency, setGraduationReportAgency] = useState("All");
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
 
   const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[4];
   const lastDay = getLastDayForMonth(month);
@@ -431,6 +433,14 @@ export default function GraduationTrackerPage() {
     URL.revokeObjectURL(url);
   }
 
+  function checkPassword() {
+    if (password === "G") {
+      setAuthenticated(true);
+    } else {
+      alert("Incorrect password");
+    }
+  }
+
   function handleMonthChange(newMonth: string) {
     const newLastDay = getLastDayForMonth(newMonth);
     setMonth(newMonth);
@@ -438,6 +448,33 @@ export default function GraduationTrackerPage() {
     setAgency("All");
     setTeam("All Teams");
     setGraduationReportAgency("All");
+  }
+
+  if (!authenticated) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-3xl border border-green-300/20 bg-black p-8">
+          <h1 className="text-3xl font-black text-green-300 mb-4">Graduation Tracker</h1>
+          <p className="text-white/50 mb-6">Enter password to continue.</p>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") checkPassword();
+            }}
+            className="w-full rounded-xl border border-green-300/20 bg-black px-4 py-3 text-white outline-none"
+            placeholder="Password"
+          />
+          <button
+            onClick={checkPassword}
+            className="mt-4 w-full rounded-xl bg-green-300 py-3 font-black text-black"
+          >
+            ENTER
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (
