@@ -1798,7 +1798,13 @@ function renderText(
   );
 }
     return (
-      <div className="w-[324px] h-[576px] overflow-hidden mx-auto bg-black rounded-lg">
+      <div
+        className="overflow-hidden mx-auto bg-black rounded-lg"
+        style={{
+          width: POSTER_WIDTH * scale,
+          height: POSTER_HEIGHT * scale,
+        }}
+      >
         <div
           style={{
             transform: `scale(${scale})`,
@@ -1835,6 +1841,37 @@ function renderText(
     );
   }
 
+  function TemplateSelectorPanel({ compact = false }: { compact?: boolean }) {
+    return (
+      <div className={compact ? "space-y-3" : "bg-black/35 border border-cyan-300/20 rounded-xl p-5 space-y-4"}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-cyan-300 font-black uppercase tracking-widest text-sm">
+            Template Selector
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditMode(true)}
+            className="bg-cyan-300 hover:bg-cyan-200 transition text-black font-black px-3 py-2 rounded-lg uppercase tracking-widest text-xs"
+          >
+            Poster Template
+          </button>
+        </div>
+
+        <select
+          value={selectedTemplateId}
+          onChange={(e) => handleTemplateSelect(e.target.value)}
+          className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+        >
+          {templates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {template.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
   function TemplateControls() {
     const element = templateJson[selectedElement];
     const isTextElement = TEXT_ELEMENT_KEYS.includes(selectedElement);
@@ -1846,54 +1883,23 @@ function renderText(
         className="bg-black/35 border border-cyan-300/25 rounded-xl p-5 space-y-5"
         onKeyDown={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col xl:flex-row gap-4 xl:items-end xl:justify-between">
-          <div className="space-y-2 flex-1">
-            <h2 className="text-cyan-300 font-black uppercase tracking-widest">
+        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between">
+          <div>
+            <h2 className="text-cyan-300 text-2xl font-black uppercase tracking-[0.18em]">
               Poster Template
             </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-3">
-              <label className="block">
-                <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-                  Select Template
-                </p>
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => handleTemplateSelect(e.target.value)}
-                  className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                >
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <TextInput
-                label="Template Name"
-                value={templateName}
-                placeholder="Battle Template"
-                onChange={(value) => {
-                  setEditingTemplateName(true);
-                  setTemplateName(value);
-                }}
-                onBlur={() => setEditingTemplateName(false)}
-              />
-            </div>
+            <p className="text-white/45 text-sm mt-2">
+              Edit the active template, save it, then return to the generator.
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-5 2xl:grid-cols-9 gap-2">
             <button
               type="button"
-              onClick={() => setEditMode((prev) => !prev)}
-              className={`px-4 py-3 rounded-lg font-black uppercase tracking-widest transition ${
-                editMode
-                  ? "bg-cyan-300 text-black"
-                  : "bg-black/40 text-white border border-white/20 hover:border-cyan-300"
-              }`}
+              onClick={() => setEditMode(false)}
+              className="bg-yellow-300 hover:bg-yellow-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
-              {editMode ? "Exit Edit" : "Edit"}
+              Back
             </button>
 
             <button
@@ -1910,7 +1916,7 @@ function renderText(
               disabled={undoStack.length === 0}
               className="bg-purple-400 hover:bg-purple-300 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
-              ↶ Undo
+              Undo
             </button>
 
             <button
@@ -1919,7 +1925,7 @@ function renderText(
               disabled={redoStack.length === 0}
               className="bg-purple-300 hover:bg-purple-200 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
-              ↷ Redo
+              Redo
             </button>
 
             <button
@@ -1933,7 +1939,7 @@ function renderText(
             <button
               type="button"
               onClick={saveCurrentTemplate}
-              className="bg-yellow-300 hover:bg-yellow-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
+              className="bg-cyan-300 hover:bg-cyan-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
               Save
             </button>
@@ -1964,52 +1970,67 @@ function renderText(
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr] gap-4">
-          <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-3">
-            <p className="text-white/55 text-xs font-black uppercase tracking-widest">
-              Background
-            </p>
+        <div className="grid grid-cols-1 2xl:grid-cols-[300px_minmax(420px,1fr)_360px] gap-5 items-start">
+          <aside className="space-y-4">
+            <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-4">
+              {TemplateSelectorPanel({ compact: true })}
 
-            <div className="aspect-[9/16] max-h-[320px] rounded-lg overflow-hidden border border-white/15 bg-black mx-auto">
-              {backgroundUrl ? (
-                <img
-                  src={backgroundUrl}
-                  alt=""
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
-                  No background
-                </div>
-              )}
+              <TextInput
+                label="Template Name"
+                value={templateName}
+                placeholder="Battle Template"
+                onChange={(value) => {
+                  setEditingTemplateName(true);
+                  setTemplateName(value);
+                }}
+                onBlur={() => setEditingTemplateName(false)}
+              />
             </div>
 
-            <label
-              htmlFor={backgroundInputId}
-              className="block text-center cursor-pointer bg-cyan-300 hover:bg-cyan-200 transition text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest text-xs"
-            >
-              Import Background
-            </label>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-3">
+              <p className="text-white/55 text-xs font-black uppercase tracking-widest">
+                Background
+              </p>
 
-            <input
-              id={backgroundInputId}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBackgroundUpload}
-            />
+              <div className="aspect-[9/16] max-h-[260px] rounded-lg overflow-hidden border border-white/15 bg-black mx-auto">
+                {backgroundUrl ? (
+                  <img
+                    src={backgroundUrl}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
+                    No background
+                  </div>
+                )}
+              </div>
 
-            <p className="text-white/35 text-xs">
-              Upload PNG/JPG. Press Save after upload to attach it to this template.
-            </p>
-          </div>
+              <label
+                htmlFor={backgroundInputId}
+                className="block text-center cursor-pointer bg-cyan-300 hover:bg-cyan-200 transition text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest text-xs"
+              >
+                Import Background
+              </label>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[220px_1fr] gap-4">
-            <div className="space-y-2">
+              <input
+                id={backgroundInputId}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleBackgroundUpload}
+              />
+
+              <p className="text-white/35 text-xs">
+                Press Save after upload to attach it to this template.
+              </p>
+            </div>
+
+            <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-3">
               <p className="text-white/55 text-xs font-black uppercase tracking-widest">
                 Select Element
               </p>
-              <div className="grid grid-cols-2 xl:grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 2xl:grid-cols-1 gap-2">
                 {(Object.keys(ELEMENT_LABELS) as PosterElementKey[]).map((key) => (
                   <button
                     key={key}
@@ -2026,9 +2047,22 @@ function renderText(
                 ))}
               </div>
             </div>
+          </aside>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+          <main className="min-w-0 bg-black/30 border border-white/10 rounded-lg p-4">
+            <div className="text-xs text-yellow-200 font-black mb-3 uppercase tracking-widest">
+              Live Template Preview
+            </div>
+            {PosterPreview({ battle: blankPreviewBattle, scale: 0.42 })}
+          </main>
+
+          <aside className="space-y-4">
+            <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-4">
+              <p className="text-cyan-300 text-xs font-black uppercase tracking-widest">
+                {ELEMENT_LABELS[selectedElement]} Position
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
                 <label>
                   <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">X</p>
                   <input
@@ -2069,179 +2103,161 @@ function renderText(
                   />
                 </label>
               </div>
-
-              {isTextElement && (
-                <div className="bg-black/25 border border-white/10 rounded-lg p-4 space-y-4">
-                  <p className="text-cyan-300 text-xs font-black uppercase tracking-widest">
-                    Text Styling
-                  </p>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font</p>
-                      <select
-                        value={element.fontFamily || "Luckiest Guy"}
-                        onChange={(e) => updateTemplateElement(selectedElement, { fontFamily: e.target.value })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      >
-                        {FONT_OPTIONS.map((font) => (
-                          <option key={font} value={font}>
-                            {font}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font Size</p>
-                      <input
-                        type="number"
-                        value={element.fontSize || 58}
-                        onChange={(e) => updateTemplateElement(selectedElement, { fontSize: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font Colour</p>
-                      <input
-                        type="color"
-                        value={element.color || "#5CEEFF"}
-                        onChange={(e) => updateTemplateElement(selectedElement, { color: e.target.value })}
-                        className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Outline Colour</p>
-                      <input
-                        type="color"
-                        value={element.strokeColor || "#000000"}
-                        onChange={(e) => updateTemplateElement(selectedElement, { strokeColor: e.target.value })}
-                        className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Outline PX</p>
-                      <input
-                        type="number"
-                        min={0}
-                        value={element.strokeWidth ?? 2}
-                        onChange={(e) => updateTemplateElement(selectedElement, { strokeWidth: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Weight</p>
-                      <select
-                        value={element.fontWeight || 900}
-                        onChange={(e) => updateTemplateElement(selectedElement, { fontWeight: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      >
-                        <option value={400}>Regular</option>
-                        <option value={600}>Semi Bold</option>
-                        <option value={700}>Bold</option>
-                        <option value={800}>Extra Bold</option>
-                        <option value={900}>Black</option>
-                      </select>
-                    </label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Letter Space</p>
-                      <input
-                        type="number"
-                        value={element.letterSpacing ?? 1}
-                        onChange={(e) => updateTemplateElement(selectedElement, { letterSpacing: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-<label>
-  <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-    Shadow Colour
-  </p>
-  <input
-    type="color"
-    value={element.shadowColor || "#000000"}
-    onChange={(e) =>
-      updateTemplateElement(selectedElement, {
-        shadowColor: e.target.value,
-      })
-    }
-    className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
-  />
-</label>
-
-<label>
-  <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-    Shadow X
-  </p>
-  <input
-    type="number"
-    value={element.shadowX ?? 2}
-    onChange={(e) =>
-      updateTemplateElement(selectedElement, {
-        shadowX: Number(e.target.value),
-      })
-    }
-    className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-  />
-</label>
-
-<label>
-  <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">
-    Shadow Y
-  </p>
-  <input
-    type="number"
-    value={element.shadowY ?? 2}
-    onChange={(e) =>
-      updateTemplateElement(selectedElement, {
-        shadowY: Number(e.target.value),
-      })
-    }
-    className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-  />
-</label>
-
-                    <label>
-                      <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Blur</p>
-                      <input
-                        type="number"
-                        min={0}
-                        value={element.shadowBlur ?? 0}
-                        onChange={(e) => updateTemplateElement(selectedElement, { shadowBlur: Number(e.target.value) })}
-                        className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
-                      />
-                    </label>
-
-                    <label className="flex items-end gap-2 pb-3">
-                      <input
-                        type="checkbox"
-                        checked={element.uppercase !== false}
-                        onChange={(e) => updateTemplateElement(selectedElement, { uppercase: e.target.checked })}
-                        className="w-5 h-5 accent-cyan-300"
-                      />
-                      <span className="text-white/70 text-xs font-black uppercase tracking-widest">
-                        Uppercase
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
-        </div>
 
-        <div className="space-y-1">
-          <p className="text-yellow-300 text-xs font-black">
-            {templateStatus}
-          </p>
-          <p className="text-white/45 text-xs">
-            In edit mode: click an item, drag it, resize from the corners, or use arrow keys. Hold Shift for 10px movement. Text boxes resize the font when you drag the corners.
-          </p>
+            {isTextElement && (
+              <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-4">
+                <p className="text-cyan-300 text-xs font-black uppercase tracking-widest">
+                  Text Styling
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="col-span-2">
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font</p>
+                    <select
+                      value={element.fontFamily || "Luckiest Guy"}
+                      onChange={(e) => updateTemplateElement(selectedElement, { fontFamily: e.target.value })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    >
+                      {FONT_OPTIONS.map((font) => (
+                        <option key={font} value={font}>
+                          {font}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font Size</p>
+                    <input
+                      type="number"
+                      value={element.fontSize || 58}
+                      onChange={(e) => updateTemplateElement(selectedElement, { fontSize: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Weight</p>
+                    <select
+                      value={element.fontWeight || 900}
+                      onChange={(e) => updateTemplateElement(selectedElement, { fontWeight: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    >
+                      <option value={400}>Regular</option>
+                      <option value={600}>Semi Bold</option>
+                      <option value={700}>Bold</option>
+                      <option value={800}>Extra Bold</option>
+                      <option value={900}>Black</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font Colour</p>
+                    <input
+                      type="color"
+                      value={element.color || "#5CEEFF"}
+                      onChange={(e) => updateTemplateElement(selectedElement, { color: e.target.value })}
+                      className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Outline Colour</p>
+                    <input
+                      type="color"
+                      value={element.strokeColor || "#000000"}
+                      onChange={(e) => updateTemplateElement(selectedElement, { strokeColor: e.target.value })}
+                      className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Outline PX</p>
+                    <input
+                      type="number"
+                      min={0}
+                      value={element.strokeWidth ?? 2}
+                      onChange={(e) => updateTemplateElement(selectedElement, { strokeWidth: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Letter Space</p>
+                    <input
+                      type="number"
+                      value={element.letterSpacing ?? 1}
+                      onChange={(e) => updateTemplateElement(selectedElement, { letterSpacing: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Colour</p>
+                    <input
+                      type="color"
+                      value={element.shadowColor || "#000000"}
+                      onChange={(e) => updateTemplateElement(selectedElement, { shadowColor: e.target.value })}
+                      className="w-full h-[46px] bg-black/45 border border-white/15 text-white p-1 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow X</p>
+                    <input
+                      type="number"
+                      value={element.shadowX ?? 2}
+                      onChange={(e) => updateTemplateElement(selectedElement, { shadowX: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Y</p>
+                    <input
+                      type="number"
+                      value={element.shadowY ?? 2}
+                      onChange={(e) => updateTemplateElement(selectedElement, { shadowY: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label>
+                    <p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Shadow Blur</p>
+                    <input
+                      type="number"
+                      min={0}
+                      value={element.shadowBlur ?? 0}
+                      onChange={(e) => updateTemplateElement(selectedElement, { shadowBlur: Number(e.target.value) })}
+                      className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label className="col-span-2 flex items-center gap-2 pt-2">
+                    <input
+                      type="checkbox"
+                      checked={element.uppercase !== false}
+                      onChange={(e) => updateTemplateElement(selectedElement, { uppercase: e.target.checked })}
+                      className="w-5 h-5 accent-cyan-300"
+                    />
+                    <span className="text-white/70 text-xs font-black uppercase tracking-widest">
+                      Uppercase
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-2">
+              <p className="text-yellow-300 text-xs font-black">
+                {templateStatus}
+              </p>
+              <p className="text-white/45 text-xs">
+                Click an item, drag it, resize from the corners, or use arrow keys. Hold Shift for 10px movement.
+              </p>
+            </div>
+          </aside>
         </div>
       </div>
     );
@@ -2435,9 +2451,10 @@ function renderText(
     Events
   </a>
 </div>
-
-        {TemplateControls()}
-
+        {editMode ? (
+          TemplateControls()
+        ) : (
+          <>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h1 className="text-yellow-300 text-3xl font-black tracking-[0.18em] uppercase">
@@ -2475,7 +2492,6 @@ function renderText(
             </button>
           </div>
         </div>
-
         {activeMode === "single" && (
           <div className="grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-8 items-start">
             <section className="space-y-6">
@@ -2483,6 +2499,9 @@ function renderText(
                 <h2 className="text-yellow-300 font-black uppercase tracking-widest">
                   Single Poster
                 </h2>
+
+
+                {TemplateSelectorPanel({ compact: true })}
 
                 <TextInput
                   label="Username 1"
@@ -2594,7 +2613,6 @@ function renderText(
             {PosterGrid({ previewBattle: singleBattle })}
           </div>
         )}
-
         {activeMode === "mass" && (
           <div className="grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-8 items-start">
             <section className="space-y-6">
@@ -2602,6 +2620,9 @@ function renderText(
                 <h2 className="text-yellow-300 font-black uppercase tracking-widest">
                   Mass Poster Generator
                 </h2>
+
+
+                {TemplateSelectorPanel({ compact: true })}
 
                 <DayMonthDateSelect
                   day={massDay}
@@ -2685,7 +2706,10 @@ function renderText(
             </section>
           </div>
         )}
+          </>
+        )}
       </div>
     </div>
   );
 }
+
