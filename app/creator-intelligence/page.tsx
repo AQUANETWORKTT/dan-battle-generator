@@ -944,10 +944,15 @@ function buildCreatorReportHtml({
   weekRows: ReturnType<typeof buildWeeklyReportRows>;
 }) {
   const tips = buildCreatorReportTips(creator);
-  const maxDiamonds = Math.max(...creator.dailyPoints.slice(-7).map((point) => point.diamonds), 1);
-  const averageSessionLength =
-    creator.liveStreams > 0 ? creator.liveHours / creator.liveStreams : creator.liveHours;
-  const bestDay = [...creator.dailyPoints]
+  const weeklyPoints = creator.dailyPoints.slice(-7);
+  const weeklyDiamonds = weeklyPoints.reduce((sum, point) => sum + point.diamonds, 0);
+  const weeklyHours = weeklyPoints.reduce((sum, point) => sum + point.liveHours, 0);
+  const weeklyLiveDays = weeklyPoints.filter((point) => point.liveHours > 0).length;
+  const weeklyMatches = weeklyPoints.reduce((sum, point) => sum + point.matches, 0);
+  const weeklyDph = weeklyHours > 0 ? weeklyDiamonds / weeklyHours : 0;
+  const maxDiamonds = Math.max(...weeklyPoints.map((point) => point.diamonds), 1);
+  const averageSessionLength = weeklyLiveDays > 0 ? weeklyHours / weeklyLiveDays : weeklyHours;
+  const bestDay = [...weeklyPoints]
     .sort((a, b) => b.diamonds - a.diamonds)[0];
 
   return `<!doctype html>
@@ -998,27 +1003,32 @@ function buildCreatorReportHtml({
     .card .label { color: #8fb7d4; font-size: 12px; }
     .card .value { margin-top: 10px; font-size: 28px; font-weight: 900; color: #38bdf8; }
     .wide { border: 1px solid rgba(125, 211, 252, .18); background: rgba(15, 23, 42, .78); border-radius: 20px; padding: 18px; margin-top: 14px; }
-    .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
-    .day { border: 1px solid rgba(125, 211, 252, .18); background: rgba(2, 6, 23, .58); border-radius: 18px; padding: 14px; min-height: 150px; }
-    .day .name { color: #bae6fd; font-size: 13px; font-weight: 900; line-height: 1.2; }
-    .day .status { margin: 12px 0; font-size: 34px; line-height: 1; }
-    .day .hours { color: white; font-size: 22px; font-weight: 900; margin-bottom: 6px; }
-    .day .small { color: #9fb8ca; font-size: 12px; line-height: 1.55; }
+    .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+    .day { border: 2px solid rgba(125, 211, 252, .28); background: linear-gradient(180deg, rgba(8, 47, 73, .72), rgba(2, 6, 23, .7)); border-radius: 20px; padding: 16px 12px; min-height: 178px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+    .day .name { color: white; font-size: 17px; font-weight: 900; line-height: 1.15; }
+    .day .status { margin: 14px 0 10px; font-size: 40px; line-height: 1; }
+    .day .hours { color: #7dd3fc; font-size: 26px; font-weight: 900; margin-bottom: 8px; }
+    .day .small { color: #c6e3f7; font-size: 14px; font-weight: 700; line-height: 1.55; }
     .tips { display: grid; gap: 12px; }
     .tip { border-left: 5px solid #38bdf8; background: rgba(8, 47, 73, .48); border-radius: 16px; padding: 16px 18px; }
     .tip strong { display: block; color: white; margin-bottom: 7px; font-size: 17px; }
     .tip span { color: #b6d5e8; font-size: 14px; line-height: 1.45; }
     .formula { border: 1px solid rgba(14, 165, 233, .35); background: linear-gradient(90deg, rgba(14, 165, 233, .2), rgba(29, 78, 216, .16)); border-radius: 20px; padding: 20px; font-size: 18px; font-weight: 900; color: white; }
     .formula span { display: block; margin-top: 8px; color: #7dd3fc; font-size: 15px; }
-    .bars { display: flex; align-items: end; gap: 10px; height: 160px; border: 1px solid rgba(125, 211, 252, .16); background: rgba(2, 6, 23, .48); border-radius: 18px; padding: 18px 16px 30px; }
+    .diamond-chart { display: grid; grid-template-columns: 74px 1fr; gap: 14px; height: 250px; border: 1px solid rgba(125, 211, 252, .22); background: rgba(2, 6, 23, .52); border-radius: 20px; padding: 18px 18px 34px; }
+    .scale { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; height: 198px; color: #9ccce8; font-size: 12px; font-weight: 800; padding-top: 4px; }
+    .bars { position: relative; display: flex; align-items: end; gap: 12px; height: 198px; border-left: 2px solid rgba(148, 163, 184, .5); border-bottom: 2px solid rgba(148, 163, 184, .5); padding: 0 10px; background: repeating-linear-gradient(to top, rgba(148, 163, 184, .12), rgba(148, 163, 184, .12) 1px, transparent 1px, transparent 49px); }
     .bar-wrap { flex: 1; height: 100%; position: relative; display: flex; align-items: end; justify-content: center; }
-    .bar { width: 72%; min-height: 2px; border-radius: 8px 8px 0 0; background: linear-gradient(180deg, #38bdf8, #1d4ed8); }
-    .bar-label { position: absolute; bottom: -22px; color: #8fb7d4; font-size: 10px; }
+    .bar { width: 72%; min-height: 3px; border-radius: 9px 9px 0 0; background: linear-gradient(180deg, #7dd3fc, #0284c7 55%, #1d4ed8); box-shadow: 0 0 18px rgba(56, 189, 248, .18); }
+    .bar-value { position: absolute; bottom: calc(var(--height) + 8px); color: white; font-size: 12px; font-weight: 900; white-space: nowrap; }
+    .bar-label { position: absolute; bottom: -27px; color: #bae6fd; font-size: 12px; font-weight: 900; }
     footer { margin-top: 26px; color: #4f7895; font-size: 12px; text-align: center; }
     @media (max-width: 760px) {
       main { padding: 24px; }
       .grid { grid-template-columns: repeat(2, 1fr); }
       .week { grid-template-columns: 1fr; }
+      .diamond-chart { grid-template-columns: 56px 1fr; overflow-x: auto; }
+      .bars { min-width: 620px; }
       .hero { grid-template-columns: 1fr; }
       .logo { width: 170px; }
       h1 { font-size: 44px; }
@@ -1038,10 +1048,10 @@ function buildCreatorReportHtml({
   </section>
 
   <section class="grid">
-    <div class="card"><div class="label">Total Diamonds</div><div class="value">${formatNumber(creator.diamonds)}</div></div>
-    <div class="card"><div class="label">Hours Streamed</div><div class="value">${formatHours(creator.liveHours)}h</div></div>
-    <div class="card"><div class="label">Valid LIVE Days</div><div class="value">${formatNumber(creator.validDays)}</div></div>
-    <div class="card"><div class="label">Matches</div><div class="value">${formatNumber(creator.matches)}</div></div>
+    <div class="card"><div class="label">Weekly Diamonds</div><div class="value">${formatNumber(weeklyDiamonds)}</div></div>
+    <div class="card"><div class="label">Weekly Hours</div><div class="value">${formatHours(weeklyHours)}h</div></div>
+    <div class="card"><div class="label">LIVE Days This Week</div><div class="value">${formatNumber(weeklyLiveDays)}</div></div>
+    <div class="card"><div class="label">Weekly Matches</div><div class="value">${formatNumber(weeklyMatches)}</div></div>
   </section>
 
   <h2>Weekly Live Breakdown</h2>
@@ -1070,18 +1080,28 @@ function buildCreatorReportHtml({
   <h2>Winning Pattern</h2>
   <section class="formula">
     Go LIVE consistently • Push stronger session length • Add more quality battles
-    <span>Average session: ${formatHours(averageSessionLength)}h • DPH: ${formatNumber(creator.dph)} • Best day: ${bestDay ? getFriendlyDate(bestDay.date) : "Not enough data"}</span>
+    <span>Average live day: ${formatHours(averageSessionLength)}h • Weekly DPH: ${formatNumber(weeklyDph)} • Best day: ${bestDay ? getFriendlyDate(bestDay.date) : "Not enough data"}</span>
   </section>
 
   <h2>Diamonds This Week</h2>
-  <section class="bars">
-    ${creator.dailyPoints
-      .slice(-7)
-      .map((point) => {
-        const height = Math.max(2, (point.diamonds / maxDiamonds) * 100);
-        return `<div class="bar-wrap"><div class="bar" style="height:${height}%"></div><div class="bar-label">${String(point.date).slice(5)}</div></div>`;
-      })
-      .join("")}
+  <section class="diamond-chart">
+    <div class="scale">
+      <span>${formatNumber(maxDiamonds)}</span>
+      <span>${formatNumber(maxDiamonds / 2)}</span>
+      <span>0</span>
+    </div>
+    <div class="bars">
+      ${weeklyPoints
+        .map((point) => {
+          const height = Math.max(3, (point.diamonds / maxDiamonds) * 100);
+          return `<div class="bar-wrap">
+            <div class="bar-value" style="--height:${height}%">${formatNumber(point.diamonds)}</div>
+            <div class="bar" style="height:${height}%"></div>
+            <div class="bar-label">${String(point.date).slice(5)}</div>
+          </div>`;
+        })
+        .join("")}
+    </div>
   </section>
 
   <footer>Keep pushing every live session.</footer>
@@ -1366,6 +1386,16 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
       : buildManagerActions(creator);
   const improvementTips = buildScoreImprovementTips(creator);
   const weekRows = buildWeeklyReportRows(creator);
+  const weeklyPoints = creator.dailyPoints.slice(-7);
+  const weeklyDiamonds = weeklyPoints.reduce((sum, point) => sum + point.diamonds, 0);
+  const weeklyHours = weeklyPoints.reduce((sum, point) => sum + point.liveHours, 0);
+  const weeklyLiveDays = weeklyPoints.filter((point) => point.liveHours > 0).length;
+  const weeklyMatches = weeklyPoints.reduce((sum, point) => sum + point.matches, 0);
+  const weeklyMatchDiamonds = weeklyPoints.reduce((sum, point) => {
+    const share = creator.matches > 0 ? point.matches / creator.matches : 0;
+    return sum + creator.diamondsFromMatches * share;
+  }, 0);
+  const weeklyFollowers = weeklyPoints.reduce((sum, point) => sum + point.newFollowers, 0);
   const rows = [
     [
       "Weekly performance",
@@ -1373,18 +1403,12 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
         ? `${creator.healthScore}/100`
         : `${creator.healthScore}/100 ${creator.healthStatus}`,
     ],
-    [
-      "Monthly performance",
-      reportType === "creator"
-        ? `${creator.monthlyHealthScore}/100`
-        : `${creator.monthlyHealthScore}/100 ${creator.monthlyHealthStatus}`,
-    ],
-    ["Diamonds", formatNumber(creator.diamonds)],
-    ["Live hours", formatHours(creator.liveHours)],
-    ["Valid days", formatNumber(creator.validDays)],
-    ["Matches", formatNumber(creator.matches)],
-    ["Diamonds from matches", formatNumber(creator.diamondsFromMatches)],
-    ["New followers", formatNumber(creator.newFollowers)],
+    ["Weekly diamonds", formatNumber(weeklyDiamonds)],
+    ["Weekly live hours", formatHours(weeklyHours)],
+    ["Weekly live days", formatNumber(weeklyLiveDays)],
+    ["Weekly matches", formatNumber(weeklyMatches)],
+    ["Weekly diamonds from matches", formatNumber(weeklyMatchDiamonds)],
+    ["Weekly new followers", formatNumber(weeklyFollowers)],
   ];
   const creatorHtml =
     reportType === "creator"
