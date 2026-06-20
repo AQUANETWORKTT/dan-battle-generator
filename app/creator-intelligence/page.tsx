@@ -178,7 +178,7 @@ const CHART_METRICS: {
   { key: "diamonds", label: "Diamonds", color: "#0284c7", format: formatNumber },
   { key: "liveHours", label: "Live Hours", color: "#059669", format: formatHours },
   { key: "validDays", label: "Valid Days", color: "#7c3aed", format: formatNumber },
-  { key: "matches", label: "Matches", color: "#ea580c", format: formatNumber },
+  { key: "matches", label: "Battles", color: "#ea580c", format: formatNumber },
   { key: "newFollowers", label: "Followers", color: "#db2777", format: formatNumber },
   { key: "dph", label: "DPH (diamonds per hour)", color: "#0f766e", format: formatNumber },
   { key: "healthScore", label: "Health Score", color: "#4f46e5", format: formatNumber },
@@ -213,12 +213,6 @@ function getLastDayForMonth(month: string) {
 
 function getDayNumber(dateValue: string) {
   return Number(String(dateValue).split("-")[2] || 1);
-}
-
-function addDaysToDateKey(dateValue: string, days: number) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 function formatNumber(value: number) {
@@ -517,7 +511,7 @@ function getCreatorTags(creator: {
   if (creator.isNewCreator) tags.push("New Creator");
   if (creator.oneHourDays < creator.healthWindowDays) tags.push("Missed Live Days");
   if (creator.healthWindowHours < 10) tags.push("Low Hours");
-  if (creator.healthWindowMatches < 28) tags.push("Low Matches");
+  if (creator.healthWindowMatches < 28) tags.push("Low Battles");
   if (creator.dph < 1000) tags.push("Low DPH (diamonds per hour)");
   if (creator.diamondsChange < -10) tags.push("Declining Diamonds");
   if (creator.followersChange < -10) tags.push("Declining Followers");
@@ -699,7 +693,7 @@ function buildInsights(creator: CreatorSummary) {
 
   insights.push(`${creator.oneHourDays}/${creator.healthWindowDays} live days completed.`);
   insights.push(`${formatHours(creator.healthWindowHours)} live hours completed.`);
-  insights.push(`${formatNumber(creator.healthWindowMatches)} matches completed.`);
+  insights.push(`${formatNumber(creator.healthWindowMatches)} battles completed.`);
   insights.push(`${formatNumber(creator.healthWindowFollowers)} new followers gained.`);
 
   if (creator.diamondsLastMonth) {
@@ -720,7 +714,7 @@ function buildInsights(creator: CreatorSummary) {
     );
   }
 
-  if (creator.matches <= 0) insights.push("Matches are very low, which may be limiting battle diamonds.");
+  if (creator.matches <= 0) insights.push("Battles are very low, which may be limiting battle diamonds.");
   if (creator.liveHours >= 20 && creator.dph < 1000) {
     insights.push("Creator has high hours but low diamonds per hour.");
   }
@@ -744,7 +738,7 @@ function buildCreatorReportActions(creator: CreatorSummary) {
     actions.push("Build towards a stronger weekly total by extending the shorter live sessions.");
   }
   if (creator.healthWindowMatches < 70) {
-    actions.push("Add more battles to increase match rhythm and battle diamonds.");
+    actions.push("Add more battles to increase battle rhythm and battle diamonds.");
   }
   if (creator.dph < 1000) {
     actions.push("Focus on better battle selection and stronger gifting moments.");
@@ -825,6 +819,63 @@ function buildCreatorReportTips(creator: CreatorSummary) {
   return tips;
 }
 
+function buildCreatorReportWins(creator: CreatorSummary) {
+  const wins: { title: string; description: string }[] = [];
+
+  if (creator.oneHourDays >= 5) {
+    wins.push({
+      title: "&#9989; Strong live consistency",
+      description: `${creator.oneHourDays}/${creator.healthWindowDays} tracked days included a live session, which gives the week a solid base.`,
+    });
+  }
+  if (creator.healthWindowHours >= 20) {
+    wins.push({
+      title: "&#9201; Excellent weekly hours",
+      description: `${formatHours(creator.healthWindowHours)} hours streamed this week. That is a strong activity level to build from.`,
+    });
+  } else if (creator.healthWindowHours >= 10) {
+    wins.push({
+      title: "&#9201; Good weekly hours",
+      description: `${formatHours(creator.healthWindowHours)} hours streamed this week. Keep pushing sessions closer to two hours.`,
+    });
+  }
+  if (creator.healthWindowMatches >= 70) {
+    wins.push({
+      title: "&#9876; Strong battle volume",
+      description: `${formatNumber(creator.healthWindowMatches)} battles this week. Battle activity is a key part of creating more gifting moments.`,
+    });
+  }
+  if (creator.dph >= 1500) {
+    wins.push({
+      title: "&#128142; Strong diamonds per hour",
+      description: `${formatNumber(creator.dph)} DPH shows the live time is converting well into diamonds.`,
+    });
+  }
+  if (creator.healthWindowFollowers >= 100) {
+    wins.push({
+      title: "&#128200; Strong follower growth",
+      description: `${formatNumber(creator.healthWindowFollowers)} new followers this week shows discovery is moving in the right direction.`,
+    });
+  }
+
+  if (!wins.length) {
+    wins.push({
+      title: "&#9989; Week completed",
+      description: "There is useful data from this week. The next step is building stronger habits from the improvement points below.",
+    });
+  }
+
+  return wins.slice(0, 4);
+}
+
+function reportToneClass(status: HealthStatus) {
+  if (status === "Elite") return "elite";
+  if (status === "Healthy") return "healthy";
+  if (status === "Needs Attention") return "attention";
+  if (status === "Low Performance") return "performance";
+  return "quality";
+}
+
 function buildScoreImprovementTips(creator: CreatorSummary) {
   const tips: string[] = [];
   const breakdown = creator.healthBreakdown;
@@ -836,7 +887,7 @@ function buildScoreImprovementTips(creator: CreatorSummary) {
     tips.push(`Live Hours: ${30 - Math.round(breakdown.liveHours)} more points available by reaching 20 total live hours.`);
   }
   if (breakdown.matches < 10) {
-    tips.push(`Matches: ${10 - Math.round(breakdown.matches)} more points available by moving closer to 70 weekly matches.`);
+    tips.push(`Battles: ${10 - Math.round(breakdown.matches)} more points available by moving closer to 70 weekly battles.`);
   }
   if (breakdown.dph < 25) {
     tips.push(`DPH (diamonds per hour): ${25 - Math.round(breakdown.dph)} more points available by improving diamonds per hour.`);
@@ -857,7 +908,7 @@ function buildManagerActions(creator: CreatorSummary) {
     actions.push("Coach the creator toward longer planned sessions rather than short reactive lives.");
   }
   if (creator.healthWindowMatches < 70) {
-    actions.push("Review battle volume and help the creator find better match opportunities.");
+    actions.push("Review battle volume and help the creator find better battle opportunities.");
   }
   if (creator.dph < 1000) {
     actions.push("Review battle quality, room choice and gifting moments to improve DPH (diamonds per hour).");
@@ -867,7 +918,7 @@ function buildManagerActions(creator: CreatorSummary) {
   }
 
   actions.push(`Set a clear check-in plan for ${creator.username} with ${creator.managerLabel}.`);
-  actions.push("Prioritise the weakest score area first: live days, live hours, matches, or DPH (diamonds per hour).");
+  actions.push("Prioritise the weakest score area first: live days, live hours, battles, or DPH (diamonds per hour).");
 
   return actions;
 }
@@ -902,6 +953,8 @@ function buildCreatorReportHtml({
   weekRows: ReturnType<typeof buildWeeklyReportRows>;
 }) {
   const tips = buildCreatorReportTips(creator);
+  const wins = buildCreatorReportWins(creator);
+  const toneClass = reportToneClass(creator.healthStatus);
   const weeklyPoints = creator.dailyPoints.slice(-7);
   const weeklyDiamonds = weeklyPoints.reduce((sum, point) => sum + point.diamonds, 0);
   const weeklyHours = weeklyPoints.reduce((sum, point) => sum + point.liveHours, 0);
@@ -956,10 +1009,24 @@ function buildCreatorReportHtml({
     .logo { width: 230px; max-height: 150px; object-fit: contain; filter: drop-shadow(0 18px 28px rgba(56, 189, 248, .18)); }
     .score { margin-top: 22px; display: inline-flex; align-items: baseline; gap: 8px; border: 1px solid rgba(56, 189, 248, .35); background: rgba(8, 47, 73, .62); border-radius: 18px; padding: 14px 18px; }
     .score strong { font-size: 34px; color: #7dd3fc; }
+    .score.elite { border-color: rgba(192, 132, 252, .6); background: rgba(88, 28, 135, .5); }
+    .score.elite strong { color: #d8b4fe; }
+    .score.healthy { border-color: rgba(52, 211, 153, .6); background: rgba(6, 78, 59, .48); }
+    .score.healthy strong { color: #6ee7b7; }
+    .score.attention { border-color: rgba(251, 146, 60, .65); background: rgba(124, 45, 18, .52); }
+    .score.attention strong { color: #fdba74; }
+    .score.performance { border-color: rgba(56, 189, 248, .6); background: rgba(8, 47, 73, .58); }
+    .score.performance strong { color: #7dd3fc; }
+    .score.quality { border-color: rgba(248, 113, 113, .65); background: rgba(127, 29, 29, .52); }
+    .score.quality strong { color: #fca5a5; }
     .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
     .card { border: 1px solid rgba(125, 211, 252, .18); background: rgba(15, 23, 42, .86); border-radius: 18px; padding: 16px; }
     .card .label { color: #8fb7d4; font-size: 12px; }
     .card .value { margin-top: 10px; font-size: 28px; font-weight: 900; color: #38bdf8; }
+    .card.diamonds .value { color: #facc15; }
+    .card.hours .value { color: #38bdf8; }
+    .card.days .value { color: #34d399; }
+    .card.battles .value { color: #f472b6; }
     .wide { border: 1px solid rgba(125, 211, 252, .18); background: rgba(15, 23, 42, .78); border-radius: 20px; padding: 18px; margin-top: 14px; }
     .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
     .day { border: 2px solid rgba(125, 211, 252, .28); background: linear-gradient(180deg, rgba(8, 47, 73, .72), rgba(2, 6, 23, .7)); border-radius: 20px; padding: 16px 12px; min-height: 178px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
@@ -969,10 +1036,15 @@ function buildCreatorReportHtml({
     .day .small { color: #c6e3f7; font-size: 14px; font-weight: 700; line-height: 1.55; }
     .tips { display: grid; gap: 12px; }
     .tip { border-left: 5px solid #38bdf8; background: rgba(8, 47, 73, .48); border-radius: 16px; padding: 16px 18px; }
+    .tip.good { border-left-color: #22c55e; background: rgba(6, 78, 59, .46); }
     .tip strong { display: block; color: white; margin-bottom: 7px; font-size: 17px; }
     .tip span { color: #b6d5e8; font-size: 14px; line-height: 1.45; }
-    .formula { border: 1px solid rgba(14, 165, 233, .35); background: linear-gradient(90deg, rgba(14, 165, 233, .2), rgba(29, 78, 216, .16)); border-radius: 20px; padding: 20px; font-size: 18px; font-weight: 900; color: white; }
-    .formula span { display: block; margin-top: 8px; color: #7dd3fc; font-size: 15px; }
+    .tier-card { border: 1px solid rgba(125, 211, 252, .22); background: linear-gradient(135deg, rgba(14, 165, 233, .14), rgba(15, 23, 42, .82)); border-radius: 20px; padding: 20px; margin-top: 14px; }
+    .tier-card strong { display: block; color: white; font-size: 28px; margin-bottom: 6px; }
+    .tier-card span { color: #bae6fd; font-size: 14px; line-height: 1.45; }
+    .formula { border: 1px solid rgba(250, 204, 21, .58); background: linear-gradient(135deg, rgba(113, 63, 18, .72), rgba(15, 23, 42, .86)); border-radius: 20px; padding: 22px; font-size: 19px; font-weight: 900; color: #fef3c7; box-shadow: 0 0 30px rgba(250, 204, 21, .1); }
+    .formula b { color: #facc15; }
+    .formula span { display: block; margin-top: 8px; color: #fde68a; font-size: 15px; }
     .diamond-chart { display: grid; grid-template-columns: 74px 1fr; gap: 14px; height: 250px; border: 1px solid rgba(125, 211, 252, .22); background: rgba(2, 6, 23, .52); border-radius: 20px; padding: 18px 18px 34px; }
     .scale { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; height: 198px; color: #9ccce8; font-size: 12px; font-weight: 800; padding-top: 4px; }
     .bars { position: relative; display: flex; align-items: end; gap: 12px; height: 198px; border-left: 2px solid rgba(148, 163, 184, .5); border-bottom: 2px solid rgba(148, 163, 184, .5); padding: 0 10px; background: repeating-linear-gradient(to top, rgba(148, 163, 184, .12), rgba(148, 163, 184, .12) 1px, transparent 1px, transparent 49px); }
@@ -999,17 +1071,23 @@ function buildCreatorReportHtml({
     <div>
       <div class="eyebrow">Weekly Performance Report</div>
       <h1>@${creator.username}</h1>
-      <div class="meta">${getCreatorMetaLine(creator)} • ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
-      <div class="score"><strong>${creator.healthScore}</strong><span>/100 weekly performance</span></div>
+      <div class="meta">${getCreatorMetaLine(creator)} &bull; ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
+      <div class="score ${toneClass}"><strong>${creator.healthScore}</strong><span>/100 weekly performance &bull; ${creator.healthStatus}</span></div>
     </div>
     ${agencyLogo ? `<img class="logo" src="${agencyLogo}" alt="Aqua logo" />` : ""}
   </section>
 
   <section class="grid">
-    <div class="card"><div class="label">Weekly Diamonds</div><div class="value">${formatNumber(weeklyDiamonds)}</div></div>
-    <div class="card"><div class="label">Weekly Hours</div><div class="value">${formatHours(weeklyHours)}h</div></div>
-    <div class="card"><div class="label">LIVE Days This Week</div><div class="value">${formatNumber(weeklyLiveDays)}</div></div>
-    <div class="card"><div class="label">Weekly Matches</div><div class="value">${formatNumber(weeklyMatches)}</div></div>
+    <div class="card diamonds"><div class="label">&#128142; Weekly Diamonds</div><div class="value">${formatNumber(weeklyDiamonds)}</div></div>
+    <div class="card hours"><div class="label">&#9201; Weekly Hours</div><div class="value">${formatHours(weeklyHours)}h</div></div>
+    <div class="card days"><div class="label">&#9989; LIVE Days This Week</div><div class="value">${formatNumber(weeklyLiveDays)}</div></div>
+    <div class="card battles"><div class="label">&#9876; Weekly Battles</div><div class="value">${formatNumber(weeklyMatches)}</div></div>
+  </section>
+
+  <h2>Tier Status</h2>
+  <section class="tier-card">
+    <strong>${creator.tierStatus || "Tier status not available"}</strong>
+    <span>${creator.sourceStatus ? `Current status: ${creator.sourceStatus}. ` : ""}Keep using the weekly targets to protect or improve tier position.</span>
   </section>
 
   <h2>Weekly Live Breakdown</h2>
@@ -1018,12 +1096,19 @@ function buildCreatorReportHtml({
       .map(
         (row) => `<div class="day">
           <div class="name">${row.date}</div>
-          <div class="status">${row.wentLive ? "✓" : "✕"}</div>
+          <div class="status">${row.wentLive ? "&#10003;" : "&#10005;"}</div>
           <div class="hours">${row.hours}h</div>
           <div class="small">${row.diamonds} diamonds</div>
-          <div class="small">${row.matches} matches</div>
+          <div class="small">${row.matches} battles</div>
         </div>`
       )
+      .join("")}
+  </section>
+
+  <h2>What You Did Well</h2>
+  <section class="tips">
+    ${wins
+      .map((win) => `<div class="tip good"><strong>${win.title}</strong><span>${win.description}</span></div>`)
       .join("")}
   </section>
 
@@ -1037,8 +1122,8 @@ function buildCreatorReportHtml({
 
   <h2>Winning Pattern</h2>
   <section class="formula">
-    Go LIVE consistently • Push stronger session length • Add more quality battles
-    <span>Average live day: ${formatHours(averageSessionLength)}h • Weekly DPH: ${formatNumber(weeklyDph)} • Best day: ${bestDay ? getFriendlyDate(bestDay.date) : "Not enough data"}</span>
+    &#127942; <b>Power Pattern:</b> Go LIVE consistently &bull; Push stronger session length &bull; Add more quality battles
+    <span>Average live day: ${formatHours(averageSessionLength)}h &bull; Weekly DPH: ${formatNumber(weeklyDph)} &bull; Best day: ${bestDay ? getFriendlyDate(bestDay.date) : "Not enough data"}</span>
   </section>
 
   <h2>Diamonds This Week</h2>
@@ -1364,8 +1449,8 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
     ["Weekly diamonds", formatNumber(weeklyDiamonds)],
     ["Weekly live hours", formatHours(weeklyHours)],
     ["Weekly live days", formatNumber(weeklyLiveDays)],
-    ["Weekly matches", formatNumber(weeklyMatches)],
-    ["Weekly diamonds from matches", formatNumber(weeklyMatchDiamonds)],
+    ["Weekly battles", formatNumber(weeklyMatches)],
+    ["Weekly diamonds from battles", formatNumber(weeklyMatchDiamonds)],
     ["Weekly new followers", formatNumber(weeklyFollowers)],
   ];
   const creatorHtml =
@@ -1409,14 +1494,14 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
   <table>${rows.map(([label, value]) => `<tr><td>${label}</td><td>${value}</td></tr>`).join("")}</table>
   <h2>Weekly breakdown</h2>
   <table>
-    <tr><td>Day</td><td>Live result</td><td>Hours</td><td>Diamonds</td><td>Matches</td><td>Followers</td></tr>
+    <tr><td>Day</td><td>Live result</td><td>Hours</td><td>Diamonds</td><td>Battles</td><td>Followers</td></tr>
     ${weekRows
       .map(
         (row) =>
           `<tr><td>${row.date}</td><td>${
             row.wentLive
-              ? '<span class="tick">✓</span>'
-              : '<span class="cross">✕</span>'
+              ? '<span class="tick">&#10003;</span>'
+              : '<span class="cross">&#10005;</span>'
           }</td><td>${row.hours}</td><td>${row.diamonds}</td><td>${row.matches}</td><td>${row.followers}</td></tr>`
       )
       .join("")}
@@ -1706,12 +1791,14 @@ export default function CreatorIntelligencePage() {
   const weeklyHealthComparison = useMemo<WeeklyHealthComparison[]>(() => {
     if (!latestAquaDate) return [];
 
-    const previousWeekEnd = addDaysToDateKey(latestAquaDate, -7);
-    const previousWeekStart = addDaysToDateKey(latestAquaDate, -13);
+    const uploadedDates = Array.from(new Set(aquaRows.map((row) => row.stat_date))).sort((a, b) =>
+      a.localeCompare(b)
+    );
+    const previousUploadedDates = uploadedDates.slice(-14, -7);
+    const previousUploadedDateSet = new Set(previousUploadedDates);
     const previousRows = aquaRows.filter(
       (row) =>
-        row.stat_date >= previousWeekStart &&
-        row.stat_date <= previousWeekEnd &&
+        previousUploadedDateSet.has(row.stat_date) &&
         activeAquaCreatorKeys.has(getUsername(row).toLowerCase())
     );
     const previousSummaries = buildCreatorSummaries(previousRows).filter(
@@ -1749,8 +1836,16 @@ export default function CreatorIntelligencePage() {
   const notImprovingCreators = useMemo(
     () =>
       weeklyHealthComparison
-        .filter((item) => item.change === null || item.change <= 0)
-        .sort((a, b) => (a.change ?? -999) - (b.change ?? -999)),
+        .filter((item) => item.change !== null && item.change < -15)
+        .sort((a, b) => (a.change ?? 0) - (b.change ?? 0)),
+    [weeklyHealthComparison]
+  );
+
+  const stableCreators = useMemo(
+    () =>
+      weeklyHealthComparison
+        .filter((item) => item.change !== null && item.change <= 0 && item.change >= -15)
+        .sort((a, b) => (a.change ?? 0) - (b.change ?? 0)),
     [weeklyHealthComparison]
   );
 
@@ -2030,7 +2125,7 @@ export default function CreatorIntelligencePage() {
           <MetricCard label="Average DPH (diamonds per hour)" value={formatNumber(totals.averageDph)} />
           <MetricCard label="Total diamonds" value={formatNumber(totals.totalDiamonds)} />
           <MetricCard label="Total live hours" value={formatHours(totals.totalHours)} />
-          <MetricCard label="Total matches" value={formatNumber(totals.totalMatches)} />
+          <MetricCard label="Total battles" value={formatNumber(totals.totalMatches)} />
           <MetricCard label="Total new followers" value={formatNumber(totals.totalFollowers)} />
         </section>
 
@@ -2154,9 +2249,9 @@ export default function CreatorIntelligencePage() {
                 value={formatNumber(selectedCreator.liveStreams)}
                 previous={selectedCreator.liveStreamsLastMonth}
               />
-              <MetricCard label="Matches" value={formatNumber(selectedCreator.matches)} />
+              <MetricCard label="Battles" value={formatNumber(selectedCreator.matches)} />
               <MetricCard
-                label="Match diamonds"
+                label="Battle diamonds"
                 value={formatNumber(selectedCreator.diamondsFromMatches)}
               />
               <MetricCard label="New followers" value={formatNumber(selectedCreator.newFollowers)} />
@@ -2177,7 +2272,7 @@ export default function CreatorIntelligencePage() {
                   value={`${Math.round(selectedCreator.healthBreakdown.liveHours)}/30`}
                 />
                 <MetricCard
-                  label="Matches"
+                  label="Battles"
                   value={`${Math.round(selectedCreator.healthBreakdown.matches)}/10`}
                 />
                 <MetricCard
@@ -2231,13 +2326,16 @@ export default function CreatorIntelligencePage() {
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
                 {formatNumber(improvingCreators.length)} improving
               </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700">
+                {formatNumber(stableCreators.length)} stable
+              </span>
               <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-black text-red-700">
                 {formatNumber(notImprovingCreators.length)} not improving
               </span>
             </div>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5 xl:grid-cols-3">
             <div>
               <h3 className="mb-3 text-lg font-black uppercase text-emerald-700">Improving</h3>
               <div className="max-h-[520px] space-y-2 overflow-y-auto pr-2">
@@ -2271,6 +2369,38 @@ export default function CreatorIntelligencePage() {
             </div>
 
             <div>
+              <h3 className="mb-3 text-lg font-black uppercase text-slate-700">Stable</h3>
+              <div className="max-h-[520px] space-y-2 overflow-y-auto pr-2">
+                {stableCreators.map((item) => (
+                  <button
+                    key={`stable-${item.creator.key}`}
+                    type="button"
+                    onClick={() => setSelectedCreatorKey(item.creator.key)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-left hover:border-sky-200 hover:bg-sky-50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-black text-slate-950">{item.creator.username}</p>
+                        <p className="mt-1 text-xs text-slate-500">{getCreatorMetaLine(item.creator)}</p>
+                      </div>
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-black text-slate-700">
+                        {formatNumber(item.change ?? 0)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {formatNumber(item.previousScore ?? 0)} to {formatNumber(item.creator.healthScore)} health score
+                    </p>
+                  </button>
+                ))}
+                {!stableCreators.length ? (
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    No stable creators found for these filters.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div>
               <h3 className="mb-3 text-lg font-black uppercase text-red-700">Not Improving</h3>
               <div className="max-h-[520px] space-y-2 overflow-y-auto pr-2">
                 {notImprovingCreators.map((item) => (
@@ -2286,13 +2416,11 @@ export default function CreatorIntelligencePage() {
                         <p className="mt-1 text-xs text-slate-500">{getCreatorMetaLine(item.creator)}</p>
                       </div>
                       <span className="rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-black text-red-700">
-                        {item.change === null ? "No prior week" : formatNumber(item.change)}
+                        {formatNumber(item.change ?? 0)}
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-slate-500">
-                      {item.previousScore === null
-                        ? `Current health score ${formatNumber(item.creator.healthScore)}`
-                        : `${formatNumber(item.previousScore)} to ${formatNumber(item.creator.healthScore)} health score`}
+                      {formatNumber(item.previousScore ?? 0)} to {formatNumber(item.creator.healthScore)} health score
                     </p>
                   </button>
                 ))}
@@ -2439,7 +2567,7 @@ export default function CreatorIntelligencePage() {
                                   <p className="font-bold">{formatHours(creator.healthWindowHours)}</p>
                                 </div>
                                 <div>
-                                  <p className="text-slate-400">Matches</p>
+                                  <p className="text-slate-400">Battles</p>
                                   <p className="font-bold">{formatNumber(creator.healthWindowMatches)}</p>
                                 </div>
                               </div>
