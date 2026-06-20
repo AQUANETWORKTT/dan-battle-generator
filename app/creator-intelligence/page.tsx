@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -914,6 +915,12 @@ function reportToneClass(status: HealthStatus) {
   return "quality";
 }
 
+function getCreatorReportScoreLabel(status: HealthStatus) {
+  if (status === "Elite") return "Elite";
+  if (status === "Healthy") return "High Quality";
+  return "";
+}
+
 function buildScoreImprovementTips(creator: CreatorSummary) {
   const tips: string[] = [];
   const breakdown = creator.healthBreakdown;
@@ -968,9 +975,19 @@ function buildManagerFocusDetail(creator: CreatorSummary) {
   const battlesGap = Math.max(70 - creator.healthWindowMatches, 0);
 
   if (missedDays > 0) {
-    focus.push(
-      `Consistency is the first issue: ${missedDays} tracked day${missedDays === 1 ? "" : "s"} missed. Book a one-to-one call, confirm why they missed those days, and agree a fixed weekly live schedule with check-ins.`
-    );
+    if (creator.oneHourDays >= 6) {
+      focus.push(
+        `Live routine is strong: ${creator.oneHourDays}/${creator.healthWindowDays} days live. The focus is simply fitting in the final day where possible so daily live becomes the normal routine.`
+      );
+    } else if (creator.oneHourDays === 5) {
+      focus.push(
+        `Live routine is decent but can be stronger: ${creator.oneHourDays}/${creator.healthWindowDays} days live. Keep the five-day base, then try to add one extra planned day.`
+      );
+    } else {
+      focus.push(
+        `Live routine is inconsistent: only ${creator.oneHourDays}/${creator.healthWindowDays} days live. Put them on a simple weekly schedule, confirm which days they can commit to, and check missed days have a real reason.`
+      );
+    }
   }
   if (hoursGap > 0) {
     const target =
@@ -988,7 +1005,12 @@ function buildManagerFocusDetail(creator: CreatorSummary) {
   }
   if (creator.dph < 1000) {
     focus.push(
-      `DPH is low at ${formatNumber(creator.dph)}. Review stream setup, lighting, sound, entertainment value, viewer engagement, gifting prompts and whether they are choosing rooms that can actually convert into diamonds.`
+      `DPH is low at ${formatNumber(creator.dph)}. Check the basics: lighting, sound, camera angle, background, confidence on camera, whether they are entertaining, how they speak to viewers, gifting prompts and whether they are choosing rooms that can actually convert into diamonds.`
+    );
+  }
+  if (creator.diamondsFromMatches <= 0 && creator.healthWindowMatches > 0) {
+    focus.push(
+      `Battles are not showing diamond value yet. Review whether they are battling the right creators, explaining battles properly to viewers, keeping energy high during battles and asking for support clearly.`
     );
   }
   if (creator.diamonds < 5000 && creator.healthWindowHours > 5) {
@@ -998,7 +1020,12 @@ function buildManagerFocusDetail(creator: CreatorSummary) {
   }
   if (creator.healthWindowFollowers < 50) {
     focus.push(
-      `Discovery is weak with ${formatNumber(creator.healthWindowFollowers)} new followers. Push them to network with larger and more active creators, battle outside their usual circle and make the first 30 seconds of each live more engaging.`
+      `Follower growth is weak with ${formatNumber(creator.healthWindowFollowers)} new followers. They may not be networking enough or reaching new rooms. Push battles with larger or more active creators, better first impressions and stronger viewer engagement in the first 30 seconds.`
+    );
+  }
+  if (creator.healthScore >= 85 || creator.dailyAverageDiamonds >= 2000) {
+    focus.push(
+      `Opportunity creator: performance is strong enough to consider tournaments, campaigns, extra exposure or a manager check-in focused on scaling what is already working.`
     );
   }
 
@@ -1173,7 +1200,7 @@ function buildCreatorReportHtml({
       <div class="eyebrow">Weekly Performance Report</div>
       <h1>@${creator.username}</h1>
       <div class="meta">${getCreatorMetaLine(creator)} &bull; ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
-      <div class="score ${toneClass}"><strong>${creator.healthScore}</strong><span>/100 weekly performance &bull; ${creator.healthStatus}</span></div>
+      <div class="score ${toneClass}"><strong>${creator.healthScore}</strong><span>/100 weekly performance${getCreatorReportScoreLabel(creator.healthStatus) ? ` &bull; ${getCreatorReportScoreLabel(creator.healthStatus)}` : ""}</span></div>
     </div>
     ${agencyLogo ? `<img class="logo" src="${agencyLogo}" alt="Aqua logo" />` : ""}
   </section>
@@ -1686,10 +1713,10 @@ function downloadManagerReport(
     .card { border: 1px solid #dbeafe; background: #f8fbff; border-radius: 16px; padding: 16px; }
     .label { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .value { margin-top: 8px; color: #0f172a; font-size: 24px; font-weight: 900; }
-    .value.elite { color: #7e22ce; }
+    .value.elite-value { color: #7e22ce; }
     .value.good { color: #047857; }
     .value.warn { color: #c2410c; }
-    .value.performance { color: #0369a1; }
+    .value.performance-value { color: #0369a1; }
     .value.bad { color: #b91c1c; }
     table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
     th { background: #e0f2fe; color: #075985; text-align: left; padding: 10px; border: 1px solid #bae6fd; }
@@ -1740,10 +1767,10 @@ function downloadManagerReport(
 
   <h2>Team Mix</h2>
   <section class="grid">
-    <div class="card"><div class="label">Elite</div><div class="value elite">${formatNumber(managerSummary.elite)}</div></div>
+    <div class="card"><div class="label">Elite</div><div class="value elite-value">${formatNumber(managerSummary.elite)}</div></div>
     <div class="card"><div class="label">Healthy</div><div class="value good">${formatNumber(managerSummary.healthy)}</div></div>
     <div class="card"><div class="label">Needs Attention</div><div class="value warn">${formatNumber(managerSummary.needsAttention)}</div></div>
-    <div class="card"><div class="label">Low Performance</div><div class="value performance">${formatNumber(managerSummary.lowPerformance)}</div></div>
+    <div class="card"><div class="label">Low Performance</div><div class="value performance-value">${formatNumber(managerSummary.lowPerformance)}</div></div>
     <div class="card"><div class="label">Low Quality</div><div class="value bad">${formatNumber(managerSummary.lowQuality)}</div></div>
   </section>
 
@@ -2358,7 +2385,7 @@ export default function CreatorIntelligencePage() {
   const selectedInsights = selectedCreator ? buildInsights(selectedCreator) : [];
 
   function copyWhatsAppText(title: string, lines: string[]) {
-    const text = [title, ...lines].join("\n");
+    const text = [title, ...lines].join("\n\n");
     void navigator.clipboard.writeText(text);
   }
 
@@ -2366,9 +2393,12 @@ export default function CreatorIntelligencePage() {
     copyWhatsAppText(
       "New Aqua Creators",
       newCreators.length
-        ? newCreators.map(
-            (creator) =>
-              `- ${creator.username}: ${formatNumber(creator.daysSinceJoining)} days since joining, ${formatNumber(creator.diamonds)} diamonds`
+        ? newCreators.map((creator) =>
+            [
+              `💎 ${creator.username}`,
+              `• Days since joining: ${formatNumber(creator.daysSinceJoining)}`,
+              `• Diamonds: ${formatNumber(creator.diamonds)}`,
+            ].join("\n")
           )
         : ["No new creators found for the current filters."]
     );
@@ -2376,11 +2406,15 @@ export default function CreatorIntelligencePage() {
 
   function copyHiddenPotentialText() {
     copyWhatsAppText(
-      "High Potential New Aqua Creators",
+      "High Potential Aqua Creators",
       hiddenPotentialCreators.length
-        ? hiddenPotentialCreators.map(
-            (creator) =>
-              `- ${creator.username}: ${formatNumber(creator.daysSinceJoining)} days since joining, ${formatNumber(creator.diamonds)} diamonds, ${formatNumber(creator.dph)} DPH`
+        ? hiddenPotentialCreators.map((creator) =>
+            [
+              `💎 ${creator.username}`,
+              `• Days since joining: ${formatNumber(creator.daysSinceJoining)}`,
+              `• Diamonds: ${formatNumber(creator.diamonds)}`,
+              `• DPH: ${formatNumber(creator.dph)}`,
+            ].join("\n")
           )
         : ["No hidden potential creators found for the current filters."]
     );
@@ -2389,11 +2423,14 @@ export default function CreatorIntelligencePage() {
   function copyGraduationPaceText() {
     const graduationPaceCreators = graduationTrackerRows.filter((creator) => creator.pacePercent >= 70);
     copyWhatsAppText(
-      "Aqua Graduation Pace - 70%+",
+      "Aqua Graduation Progress",
       graduationPaceCreators.length
-        ? graduationPaceCreators.map(
-            (creator) =>
-              `- ${creator.username}: ${formatNumber(creator.diamonds)} diamonds, ${formatNumber(creator.progressPercent)}% progress, ${formatNumber(creator.pacePercent)}% pace`
+        ? graduationPaceCreators.map((creator) =>
+            [
+              `💎 ${creator.username}`,
+              `• Diamonds: ${formatNumber(creator.diamonds)}`,
+              `• Progress: ${formatNumber(creator.progressPercent)}%`,
+            ].join("\n")
           )
         : ["No creators are currently over 70% graduation pace for these filters."]
     );
@@ -2413,14 +2450,22 @@ export default function CreatorIntelligencePage() {
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 md:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
+          <div className="flex-1 text-center md:pl-40">
             <Link href="/" className="text-sm font-bold text-sky-700 hover:text-sky-600">
               Back home
             </Link>
-            <h1 className="mt-3 text-4xl font-black uppercase text-sky-950 md:text-6xl">
-              Aqua Creator Intelligence
+            <Image
+              src="/logos/aqua.png"
+              alt="Aqua"
+              width={240}
+              height={120}
+              className="mx-auto mt-3 h-20 w-auto object-contain md:h-28"
+              priority
+            />
+            <h1 className="mt-2 text-4xl font-black uppercase text-sky-950 md:text-6xl">
+              Creator Intelligence
             </h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-500 md:text-base">
+            <p className="mx-auto mt-2 max-w-3xl text-sm text-slate-500 md:text-base">
               Aqua-only creator health tracker with manager focus, graduation tracking, new creator performance and report views.
             </p>
           </div>
@@ -2704,7 +2749,7 @@ export default function CreatorIntelligencePage() {
 
                   {expandedManager === managerSummary.manager ? (
                     <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
-                      {managerSummary.creators.map((creator) => (
+                      {[...managerSummary.creators].sort((a, b) => b.healthScore - a.healthScore).map((creator) => (
                         <button
                           key={`manager-team-${managerSummary.manager}-${creator.key}`}
                           type="button"
