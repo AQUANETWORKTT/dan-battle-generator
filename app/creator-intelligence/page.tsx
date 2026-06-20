@@ -1562,8 +1562,9 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
   const blob = new Blob([finalHtml], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+  const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   link.href = url;
-  link.download = `${creator.username}-${reportType === "creator" ? "weekly-creator-report" : "internal-data-report"}.html`;
+  link.download = `${creator.username}-${reportType === "creator" ? "weekly-creator-report" : "internal-data-report"}-${timestamp}.html`;
   document.body.appendChild(link);
   link.click();
   link.remove();
