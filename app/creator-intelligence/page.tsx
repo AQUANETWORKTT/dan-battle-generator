@@ -2276,6 +2276,26 @@ export default function CreatorIntelligencePage() {
           const latest = trend[trend.length - 1]?.score ?? 0;
           const change = trend.length > 1 ? latest - first : 0;
           const percentChange = first > 0 ? (change / first) * 100 : latest > 0 ? 100 : 0;
+          const currentWeekPoints = trend.slice(-7);
+          const previousWeekPoints = trend.slice(-14, -7);
+          const currentWeekAverage =
+            currentWeekPoints.length > 0
+              ? currentWeekPoints.reduce((sum, point) => sum + point.score, 0) / currentWeekPoints.length
+              : 0;
+          const previousWeekAverage =
+            previousWeekPoints.length > 0
+              ? previousWeekPoints.reduce((sum, point) => sum + point.score, 0) / previousWeekPoints.length
+              : 0;
+          const weekChange =
+            currentWeekPoints.length > 0 && previousWeekPoints.length > 0
+              ? currentWeekAverage - previousWeekAverage
+              : 0;
+          const weekPercentChange =
+            previousWeekAverage > 0
+              ? (weekChange / previousWeekAverage) * 100
+              : currentWeekAverage > 0
+                ? 100
+                : 0;
 
           return {
             managerSummary,
@@ -2284,9 +2304,13 @@ export default function CreatorIntelligencePage() {
             latest,
             change,
             percentChange,
+            currentWeekAverage,
+            previousWeekAverage,
+            weekChange,
+            weekPercentChange,
           };
         })
-        .sort((a, b) => b.change - a.change),
+        .sort((a, b) => b.weekChange - a.weekChange),
     [managerHealthSummaries, rows]
   );
 
@@ -2814,7 +2838,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Growth Leaderboard</h2>
               <p className="mt-1 text-sm text-slate-500">
-                30-day team health movement by manager, comparing the first available point with the latest point.
+                Week-by-week movement plus 30-day movement by manager.
               </p>
             </div>
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
@@ -2833,37 +2857,46 @@ export default function CreatorIntelligencePage() {
                     <p className="text-xs font-black uppercase text-slate-400">#{index + 1}</p>
                     <h3 className="mt-1 text-lg font-black text-slate-950">{item.managerSummary.manager}</h3>
                     <p className="mt-1 text-xs font-bold text-slate-500">
-                      {formatNumber(item.first)}/100 to {formatNumber(item.latest)}/100
+                      Week: {formatNumber(item.previousWeekAverage)}/100 to {formatNumber(item.currentWeekAverage)}/100
                     </p>
                   </div>
                   <span
                     className={`rounded-full border px-3 py-1 text-sm font-black ${
-                      item.change > 0
+                      item.weekChange > 0
                         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : item.change < 0
+                        : item.weekChange < 0
                           ? "border-red-200 bg-red-50 text-red-700"
                           : "border-slate-200 bg-white text-slate-600"
                     }`}
                   >
-                    {item.change > 0 ? "+" : ""}
-                    {formatNumber(item.change)} pts
+                    {item.weekChange > 0 ? "+" : ""}
+                    {formatNumber(item.weekChange)} pts weekly
                   </span>
                 </div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
                   <div
                     className={`h-full ${
-                      item.change > 0 ? "bg-emerald-500" : item.change < 0 ? "bg-red-500" : "bg-slate-300"
+                      item.weekChange > 0 ? "bg-emerald-500" : item.weekChange < 0 ? "bg-red-500" : "bg-slate-300"
                     }`}
-                    style={{ width: `${Math.min(Math.abs(item.percentChange), 100)}%` }}
+                    style={{ width: `${Math.min(Math.abs(item.weekPercentChange), 100)}%` }}
                   />
                 </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  {item.change > 0
-                    ? `Up ${formatPercent(Math.abs(item.percentChange))} over the 30-day trend.`
-                    : item.change < 0
-                      ? `Down ${formatPercent(Math.abs(item.percentChange))} over the 30-day trend.`
-                      : "No movement across the available 30-day trend."}
-                </p>
+                <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
+                  <p>
+                    <span className="font-black text-slate-700">Week-by-week:</span>{" "}
+                    {item.weekChange > 0
+                      ? `up ${formatPercent(Math.abs(item.weekPercentChange))}`
+                      : item.weekChange < 0
+                        ? `down ${formatPercent(Math.abs(item.weekPercentChange))}`
+                        : "no movement"}
+                  </p>
+                  <p>
+                    <span className="font-black text-slate-700">30-day:</span>{" "}
+                    {formatNumber(item.first)}/100 to {formatNumber(item.latest)}/100 (
+                    {item.change > 0 ? "+" : ""}
+                    {formatNumber(item.change)} pts)
+                  </p>
+                </div>
               </div>
             ))}
             {!managerGrowthSummaries.length ? (
