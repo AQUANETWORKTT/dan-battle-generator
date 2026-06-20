@@ -159,7 +159,6 @@ type ManagerHealthSummary = {
   matureCreators: number;
   newCreators: number;
   averageScore: number;
-  targetGap: number;
   elite: number;
   healthy: number;
   needsAttention: number;
@@ -962,6 +961,69 @@ function buildManagerActions(creator: CreatorSummary) {
   return actions;
 }
 
+function buildManagerFocusDetail(creator: CreatorSummary) {
+  const focus: string[] = [];
+  const missedDays = Math.max(creator.healthWindowDays - creator.oneHourDays, 0);
+  const hoursGap = Math.max(20 - creator.healthWindowHours, 0);
+  const battlesGap = Math.max(70 - creator.healthWindowMatches, 0);
+
+  if (missedDays > 0) {
+    focus.push(
+      `Consistency is the first issue: ${missedDays} tracked day${missedDays === 1 ? "" : "s"} missed. Book a one-to-one call, confirm why they missed those days, and agree a fixed weekly live schedule with check-ins.`
+    );
+  }
+  if (hoursGap > 0) {
+    const target =
+      creator.healthWindowHours < creator.oneHourDays
+        ? "start with a minimum one-hour live every time they go on"
+        : "push their shorter sessions closer to two hours";
+    focus.push(
+      `Hours are holding the score down: ${formatHours(creator.healthWindowHours)}h this week, ${formatHours(hoursGap)}h short of the 20h high-performance target. Put them on a simple schedule and ${target}.`
+    );
+  }
+  if (battlesGap > 0) {
+    focus.push(
+      `Battle volume needs work: ${formatNumber(creator.healthWindowMatches)} battles this week, ${formatNumber(battlesGap)} short of the 70 battle target. Coach them on finding creators to battle, joining active rooms, introducing themselves properly and building repeat battle partners.`
+    );
+  }
+  if (creator.dph < 1000) {
+    focus.push(
+      `DPH is low at ${formatNumber(creator.dph)}. Review stream setup, lighting, sound, entertainment value, viewer engagement, gifting prompts and whether they are choosing rooms that can actually convert into diamonds.`
+    );
+  }
+  if (creator.diamonds < 5000 && creator.healthWindowHours > 5) {
+    focus.push(
+      `They are putting in some time but not converting it into diamonds. Watch a recent live, check confidence on camera, room energy, conversation quality and whether they are giving viewers a reason to stay and gift.`
+    );
+  }
+  if (creator.healthWindowFollowers < 50) {
+    focus.push(
+      `Discovery is weak with ${formatNumber(creator.healthWindowFollowers)} new followers. Push them to network with larger and more active creators, battle outside their usual circle and make the first 30 seconds of each live more engaging.`
+    );
+  }
+
+  if (!focus.length) {
+    focus.push("Keep the current routine stable and set one stretch target: more quality battles, stronger DPH or one extra high-value session this week.");
+  }
+
+  return focus;
+}
+
+function getScoreMovementReason(creator: CreatorSummary, previousScore: number | null, change: number | null) {
+  if (previousScore === null || change === null) return "No previous-week comparison available yet.";
+  const direction = change > 0 ? "up" : change < 0 ? "down" : "stable";
+  const mainIssue = buildManagerFocusDetail(creator)[0];
+
+  if (direction === "up") {
+    return `Up ${formatNumber(change)} points. The current focus is to protect the routine: ${mainIssue}`;
+  }
+  if (direction === "down") {
+    return `Down ${formatNumber(Math.abs(change))} points. The likely pressure point is: ${mainIssue}`;
+  }
+
+  return `Stable week-on-week. Push one clear improvement area next: ${mainIssue}`;
+}
+
 function getFriendlyDate(dateValue: string) {
   const date = new Date(`${dateValue}T00:00:00`);
   return date.toLocaleDateString("en-GB", {
@@ -1581,13 +1643,17 @@ function escapeHtml(value: string | number) {
     .replace(/'/g, "&#39;");
 }
 
-function downloadManagerReport(managerSummary: ManagerHealthSummary) {
+function downloadManagerReport(
+  managerSummary: ManagerHealthSummary,
+  movementItems: WeeklyHealthComparison[]
+) {
   const matureCreators = managerSummary.creators.filter((creator) => !creator.isNewCreator);
   const creatorsForStats = matureCreators.length ? matureCreators : managerSummary.creators;
   const strongestCreators = [...creatorsForStats].sort((a, b) => b.healthScore - a.healthScore).slice(0, 8);
   const lowestCreators = [...creatorsForStats].sort((a, b) => a.healthScore - b.healthScore).slice(0, 12);
-  const targetScore = 70;
-  const pointsToTarget = Math.max(targetScore - managerSummary.averageScore, 0);
+  const improvingCreators = movementItems.filter((item) => item.change !== null && item.change > 0);
+  const decliningCreators = movementItems.filter((item) => item.change !== null && item.change < 0);
+  const stableCreators = movementItems.filter((item) => item.change !== null && item.change === 0);
   const reportDate = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -1620,8 +1686,10 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
     .card { border: 1px solid #dbeafe; background: #f8fbff; border-radius: 16px; padding: 16px; }
     .label { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .value { margin-top: 8px; color: #0f172a; font-size: 24px; font-weight: 900; }
+    .value.elite { color: #7e22ce; }
     .value.good { color: #047857; }
     .value.warn { color: #c2410c; }
+    .value.performance { color: #0369a1; }
     .value.bad { color: #b91c1c; }
     table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
     th { background: #e0f2fe; color: #075985; text-align: left; padding: 10px; border: 1px solid #bae6fd; }
@@ -1650,7 +1718,7 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
     <div>
       <p class="label">Manager Team Health Report</p>
       <h1>${escapeHtml(managerSummary.manager)}</h1>
-      <p class="muted">${reportDate} · Aqua Creator Intelligence</p>
+      <p class="muted">${reportDate} &bull; Aqua Creator Intelligence</p>
     </div>
     <div class="score">
       <span class="label">Team Health</span>
@@ -1662,7 +1730,7 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
   <section class="grid">
     <div class="card"><div class="label">Creators</div><div class="value">${formatNumber(managerSummary.totalCreators)}</div></div>
     <div class="card"><div class="label">Scored Creators</div><div class="value">${formatNumber(managerSummary.matureCreators)}</div></div>
-    <div class="card"><div class="label">Target Gap</div><div class="value ${pointsToTarget > 0 ? "warn" : "good"}">${pointsToTarget > 0 ? `${formatNumber(pointsToTarget)} pts` : "On Target"}</div></div>
+    <div class="card"><div class="label">Improving</div><div class="value good">${formatNumber(improvingCreators.length)}</div></div>
     <div class="card"><div class="label">New Creators</div><div class="value">${formatNumber(managerSummary.newCreators)}</div></div>
     <div class="card"><div class="label">Weekly Diamonds</div><div class="value">${formatNumber(totalDiamonds)}</div></div>
     <div class="card"><div class="label">Weekly Hours</div><div class="value">${formatHours(totalHours)}h</div></div>
@@ -1672,10 +1740,10 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
 
   <h2>Team Mix</h2>
   <section class="grid">
-    <div class="card"><div class="label">Elite</div><div class="value good">${formatNumber(managerSummary.elite)}</div></div>
+    <div class="card"><div class="label">Elite</div><div class="value elite">${formatNumber(managerSummary.elite)}</div></div>
     <div class="card"><div class="label">Healthy</div><div class="value good">${formatNumber(managerSummary.healthy)}</div></div>
     <div class="card"><div class="label">Needs Attention</div><div class="value warn">${formatNumber(managerSummary.needsAttention)}</div></div>
-    <div class="card"><div class="label">Low Performance</div><div class="value warn">${formatNumber(managerSummary.lowPerformance)}</div></div>
+    <div class="card"><div class="label">Low Performance</div><div class="value performance">${formatNumber(managerSummary.lowPerformance)}</div></div>
     <div class="card"><div class="label">Low Quality</div><div class="value bad">${formatNumber(managerSummary.lowQuality)}</div></div>
   </section>
 
@@ -1685,9 +1753,31 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
       <li>Move the lowest scoring creators first. They are having the biggest negative impact on the team average.</li>
       <li>Target creators below 50 for live-day consistency, weekly hours and battle rhythm before chasing DPH.</li>
       <li>Protect healthy and elite creators by keeping their routine stable, then use them as examples for the team.</li>
-      <li>${pointsToTarget > 0 ? `The team needs roughly ${formatNumber(pointsToTarget)} more average health points to reach the 70/100 team target.` : "The team is currently at or above the 70/100 team target."}</li>
+      <li>Use the week-on-week movement section to decide who needs urgent manager follow-up and who needs their routine protected.</li>
     </ul>
   </section>
+
+  <h2>Week-On-Week Movement</h2>
+  <section class="grid">
+    <div class="card"><div class="label">Improving</div><div class="value good">${formatNumber(improvingCreators.length)}</div></div>
+    <div class="card"><div class="label">Stable</div><div class="value">${formatNumber(stableCreators.length)}</div></div>
+    <div class="card"><div class="label">Declining</div><div class="value bad">${formatNumber(decliningCreators.length)}</div></div>
+  </section>
+  <table>
+    <tr><th>Creator</th><th>Movement</th><th>Reason / Focus</th></tr>
+    ${movementItems
+      .filter((item) => item.change !== null)
+      .sort((a, b) => (a.change ?? 0) - (b.change ?? 0))
+      .map(
+        (item) =>
+          `<tr><td>${escapeHtml(item.creator.username)}</td><td>${formatNumber(item.previousScore ?? 0)} to ${formatNumber(
+            item.creator.healthScore
+          )} (${item.change && item.change > 0 ? "+" : ""}${formatNumber(item.change ?? 0)})</td><td>${escapeHtml(
+            getScoreMovementReason(item.creator, item.previousScore, item.change)
+          )}</td></tr>`
+      )
+      .join("")}
+  </table>
 
   <section class="two-col">
     <div>
@@ -1713,7 +1803,7 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
           <tr><th>Creator</th><th>Score</th><th>First Fix</th></tr>
           ${lowestCreators
             .map((creator) => {
-              const firstFix = buildManagerActions(creator)[0] || "Review weekly activity and set one clear target.";
+              const firstFix = buildManagerFocusDetail(creator)[0] || "Review weekly activity and set one clear target.";
               return `<tr><td>${escapeHtml(creator.username)}</td><td>${formatNumber(creator.healthScore)}/100</td><td>${escapeHtml(firstFix)}</td></tr>`;
             })
             .join("")}
@@ -1743,7 +1833,7 @@ function downloadManagerReport(managerSummary: ManagerHealthSummary) {
           creator.isNewCreator || !creatorsForStats.length
             ? "New creator"
             : `${formatNumber(creator.healthScore / creatorsForStats.length)} avg pts`;
-        const focus = buildManagerActions(creator).slice(0, 2).join(" ");
+        const focus = buildManagerFocusDetail(creator).slice(0, 2).join(" ");
 
         return `<tr>
           <td><strong>${escapeHtml(creator.username)}</strong><br><span class="muted">${escapeHtml(creator.tierStatus)}</span></td>
@@ -1787,6 +1877,8 @@ export default function CreatorIntelligencePage() {
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCreatorKey, setSelectedCreatorKey] = useState("");
+  const [expandedManager, setExpandedManager] = useState("");
+  const [floatingProfileOpen, setFloatingProfileOpen] = useState(false);
   const [selectedChartMetrics, setSelectedChartMetrics] = useState<ChartMetricKey[]>([
     "diamonds",
     "liveHours",
@@ -1975,7 +2067,6 @@ export default function CreatorIntelligencePage() {
           matureCreators: matureCreators.length,
           newCreators: creators.length - matureCreators.length,
           averageScore,
-          targetGap: Math.max(70 - averageScore, 0),
           elite: matureCreators.filter((creator) => creator.healthStatus === "Elite").length,
           healthy: matureCreators.filter((creator) => creator.healthStatus === "Healthy").length,
           needsAttention: matureCreators.filter((creator) => creator.healthStatus === "Needs Attention").length,
@@ -2001,6 +2092,18 @@ export default function CreatorIntelligencePage() {
           creator.dailyAverageDiamonds >= 1200 ||
           creator.dph >= 1000 ||
           creator.healthScore >= 70
+      ),
+    [newCreators]
+  );
+
+  const inactiveNewCreators = useMemo(
+    () =>
+      newCreators.filter(
+        (creator) =>
+          creator.daysSinceJoining >= 3 &&
+          creator.diamonds <= 0 &&
+          creator.liveHours <= 0 &&
+          creator.healthWindowHours <= 0
       ),
     [newCreators]
   );
@@ -2253,6 +2356,49 @@ export default function CreatorIntelligencePage() {
     (creator) => creator.key === activeSelectedCreatorKey
   );
   const selectedInsights = selectedCreator ? buildInsights(selectedCreator) : [];
+
+  function copyWhatsAppText(title: string, lines: string[]) {
+    const text = [title, ...lines].join("\n");
+    void navigator.clipboard.writeText(text);
+  }
+
+  function copyNewCreatorsText() {
+    copyWhatsAppText(
+      "New Aqua Creators",
+      newCreators.length
+        ? newCreators.map(
+            (creator) =>
+              `- ${creator.username}: ${formatNumber(creator.daysSinceJoining)} days since joining, ${formatNumber(creator.diamonds)} diamonds`
+          )
+        : ["No new creators found for the current filters."]
+    );
+  }
+
+  function copyHiddenPotentialText() {
+    copyWhatsAppText(
+      "High Potential New Aqua Creators",
+      hiddenPotentialCreators.length
+        ? hiddenPotentialCreators.map(
+            (creator) =>
+              `- ${creator.username}: ${formatNumber(creator.daysSinceJoining)} days since joining, ${formatNumber(creator.diamonds)} diamonds, ${formatNumber(creator.dph)} DPH`
+          )
+        : ["No hidden potential creators found for the current filters."]
+    );
+  }
+
+  function copyGraduationPaceText() {
+    const graduationPaceCreators = graduationTrackerRows.filter((creator) => creator.pacePercent >= 70);
+    copyWhatsAppText(
+      "Aqua Graduation Pace - 70%+",
+      graduationPaceCreators.length
+        ? graduationPaceCreators.map(
+            (creator) =>
+              `- ${creator.username}: ${formatNumber(creator.diamonds)} diamonds, ${formatNumber(creator.progressPercent)}% progress, ${formatNumber(creator.pacePercent)}% pace`
+          )
+        : ["No creators are currently over 70% graduation pace for these filters."]
+    );
+  }
+
   function toggleChartMetric(metric: ChartMetricKey) {
     setSelectedChartMetrics((current) => {
       if (current.includes(metric)) {
@@ -2437,7 +2583,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Team Health</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Team average by manager. Target is a 70/100 average, with new creators counted separately.
+                Team average by manager, with new creators counted separately from scored creators.
               </p>
             </div>
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
@@ -2462,8 +2608,8 @@ export default function CreatorIntelligencePage() {
                     <div>
                       <p className="text-lg font-black text-slate-950">{managerSummary.manager}</p>
                       <p className="mt-1 text-xs font-bold text-slate-500">
-                        {formatNumber(managerSummary.totalCreators)} creators ·{" "}
-                        {formatNumber(managerSummary.matureCreators)} scored ·{" "}
+                        {formatNumber(managerSummary.totalCreators)} creators /{" "}
+                        {formatNumber(managerSummary.matureCreators)} scored /{" "}
                         {formatNumber(managerSummary.newCreators)} new
                       </p>
                     </div>
@@ -2494,9 +2640,7 @@ export default function CreatorIntelligencePage() {
                       />
                     </div>
                     <p className="mt-2 text-xs font-bold text-slate-500">
-                      {managerSummary.targetGap > 0
-                        ? `${formatNumber(managerSummary.targetGap)} points below team target`
-                        : "On or above team target"}
+                      Team average across scored creators
                     </p>
                   </div>
 
@@ -2526,19 +2670,61 @@ export default function CreatorIntelligencePage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setManager(managerSummary.manager)}
+                      onClick={() =>
+                        setExpandedManager((current) =>
+                          current === managerSummary.manager ? "" : managerSummary.manager
+                        )
+                      }
                       className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-black text-sky-700 hover:bg-sky-50"
                     >
-                      View Team
+                      {expandedManager === managerSummary.manager ? "Hide Team" : "View Team"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => downloadManagerReport(managerSummary)}
+                      onClick={() => setManager(managerSummary.manager)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
+                    >
+                      Filter Page
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadManagerReport(
+                          managerSummary,
+                          weeklyHealthComparison.filter(
+                            (item) => item.creator.managerLabel === managerSummary.manager
+                          )
+                        )
+                      }
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
                     >
                       Download Manager Report
                     </button>
                   </div>
+
+                  {expandedManager === managerSummary.manager ? (
+                    <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
+                      {managerSummary.creators.map((creator) => (
+                        <button
+                          key={`manager-team-${managerSummary.manager}-${creator.key}`}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCreatorKey(creator.key);
+                            setFloatingProfileOpen(true);
+                          }}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left hover:border-sky-200 hover:bg-sky-50"
+                        >
+                          <span>
+                            <span className="block font-black text-slate-950">{creator.username}</span>
+                            <span className="block text-xs text-slate-500">{creator.healthStatus}</span>
+                          </span>
+                          <span className={`rounded-full border px-3 py-1 text-xs font-black ${statusClasses(creator.healthStatus)}`}>
+                            {creator.healthScore}/100
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -3014,9 +3200,18 @@ export default function CreatorIntelligencePage() {
                 Tracks eligible Aqua creators towards {formatNumber(GRADUATION_TARGET)} diamonds. Pace is measured against the latest uploaded day.
               </p>
             </div>
-            <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
-              Target pace day {latestGraduationUploadDay}:{" "}
-              {formatNumber((GRADUATION_TARGET / lastDay) * Math.min(latestGraduationUploadDay, lastDay))}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={copyGraduationPaceText}
+                className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+              >
+                Copy WhatsApp Text
+              </button>
+              <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
+                Target pace day {latestGraduationUploadDay}:{" "}
+                {formatNumber((GRADUATION_TARGET / lastDay) * Math.min(latestGraduationUploadDay, lastDay))}
+              </div>
             </div>
           </div>
 
@@ -3092,10 +3287,44 @@ export default function CreatorIntelligencePage() {
 
         <section className="mt-6 grid gap-6 xl:grid-cols-2">
           <div className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-black uppercase text-sky-900">New Creators</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Creators 14 days in or less are shown here instead of being placed into health buckets.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-black uppercase text-sky-900">New Creators</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Creators 14 days in or less are shown here instead of being placed into health buckets.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={copyNewCreatorsText}
+                className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
+              >
+                Copy WhatsApp Text
+              </button>
+            </div>
+            {inactiveNewCreators.length ? (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+                <h3 className="text-sm font-black uppercase text-red-700">Needs removal check</h3>
+                <p className="mt-1 text-xs text-red-600">
+                  New creators who are 3+ days in with no live hours and no diamonds.
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {inactiveNewCreators.map((creator) => (
+                    <button
+                      key={`inactive-new-${creator.key}`}
+                      type="button"
+                      onClick={() => setSelectedCreatorKey(creator.key)}
+                      className="flex items-center justify-between rounded-xl border border-red-100 bg-white px-3 py-2 text-left hover:border-red-200"
+                    >
+                      <span className="font-bold text-red-900">{creator.username}</span>
+                      <span className="text-xs font-black text-red-700">
+                        Day {formatNumber(creator.daysSinceJoining)} / 0 diamonds
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-5 grid gap-3">
               {newCreators.slice(0, 12).map((creator) => (
                 <button
@@ -3134,10 +3363,21 @@ export default function CreatorIntelligencePage() {
           </div>
 
           <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-black uppercase text-emerald-700">Hidden Potential</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              New creators already showing strong early diamonds, DPH (diamonds per hour) or health signals.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-black uppercase text-emerald-700">Hidden Potential</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  New creators already showing strong early diamonds, DPH (diamonds per hour) or health signals.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={copyHiddenPotentialText}
+                className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
+              >
+                Copy WhatsApp Text
+              </button>
+            </div>
             <div className="mt-5">
               <CreatorListPanel
                 title="High Performing New Creators"
@@ -3147,6 +3387,57 @@ export default function CreatorIntelligencePage() {
             </div>
           </div>
         </section>
+
+        {selectedCreator ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setFloatingProfileOpen(true)}
+              className="fixed bottom-6 right-6 z-40 rounded-full border border-sky-200 bg-sky-600 px-5 py-4 text-sm font-black text-white shadow-2xl hover:bg-sky-700"
+            >
+              Profile
+            </button>
+            {floatingProfileOpen ? (
+              <aside className="fixed right-6 top-24 z-50 w-[min(420px,calc(100vw-48px))] rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-sky-700">Quick Creator Profile</p>
+                    <h2 className="mt-1 text-2xl font-black text-slate-950">{selectedCreator.username}</h2>
+                    <p className="mt-1 text-xs text-slate-500">{getCreatorMetaLine(selectedCreator)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFloatingProfileOpen(false)}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-600 hover:bg-slate-100"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <MetricCard
+                    label="Weekly performance"
+                    value={`${selectedCreator.healthScore}/100`}
+                  />
+                  <MetricCard label="Status" value={selectedCreator.healthStatus} />
+                  <MetricCard label="Diamonds" value={formatNumber(selectedCreator.diamonds)} />
+                  <MetricCard label="Hours" value={formatHours(selectedCreator.healthWindowHours)} />
+                  <MetricCard label="Battles" value={formatNumber(selectedCreator.healthWindowMatches)} />
+                  <MetricCard label="DPH" value={formatNumber(selectedCreator.dph)} />
+                </div>
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <h3 className="text-sm font-black uppercase text-slate-700">Manager Focus</h3>
+                  <ul className="mt-2 space-y-2 text-sm text-slate-600">
+                    {buildManagerFocusDetail(selectedCreator)
+                      .slice(0, 3)
+                      .map((focus) => (
+                        <li key={focus}>{focus}</li>
+                      ))}
+                  </ul>
+                </div>
+              </aside>
+            ) : null}
+          </>
+        ) : null}
       </div>
     </main>
   );
