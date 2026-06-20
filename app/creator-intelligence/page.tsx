@@ -226,6 +226,12 @@ function getLastDayForMonth(month: string) {
   return new Date(Number(year), Number(monthNumber), 0).getDate();
 }
 
+function getPreviousMonthStart(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(year, monthNumber - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 function getDayNumber(dateValue: string) {
   return Number(String(dateValue).split("-")[2] || 1);
 }
@@ -562,8 +568,9 @@ function getCreatorTags(creator: {
   return tags;
 }
 
-function buildCreatorSummaries(rows: CreatorStat[]) {
+function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] = rows) {
   const byCreator = new Map<string, CreatorStat[]>();
+  const rollingByCreator = new Map<string, CreatorStat[]>();
   const windowDates = Array.from(new Set(rows.map((row) => row.stat_date)))
     .sort((a, b) => a.localeCompare(b))
     .slice(-7);
@@ -574,9 +581,18 @@ function buildCreatorSummaries(rows: CreatorStat[]) {
     byCreator.get(username)?.push(row);
   }
 
+  for (const row of rollingRows) {
+    const username = getUsername(row).toLowerCase();
+    if (!rollingByCreator.has(username)) rollingByCreator.set(username, []);
+    rollingByCreator.get(username)?.push(row);
+  }
+
   return Array.from(byCreator.entries())
     .map(([key, creatorRows]) => {
       const sortedRows = [...creatorRows].sort((a, b) => a.stat_date.localeCompare(b.stat_date));
+      const rollingCreatorRows = [...(rollingByCreator.get(key) || creatorRows)].sort((a, b) =>
+        a.stat_date.localeCompare(b.stat_date)
+      );
       const latest = sortedRows[sortedRows.length - 1] || creatorRows[0];
       const groupValue = getText(latest, ["team", "group_name", "Group"], "Unassigned");
       const agencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"));
@@ -636,10 +652,10 @@ function buildCreatorSummaries(rows: CreatorStat[]) {
         1
       );
       const monthlyHealth = getHealthBreakdown(
-        creatorRows,
-        Array.from(new Set(creatorRows.map((row) => row.stat_date))).sort((a, b) =>
-          a.localeCompare(b)
-        ),
+        rollingCreatorRows,
+        Array.from(new Set(rollingCreatorRows.map((row) => row.stat_date)))
+          .sort((a, b) => a.localeCompare(b))
+          .slice(-30),
         "monthly"
       );
       const dailyPoints = sortedRows.map(getDailyPoint);
@@ -1974,7 +1990,7 @@ export default function CreatorIntelligencePage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const startDate = `${month}-01`;
+      const startDate = getPreviousMonthStart(month);
       const endDate = `${month}-${String(getLastDayForMonth(month)).padStart(2, "0")}`;
       const allRows: CreatorStat[] = [];
       const pageSize = 1000;
@@ -2013,11 +2029,11 @@ export default function CreatorIntelligencePage() {
   const dateRangeRows = useMemo(() => {
     return rows.filter((row) => {
       const day = getDayNumber(row.stat_date);
-      return day >= startDay && day <= endDay;
+      return row.stat_date.startsWith(`${month}-`) && day >= startDay && day <= endDay;
     });
-  }, [rows, startDay, endDay]);
+  }, [rows, month, startDay, endDay]);
 
-  const allSummaries = useMemo(() => buildCreatorSummaries(dateRangeRows), [dateRangeRows]);
+  const allSummaries = useMemo(() => buildCreatorSummaries(dateRangeRows, rows), [dateRangeRows, rows]);
   const aquaRows = useMemo(() => dateRangeRows.filter(isAquaRow), [dateRangeRows]);
   const latestAquaDate = useMemo(() => {
     const dates = aquaRows.map((row) => row.stat_date).sort((a, b) => a.localeCompare(b));
@@ -2911,7 +2927,7 @@ export default function CreatorIntelligencePage() {
                     selectedCreator.monthlyHealthStatus
                   )}`}
                 >
-                  Monthly performance {selectedCreator.monthlyHealthScore}/100 {selectedCreator.monthlyHealthStatus}
+                  30-day performance {selectedCreator.monthlyHealthScore}/100 {selectedCreator.monthlyHealthStatus}
                 </span>
               </div>
             </div>
