@@ -1714,12 +1714,15 @@ function escapeHtml(value: string | number) {
 
 function downloadManagerReport(
   managerSummary: ManagerHealthSummary,
-  movementItems: WeeklyHealthComparison[]
+  movementItems: WeeklyHealthComparison[],
+  agencyAverageScore: number
 ) {
   const matureCreators = managerSummary.creators.filter((creator) => !creator.isNewCreator);
   const creatorsForStats = matureCreators.length ? matureCreators : managerSummary.creators;
   const strongestCreators = [...creatorsForStats].sort((a, b) => b.healthScore - a.healthScore).slice(0, 8);
-  const lowestCreators = [...creatorsForStats].sort((a, b) => a.healthScore - b.healthScore).slice(0, 12);
+  const belowAgencyAverageCreators = [...creatorsForStats]
+    .filter((creator) => creator.healthScore < agencyAverageScore)
+    .sort((a, b) => a.healthScore - b.healthScore);
   const improvingCreators = movementItems.filter((item) => item.change !== null && item.change > 0);
   const decliningCreators = movementItems.filter((item) => item.change !== null && item.change < 0);
   const stableCreators = movementItems.filter((item) => item.change !== null && item.change === 0);
@@ -1868,14 +1871,20 @@ function downloadManagerReport(
     <div>
       <h2>Bringing The Average Down</h2>
       <div class="panel">
+        <p class="muted">Only creators below the current Aqua agency average of ${formatNumber(agencyAverageScore)}/100 are shown here.</p>
         <table>
           <tr><th>Creator</th><th>Score</th><th>First Fix</th></tr>
-          ${lowestCreators
+          ${belowAgencyAverageCreators
             .map((creator) => {
               const firstFix = buildManagerFocusDetail(creator)[0] || "Review weekly activity and set one clear target.";
               return `<tr><td>${escapeHtml(creator.username)}</td><td>${formatNumber(creator.healthScore)}/100</td><td>${escapeHtml(firstFix)}</td></tr>`;
             })
             .join("")}
+          ${
+            belowAgencyAverageCreators.length
+              ? ""
+              : `<tr><td colspan="3">No creators in this manager team are currently below the Aqua agency average.</td></tr>`
+          }
         </table>
       </div>
     </div>
@@ -2782,7 +2791,10 @@ export default function CreatorIntelligencePage() {
                           managerSummary,
                           weeklyHealthComparison.filter(
                             (item) => item.creator.managerLabel === managerSummary.manager
-                          )
+                          ),
+                          agencyHealthTrend.length
+                            ? agencyHealthTrend[agencyHealthTrend.length - 1].score
+                            : 0
                         )
                       }
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
