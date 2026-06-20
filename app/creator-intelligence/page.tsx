@@ -167,6 +167,11 @@ type ManagerHealthSummary = {
   lowQuality: number;
 };
 
+type ManagerHealthTrendPoint = {
+  date: string;
+  score: number;
+};
+
 const MONTHS = [
   { value: "2026-01", label: "January 2026" },
   { value: "2026-02", label: "February 2026" },
@@ -1080,6 +1085,80 @@ function getScoreMovementReason(creator: CreatorSummary, previousScore: number |
   return `Stable week-on-week. Push one clear improvement area next: ${mainIssue}`;
 }
 
+function buildManagerHealthTrend(
+  allRows: CreatorStat[],
+  managerSummary: ManagerHealthSummary
+): ManagerHealthTrendPoint[] {
+  const creatorKeys = new Set(managerSummary.creators.map((creator) => creator.key));
+  const dates = Array.from(new Set(allRows.filter(isAquaRow).map((row) => row.stat_date)))
+    .sort((a, b) => a.localeCompare(b))
+    .slice(-30);
+
+  return dates.map((date) => {
+    const rowsUpToDate = allRows.filter(
+      (row) => isAquaRow(row) && row.stat_date <= date && creatorKeys.has(getUsername(row).toLowerCase())
+    );
+    const summaries = buildCreatorSummaries(rowsUpToDate).filter(
+      (creator) => creatorKeys.has(creator.key) && !creator.isNewCreator
+    );
+    const score =
+      summaries.length > 0
+        ? summaries.reduce((sum, creator) => sum + creator.healthScore, 0) / summaries.length
+        : 0;
+
+    return { date, score };
+  });
+}
+
+function buildManagerTrendChartSvg(points: ManagerHealthTrendPoint[]) {
+  const width = 920;
+  const height = 300;
+  const left = 58;
+  const right = 24;
+  const top = 24;
+  const bottom = 54;
+  const chartWidth = width - left - right;
+  const chartHeight = height - top - bottom;
+  const yTicks = [0, 20, 40, 60, 80, 100];
+  const safePoints = points.length ? points : [{ date: "", score: 0 }];
+  const xFor = (index: number) =>
+    left + (safePoints.length === 1 ? chartWidth : (index / (safePoints.length - 1)) * chartWidth);
+  const yFor = (score: number) => top + chartHeight - (Math.max(0, Math.min(100, score)) / 100) * chartHeight;
+  const path = safePoints
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yFor(point.score).toFixed(1)}`)
+    .join(" ");
+  const labels = safePoints
+    .map((point, index) => {
+      const showEvery = Math.max(1, Math.ceil(safePoints.length / 8));
+      if (index !== 0 && index !== safePoints.length - 1 && index % showEvery !== 0) return "";
+      return `<text x="${xFor(index).toFixed(1)}" y="${height - 18}" text-anchor="middle" font-size="11" fill="#64748b">${escapeHtml(
+        point.date.slice(5)
+      )}</text>`;
+    })
+    .join("");
+
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Manager team health trend">
+    <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="#f8fbff" />
+    ${yTicks
+      .map((tick) => {
+        const y = yFor(tick);
+        return `<line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="#dbeafe" stroke-width="1" />
+          <text x="${left - 12}" y="${y + 4}" text-anchor="end" font-size="12" fill="#64748b">${tick}</text>`;
+      })
+      .join("")}
+    <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" stroke="#94a3b8" stroke-width="2" />
+    <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="#94a3b8" stroke-width="2" />
+    <path d="${path}" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    ${safePoints
+      .map(
+        (point, index) =>
+          `<circle cx="${xFor(index).toFixed(1)}" cy="${yFor(point.score).toFixed(1)}" r="4" fill="#0369a1" />`
+      )
+      .join("")}
+    ${labels}
+  </svg>`;
+}
+
 function getWeeklyTargetText(creator: CreatorSummary) {
   const liveDaysGap = Math.max(5 - creator.oneHourDays, 0);
   const hoursGap = Math.max(20 - creator.healthWindowHours, 0);
@@ -1731,7 +1810,8 @@ function escapeHtml(value: string | number) {
 function downloadManagerReport(
   managerSummary: ManagerHealthSummary,
   movementItems: WeeklyHealthComparison[],
-  agencyAverageScore: number
+  agencyAverageScore: number,
+  managerTrend: ManagerHealthTrendPoint[]
 ) {
   const matureCreators = managerSummary.creators.filter((creator) => !creator.isNewCreator);
   const creatorsForStats = matureCreators.length ? matureCreators : managerSummary.creators;
@@ -1742,6 +1822,12 @@ function downloadManagerReport(
   const improvingCreators = movementItems.filter((item) => item.change !== null && item.change > 0);
   const decliningCreators = movementItems.filter((item) => item.change !== null && item.change < 0);
   const stableCreators = movementItems.filter((item) => item.change !== null && item.change === 0);
+  const thirtyDayAverage =
+    managerTrend.length > 0
+      ? managerTrend.reduce((sum, point) => sum + point.score, 0) / managerTrend.length
+      : 0;
+  const trendChange =
+    managerTrend.length > 1 ? managerTrend[managerTrend.length - 1].score - managerTrend[0].score : 0;
   const reportDate = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -1809,7 +1895,7 @@ function downloadManagerReport(
       <p class="muted">${reportDate} &bull; Aqua Creator Intelligence</p>
     </div>
     <div class="score">
-      <span class="label">Team Health</span>
+      <span class="label">7-Day Team Health</span>
       <strong>${formatNumber(managerSummary.averageScore)}</strong>
       <span>/100 average</span>
     </div>
@@ -1818,12 +1904,20 @@ function downloadManagerReport(
   <section class="grid">
     <div class="card"><div class="label">Creators</div><div class="value">${formatNumber(managerSummary.totalCreators)}</div></div>
     <div class="card"><div class="label">Scored Creators</div><div class="value">${formatNumber(managerSummary.matureCreators)}</div></div>
+    <div class="card"><div class="label">30-Day Team Health</div><div class="value">${formatNumber(thirtyDayAverage)}/100</div></div>
+    <div class="card"><div class="label">30-Day Movement</div><div class="value ${trendChange >= 0 ? "good" : "bad"}">${trendChange >= 0 ? "+" : ""}${formatNumber(trendChange)}</div></div>
     <div class="card"><div class="label">Improving</div><div class="value good">${formatNumber(improvingCreators.length)}</div></div>
     <div class="card"><div class="label">New Creators</div><div class="value">${formatNumber(managerSummary.newCreators)}</div></div>
     <div class="card"><div class="label">Weekly Diamonds</div><div class="value">${formatNumber(totalDiamonds)}</div></div>
     <div class="card"><div class="label">Weekly Hours</div><div class="value">${formatHours(totalHours)}h</div></div>
     <div class="card"><div class="label">Weekly Battles</div><div class="value">${formatNumber(totalBattles)}</div></div>
     <div class="card"><div class="label">Average DPH</div><div class="value">${formatNumber(averageDph)}</div></div>
+  </section>
+
+  <h2>30-Day Manager Health Trend</h2>
+  <section class="panel">
+    <p class="muted">Daily average team health for this manager over the latest 30 uploaded days.</p>
+    ${buildManagerTrendChartSvg(managerTrend)}
   </section>
 
   <h2>Team Mix</h2>
@@ -2172,6 +2266,29 @@ export default function CreatorIntelligencePage() {
       })
       .sort((a, b) => a.averageScore - b.averageScore);
   }, [aquaSummaries, graduationStatus, healthStatus, search, tierStatus]);
+
+  const managerGrowthSummaries = useMemo(
+    () =>
+      managerHealthSummaries
+        .map((managerSummary) => {
+          const trend = buildManagerHealthTrend(rows, managerSummary);
+          const first = trend[0]?.score ?? 0;
+          const latest = trend[trend.length - 1]?.score ?? 0;
+          const change = trend.length > 1 ? latest - first : 0;
+          const percentChange = first > 0 ? (change / first) * 100 : latest > 0 ? 100 : 0;
+
+          return {
+            managerSummary,
+            trend,
+            first,
+            latest,
+            change,
+            percentChange,
+          };
+        })
+        .sort((a, b) => b.change - a.change),
+    [managerHealthSummaries, rows]
+  );
 
   const newCreators = useMemo(
     () =>
@@ -2695,6 +2812,71 @@ export default function CreatorIntelligencePage() {
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
+              <h2 className="text-3xl font-black uppercase text-sky-900">Manager Growth Leaderboard</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                30-day team health movement by manager, comparing the first available point with the latest point.
+              </p>
+            </div>
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
+              {formatNumber(managerGrowthSummaries.length)} managers tracked
+            </span>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            {managerGrowthSummaries.map((item, index) => (
+              <div
+                key={`manager-growth-${item.managerSummary.manager}`}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-slate-400">#{index + 1}</p>
+                    <h3 className="mt-1 text-lg font-black text-slate-950">{item.managerSummary.manager}</h3>
+                    <p className="mt-1 text-xs font-bold text-slate-500">
+                      {formatNumber(item.first)}/100 to {formatNumber(item.latest)}/100
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-sm font-black ${
+                      item.change > 0
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : item.change < 0
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : "border-slate-200 bg-white text-slate-600"
+                    }`}
+                  >
+                    {item.change > 0 ? "+" : ""}
+                    {formatNumber(item.change)} pts
+                  </span>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+                  <div
+                    className={`h-full ${
+                      item.change > 0 ? "bg-emerald-500" : item.change < 0 ? "bg-red-500" : "bg-slate-300"
+                    }`}
+                    style={{ width: `${Math.min(Math.abs(item.percentChange), 100)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  {item.change > 0
+                    ? `Up ${formatPercent(Math.abs(item.percentChange))} over the 30-day trend.`
+                    : item.change < 0
+                      ? `Down ${formatPercent(Math.abs(item.percentChange))} over the 30-day trend.`
+                      : "No movement across the available 30-day trend."}
+                </p>
+              </div>
+            ))}
+            {!managerGrowthSummaries.length ? (
+              <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                No manager growth data found for these filters.
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Team Health</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Team average by manager, with new creators counted separately from scored creators.
@@ -2810,7 +2992,10 @@ export default function CreatorIntelligencePage() {
                           ),
                           agencyHealthTrend.length
                             ? agencyHealthTrend[agencyHealthTrend.length - 1].score
-                            : 0
+                            : 0,
+                          managerGrowthSummaries.find(
+                            (item) => item.managerSummary.manager === managerSummary.manager
+                          )?.trend || buildManagerHealthTrend(rows, managerSummary)
                         )
                       }
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
