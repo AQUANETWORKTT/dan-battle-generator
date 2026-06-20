@@ -58,7 +58,6 @@ type HealthBreakdown = {
   liveHours: number;
   matches: number;
   dph: number;
-  growthTrend: number;
 };
 
 type CreatorDailyPoint = {
@@ -410,15 +409,12 @@ function capScore(value: number, max: number) {
 function getHealthBreakdown(creatorRows: CreatorStat[], windowDates: string[]) {
   const rowsByDate = new Map(creatorRows.map((row) => [row.stat_date, row]));
   const currentDates = windowDates.slice(-7);
-  const previousDates = windowDates.slice(-14, -7);
   const windowDays = Math.max(currentDates.length, 1);
   let liveDays = 0;
   let totalHours = 0;
   let totalMatches = 0;
   let totalFollowers = 0;
   let totalDiamonds = 0;
-  const currentTotals = { diamonds: 0, hours: 0, matches: 0, followers: 0 };
-  const previousTotals = { diamonds: 0, hours: 0, matches: 0, followers: 0 };
 
   for (const date of currentDates) {
     const row = rowsByDate.get(date);
@@ -433,51 +429,17 @@ function getHealthBreakdown(creatorRows: CreatorStat[], windowDates: string[]) {
     totalMatches += matches;
     totalFollowers += followers;
     totalDiamonds += diamonds;
-    currentTotals.diamonds += diamonds;
-    currentTotals.hours += hours;
-    currentTotals.matches += matches;
-    currentTotals.followers += followers;
 
-  }
-
-  for (const date of previousDates) {
-    const row = rowsByDate.get(date);
-    previousTotals.diamonds += row ? getNumber(row, ["diamonds", "Diamonds"]) : 0;
-    previousTotals.hours += row ? getDurationHours(row, ["live_hours", "LIVE duration"]) : 0;
-    previousTotals.matches += row ? getNumber(row, ["matches", "Matches"]) : 0;
-    previousTotals.followers += row ? getNumber(row, ["new_followers", "New followers", "followers"]) : 0;
   }
 
   const dph = totalHours > 0 ? totalDiamonds / totalHours : 0;
-  const growthSignals = [
-    getChangePercent(currentTotals.diamonds, previousTotals.diamonds),
-    getChangePercent(currentTotals.hours, previousTotals.hours),
-    getChangePercent(currentTotals.matches, previousTotals.matches),
-    getChangePercent(currentTotals.followers, previousTotals.followers),
-  ].filter((value) => Number.isFinite(value));
-  const averageGrowth =
-    previousDates.length > 0 && growthSignals.length > 0
-      ? growthSignals.reduce((sum, value) => sum + value, 0) / growthSignals.length
-      : 0;
 
   const liveDaysScore = liveDays * 5;
   const liveHoursScore =
-    totalHours >= 20 ? 20 : totalHours >= 15 ? 15 : totalHours >= 10 ? 10 : totalHours >= 5 ? 5 : 0;
+    totalHours >= 20 ? 30 : totalHours >= 15 ? 22 : totalHours >= 10 ? 15 : totalHours >= 5 ? 8 : 0;
   const matchesScore = capScore(Math.floor(totalMatches / 7), 10);
   const dphScore =
-    dph >= 2000 ? 20 : dph >= 1500 ? 15 : dph >= 1000 ? 10 : dph >= 500 ? 5 : dph >= 100 ? 1 : 0;
-  const growthTrend =
-    previousDates.length === 0
-      ? 9
-      : averageGrowth >= 20
-        ? 15
-        : averageGrowth >= 5
-          ? 12
-          : averageGrowth >= -5
-            ? 9
-            : averageGrowth >= -20
-              ? 4
-              : 0;
+    dph >= 2500 ? 25 : dph >= 2000 ? 20 : dph >= 1500 ? 15 : dph >= 1000 ? 10 : dph >= 500 ? 5 : dph >= 100 ? 1 : 0;
 
   return {
     healthWindowDays: windowDays,
@@ -494,10 +456,9 @@ function getHealthBreakdown(creatorRows: CreatorStat[], windowDates: string[]) {
       liveHours: liveHoursScore,
       matches: matchesScore,
       dph: dphScore,
-      growthTrend,
     },
     healthScore: Math.round(
-      liveDaysScore + liveHoursScore + matchesScore + dphScore + growthTrend
+      liveDaysScore + liveHoursScore + matchesScore + dphScore
     ),
   };
 }
@@ -819,7 +780,7 @@ function buildCreatorReportTips(creator: CreatorSummary) {
     tips.push({
       title: "Make each live count",
       description:
-        "Short lives make it harder to build momentum. Start with a simple target of one full hour whenever you go live.",
+        "Short lives make it harder to build strong weekly results. Start with a simple target of one full hour whenever you go live.",
     });
   } else if (creator.healthWindowHours < 20) {
     tips.push({
@@ -871,17 +832,14 @@ function buildScoreImprovementTips(creator: CreatorSummary) {
   if (breakdown.liveDays < 35) {
     tips.push(`Live Days: ${35 - Math.round(breakdown.liveDays)} more points available by going live on every tracked day.`);
   }
-  if (breakdown.liveHours < 20) {
-    tips.push(`Live Hours: ${20 - Math.round(breakdown.liveHours)} more points available by reaching 20 total live hours.`);
+  if (breakdown.liveHours < 30) {
+    tips.push(`Live Hours: ${30 - Math.round(breakdown.liveHours)} more points available by reaching 20 total live hours.`);
   }
   if (breakdown.matches < 10) {
     tips.push(`Matches: ${10 - Math.round(breakdown.matches)} more points available by moving closer to 70 weekly matches.`);
   }
-  if (breakdown.dph < 20) {
-    tips.push(`DPH (diamonds per hour): ${20 - Math.round(breakdown.dph)} more points available by improving diamonds per hour.`);
-  }
-  if (breakdown.growthTrend < 15) {
-    tips.push(`Momentum: ${15 - Math.round(breakdown.growthTrend)} more points available through stronger diamonds, hours, matches or follower growth.`);
+  if (breakdown.dph < 25) {
+    tips.push(`DPH (diamonds per hour): ${25 - Math.round(breakdown.dph)} more points available by improving diamonds per hour.`);
   }
 
   if (!tips.length) tips.push("This creator is already close to the maximum score.");
@@ -909,7 +867,7 @@ function buildManagerActions(creator: CreatorSummary) {
   }
 
   actions.push(`Set a clear check-in plan for ${creator.username} with ${creator.managerLabel}.`);
-  actions.push("Prioritise the weakest score area first: consistency, hours, matches, DPH (diamonds per hour), or growth.");
+  actions.push("Prioritise the weakest score area first: live days, live hours, matches, or DPH (diamonds per hour).");
 
   return actions;
 }
@@ -2216,7 +2174,7 @@ export default function CreatorIntelligencePage() {
                 />
                 <MetricCard
                   label="Live hours"
-                  value={`${Math.round(selectedCreator.healthBreakdown.liveHours)}/20`}
+                  value={`${Math.round(selectedCreator.healthBreakdown.liveHours)}/30`}
                 />
                 <MetricCard
                   label="Matches"
@@ -2224,11 +2182,7 @@ export default function CreatorIntelligencePage() {
                 />
                 <MetricCard
                   label="DPH (diamonds per hour)"
-                  value={`${Math.round(selectedCreator.healthBreakdown.dph)}/20`}
-                />
-                <MetricCard
-                  label="Momentum"
-                  value={`${Math.round(selectedCreator.healthBreakdown.growthTrend)}/15`}
+                  value={`${Math.round(selectedCreator.healthBreakdown.dph)}/25`}
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
