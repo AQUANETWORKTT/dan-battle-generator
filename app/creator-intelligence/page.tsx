@@ -154,6 +154,7 @@ type WeeklyHealthComparison = {
 
 type ManagerHealthSummary = {
   manager: string;
+  creators: CreatorSummary[];
   totalCreators: number;
   matureCreators: number;
   newCreators: number;
@@ -1571,6 +1572,209 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
   URL.revokeObjectURL(url);
 }
 
+function escapeHtml(value: string | number) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function downloadManagerReport(managerSummary: ManagerHealthSummary) {
+  const matureCreators = managerSummary.creators.filter((creator) => !creator.isNewCreator);
+  const creatorsForStats = matureCreators.length ? matureCreators : managerSummary.creators;
+  const strongestCreators = [...creatorsForStats].sort((a, b) => b.healthScore - a.healthScore).slice(0, 8);
+  const lowestCreators = [...creatorsForStats].sort((a, b) => a.healthScore - b.healthScore).slice(0, 12);
+  const targetScore = 70;
+  const pointsToTarget = Math.max(targetScore - managerSummary.averageScore, 0);
+  const reportDate = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const totalDiamonds = managerSummary.creators.reduce((sum, creator) => sum + creator.diamonds, 0);
+  const totalHours = managerSummary.creators.reduce((sum, creator) => sum + creator.healthWindowHours, 0);
+  const totalBattles = managerSummary.creators.reduce((sum, creator) => sum + creator.healthWindowMatches, 0);
+  const averageDph =
+    totalHours > 0
+      ? managerSummary.creators.reduce((sum, creator) => sum + creator.diamonds, 0) / totalHours
+      : 0;
+  const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(managerSummary.manager)} - Manager Team Health Report</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #102033; background: #eef7ff; }
+    main { max-width: 1120px; margin: 0 auto; min-height: 100vh; background: white; padding: 40px; border-top: 8px solid #0284c7; }
+    h1 { margin: 0; color: #082f49; font-size: 34px; }
+    h2 { margin-top: 34px; color: #075985; font-size: 22px; }
+    .muted { color: #64748b; }
+    .hero { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+    .score { border: 1px solid #bae6fd; background: #e0f2fe; color: #075985; border-radius: 18px; padding: 18px 22px; text-align: right; min-width: 190px; }
+    .score strong { display: block; font-size: 42px; line-height: 1; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 28px; }
+    .card { border: 1px solid #dbeafe; background: #f8fbff; border-radius: 16px; padding: 16px; }
+    .label { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .value { margin-top: 8px; color: #0f172a; font-size: 24px; font-weight: 900; }
+    .value.good { color: #047857; }
+    .value.warn { color: #c2410c; }
+    .value.bad { color: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+    th { background: #e0f2fe; color: #075985; text-align: left; padding: 10px; border: 1px solid #bae6fd; }
+    td { padding: 10px; border: 1px solid #dbeafe; vertical-align: top; }
+    tr:nth-child(even) td { background: #f8fbff; }
+    .pill { display: inline-block; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 800; }
+    .elite { background: #f3e8ff; color: #7e22ce; }
+    .healthy { background: #dcfce7; color: #047857; }
+    .attention { background: #ffedd5; color: #c2410c; }
+    .performance { background: #e0f2fe; color: #0369a1; }
+    .quality { background: #fee2e2; color: #b91c1c; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .panel { border: 1px solid #dbeafe; border-radius: 18px; padding: 18px; background: #f8fbff; }
+    ul { margin: 10px 0 0; padding-left: 20px; }
+    li { margin: 7px 0; }
+    @media print {
+      body { background: white; }
+      main { max-width: none; border-top: 0; }
+      .panel, .card, table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div>
+      <p class="label">Manager Team Health Report</p>
+      <h1>${escapeHtml(managerSummary.manager)}</h1>
+      <p class="muted">${reportDate} · Aqua Creator Intelligence</p>
+    </div>
+    <div class="score">
+      <span class="label">Team Health</span>
+      <strong>${formatNumber(managerSummary.averageScore)}</strong>
+      <span>/100 average</span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card"><div class="label">Creators</div><div class="value">${formatNumber(managerSummary.totalCreators)}</div></div>
+    <div class="card"><div class="label">Scored Creators</div><div class="value">${formatNumber(managerSummary.matureCreators)}</div></div>
+    <div class="card"><div class="label">Target Gap</div><div class="value ${pointsToTarget > 0 ? "warn" : "good"}">${pointsToTarget > 0 ? `${formatNumber(pointsToTarget)} pts` : "On Target"}</div></div>
+    <div class="card"><div class="label">New Creators</div><div class="value">${formatNumber(managerSummary.newCreators)}</div></div>
+    <div class="card"><div class="label">Weekly Diamonds</div><div class="value">${formatNumber(totalDiamonds)}</div></div>
+    <div class="card"><div class="label">Weekly Hours</div><div class="value">${formatHours(totalHours)}h</div></div>
+    <div class="card"><div class="label">Weekly Battles</div><div class="value">${formatNumber(totalBattles)}</div></div>
+    <div class="card"><div class="label">Average DPH</div><div class="value">${formatNumber(averageDph)}</div></div>
+  </section>
+
+  <h2>Team Mix</h2>
+  <section class="grid">
+    <div class="card"><div class="label">Elite</div><div class="value good">${formatNumber(managerSummary.elite)}</div></div>
+    <div class="card"><div class="label">Healthy</div><div class="value good">${formatNumber(managerSummary.healthy)}</div></div>
+    <div class="card"><div class="label">Needs Attention</div><div class="value warn">${formatNumber(managerSummary.needsAttention)}</div></div>
+    <div class="card"><div class="label">Low Performance</div><div class="value warn">${formatNumber(managerSummary.lowPerformance)}</div></div>
+    <div class="card"><div class="label">Low Quality</div><div class="value bad">${formatNumber(managerSummary.lowQuality)}</div></div>
+  </section>
+
+  <h2>Manager Action Summary</h2>
+  <section class="panel">
+    <ul>
+      <li>Move the lowest scoring creators first. They are having the biggest negative impact on the team average.</li>
+      <li>Target creators below 50 for live-day consistency, weekly hours and battle rhythm before chasing DPH.</li>
+      <li>Protect healthy and elite creators by keeping their routine stable, then use them as examples for the team.</li>
+      <li>${pointsToTarget > 0 ? `The team needs roughly ${formatNumber(pointsToTarget)} more average health points to reach the 70/100 team target.` : "The team is currently at or above the 70/100 team target."}</li>
+    </ul>
+  </section>
+
+  <section class="two-col">
+    <div>
+      <h2>Biggest Contributors</h2>
+      <div class="panel">
+        <table>
+          <tr><th>Creator</th><th>Score</th><th>Why</th></tr>
+          ${strongestCreators
+            .map(
+              (creator) =>
+                `<tr><td>${escapeHtml(creator.username)}</td><td>${formatNumber(creator.healthScore)}/100</td><td>${escapeHtml(
+                  creator.creatorTags.slice(0, 3).join(", ") || "Strong weekly performance"
+                )}</td></tr>`
+            )
+            .join("")}
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Bringing The Average Down</h2>
+      <div class="panel">
+        <table>
+          <tr><th>Creator</th><th>Score</th><th>First Fix</th></tr>
+          ${lowestCreators
+            .map((creator) => {
+              const firstFix = buildManagerActions(creator)[0] || "Review weekly activity and set one clear target.";
+              return `<tr><td>${escapeHtml(creator.username)}</td><td>${formatNumber(creator.healthScore)}/100</td><td>${escapeHtml(firstFix)}</td></tr>`;
+            })
+            .join("")}
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <h2>Full Creator Detail</h2>
+  <table>
+    <tr>
+      <th>Creator</th>
+      <th>Status</th>
+      <th>Score</th>
+      <th>Score Contribution</th>
+      <th>Live Days</th>
+      <th>Hours</th>
+      <th>Battles</th>
+      <th>DPH</th>
+      <th>Diamonds</th>
+      <th>Manager Focus</th>
+    </tr>
+    ${managerSummary.creators
+      .map((creator) => {
+        const statusClass = reportToneClass(creator.healthStatus);
+        const contribution =
+          creator.isNewCreator || !creatorsForStats.length
+            ? "New creator"
+            : `${formatNumber(creator.healthScore / creatorsForStats.length)} avg pts`;
+        const focus = buildManagerActions(creator).slice(0, 2).join(" ");
+
+        return `<tr>
+          <td><strong>${escapeHtml(creator.username)}</strong><br><span class="muted">${escapeHtml(creator.tierStatus)}</span></td>
+          <td><span class="pill ${statusClass}">${escapeHtml(creator.healthStatus)}</span></td>
+          <td>${formatNumber(creator.healthScore)}/100</td>
+          <td>${contribution}</td>
+          <td>${formatNumber(creator.oneHourDays)}/${formatNumber(creator.healthWindowDays)}</td>
+          <td>${formatHours(creator.healthWindowHours)}h</td>
+          <td>${formatNumber(creator.healthWindowMatches)}</td>
+          <td>${formatNumber(creator.dph)}</td>
+          <td>${formatNumber(creator.diamonds)}</td>
+          <td>${escapeHtml(focus || "Keep monitoring weekly performance.")}</td>
+        </tr>`;
+      })
+      .join("")}
+  </table>
+</main>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${managerSummary.manager.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-manager-team-health-${timestamp}.html`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function CreatorIntelligencePage() {
   const [month, setMonth] = useState("2026-06");
   const [startDay, setStartDay] = useState(1);
@@ -1766,6 +1970,7 @@ export default function CreatorIntelligencePage() {
 
         return {
           manager: managerName,
+          creators: creators.sort((a, b) => a.healthScore - b.healthScore),
           totalCreators: creators.length,
           matureCreators: matureCreators.length,
           newCreators: creators.length - matureCreators.length,
@@ -2245,10 +2450,8 @@ export default function CreatorIntelligencePage() {
               const scoreWidth = Math.min(Math.max(managerSummary.averageScore, 0), 100);
 
               return (
-                <button
+                <div
                   key={managerSummary.manager}
-                  type="button"
-                  onClick={() => setManager(managerSummary.manager)}
                   className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 ${
                     activeManager === managerSummary.manager
                       ? "border-sky-300 bg-sky-50"
@@ -2319,7 +2522,24 @@ export default function CreatorIntelligencePage() {
                       <p className="mt-1 text-[10px] uppercase">Low Qual</p>
                     </div>
                   </div>
-                </button>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setManager(managerSummary.manager)}
+                      className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-black text-sky-700 hover:bg-sky-50"
+                    >
+                      View Team
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadManagerReport(managerSummary)}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
+                    >
+                      Download Manager Report
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
