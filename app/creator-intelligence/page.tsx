@@ -152,6 +152,20 @@ type WeeklyHealthComparison = {
   change: number | null;
 };
 
+type ManagerHealthSummary = {
+  manager: string;
+  totalCreators: number;
+  matureCreators: number;
+  newCreators: number;
+  averageScore: number;
+  targetGap: number;
+  elite: number;
+  healthy: number;
+  needsAttention: number;
+  lowPerformance: number;
+  lowQuality: number;
+};
+
 const MONTHS = [
   { value: "2026-01", label: "January 2026" },
   { value: "2026-02", label: "February 2026" },
@@ -400,9 +414,13 @@ function capScore(value: number, max: number) {
   return Math.max(0, Math.min(max, value));
 }
 
-function getHealthBreakdown(creatorRows: CreatorStat[], windowDates: string[]) {
+function getHealthBreakdown(
+  creatorRows: CreatorStat[],
+  windowDates: string[],
+  period: "weekly" | "monthly" = "weekly"
+) {
   const rowsByDate = new Map(creatorRows.map((row) => [row.stat_date, row]));
-  const currentDates = windowDates.slice(-7);
+  const currentDates = period === "monthly" ? windowDates : windowDates.slice(-7);
   const windowDays = Math.max(currentDates.length, 1);
   let liveDays = 0;
   let totalHours = 0;
@@ -428,10 +446,29 @@ function getHealthBreakdown(creatorRows: CreatorStat[], windowDates: string[]) {
 
   const dph = totalHours > 0 ? totalDiamonds / totalHours : 0;
 
-  const liveDaysScore = liveDays * 5;
+  const liveDaysScore =
+    period === "monthly" ? capScore((liveDays / 28) * 35, 35) : capScore(liveDays * 5, 35);
   const liveHoursScore =
-    totalHours >= 20 ? 30 : totalHours >= 15 ? 22 : totalHours >= 10 ? 15 : totalHours >= 5 ? 8 : 0;
-  const matchesScore = capScore(Math.floor(totalMatches / 7), 10);
+    period === "monthly"
+      ? totalHours >= 80
+        ? 30
+        : totalHours >= 60
+          ? 22
+          : totalHours >= 40
+            ? 15
+            : totalHours >= 20
+              ? 8
+              : 0
+      : totalHours >= 20
+        ? 30
+        : totalHours >= 15
+          ? 22
+          : totalHours >= 10
+            ? 15
+            : totalHours >= 5
+              ? 8
+              : 0;
+  const matchesScore = capScore(Math.floor(totalMatches / (period === "monthly" ? 28 : 7)), 10);
   const dphScore =
     dph >= 2500 ? 25 : dph >= 2000 ? 20 : dph >= 1500 ? 15 : dph >= 1000 ? 10 : dph >= 500 ? 5 : dph >= 100 ? 1 : 0;
 
@@ -601,7 +638,8 @@ function buildCreatorSummaries(rows: CreatorStat[]) {
         creatorRows,
         Array.from(new Set(creatorRows.map((row) => row.stat_date))).sort((a, b) =>
           a.localeCompare(b)
-        )
+        ),
+        "monthly"
       );
       const dailyPoints = sortedRows.map(getDailyPoint);
       const base = {
@@ -1687,6 +1725,61 @@ export default function CreatorIntelligencePage() {
     [filteredCreators]
   );
 
+  const managerHealthSummaries = useMemo<ManagerHealthSummary[]>(() => {
+    const managerFilteredCreators = aquaSummaries.filter((creator) => {
+      const graduationMatch =
+        graduationStatus === "All Graduation" || creator.graduationStatus === graduationStatus;
+      const tierMatch =
+        tierStatus === "All Tiers" || creator.tierStatus.toLowerCase() === tierStatus.toLowerCase();
+      const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
+      const haystack = [
+        creator.username,
+        creator.agency,
+        creator.group,
+        creator.managerLabel,
+        creator.managerRaw,
+        creator.graduationStatus,
+        creator.tierStatus,
+      ]
+        .join(" ")
+        .toLowerCase();
+      const searchMatch = !search.trim() || haystack.includes(search.toLowerCase());
+
+      return graduationMatch && tierMatch && healthMatch && searchMatch;
+    });
+    const grouped = new Map<string, CreatorSummary[]>();
+
+    for (const creator of managerFilteredCreators) {
+      const managerName = creator.managerLabel || "Unassigned";
+      grouped.set(managerName, [...(grouped.get(managerName) || []), creator]);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([managerName, creators]) => {
+        const matureCreators = creators.filter((creator) => !creator.isNewCreator);
+        const scoreBase = matureCreators.length ? matureCreators : creators;
+        const averageScore =
+          scoreBase.length > 0
+            ? scoreBase.reduce((sum, creator) => sum + creator.healthScore, 0) / scoreBase.length
+            : 0;
+
+        return {
+          manager: managerName,
+          totalCreators: creators.length,
+          matureCreators: matureCreators.length,
+          newCreators: creators.length - matureCreators.length,
+          averageScore,
+          targetGap: Math.max(70 - averageScore, 0),
+          elite: matureCreators.filter((creator) => creator.healthStatus === "Elite").length,
+          healthy: matureCreators.filter((creator) => creator.healthStatus === "Healthy").length,
+          needsAttention: matureCreators.filter((creator) => creator.healthStatus === "Needs Attention").length,
+          lowPerformance: matureCreators.filter((creator) => creator.healthStatus === "Low Performance").length,
+          lowQuality: matureCreators.filter((creator) => creator.healthStatus === "Low Quality").length,
+        };
+      })
+      .sort((a, b) => a.averageScore - b.averageScore);
+  }, [aquaSummaries, graduationStatus, healthStatus, search, tierStatus]);
+
   const newCreators = useMemo(
     () =>
       filteredCreators
@@ -2131,6 +2224,110 @@ export default function CreatorIntelligencePage() {
 
         <section className="mb-6">
           <AgencyHealthTrendChart points={agencyHealthTrend} />
+        </section>
+
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-3xl font-black uppercase text-sky-900">Manager Team Health</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Team average by manager. Target is a 70/100 average, with new creators counted separately.
+              </p>
+            </div>
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
+              {formatNumber(managerHealthSummaries.length)} managers
+            </span>
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-2">
+            {managerHealthSummaries.map((managerSummary) => {
+              const scoreWidth = Math.min(Math.max(managerSummary.averageScore, 0), 100);
+
+              return (
+                <button
+                  key={managerSummary.manager}
+                  type="button"
+                  onClick={() => setManager(managerSummary.manager)}
+                  className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 ${
+                    activeManager === managerSummary.manager
+                      ? "border-sky-300 bg-sky-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-black text-slate-950">{managerSummary.manager}</p>
+                      <p className="mt-1 text-xs font-bold text-slate-500">
+                        {formatNumber(managerSummary.totalCreators)} creators ·{" "}
+                        {formatNumber(managerSummary.matureCreators)} scored ·{" "}
+                        {formatNumber(managerSummary.newCreators)} new
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full border px-3 py-1 text-sm font-black ${
+                        managerSummary.averageScore >= 70
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : managerSummary.averageScore >= 50
+                            ? "border-orange-200 bg-orange-50 text-orange-700"
+                            : "border-red-200 bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {formatNumber(managerSummary.averageScore)}/100
+                    </span>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="h-3 overflow-hidden rounded-full bg-white">
+                      <div
+                        className={`h-full ${
+                          managerSummary.averageScore >= 70
+                            ? "bg-emerald-500"
+                            : managerSummary.averageScore >= 50
+                              ? "bg-orange-500"
+                              : "bg-red-500"
+                        }`}
+                        style={{ width: `${scoreWidth}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-500">
+                      {managerSummary.targetGap > 0
+                        ? `${formatNumber(managerSummary.targetGap)} points below team target`
+                        : "On or above team target"}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-5 gap-2 text-center text-xs">
+                    <div className="rounded-xl bg-purple-50 p-2 font-bold text-purple-700">
+                      <p>{formatNumber(managerSummary.elite)}</p>
+                      <p className="mt-1 text-[10px] uppercase">Elite</p>
+                    </div>
+                    <div className="rounded-xl bg-emerald-50 p-2 font-bold text-emerald-700">
+                      <p>{formatNumber(managerSummary.healthy)}</p>
+                      <p className="mt-1 text-[10px] uppercase">Healthy</p>
+                    </div>
+                    <div className="rounded-xl bg-orange-50 p-2 font-bold text-orange-700">
+                      <p>{formatNumber(managerSummary.needsAttention)}</p>
+                      <p className="mt-1 text-[10px] uppercase">Attention</p>
+                    </div>
+                    <div className="rounded-xl bg-sky-50 p-2 font-bold text-sky-700">
+                      <p>{formatNumber(managerSummary.lowPerformance)}</p>
+                      <p className="mt-1 text-[10px] uppercase">Low Perf</p>
+                    </div>
+                    <div className="rounded-xl bg-red-50 p-2 font-bold text-red-700">
+                      <p>{formatNumber(managerSummary.lowQuality)}</p>
+                      <p className="mt-1 text-[10px] uppercase">Low Qual</p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {!managerHealthSummaries.length ? (
+            <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              No manager health data found for these filters.
+            </p>
+          ) : null}
         </section>
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
