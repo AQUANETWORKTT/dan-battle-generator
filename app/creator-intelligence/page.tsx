@@ -111,6 +111,7 @@ type CreatorSummary = {
   dailyAverageDiamonds: number;
   isNewCreator: boolean;
   healthWindowDays: number;
+  liveAppearDays: number;
   oneHourDays: number;
   twoHourDays: number;
   healthWindowHours: number;
@@ -434,6 +435,7 @@ function getHealthBreakdown(
   const rowsByDate = new Map(creatorRows.map((row) => [row.stat_date, row]));
   const currentDates = period === "monthly" ? windowDates : windowDates.slice(-7);
   const windowDays = Math.max(currentDates.length, 1);
+  let liveAppearDays = 0;
   let liveDays = 0;
   let totalHours = 0;
   let totalMatches = 0;
@@ -447,7 +449,8 @@ function getHealthBreakdown(
     const followers = row ? getNumber(row, ["new_followers", "New followers", "followers"]) : 0;
     const diamonds = row ? getNumber(row, ["diamonds", "Diamonds"]) : 0;
 
-    if (hours > 0) liveDays += 1;
+    if (hours > 0) liveAppearDays += 1;
+    if (hours >= 1) liveDays += 1;
 
     totalHours += hours;
     totalMatches += matches;
@@ -459,7 +462,9 @@ function getHealthBreakdown(
   const dph = totalHours > 0 ? totalDiamonds / totalHours : 0;
 
   const liveDaysScore =
-    period === "monthly" ? capScore((liveDays / 28) * 35, 35) : capScore(liveDays * 5, 35);
+    period === "monthly"
+      ? capScore((liveAppearDays / 28) * 21 + (liveDays / 28) * 14, 35)
+      : capScore(liveAppearDays * 3 + liveDays * 2, 35);
   const liveHoursScore =
     period === "monthly"
       ? totalHours >= 80
@@ -486,6 +491,7 @@ function getHealthBreakdown(
 
   return {
     healthWindowDays: windowDays,
+    liveAppearDays,
     oneHourDays: liveDays,
     twoHourDays: currentDates.filter((date) => {
       const row = rowsByDate.get(date);
@@ -516,9 +522,7 @@ function getDailyPoint(row: CreatorStat): CreatorDailyPoint {
     date: row.stat_date,
     diamonds,
     liveHours,
-    validDays:
-      getNumber(row, ["valid_live_days", "valid_days", "Valid go LIVE days"]) ||
-      (liveHours > 0 ? 1 : 0),
+    validDays: liveHours >= 1 ? 1 : 0,
     matches,
     newFollowers,
     dph: liveHours > 0 ? diamonds / liveHours : 0,
@@ -601,18 +605,14 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       const latest = sortedRows[sortedRows.length - 1] || creatorRows[0];
       const groupValue = getText(latest, ["team", "group_name", "Group"], "Unassigned");
       const agencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"));
-      const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) > 0).length;
+      const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) >= 1).length;
       const managerRaw = getManagerRaw(latest);
       const diamonds = creatorRows.reduce((sum, row) => sum + getNumber(row, ["diamonds", "Diamonds"]), 0);
       const liveHours = creatorRows.reduce(
         (sum, row) => sum + getDurationHours(row, ["live_hours", "LIVE duration"]),
         0
       );
-      const validDays =
-        creatorRows.reduce(
-          (sum, row) => sum + getNumber(row, ["valid_live_days", "valid_days", "Valid go LIVE days"]),
-          0
-        ) || validDaysFromRows;
+      const validDays = validDaysFromRows;
       const liveStreams = creatorRows.reduce((sum, row) => sum + getNumber(row, ["live_streams", "LIVE streams"]), 0);
       const newFollowers =
         creatorRows.reduce((sum, row) => sum + getNumber(row, ["new_followers", "New followers"]), 0) ||
@@ -715,6 +715,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         dailyAverageDiamonds: diamonds / activeDataDays,
         isNewCreator: daysSinceJoining > 0 && daysSinceJoining <= 14,
         healthWindowDays: health.healthWindowDays,
+        liveAppearDays: health.liveAppearDays,
         oneHourDays: health.oneHourDays,
         twoHourDays: health.twoHourDays,
         healthWindowHours: health.healthWindowHours,
@@ -751,7 +752,7 @@ function buildInsights(creator: CreatorSummary) {
   const hoursChange = creator.liveHoursChange;
   const followersChange = creator.followersChange;
 
-  insights.push(`${creator.oneHourDays}/${creator.healthWindowDays} live days completed.`);
+  insights.push(`${creator.oneHourDays}/${creator.healthWindowDays} valid one-hour live days completed.`);
   insights.push(`${formatHours(creator.healthWindowHours)} live hours completed.`);
   insights.push(`${formatNumber(creator.healthWindowMatches)} battles completed.`);
   insights.push(`${formatNumber(creator.healthWindowFollowers)} new followers gained.`);
@@ -780,6 +781,43 @@ function buildInsights(creator: CreatorSummary) {
   }
   if (followersChange < 0) insights.push("Followers are down compared with last month.");
   if (!insights.length) insights.push("Creator performance is steady for the selected filters.");
+
+  return insights;
+}
+
+function buildProfileInsights(
+  stats: {
+    diamonds: number;
+    liveHours: number;
+    validDays: number;
+    liveStreams: number;
+    matches: number;
+    newFollowers: number;
+    dph: number;
+  },
+  points: CreatorDailyPoint[],
+  range: "week" | "month"
+) {
+  const label = range === "week" ? "Selected week" : "Selected month";
+  const shortLiveDays = points.filter((point) => point.liveHours > 0 && point.liveHours < 1);
+  const insights = [
+    `${label}: ${formatNumber(stats.diamonds)} diamonds from ${formatHours(stats.liveHours)} live hours.`,
+    `${formatNumber(stats.validDays)} valid one-hour live days from ${formatNumber(stats.liveStreams)} live appearances.`,
+    `${formatNumber(stats.matches)} battles completed, averaging ${formatNumber(
+      stats.liveHours > 0 ? stats.matches / stats.liveHours : 0
+    )} battles per live hour.`,
+    `${formatNumber(stats.newFollowers)} new followers gained with ${formatNumber(
+      stats.dph
+    )} DPH (diamonds per hour).`,
+  ];
+
+  if (shortLiveDays.length) {
+    insights.push(
+      `${formatNumber(shortLiveDays.length)} live appearance${
+        shortLiveDays.length === 1 ? "" : "s"
+      } finished under one hour. These earn the appearance points, but they do not count as valid live days until they reach one full hour.`
+    );
+  }
 
   return insights;
 }
@@ -815,12 +853,24 @@ function buildCreatorReportActions(creator: CreatorSummary) {
 
 function buildCreatorReportTips(creator: CreatorSummary) {
   const tips: { title: string; description: string }[] = [];
+  const shortLiveDays = creator.dailyPoints
+    .slice(-7)
+    .filter((point) => point.liveHours > 0 && point.liveHours < 1);
 
   if (creator.oneHourDays < creator.healthWindowDays) {
     tips.push({
       title: "Build a reliable live routine",
       description:
-        "Try to make going LIVE part of the same daily rhythm. Even a steady one-hour session gives you a stronger base to grow from.",
+        "Aim for at least five valid live days each week. A valid live day means staying live for at least one full hour.",
+    });
+  }
+
+  if (shortLiveDays.length) {
+    tips.push({
+      title: "Stop short live sessions",
+      description: `${shortLiveDays.length} live ${
+        shortLiveDays.length === 1 ? "day was" : "days were"
+      } under one hour. These appearances help slightly, but they do not count as proper live days until they hit the full hour.`,
     });
   }
 
@@ -885,7 +935,7 @@ function buildCreatorReportWins(creator: CreatorSummary) {
   if (creator.oneHourDays >= 5) {
     wins.push({
       title: "&#9989; Strong live consistency",
-      description: `${creator.oneHourDays}/${creator.healthWindowDays} tracked days included a live session, which gives the week a solid base.`,
+      description: `${creator.oneHourDays}/${creator.healthWindowDays} tracked days included a valid one-hour live session, which gives the week a solid base.`,
     });
   }
   if (creator.healthWindowHours >= 20) {
@@ -2069,6 +2119,7 @@ export default function CreatorIntelligencePage() {
   const [selectedCreatorKey, setSelectedCreatorKey] = useState("");
   const [expandedManager, setExpandedManager] = useState("");
   const [floatingProfileOpen, setFloatingProfileOpen] = useState(false);
+  const [profileRange, setProfileRange] = useState<"week" | "month">("week");
   const [selectedChartMetrics, setSelectedChartMetrics] = useState<ChartMetricKey[]>([
     "diamonds",
     "liveHours",
@@ -2355,7 +2406,7 @@ export default function CreatorIntelligencePage() {
         .sort((a, b) => a.healthScore - b.healthScore);
       const lowQuality = matureFilteredCreators
         .filter((creator) => creator.healthStatus === "Low Quality")
-        .sort((a, b) => a.healthScore - b.healthScore);
+        .sort((a, b) => b.healthScore - a.healthScore);
       const lowQualityFocusLimit = Math.ceil(lowQuality.length * 0.1);
       const healthy = matureFilteredCreators
         .filter((creator) => creator.healthStatus === "Healthy")
@@ -2592,7 +2643,54 @@ export default function CreatorIntelligencePage() {
   const selectedCreator = filteredCreators.find(
     (creator) => creator.key === activeSelectedCreatorKey
   );
-  const selectedInsights = selectedCreator ? buildInsights(selectedCreator) : [];
+  const selectedProfilePoints = selectedCreator
+    ? profileRange === "week"
+      ? selectedCreator.dailyPoints.slice(-7)
+      : selectedCreator.dailyPoints
+    : [];
+  const selectedProfileStats = selectedCreator
+    ? {
+        diamonds:
+          profileRange === "week"
+            ? selectedProfilePoints.reduce((sum, point) => sum + point.diamonds, 0)
+            : selectedCreator.diamonds,
+        liveHours:
+          profileRange === "week"
+            ? selectedProfilePoints.reduce((sum, point) => sum + point.liveHours, 0)
+            : selectedCreator.liveHours,
+        validDays:
+          profileRange === "week"
+            ? selectedProfilePoints.filter((point) => point.liveHours >= 1).length
+            : selectedCreator.validDays,
+        liveStreams:
+          profileRange === "week"
+            ? selectedProfilePoints.filter((point) => point.liveHours > 0).length
+            : selectedCreator.liveStreams,
+        matches:
+          profileRange === "week"
+            ? selectedProfilePoints.reduce((sum, point) => sum + point.matches, 0)
+            : selectedCreator.matches,
+        newFollowers:
+          profileRange === "week"
+            ? selectedProfilePoints.reduce((sum, point) => sum + point.newFollowers, 0)
+            : selectedCreator.newFollowers,
+        dph:
+          (profileRange === "week"
+            ? selectedProfilePoints.reduce((sum, point) => sum + point.liveHours, 0)
+            : selectedCreator.liveHours) > 0
+            ? (profileRange === "week"
+                ? selectedProfilePoints.reduce((sum, point) => sum + point.diamonds, 0)
+                : selectedCreator.diamonds) /
+              (profileRange === "week"
+                ? selectedProfilePoints.reduce((sum, point) => sum + point.liveHours, 0)
+                : selectedCreator.liveHours)
+            : 0,
+      }
+    : null;
+  const selectedInsights =
+    selectedProfileStats && selectedCreator
+      ? buildProfileInsights(selectedProfileStats, selectedProfilePoints, profileRange)
+      : [];
 
   function copyWhatsAppText(title: string, lines: string[]) {
     const text = [title, ...lines].join("\n\n");
@@ -3077,7 +3175,7 @@ export default function CreatorIntelligencePage() {
               <div>
                 <h2 className="text-3xl font-black uppercase text-sky-900">Manager Focus Queue</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Uses the selected manager filter. Priority order is Low Quality, Low Performance, Needs Attention, then Healthy, each lowest score first.
+                  Uses the selected manager filter. Priority order is the top 10% most fixable Low Quality creators, then Low Performance, Needs Attention, and Healthy.
                 </p>
               </div>
               <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-black text-orange-700">
@@ -3151,6 +3249,22 @@ export default function CreatorIntelligencePage() {
             </div>
 
             <div className="mb-5 flex flex-wrap gap-3">
+              <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                {(["week", "month"] as const).map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={() => setProfileRange(range)}
+                    className={`rounded-lg px-4 py-2 text-sm font-black capitalize ${
+                      profileRange === range
+                        ? "bg-sky-600 text-white"
+                        : "text-slate-500 hover:bg-white hover:text-slate-900"
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={() => downloadReport(selectedCreator, "creator")}
@@ -3167,43 +3281,45 @@ export default function CreatorIntelligencePage() {
               </button>
             </div>
 
+            {selectedProfileStats ? (
             <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
               <MetricCard
                 label="Diamonds"
-                value={formatNumber(selectedCreator.diamonds)}
+                value={formatNumber(selectedProfileStats.diamonds)}
                 previous={selectedCreator.diamondsLastMonth}
               />
               <MetricCard
                 label="Live hours"
-                value={formatHours(selectedCreator.liveHours)}
+                value={formatHours(selectedProfileStats.liveHours)}
                 previous={selectedCreator.liveHoursLastMonth}
               />
               <MetricCard
                 label="Valid days"
-                value={formatNumber(selectedCreator.validDays)}
+                value={formatNumber(selectedProfileStats.validDays)}
                 previous={selectedCreator.validDaysLastMonth}
               />
               <MetricCard
                 label="Live streams"
-                value={formatNumber(selectedCreator.liveStreams)}
+                value={formatNumber(selectedProfileStats.liveStreams)}
                 previous={selectedCreator.liveStreamsLastMonth}
               />
-              <MetricCard label="Battles" value={formatNumber(selectedCreator.matches)} />
+              <MetricCard label="Battles" value={formatNumber(selectedProfileStats.matches)} />
               <MetricCard
                 label="Battle diamonds"
                 value={formatNumber(selectedCreator.diamondsFromMatches)}
               />
-              <MetricCard label="New followers" value={formatNumber(selectedCreator.newFollowers)} />
-              <MetricCard label="DPH (diamonds per hour)" value={formatNumber(selectedCreator.dph)} />
+              <MetricCard label="New followers" value={formatNumber(selectedProfileStats.newFollowers)} />
+              <MetricCard label="DPH (diamonds per hour)" value={formatNumber(selectedProfileStats.dph)} />
               <MetricCard label="Graduation" value={selectedCreator.graduationStatus} />
               <MetricCard label="Tier" value={selectedCreator.tierStatus} />
             </div>
+            ) : null}
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <h3 className="text-xl font-black uppercase text-sky-900">Health Score Breakdown</h3>
               <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                 <MetricCard
-                  label="Live days"
+                  label="Live day validation"
                   value={`${Math.round(selectedCreator.healthBreakdown.liveDays)}/35`}
                 />
                 <MetricCard
@@ -3232,7 +3348,7 @@ export default function CreatorIntelligencePage() {
               <h3 className="text-xl font-black uppercase text-sky-900">Creator Charts</h3>
               <div className="mt-4">
                 <ComparisonChart
-                  points={selectedCreator.dailyPoints}
+                  points={selectedProfilePoints}
                   selectedMetrics={selectedChartMetrics}
                   onToggleMetric={toggleChartMetric}
                 />
@@ -3378,7 +3494,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-2xl font-black uppercase text-red-700">Low Quality List</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Below 50 score and under 5,000 diamonds. These stay separate from the manager focus queue.
+                Below 50 score and under 5,000 diamonds. The highest-scoring 10% are surfaced in the manager focus queue because they are closest to being moved up.
               </p>
             </div>
             <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-black text-red-700">
@@ -3758,6 +3874,22 @@ export default function CreatorIntelligencePage() {
                   <MetricCard label="Hours" value={formatHours(selectedCreator.healthWindowHours)} />
                   <MetricCard label="Battles" value={formatNumber(selectedCreator.healthWindowMatches)} />
                   <MetricCard label="DPH" value={formatNumber(selectedCreator.dph)} />
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadReport(selectedCreator, "creator")}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+                  >
+                    Download Creator Report
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadReport(selectedCreator, "internal")}
+                    className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 hover:bg-sky-100"
+                  >
+                    Download Internal Data Report
+                  </button>
                 </div>
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <h3 className="text-sm font-black uppercase text-slate-700">Manager Focus</h3>
