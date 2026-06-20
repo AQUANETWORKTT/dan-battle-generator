@@ -974,6 +974,19 @@ function buildManagerFocusDetail(creator: CreatorSummary) {
   const hoursGap = Math.max(20 - creator.healthWindowHours, 0);
   const battlesGap = Math.max(70 - creator.healthWindowMatches, 0);
 
+  if (creator.healthScore <= 0) {
+    const monthlyLiveText =
+      creator.liveHours > 0 || creator.liveStreams > 0
+        ? `There is some month-level live data (${formatHours(creator.liveHours)}h / ${formatNumber(creator.liveStreams)} streams), but nothing useful in the current weekly health window.`
+        : "There is no useful live data in the selected month.";
+
+    return [
+      `Immediate reach-out needed: ${creator.username} has a 0 health score because they have not been going live, so there is no performance data to work with.`,
+      `${monthlyLiveText} The manager needs to find out why they are inactive, whether they are actually going to start again, and decide whether this creator should remain a focus for the agency.`,
+      "Minimum restart target: get them back to 5 live days per week and 20 live hours per week before judging battles, DPH or growth.",
+    ];
+  }
+
   if (missedDays > 0) {
     if (creator.oneHourDays >= 6) {
       focus.push(
@@ -1049,6 +1062,25 @@ function getScoreMovementReason(creator: CreatorSummary, previousScore: number |
   }
 
   return `Stable week-on-week. Push one clear improvement area next: ${mainIssue}`;
+}
+
+function getWeeklyTargetText(creator: CreatorSummary) {
+  const liveDaysGap = Math.max(5 - creator.oneHourDays, 0);
+  const hoursGap = Math.max(20 - creator.healthWindowHours, 0);
+
+  if (creator.healthScore <= 0) {
+    return "Restart target: start going live again, then build towards 5 live days and 20 live hours per week.";
+  }
+
+  if (liveDaysGap <= 0 && hoursGap <= 0) {
+    return "Weekly target hit: 5+ live days and 20+ live hours. Next focus is battle quality, DPH and growth.";
+  }
+
+  const parts = [];
+  if (liveDaysGap > 0) parts.push(`${liveDaysGap} more live day${liveDaysGap === 1 ? "" : "s"}`);
+  if (hoursGap > 0) parts.push(`${formatHours(hoursGap)} more live hours`);
+
+  return `Weekly target gap: ${parts.join(" and ")} to reach 5 live days and 20 live hours.`;
 }
 
 function getFriendlyDate(dateValue: string) {
@@ -1170,6 +1202,9 @@ function buildCreatorReportHtml({
     .tier-card { border: 1px solid rgba(125, 211, 252, .22); background: linear-gradient(135deg, rgba(14, 165, 233, .14), rgba(15, 23, 42, .82)); border-radius: 20px; padding: 20px; margin-top: 14px; }
     .tier-card strong { display: block; color: white; font-size: 28px; margin-bottom: 6px; }
     .tier-card span { color: #bae6fd; font-size: 14px; line-height: 1.45; }
+    .target-card { border: 1px solid rgba(52, 211, 153, .34); background: rgba(6, 78, 59, .38); border-radius: 20px; padding: 20px; margin-top: 14px; }
+    .target-card strong { display: block; color: #bbf7d0; font-size: 19px; margin-bottom: 7px; }
+    .target-card span { color: #dcfce7; font-size: 15px; line-height: 1.5; }
     .formula { border: 1px solid rgba(250, 204, 21, .58); background: linear-gradient(135deg, rgba(113, 63, 18, .72), rgba(15, 23, 42, .86)); border-radius: 20px; padding: 22px; font-size: 19px; font-weight: 900; color: #fef3c7; box-shadow: 0 0 30px rgba(250, 204, 21, .1); }
     .formula b { color: #facc15; }
     .formula span { display: block; margin-top: 8px; color: #fde68a; font-size: 15px; }
@@ -1210,6 +1245,12 @@ function buildCreatorReportHtml({
     <div class="card hours"><div class="label">&#9201; Weekly Hours</div><div class="value">${formatHours(weeklyHours)}h</div></div>
     <div class="card days"><div class="label">&#9989; LIVE Days This Week</div><div class="value">${formatNumber(weeklyLiveDays)}</div></div>
     <div class="card battles"><div class="label">&#9876; Weekly Battles</div><div class="value">${formatNumber(weeklyMatches)}</div></div>
+  </section>
+
+  <h2>Weekly Targets</h2>
+  <section class="target-card">
+    <strong>Minimum target: 5 live days and 20 live hours per week</strong>
+    <span>${getWeeklyTargetText(creator)}</span>
   </section>
 
   <h2>Tier Status</h2>
@@ -1574,6 +1615,7 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
         ? `${creator.healthScore}/100`
         : `${creator.healthScore}/100 ${creator.healthStatus}`,
     ],
+    ["Weekly target", getWeeklyTargetText(creator)],
     ["Weekly diamonds", formatNumber(weeklyDiamonds)],
     ["Weekly live hours", formatHours(weeklyHours)],
     ["Weekly live days", formatNumber(weeklyLiveDays)],
@@ -1851,6 +1893,7 @@ function downloadManagerReport(
       <th>Battles</th>
       <th>DPH</th>
       <th>Diamonds</th>
+      <th>Weekly Target</th>
       <th>Manager Focus</th>
     </tr>
     ${managerSummary.creators
@@ -1872,6 +1915,7 @@ function downloadManagerReport(
           <td>${formatNumber(creator.healthWindowMatches)}</td>
           <td>${formatNumber(creator.dph)}</td>
           <td>${formatNumber(creator.diamonds)}</td>
+          <td>${escapeHtml(getWeeklyTargetText(creator))}</td>
           <td>${escapeHtml(focus || "Keep monitoring weekly performance.")}</td>
         </tr>`;
       })
