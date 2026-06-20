@@ -2310,7 +2310,7 @@ export default function CreatorIntelligencePage() {
             weekPercentChange,
           };
         })
-        .sort((a, b) => b.weekChange - a.weekChange),
+        .sort((a, b) => b.weekPercentChange - a.weekPercentChange),
     [managerHealthSummaries, rows]
   );
 
