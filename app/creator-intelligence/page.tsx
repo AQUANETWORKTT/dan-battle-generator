@@ -1394,7 +1394,7 @@ function buildCreatorReportHtml({
 
   <h2>Weekly Targets</h2>
   <section class="target-card">
-    <strong>Minimum target: 5 live days and 20 live hours per week</strong>
+    <strong>Creator target: 5 live days and 20 live hours per week</strong>
     <span>${getWeeklyTargetText(creator)}</span>
   </section>
 
