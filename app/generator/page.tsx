@@ -96,6 +96,8 @@ const FONT_OPTIONS = [
 ];
 
 const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "date"];
+const DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-default-template-id";
+const DEFAULT_TEMPLATE_SETTING_KEY = "poster-template-default";
 
 const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
   backgroundUrl: "",
@@ -520,6 +522,7 @@ export default function BattleGeneratorPage() {
   const [editMode, setEditMode] = useState(false);
   const [templates, setTemplates] = useState<PosterTemplateRow[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("local-default");
+  const [defaultTemplateId, setDefaultTemplateId] = useState("");
   const [selectedElement, setSelectedElement] = useState<PosterElementKey>("avatar1");
   const [templateName, setTemplateName] = useState("Battle Template");
   const [editingTemplateName, setEditingTemplateName] = useState(false);
@@ -577,6 +580,60 @@ export default function BattleGeneratorPage() {
     });
   }
 
+  function getBrowserDefaultTemplateId() {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem(DEFAULT_TEMPLATE_STORAGE_KEY) || "";
+  }
+
+  function rememberBrowserDefaultTemplateId(templateId: string) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DEFAULT_TEMPLATE_STORAGE_KEY, templateId);
+  }
+
+  async function getPublicDefaultTemplateId(supabase: ReturnType<typeof getPosterSupabaseClient>) {
+    if (!supabase) return "";
+
+    const { data, error } = await supabase
+      .from("poster_template_defaults")
+      .select("template_id")
+      .eq("setting_key", DEFAULT_TEMPLATE_SETTING_KEY)
+      .maybeSingle();
+
+    if (error) return "";
+    return typeof data?.template_id === "string" ? data.template_id : "";
+  }
+
+  async function setCurrentTemplateAsDefault() {
+    const template = templates.find((item) => item.id === selectedTemplateId);
+    if (!template) return;
+
+    rememberBrowserDefaultTemplateId(template.id);
+    setDefaultTemplateId(template.id);
+
+    const supabase = getPosterSupabaseClient();
+    if (!supabase || template.id.startsWith("local-") || template.id === "local-default") {
+      setTemplateStatus(`${template.name} is now your default on this browser.`);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("poster_template_defaults")
+      .upsert(
+        {
+          setting_key: DEFAULT_TEMPLATE_SETTING_KEY,
+          template_id: template.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "setting_key" }
+      );
+
+    if (error) {
+      setTemplateStatus(`${template.name} is now your browser default. Public default table is not set up yet.`);
+      return;
+    }
+
+    setTemplateStatus(`${template.name} is now the public default template.`);
+  }
   function undoLastTemplateChange() {
     setUndoStack((prev) => {
       const previous = prev[prev.length - 1];
@@ -642,11 +699,18 @@ export default function BattleGeneratorPage() {
       template_json: normalizeTemplateJson(row.template_json),
     })) as PosterTemplateRow[];
 
+    const publicDefaultId = await getPublicDefaultTemplateId(supabase);
+    const browserDefaultId = getBrowserDefaultTemplateId();
+    const defaultId = publicDefaultId || browserDefaultId;
+    const defaultTemplate = rows.find((row) => row.id === defaultId) || rows[0];
+
     setTemplates(rows);
-    setSelectedTemplateId(rows[0].id);
-    if (!editingTemplateName) setTemplateName(rows[0].name);
-    updateWholeTemplateJson(rows[0].template_json);
-    setTemplateStatus("Templates loaded.");
+    setDefaultTemplateId(defaultTemplate.id);
+    if (publicDefaultId) rememberBrowserDefaultTemplateId(publicDefaultId);
+    setSelectedTemplateId(defaultTemplate.id);
+    if (!editingTemplateName) setTemplateName(defaultTemplate.name);
+    updateWholeTemplateJson(defaultTemplate.template_json);
+    setTemplateStatus(defaultId ? `Templates loaded. Default: ${defaultTemplate.name}.` : "Templates loaded.");
   }
 
   function handleTemplateSelect(id: string) {
@@ -1864,10 +1928,22 @@ function renderText(
         >
           {templates.map((template) => (
             <option key={template.id} value={template.id}>
-              {template.name}
+              {template.name}{template.id === defaultTemplateId ? " (Default)" : ""}
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={setCurrentTemplateAsDefault}
+          disabled={!selectedTemplateId || selectedTemplateId === defaultTemplateId}
+          className={`w-full rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-widest transition ${
+            selectedTemplateId === defaultTemplateId
+              ? "border-yellow-300/30 bg-yellow-300/10 text-yellow-200"
+              : "border-cyan-300/30 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20"
+          }`}
+        >
+          {selectedTemplateId === defaultTemplateId ? "Current Default" : "Set As Default"}
+        </button>
       </div>
     );
   }
