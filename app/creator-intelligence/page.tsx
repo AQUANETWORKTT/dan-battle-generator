@@ -232,6 +232,12 @@ function getLastDayForMonth(month: string) {
   return new Date(Number(year), Number(monthNumber), 0).getDate();
 }
 
+function getDefaultMonthValue() {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return MONTHS.some((month) => month.value === currentMonth) ? currentMonth : MONTHS[MONTHS.length - 1].value;
+}
+
 function getPreviousMonthStart(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(year, monthNumber - 2, 1);
@@ -2106,9 +2112,9 @@ function downloadManagerReport(
 }
 
 export default function CreatorIntelligencePage() {
-  const [month, setMonth] = useState("2026-06");
+  const [month, setMonth] = useState(() => getDefaultMonthValue());
   const [startDay, setStartDay] = useState(1);
-  const [endDay, setEndDay] = useState(getLastDayForMonth("2026-06"));
+  const [endDay, setEndDay] = useState(() => getLastDayForMonth(getDefaultMonthValue()));
   const [manager, setManager] = useState("All Managers");
   const [graduationStatus, setGraduationStatus] = useState("All Graduation");
   const [tierStatus, setTierStatus] = useState("All Tiers");
