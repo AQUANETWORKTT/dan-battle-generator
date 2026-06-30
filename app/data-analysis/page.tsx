@@ -110,6 +110,10 @@ function getDayNumber(dateValue: string) {
   return Number(String(dateValue).split("-")[2]);
 }
 
+function getCreatorKey(username: string | null | undefined) {
+  return String(username || "").trim().toLowerCase();
+}
+
 function isWeekend(dateValue: string) {
   const date = new Date(`${dateValue}T00:00:00`);
   const day = date.getDay();
@@ -342,25 +346,38 @@ export default function DataAnalysisPage() {
     loadData();
   }, [month]);
 
-  const teams = useMemo(() => {
-    const rangeRows = rows.filter((row) => {
-      const dayNumber = getDayNumber(row.stat_date);
-      return dayNumber >= startDay && dayNumber <= endDay;
-    });
+  const latestUploadDate = useMemo(() => {
+    return rows.map((row) => row.stat_date).sort((a, b) => a.localeCompare(b)).at(-1) || "";
+  }, [rows]);
 
-    const uniqueTeams = Array.from(
-      new Set(rangeRows.map((row) => row.team || "Unassigned").filter(Boolean))
-    ).sort();
+  const activeCreatorKeys = useMemo(() => {
+    if (!latestUploadDate) return new Set<string>();
 
-    return ["All Teams", ...uniqueTeams];
-  }, [rows, startDay, endDay]);
+    return new Set(
+      rows
+        .filter((row) => row.stat_date === latestUploadDate)
+        .map((row) => getCreatorKey(row.creator_username))
+        .filter(Boolean)
+    );
+  }, [latestUploadDate, rows]);
 
   const dateRangeRows = useMemo(() => {
     return rows.filter((row) => {
       const dayNumber = getDayNumber(row.stat_date);
-      return dayNumber >= startDay && dayNumber <= endDay;
+      const isInRange = dayNumber >= startDay && dayNumber <= endDay;
+      const isCurrentCreator =
+        activeCreatorKeys.size === 0 || activeCreatorKeys.has(getCreatorKey(row.creator_username));
+      return isInRange && isCurrentCreator;
     });
-  }, [rows, startDay, endDay]);
+  }, [rows, startDay, endDay, activeCreatorKeys]);
+
+  const teams = useMemo(() => {
+    const uniqueTeams = Array.from(
+      new Set(dateRangeRows.map((row) => row.team || "Unassigned").filter(Boolean))
+    ).sort();
+
+    return ["All Teams", ...uniqueTeams];
+  }, [dateRangeRows]);
 
   const baseRowsForAgencyCards = useMemo(() => {
     return dateRangeRows.filter((row) => {
