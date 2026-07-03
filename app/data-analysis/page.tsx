@@ -285,6 +285,7 @@ function MiniBarChart({
 export default function DataAnalysisPage() {
   const [month, setMonth] = useState("2026-06");
   const monthManuallySelectedRef = useRef(false);
+  const dataLoadRequestRef = useRef(0);
   const [startDay, setStartDay] = useState(1);
   const [endDay, setEndDay] = useState(getLastDayForMonth("2026-06"));
   const [agency, setAgency] = useState("All");
@@ -324,32 +325,43 @@ export default function DataAnalysisPage() {
   }, []);
 
   useEffect(() => {
+    const requestId = dataLoadRequestRef.current + 1;
+    dataLoadRequestRef.current = requestId;
+    const controller = new AbortController();
+
     async function loadData() {
       setLoading(true);
 
       try {
         const res = await fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
         const json = await res.json();
+
+        if (dataLoadRequestRef.current !== requestId) return;
 
         if (!res.ok) {
           console.error(json.error || "Failed to load creator daily stats.");
           setRows([]);
-          setLoading(false);
           return;
         }
 
         setRows((json.rows || []) as CreatorStat[]);
       } catch (error) {
+        if (controller.signal.aborted || dataLoadRequestRef.current !== requestId) return;
         console.error(error);
         setRows([]);
       } finally {
-        setLoading(false);
+        if (dataLoadRequestRef.current === requestId) {
+          setLoading(false);
+        }
       }
     }
 
     loadData();
+
+    return () => controller.abort();
   }, [month]);
 
   const latestUploadDate = useMemo(() => {
