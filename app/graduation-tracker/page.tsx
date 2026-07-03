@@ -550,7 +550,7 @@ export default function GraduationTrackerPage() {
               </Link>
 
               <Link
-                href="/data-analysis/upload"
+                href="/data-analysis/upload?from=graduation"
                 className="rounded-xl bg-yellow-300 px-6 py-3 text-center font-black uppercase text-black transition hover:scale-[1.02] hover:bg-yellow-200"
               >
                 📤 Upload Data

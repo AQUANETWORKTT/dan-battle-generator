@@ -2729,12 +2729,19 @@ export default function CreatorIntelligencePage() {
     void navigator.clipboard.writeText(text);
   }
 
+  function getCopiedHealthQualityLabel(creator: CreatorSummary) {
+    if (creator.healthStatus === "Elite" || creator.healthScore >= 85) return "Elite";
+    if (creator.healthScore <= 50) return "Low Quality";
+    if (creator.healthStatus === "Healthy" || creator.healthScore >= 70) return "High Quality";
+    return "Good Quality";
+  }
+
   function copyManagerTeamHealthText(managerSummary: ManagerHealthSummary) {
     copyWhatsAppText(
       `${managerSummary.manager} Creator Health Scores`,
       [...managerSummary.creators]
         .sort((a, b) => b.healthScore - a.healthScore)
-        .map((creator) => `${creator.username}: ${creator.healthScore}/100 (${creator.healthStatus})`)
+        .map((creator) => `${creator.username}: ${creator.healthScore}/100 (${getCopiedHealthQualityLabel(creator)})`)
     );
   }
 

@@ -21,6 +21,24 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026", days: 31 },
 ];
 
+function getUploadReturnTarget() {
+  if (typeof window !== "undefined") {
+    const from = new URLSearchParams(window.location.search).get("from");
+
+    if (from === "graduation") {
+      return {
+        href: "/graduation-tracker",
+        label: "Go back to Graduation",
+      };
+    }
+  }
+
+  return {
+    href: "/data-analysis",
+    label: "Go back to AI Analysis",
+  };
+}
+
 export default function DataAnalysisUploadPage() {
   const [month, setMonth] = useState(MONTHS[0].value);
   const monthManuallySelectedRef = useRef(false);
@@ -32,6 +50,7 @@ export default function DataAnalysisUploadPage() {
 
   const selectedMonth =
     MONTHS.find((item) => item.value === month) || MONTHS[4];
+  const returnTarget = getUploadReturnTarget();
 
   const days = useMemo(
     () => Array.from({ length: selectedMonth.days }, (_, index) => index + 1),
@@ -167,10 +186,10 @@ export default function DataAnalysisUploadPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-4">
           <Link
-            href="/data-analysis"
+            href={returnTarget.href}
             className="inline-flex rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-black uppercase text-white transition hover:bg-white/10"
           >
-            ← Back to Analysis
+            {returnTarget.label}
           </Link>
         </div>
 
