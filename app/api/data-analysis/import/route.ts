@@ -149,6 +149,8 @@ function getColumnByHeader(
     if (typeof index === "number") return row[index];
   }
 
+  if (headerMap.size > 0) return "";
+
   return row[fallbackIndex];
 }
 

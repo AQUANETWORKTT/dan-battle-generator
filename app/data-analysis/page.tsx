@@ -389,15 +389,7 @@ export default function DataAnalysisPage() {
     return dateRangeRows.filter((row) => {
       const teamMatch = team === "All Teams" || row.team === team;
 
-      const searchText = [
-        row.creator_username,
-        row.email,
-        row.agency,
-        row.team,
-        row.group_name,
-      ]
-        .join(" ")
-        .toLowerCase();
+      const searchText = String(row.creator_username || "").toLowerCase();
 
       const searchMatch = !search.trim() || searchText.includes(search.toLowerCase());
       return teamMatch && searchMatch;
@@ -409,15 +401,7 @@ export default function DataAnalysisPage() {
       const agencyMatch = agency === "All" || row.agency === agency;
       const teamMatch = team === "All Teams" || row.team === team;
 
-      const searchText = [
-        row.creator_username,
-        row.email,
-        row.agency,
-        row.team,
-        row.group_name,
-      ]
-        .join(" ")
-        .toLowerCase();
+      const searchText = String(row.creator_username || "").toLowerCase();
 
       const searchMatch = !search.trim() || searchText.includes(search.toLowerCase());
       return agencyMatch && teamMatch && searchMatch;

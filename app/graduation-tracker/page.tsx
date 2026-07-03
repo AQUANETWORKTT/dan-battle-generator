@@ -269,15 +269,7 @@ export default function GraduationTrackerPage() {
         const agencyMatch = agency === "All" || rowAgency === selectedAgency;
         const teamMatch = team === "All Teams" || rowTeam === selectedTeam;
 
-        const searchText = [
-          row.creator_username,
-          row.email,
-          row.agency,
-          row.team,
-          row.group_name,
-        ]
-          .join(" ")
-          .toLowerCase();
+        const searchText = String(row.creator_username || "").toLowerCase();
 
         const searchMatch = !search.trim() || searchText.includes(search.toLowerCase());
         const totalDiamonds = currentTotals.get(row.creator_username) || 0;
