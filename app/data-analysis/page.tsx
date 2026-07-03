@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 type CreatorStat = {
   stat_date: string;
@@ -305,17 +304,15 @@ export default function DataAnalysisPage() {
 
   useEffect(() => {
     async function selectLatestDataMonth() {
-      const { data, error } = await submissionsSupabase
-        .from("creator_daily_stats")
-        .select("stat_date")
-        .order("stat_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const res = await fetch(`/api/data-analysis/upload-status?latest=true&t=${Date.now()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
 
-      if (error || !data?.stat_date) return;
+      if (!res.ok || !data?.latestDate) return;
 
-      const latestMonth = getMonthFromDate(data.stat_date);
-      const latestDay = getDayNumber(data.stat_date);
+      const latestMonth = getMonthFromDate(data.latestDate);
+      const latestDay = getDayNumber(data.latestDate);
 
       if (!monthManuallySelectedRef.current && MONTHS.some((item) => item.value === latestMonth)) {
         setMonth(latestMonth);
@@ -330,45 +327,26 @@ export default function DataAnalysisPage() {
     async function loadData() {
       setLoading(true);
 
-      const lastMonthDay = getLastDayForMonth(month);
-      const startDate = `${month}-01`;
-      const endDate = `${month}-${String(lastMonthDay).padStart(2, "0")}`;
+      try {
+        const res = await fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
 
-      const allData: CreatorStat[] = [];
-      const pageSize = 1000;
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        const to = from + pageSize - 1;
-
-        const { data, error } = await submissionsSupabase
-          .from("creator_daily_stats")
-          .select("*")
-          .gte("stat_date", startDate)
-          .lte("stat_date", endDate)
-          .order("stat_date", { ascending: true })
-          .range(from, to);
-
-        if (error) {
-          console.error(error);
+        if (!res.ok) {
+          console.error(json.error || "Failed to load creator daily stats.");
           setRows([]);
           setLoading(false);
           return;
         }
 
-        const batch = (data || []) as CreatorStat[];
-        allData.push(...batch);
-
-        if (batch.length < pageSize) {
-          hasMore = false;
-        } else {
-          from += pageSize;
-        }
+        setRows((json.rows || []) as CreatorStat[]);
+      } catch (error) {
+        console.error(error);
+        setRows([]);
+      } finally {
+        setLoading(false);
       }
-
-      setRows(allData);
-      setLoading(false);
     }
 
     loadData();
