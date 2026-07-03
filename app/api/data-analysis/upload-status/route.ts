@@ -63,3 +63,49 @@ export async function GET(req: Request) {
     );
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const month = searchParams.get("month") || "";
+    const day = Number(searchParams.get("day") || 0);
+
+    if (!/^\d{4}-\d{2}$/.test(month) || day < 1 || day > 31) {
+      return NextResponse.json(
+        { error: "Invalid month or day." },
+        { status: 400 }
+      );
+    }
+
+    const [yearText, monthText] = month.split("-");
+    const year = Number(yearText);
+    const monthNumber = Number(monthText);
+    const lastDay = new Date(year, monthNumber, 0).getDate();
+
+    if (day > lastDay) {
+      return NextResponse.json(
+        { error: "Invalid day for selected month." },
+        { status: 400 }
+      );
+    }
+
+    const statDate = `${month}-${String(day).padStart(2, "0")}`;
+    const { error } = await submissionsSupabase
+      .from("creator_daily_stats")
+      .delete()
+      .eq("stat_date", statDate);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, statDate });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Something went wrong.",
+      },
+      { status: 500 }
+    );
+  }
+}

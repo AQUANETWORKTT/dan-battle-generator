@@ -130,6 +130,46 @@ export default function DataAnalysisUploadPage() {
     }));
   }
 
+  async function removeUploadedDay(day: number) {
+    const confirmed = window.confirm(
+      `Remove uploaded data for ${selectedMonth.label} day ${day}? This deletes the saved rows for that day.`
+    );
+
+    if (!confirmed) return;
+
+    setStatusLoading(true);
+    setMessage("");
+
+    try {
+      const res = await fetch(
+        `/api/data-analysis/upload-status?month=${month}&day=${day}&t=${Date.now()}`,
+        {
+          method: "DELETE",
+          cache: "no-store",
+        }
+      );
+      const json = await res.json();
+
+      if (!res.ok) {
+        setMessage(json.error || "Could not remove uploaded data.");
+        setStatusLoading(false);
+        return;
+      }
+
+      setExistingDays((currentDays) => {
+        const nextDays = { ...currentDays };
+        delete nextDays[day];
+        return nextDays;
+      });
+      setMessage(`Removed uploaded data for ${json.statDate || `${month}-${String(day).padStart(2, "0")}`}.`);
+    } catch (error) {
+      console.error(error);
+      setMessage("Could not remove uploaded data.");
+    } finally {
+      setStatusLoading(false);
+    }
+  }
+
   async function handleImport() {
     setLoading(true);
     setMessage("");
@@ -318,6 +358,7 @@ export default function DataAnalysisUploadPage() {
 
                 <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-yellow-300/25 bg-white/[0.03] p-4 text-center hover:border-yellow-300/60">
                   <input
+                    key={`${month}-${day}-${file?.name || "empty"}`}
                     type="file"
                     accept=".xlsx,.xls"
                     className="hidden"
@@ -359,12 +400,24 @@ export default function DataAnalysisUploadPage() {
 
                 {file && (
                   <button
+                    type="button"
                     onClick={() => setDayFile(day, null)}
                     className="mt-3 w-full rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-black uppercase text-red-300"
                   >
                     Remove Selected File
                   </button>
                 )}
+
+                {hasExistingUpload ? (
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedDay(day)}
+                    disabled={statusLoading || loading}
+                    className="mt-3 w-full rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-black uppercase text-red-300 disabled:opacity-40"
+                  >
+                    Remove Uploaded Data
+                  </button>
+                ) : null}
               </div>
             );
           })}
