@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 type CreatorStat = {
@@ -285,6 +285,7 @@ function MiniBarChart({
 
 export default function DataAnalysisPage() {
   const [month, setMonth] = useState("2026-06");
+  const monthManuallySelectedRef = useRef(false);
   const [startDay, setStartDay] = useState(1);
   const [endDay, setEndDay] = useState(getLastDayForMonth("2026-06"));
   const [agency, setAgency] = useState("All");
@@ -316,7 +317,7 @@ export default function DataAnalysisPage() {
       const latestMonth = getMonthFromDate(data.stat_date);
       const latestDay = getDayNumber(data.stat_date);
 
-      if (MONTHS.some((item) => item.value === latestMonth)) {
+      if (!monthManuallySelectedRef.current && MONTHS.some((item) => item.value === latestMonth)) {
         setMonth(latestMonth);
         setEndDay(latestDay || getLastDayForMonth(latestMonth));
       }
@@ -684,6 +685,7 @@ export default function DataAnalysisPage() {
   }
 
   function handleMonthChange(newMonth: string) {
+    monthManuallySelectedRef.current = true;
     const newLastDay = getLastDayForMonth(newMonth);
     setMonth(newMonth);
     setStartDay(1);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type DayFileMap = Record<number, File | null>;
 type ExistingDayMap = Record<number, number>;
@@ -23,6 +23,7 @@ const MONTHS = [
 
 export default function DataAnalysisUploadPage() {
   const [month, setMonth] = useState(MONTHS[0].value);
+  const monthManuallySelectedRef = useRef(false);
   const [files, setFiles] = useState<DayFileMap>({});
   const [existingDays, setExistingDays] = useState<ExistingDayMap>({});
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,11 @@ export default function DataAnalysisUploadPage() {
         const json = await res.json();
         const latestMonth = typeof json.latestMonth === "string" ? json.latestMonth : "";
 
-        if (res.ok && MONTHS.some((item) => item.value === latestMonth)) {
+        if (
+          res.ok &&
+          !monthManuallySelectedRef.current &&
+          MONTHS.some((item) => item.value === latestMonth)
+        ) {
           setFiles({});
           setMessage("");
           setMonth(latestMonth);
@@ -65,6 +70,7 @@ export default function DataAnalysisUploadPage() {
   }, [month]);
 
   function handleMonthChange(nextMonth: string) {
+    monthManuallySelectedRef.current = true;
     setFiles({});
     setMessage("");
     setMonth(nextMonth);
@@ -144,8 +150,15 @@ export default function DataAnalysisUploadPage() {
     setFiles({});
     await loadExistingDays();
 
+    const importedDates = Array.isArray(json.files)
+      ? json.files
+          .map((file: { statDate?: string }) => file.statDate)
+          .filter(Boolean)
+          .join(", ")
+      : "";
+
     setMessage(
-      `Imported ${json.totalRows} rows from ${json.filesImported} files. Existing data for those days was overwritten.`
+      `Imported ${json.totalRows} rows from ${json.filesImported} files${importedDates ? ` for ${importedDates}` : ""}. Existing data for those days was overwritten.`
     );
   }
 

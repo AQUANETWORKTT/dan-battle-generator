@@ -458,10 +458,28 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const month = String(formData.get("month") || "2026-05");
 
-    const allRows: ParsedRow[] = [];
-    const fileSummaries: { day: number; rows: number; filename: string }[] = [];
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return NextResponse.json(
+        { error: "Invalid month. Please select a month in YYYY-MM format." },
+        { status: 400 }
+      );
+    }
 
-    for (let day = 1; day <= 31; day++) {
+    const monthNumber = Number(month.split("-")[1]);
+
+    if (monthNumber < 1 || monthNumber > 12) {
+      return NextResponse.json(
+        { error: "Invalid month number. Please reselect the upload month." },
+        { status: 400 }
+      );
+    }
+
+    const allRows: ParsedRow[] = [];
+    const fileSummaries: { day: number; statDate: string; rows: number; filename: string }[] = [];
+
+    const lastDay = new Date(Number(month.split("-")[0]), monthNumber, 0).getDate();
+
+    for (let day = 1; day <= lastDay; day++) {
       const file = formData.get(`day_${day}`);
 
       if (!(file instanceof File)) continue;
@@ -475,6 +493,7 @@ export async function POST(req: Request) {
 
       fileSummaries.push({
         day,
+        statDate,
         rows: rows.length,
         filename: file.name,
       });
@@ -534,6 +553,7 @@ export async function POST(req: Request) {
       totalRows: allRows.length,
       parsedRows: allRows.length,
       graduationStatusRows: graduationStatusCount,
+      month,
       files: fileSummaries,
     });
   } catch (error) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 type CreatorStat = {
@@ -149,6 +149,7 @@ function getProgressBarClasses(status: GraduationStatus) {
 
 export default function GraduationTrackerPage() {
   const [month, setMonth] = useState("2026-05");
+  const monthManuallySelectedRef = useRef(false);
   const [endDay, setEndDay] = useState(getLastDayForMonth("2026-05"));
   const [agency, setAgency] = useState("All");
   const [team, setTeam] = useState("All Teams");
@@ -180,7 +181,7 @@ export default function GraduationTrackerPage() {
       const latestMonth = getMonthFromDate(data.stat_date);
       const latestDay = getDayNumber(data.stat_date);
 
-      if (MONTHS.some((item) => item.value === latestMonth)) {
+      if (!monthManuallySelectedRef.current && MONTHS.some((item) => item.value === latestMonth)) {
         setMonth(latestMonth);
         setEndDay(latestDay || getLastDayForMonth(latestMonth));
       }
@@ -470,6 +471,7 @@ export default function GraduationTrackerPage() {
   }
 
   function handleMonthChange(newMonth: string) {
+    monthManuallySelectedRef.current = true;
     const newLastDay = getLastDayForMonth(newMonth);
     setMonth(newMonth);
     setEndDay(newLastDay);
