@@ -22,7 +22,7 @@ const MONTHS = [
 ];
 
 export default function DataAnalysisUploadPage() {
-  const [month, setMonth] = useState("2026-07");
+  const [month, setMonth] = useState(MONTHS[0].value);
   const [files, setFiles] = useState<DayFileMap>({});
   const [existingDays, setExistingDays] = useState<ExistingDayMap>({});
   const [loading, setLoading] = useState(false);

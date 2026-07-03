@@ -386,7 +386,8 @@ export default function GraduationTrackerPage() {
           graduationReportAgency === "All" ||
           String(creator.agency || "").trim().toLowerCase() ===
             String(graduationReportAgency || "").trim().toLowerCase();
-        const hasGraduationChance = creator.progressPercent >= REPORT_MINIMUM_PROGRESS;
+        const hasGraduationChance =
+          creator.progressPercent >= REPORT_MINIMUM_PROGRESS || creator.status === "green";
         const stillNeedsToGraduate = creator.diamonds < GRADUATION_TARGET;
 
         return agencyMatch && hasGraduationChance && stillNeedsToGraduate;
@@ -410,7 +411,7 @@ export default function GraduationTrackerPage() {
     const header = [
       "🎓 Graduation Eligibility Report",
       `Agency: ${graduationReportAgency}`,
-      `Minimum progress: ${REPORT_MINIMUM_PROGRESS}%`,
+      `Includes: on-target creators or ${REPORT_MINIMUM_PROGRESS}%+ progress`,
       `Target: ${formatNumber(GRADUATION_TARGET)} diamonds`,
       "",
     ];
@@ -418,7 +419,7 @@ export default function GraduationTrackerPage() {
     if (!graduationReportRows.length) {
       return [
         ...header,
-        `No graduation report creators found for this agency at ${REPORT_MINIMUM_PROGRESS}%+ progress.`,
+        `No graduation report creators found for this agency on target or at ${REPORT_MINIMUM_PROGRESS}%+ progress.`,
       ].join("\n");
     }
 
@@ -453,7 +454,7 @@ export default function GraduationTrackerPage() {
     link.href = url;
     link.download = `graduation-report-${month}-${graduationReportAgency
       .replace(/\s+/g, "-")
-      .toLowerCase()}-${REPORT_MINIMUM_PROGRESS}-percent-plus.txt`;
+      .toLowerCase()}-on-target-or-${REPORT_MINIMUM_PROGRESS}-percent-plus.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -675,7 +676,7 @@ export default function GraduationTrackerPage() {
               <div>
                 <h3 className="text-lg font-black uppercase text-green-200">WhatsApp Graduation Report</h3>
                 <p className="mt-1 text-sm text-white/45">
-                  Select an agency for this report. Only creators at {REPORT_MINIMUM_PROGRESS}%+ progress and under 200k diamonds are included.
+                  Select an agency for this report. On-target creators and creators at {REPORT_MINIMUM_PROGRESS}%+ progress are included while they are under 200k diamonds.
                 </p>
               </div>
 
