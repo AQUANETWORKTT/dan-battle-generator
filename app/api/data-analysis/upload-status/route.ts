@@ -6,6 +6,28 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const latest = searchParams.get("latest") === "true";
+
+    if (latest) {
+      const { data, error } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .select("stat_date")
+        .order("stat_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      const latestDate = data?.stat_date || "";
+
+      return NextResponse.json({
+        latestDate,
+        latestMonth: latestDate ? latestDate.slice(0, 7) : "",
+      });
+    }
+
     const month = searchParams.get("month") || "2026-05";
 
     const year = Number(month.split("-")[0]);

@@ -106,6 +106,10 @@ function getLastDayForMonth(month: string) {
   return new Date(Number(year), Number(monthNumber), 0).getDate();
 }
 
+function getMonthFromDate(dateValue: string) {
+  return dateValue.slice(0, 7);
+}
+
 function getDayNumber(dateValue: string) {
   return Number(String(dateValue).split("-")[2]);
 }
@@ -297,6 +301,29 @@ export default function DataAnalysisPage() {
     () => Array.from({ length: lastDay }, (_, index) => index + 1),
     [lastDay]
   );
+
+  useEffect(() => {
+    async function selectLatestDataMonth() {
+      const { data, error } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .select("stat_date")
+        .order("stat_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data?.stat_date) return;
+
+      const latestMonth = getMonthFromDate(data.stat_date);
+      const latestDay = getDayNumber(data.stat_date);
+
+      if (MONTHS.some((item) => item.value === latestMonth)) {
+        setMonth(latestMonth);
+        setEndDay(latestDay || getLastDayForMonth(latestMonth));
+      }
+    }
+
+    selectLatestDataMonth();
+  }, []);
 
   useEffect(() => {
     async function loadData() {

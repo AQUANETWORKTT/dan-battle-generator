@@ -238,6 +238,10 @@ function getDefaultMonthValue() {
   return MONTHS.some((month) => month.value === currentMonth) ? currentMonth : MONTHS[MONTHS.length - 1].value;
 }
 
+function getMonthFromDate(dateValue: string) {
+  return dateValue.slice(0, 7);
+}
+
 function getPreviousMonthStart(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(year, monthNumber - 2, 1);
@@ -2139,6 +2143,30 @@ export default function CreatorIntelligencePage() {
   );
 
   useEffect(() => {
+    async function selectLatestDataMonth() {
+      const { data, error } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .select("stat_date")
+        .order("stat_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data?.stat_date) return;
+
+      const latestMonth = getMonthFromDate(data.stat_date);
+      const latestDay = getDayNumber(data.stat_date);
+
+      if (MONTHS.some((item) => item.value === latestMonth)) {
+        setMonth(latestMonth);
+        setStartDay(1);
+        setEndDay(latestDay || getLastDayForMonth(latestMonth));
+      }
+    }
+
+    selectLatestDataMonth();
+  }, []);
+
+  useEffect(() => {
     async function loadData() {
       setLoading(true);
       const startDate = getPreviousMonthStart(month);
@@ -2703,6 +2731,15 @@ export default function CreatorIntelligencePage() {
     void navigator.clipboard.writeText(text);
   }
 
+  function copyManagerTeamHealthText(managerSummary: ManagerHealthSummary) {
+    copyWhatsAppText(
+      `${managerSummary.manager} Creator Health Scores`,
+      [...managerSummary.creators]
+        .sort((a, b) => b.healthScore - a.healthScore)
+        .map((creator) => `${creator.username}: ${creator.healthScore}/100 (${creator.healthStatus})`)
+    );
+  }
+
   function copyNewCreatorsText() {
     copyWhatsAppText(
       "New Aqua Creators",
@@ -3118,6 +3155,13 @@ export default function CreatorIntelligencePage() {
                       className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
                     >
                       Filter Page
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyManagerTeamHealthText(managerSummary)}
+                      className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 hover:bg-cyan-100"
+                    >
+                      Copy Health Scores
                     </button>
                     <button
                       type="button"

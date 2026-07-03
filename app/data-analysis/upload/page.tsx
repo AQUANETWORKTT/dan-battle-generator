@@ -22,7 +22,7 @@ const MONTHS = [
 ];
 
 export default function DataAnalysisUploadPage() {
-  const [month, setMonth] = useState("2026-05");
+  const [month, setMonth] = useState("2026-07");
   const [files, setFiles] = useState<DayFileMap>({});
   const [existingDays, setExistingDays] = useState<ExistingDayMap>({});
   const [loading, setLoading] = useState(false);
@@ -38,11 +38,37 @@ export default function DataAnalysisUploadPage() {
   );
 
   useEffect(() => {
-    setFiles({});
-    setMessage("");
+    async function selectLatestDataMonth() {
+      try {
+        const res = await fetch(`/api/data-analysis/upload-status?latest=true&t=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        const latestMonth = typeof json.latestMonth === "string" ? json.latestMonth : "";
+
+        if (res.ok && MONTHS.some((item) => item.value === latestMonth)) {
+          setFiles({});
+          setMessage("");
+          setMonth(latestMonth);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    selectLatestDataMonth();
+  }, []);
+
+  useEffect(() => {
     loadExistingDays();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
+
+  function handleMonthChange(nextMonth: string) {
+    setFiles({});
+    setMessage("");
+    setMonth(nextMonth);
+  }
 
   async function loadExistingDays() {
     setStatusLoading(true);
@@ -154,7 +180,7 @@ export default function DataAnalysisUploadPage() {
 
             <select
               value={month}
-              onChange={(e) => setMonth(e.target.value)}
+              onChange={(e) => handleMonthChange(e.target.value)}
               className="mt-2 w-full rounded-xl border border-yellow-300/20 bg-black px-4 py-3 text-white"
             >
               {MONTHS.map((item) => (
