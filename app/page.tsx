@@ -18,18 +18,15 @@ export default function HomePage() {
 
         <div className="grid gap-6 md:grid-cols-3">
           <Link
-            href="/data"
-            className="group relative overflow-hidden rounded-3xl border border-yellow-400/40 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
+            href="/generator"
+            className="group rounded-3xl border border-yellow-300/30 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.12),transparent_40%)]" />
-            <div className="relative">
-              <h2 className="text-2xl font-black uppercase text-yellow-300">
-                Data
-              </h2>
-              <p className="mt-3 text-white/60">
-                AI analysis, graduation tracking and mature creator tracking.
-              </p>
-            </div>
+            <h2 className="text-2xl font-black uppercase text-yellow-300">
+              Poster Generator
+            </h2>
+            <p className="mt-3 text-white/60">
+              Create single and bulk battle posters.
+            </p>
           </Link>
 
           <Link
@@ -45,15 +42,18 @@ export default function HomePage() {
           </Link>
 
           <Link
-            href="/generator"
-            className="group rounded-3xl border border-yellow-300/30 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
+            href="/data"
+            className="group relative overflow-hidden rounded-3xl border border-yellow-400/40 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
           >
-            <h2 className="text-2xl font-black uppercase text-yellow-300">
-              Poster Generator
-            </h2>
-            <p className="mt-3 text-white/60">
-              Create single and bulk battle posters.
-            </p>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.12),transparent_40%)]" />
+            <div className="relative">
+              <h2 className="text-2xl font-black uppercase text-yellow-300">
+                Data
+              </h2>
+              <p className="mt-3 text-white/60">
+                AI analysis, graduation tracking and mature creator tracking.
+              </p>
+            </div>
           </Link>
         </div>
       </div>
