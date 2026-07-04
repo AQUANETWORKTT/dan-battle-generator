@@ -28,6 +28,14 @@ type CreatorMonthTotal = {
   latestDate: string;
 };
 
+type MatureMonthTotal = {
+  month: string;
+  creator_username: string;
+  agency: string | null;
+  team: string | null;
+  diamonds: number | null;
+};
+
 type MatureRow = {
   username: string;
   agency: string;
@@ -128,6 +136,16 @@ async function fetchMonthRows(month: string) {
   return (json.rows || []) as CreatorStat[];
 }
 
+async function fetchMatureMonthTotals(month: string) {
+  const res = await fetch(`/api/data/mature-creators/month-totals?month=${month}&t=${Date.now()}`, {
+    cache: "no-store",
+  });
+  const json = await res.json();
+
+  if (!res.ok) throw new Error(json.error || "Could not load mature month totals.");
+  return (json.rows || []) as MatureMonthTotal[];
+}
+
 function monthlyTotalsByCreator(rows: CreatorStat[]) {
   const map = new Map<string, CreatorMonthTotal>();
 
@@ -162,12 +180,32 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
   return map;
 }
 
+function matureTotalsByCreator(rows: MatureMonthTotal[]) {
+  const map = new Map<string, CreatorMonthTotal>();
+
+  for (const row of rows) {
+    const key = String(row.creator_username || "").trim().toLowerCase();
+    if (!key) continue;
+
+    map.set(key, {
+      username: key,
+      agency: String(row.agency || "First Class"),
+      team: String(row.team || "Unassigned"),
+      diamonds: safeNumber(row.diamonds),
+      latestDate: row.month,
+    });
+  }
+
+  return map;
+}
+
 export default function MatureCreatorsTrackerPage() {
   const [month, setMonth] = useState(getCurrentMonth());
   const [agency, setAgency] = useState("All Agencies");
   const [whatsappAgency, setWhatsappAgency] = useState("All Agencies");
   const [lastMonthFile, setLastMonthFile] = useState<File | null>(null);
   const [previousRows, setPreviousRows] = useState<CreatorStat[]>([]);
+  const [previousMonthTotals, setPreviousMonthTotals] = useState<MatureMonthTotal[]>([]);
   const [currentRows, setCurrentRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadingPreviousMonth, setUploadingPreviousMonth] = useState(false);
@@ -179,9 +217,7 @@ export default function MatureCreatorsTrackerPage() {
     return dates[dates.length - 1] || `${month}-01`;
   }, [currentRows, month]);
   const remainingDays = Math.max(getLastDayForMonth(month) - getDayNumber(latestCurrentDate), 0);
-  const hasMatureMonthUpload = previousRows.some(
-    (row) => row.data_period === "mature_month_total"
-  );
+  const hasMatureMonthUpload = previousMonthTotals.length > 0;
 
   useEffect(() => {
     async function loadData() {
@@ -189,16 +225,22 @@ export default function MatureCreatorsTrackerPage() {
       setMessage("");
 
       try {
-        const [previousData, currentData] = await Promise.all([
+        const [previousData, currentData, matureTotals] = await Promise.all([
           fetchMonthRows(previousMonth),
           fetchMonthRows(month),
+          fetchMatureMonthTotals(previousMonth).catch((error) => {
+            console.error(error);
+            return [] as MatureMonthTotal[];
+          }),
         ]);
 
         setPreviousRows(previousData);
         setCurrentRows(currentData);
+        setPreviousMonthTotals(matureTotals);
       } catch (error) {
         console.error(error);
         setPreviousRows([]);
+        setPreviousMonthTotals([]);
         setCurrentRows([]);
         setMessage("Could not load mature creator data.");
       } finally {
@@ -210,11 +252,9 @@ export default function MatureCreatorsTrackerPage() {
   }, [month, previousMonth]);
 
   const trackerRows = useMemo<MatureRow[]>(() => {
-    const matureMonthRows = previousRows.filter(
-      (row) => row.data_period === "mature_month_total"
-    );
-    const previousSourceRows = matureMonthRows.length ? matureMonthRows : previousRows;
-    const previousByCreator = monthlyTotalsByCreator(previousSourceRows);
+    const previousByCreator = previousMonthTotals.length
+      ? matureTotalsByCreator(previousMonthTotals)
+      : monthlyTotalsByCreator(previousRows);
     const currentByCreator = monthlyTotalsByCreator(currentRows);
 
     return Array.from(previousByCreator.values())
@@ -254,7 +294,7 @@ export default function MatureCreatorsTrackerPage() {
       })
       .filter((row) => row.previousDiamonds >= MATURE_ENTRY_DIAMONDS)
       .sort((a, b) => b.progressPercent - a.progressPercent || b.currentDiamonds - a.currentDiamonds);
-  }, [currentRows, previousRows, remainingDays]);
+  }, [currentRows, previousMonthTotals, previousRows, remainingDays]);
 
   const agencies = useMemo(() => {
     const values = Array.from(new Set(trackerRows.map((row) => row.agency))).sort();
@@ -341,9 +381,11 @@ export default function MatureCreatorsTrackerPage() {
         fetchMonthRows(previousMonth),
         fetchMonthRows(month),
       ]);
+      const matureTotals = await fetchMatureMonthTotals(previousMonth);
 
       setPreviousRows(previousData);
       setCurrentRows(currentData);
+      setPreviousMonthTotals(matureTotals);
       setLastMonthFile(null);
       setMessage(
         `Uploaded ${json.totalRows || 0} previous month rows for ${previousMonth}. Mature creator list is now using that monthly total file.`

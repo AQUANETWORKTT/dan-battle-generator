@@ -15,19 +15,6 @@ export async function GET(req: Request) {
       );
     }
 
-    const [yearText, monthText] = month.split("-");
-    const year = Number(yearText);
-    const monthNumber = Number(monthText);
-
-    if (monthNumber < 1 || monthNumber > 12) {
-      return NextResponse.json(
-        { error: "Invalid month number." },
-        { status: 400 }
-      );
-    }
-
-    const startDate = `${month}-01`;
-    const endDate = `${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, "0")}`;
     const rows: unknown[] = [];
     const pageSize = 1000;
     let from = 0;
@@ -36,16 +23,19 @@ export async function GET(req: Request) {
     while (hasMore) {
       const to = from + pageSize - 1;
       const { data, error } = await submissionsSupabase
-        .from("creator_daily_stats")
+        .from("mature_creator_month_totals")
         .select("*")
-        .gte("stat_date", startDate)
-        .lte("stat_date", endDate)
-        .or("data_period.is.null,data_period.neq.mature_month_total")
-        .order("stat_date", { ascending: true })
+        .eq("month", month)
+        .order("diamonds", { ascending: false })
         .range(from, to);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json(
+          {
+            error: `Could not load mature month totals. Make sure the mature_creator_month_totals table exists. ${error.message}`,
+          },
+          { status: 500 }
+        );
       }
 
       const batch = data || [];
@@ -56,8 +46,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       month,
-      startDate,
-      endDate,
       count: rows.length,
       rows,
     });

@@ -54,6 +54,16 @@ type ParsedRow = {
   status: string | null;
 };
 
+type MatureCreatorMonthTotal = {
+  month: string;
+  creator_username: string;
+  agency: string;
+  team: string;
+  diamonds: number;
+  source_filename: string;
+  uploaded_at: string;
+};
+
 function cleanText(value: unknown) {
   return String(value || "").trim();
 }
@@ -498,7 +508,7 @@ export async function POST(req: Request) {
 
       const statDate = `${month}-${String(lastDay).padStart(2, "0")}`;
       const buffer = await file.arrayBuffer();
-      const rows = parseWorkbook(buffer, statDate, "mature_month_total");
+      const rows = parseWorkbook(buffer, statDate);
 
       if (!rows.length) {
         return NextResponse.json(
@@ -507,27 +517,47 @@ export async function POST(req: Request) {
         );
       }
 
+      const matureRows: MatureCreatorMonthTotal[] = rows
+        .filter((row) => row.diamonds >= 200000)
+        .map((row) => ({
+          month,
+          creator_username: row.creator_username,
+          agency: row.agency,
+          team: row.team,
+          diamonds: row.diamonds,
+          source_filename: file.name,
+          uploaded_at: new Date().toISOString(),
+        }));
+
+      if (!matureRows.length) {
+        return NextResponse.json(
+          { error: "No creators over 200,000 diamonds were found in that file." },
+          { status: 400 }
+        );
+      }
+
       const { error: deleteError } = await submissionsSupabase
-        .from("creator_daily_stats")
+        .from("mature_creator_month_totals")
         .delete()
-        .eq("stat_date", statDate)
-        .eq("data_period", "mature_month_total");
+        .eq("month", month);
 
       if (deleteError) {
         return NextResponse.json(
-          { error: deleteError.message },
+          {
+            error: `Could not clear existing mature month totals. Make sure the mature_creator_month_totals table exists. ${deleteError.message}`,
+          },
           { status: 500 }
         );
       }
 
       const chunkSize = 250;
 
-      for (let i = 0; i < rows.length; i += chunkSize) {
-        const chunk = rows.slice(i, i + chunkSize);
+      for (let i = 0; i < matureRows.length; i += chunkSize) {
+        const chunk = matureRows.slice(i, i + chunkSize);
 
         const { error } = await submissionsSupabase
-          .from("creator_daily_stats")
-          .insert(chunk);
+          .from("mature_creator_month_totals")
+          .upsert(chunk, { onConflict: "month,creator_username" });
 
         if (error) {
           return NextResponse.json(
@@ -545,14 +575,14 @@ export async function POST(req: Request) {
         success: true,
         mode: importMode,
         filesImported: 1,
-        totalRows: rows.length,
+        totalRows: matureRows.length,
         parsedRows: rows.length,
         month,
         files: [
           {
             day: lastDay,
             statDate,
-            rows: rows.length,
+            rows: matureRows.length,
             filename: file.name,
           },
         ],

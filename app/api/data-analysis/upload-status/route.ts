@@ -12,6 +12,7 @@ export async function GET(req: Request) {
       const { data, error } = await submissionsSupabase
         .from("creator_daily_stats")
         .select("stat_date")
+        .or("data_period.is.null,data_period.neq.mature_month_total")
         .order("stat_date", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -42,7 +43,8 @@ export async function GET(req: Request) {
       const { count, error } = await submissionsSupabase
         .from("creator_daily_stats")
         .select("*", { count: "exact", head: true })
-        .eq("stat_date", statDate);
+        .eq("stat_date", statDate)
+        .or("data_period.is.null,data_period.neq.mature_month_total");
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -93,7 +95,8 @@ export async function DELETE(req: Request) {
     const { error } = await submissionsSupabase
       .from("creator_daily_stats")
       .delete()
-      .eq("stat_date", statDate);
+      .eq("stat_date", statDate)
+      .or("data_period.is.null,data_period.neq.mature_month_total");
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
