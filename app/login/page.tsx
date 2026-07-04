@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import FirstClassLogo from "../components/FirstClassLogo";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -24,11 +25,16 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md rounded-3xl border border-yellow-400/30 bg-zinc-950 p-8">
-        <h1 className="mb-6 text-center text-4xl font-black text-yellow-300">
-          Dans Space
-        </h1>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4">
+      <div
+        className="fixed inset-0 scale-105 bg-cover bg-center blur-sm"
+        style={{ backgroundImage: "url('/branding/first-class-data-bg.jpg')" }}
+      />
+      <div className="fixed inset-0 bg-black/45" />
+      <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/70" />
+
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/20 bg-black/35 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
+        <FirstClassLogo compact className="mb-5" />
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input
@@ -36,12 +42,12 @@ export default function LoginPage() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-white/20 bg-black px-4 py-4 text-white outline-none"
+            className="w-full rounded-xl border border-yellow-200/25 bg-black/70 px-4 py-4 text-white outline-none focus:border-yellow-100"
           />
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-yellow-300 py-4 font-black text-black"
+            className="w-full rounded-xl bg-yellow-300 py-4 font-black uppercase text-black shadow-lg shadow-yellow-950/20 hover:bg-yellow-200"
           >
             LOGIN
           </button>

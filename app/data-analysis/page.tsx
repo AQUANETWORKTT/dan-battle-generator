@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import DataAccessGuard from "../components/DataAccessGuard";
 
 type CreatorStat = {
   stat_date: string;
@@ -293,8 +294,6 @@ export default function DataAnalysisPage() {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
-  const [password, setPassword] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
 
   const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[4];
   const lastDay = getLastDayForMonth(month);
@@ -461,6 +460,47 @@ export default function DataAnalysisPage() {
       (a, b) => safeNumber(b.diamonds) - safeNumber(a.diamonds)
     );
   }, [filteredRows]);
+
+  const noLiveSinceJoiningRows = useMemo(() => {
+    const map = new Map<
+      string,
+      CreatorStat & { totalLiveHours: number; totalLiveStreams: number }
+    >();
+
+    for (const row of baseRowsForAgencyCards) {
+      const username = getCreatorKey(row.creator_username);
+      if (!username) continue;
+
+      const existing = map.get(username);
+
+      if (!existing) {
+        map.set(username, {
+          ...row,
+          totalLiveHours: safeNumber(row.live_hours),
+          totalLiveStreams: safeNumber(row.live_streams),
+          days_since_joining: safeNumber(row.days_since_joining),
+          diamonds: safeNumber(row.diamonds),
+        });
+      } else {
+        existing.totalLiveHours += safeNumber(row.live_hours);
+        existing.totalLiveStreams += safeNumber(row.live_streams);
+        existing.days_since_joining = Math.max(
+          safeNumber(existing.days_since_joining),
+          safeNumber(row.days_since_joining)
+        );
+        existing.diamonds = safeNumber(existing.diamonds) + safeNumber(row.diamonds);
+      }
+    }
+
+    return Array.from(map.values())
+      .filter(
+        (creator) =>
+          safeNumber(creator.days_since_joining) > 3 &&
+          creator.totalLiveHours <= 0 &&
+          creator.totalLiveStreams <= 0
+      )
+      .sort((a, b) => safeNumber(b.days_since_joining) - safeNumber(a.days_since_joining));
+  }, [baseRowsForAgencyCards]);
 
   const totals = useMemo(() => {
     const totalDiamonds = filteredRows.reduce(
@@ -650,14 +690,6 @@ export default function DataAnalysisPage() {
       .slice(0, 20);
   }, [filteredRows]);
 
-  function checkPassword() {
-    if (password === "A") {
-      setAuthenticated(true);
-    } else {
-      alert("Incorrect password");
-    }
-  }
-
   function handleMonthChange(newMonth: string) {
     monthManuallySelectedRef.current = true;
     const newLastDay = getLastDayForMonth(newMonth);
@@ -677,34 +709,8 @@ export default function DataAnalysisPage() {
     if (value < startDay) setStartDay(value);
   }
 
-  if (!authenticated) {
-    return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-3xl border border-yellow-300/20 bg-black p-8">
-          <h1 className="text-3xl font-black text-yellow-300 mb-4">AI Data Analysis</h1>
-          <p className="text-white/50 mb-6">Enter password to continue.</p>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") checkPassword();
-            }}
-            className="w-full rounded-xl border border-yellow-300/20 bg-black px-4 py-3 text-white outline-none"
-            placeholder="Password"
-          />
-          <button
-            onClick={checkPassword}
-            className="mt-4 w-full rounded-xl bg-yellow-300 py-3 font-black text-black"
-          >
-            ENTER
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   return (
+    <DataAccessGuard>
     <main className="min-h-screen bg-[#070707] px-4 py-6 text-white">
       <div className="mx-auto max-w-[1600px]">
         <section className="mb-8 rounded-[2rem] border border-yellow-300/30 bg-gradient-to-br from-black via-[#111] to-[#1b1300] p-6 shadow-2xl shadow-yellow-900/20">
@@ -722,12 +728,20 @@ export default function DataAnalysisPage() {
               </p>
             </div>
 
-            <Link
-              href="/data-analysis/upload?from=analysis"
-              className="shrink-0 rounded-xl bg-yellow-300 px-6 py-3 text-center font-black uppercase text-black transition hover:scale-[1.02] hover:bg-yellow-200"
-            >
-              Upload Data
-            </Link>
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
+              <Link
+                href="/data/menu"
+                className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-center font-black uppercase text-white transition hover:scale-[1.02] hover:bg-white/10"
+              >
+                Back to Data
+              </Link>
+              <Link
+                href="/data-analysis/upload?from=analysis"
+                className="rounded-xl bg-yellow-300 px-6 py-3 text-center font-black uppercase text-black transition hover:scale-[1.02] hover:bg-yellow-200"
+              >
+                Upload Data
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -869,6 +883,56 @@ export default function DataAnalysisPage() {
             <div className="rounded-2xl bg-black/40 p-4">
               Weekend issue creators found: <strong className="text-yellow-200">{weekendProblemRows.length}</strong>.
             </div>
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-3xl border border-red-300/25 bg-red-500/10 p-6">
+          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-2xl font-black uppercase text-red-200">No Live Since Joining</h2>
+              <p className="mt-1 text-sm text-white/55">
+                Creators who are more than 3 days in and have no uploaded live hours or streams in the selected data.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-red-300/20 bg-black/40 px-4 py-3 text-sm font-black text-red-100">
+              {formatNumber(noLiveSinceJoiningRows.length)} creators
+            </div>
+          </div>
+
+          <div className="overflow-auto rounded-2xl border border-red-300/20">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead className="bg-red-500/10 text-xs uppercase text-red-100/70">
+                <tr>
+                  <th className="p-3">Creator</th>
+                  <th className="p-3">Agency</th>
+                  <th className="p-3">Team</th>
+                  <th className="p-3">Days Since Joining</th>
+                  <th className="p-3">Live Since Joining</th>
+                  <th className="p-3">Streams Since Joining</th>
+                  <th className="p-3">Diamonds</th>
+                </tr>
+              </thead>
+              <tbody>
+                {noLiveSinceJoiningRows.map((creator) => (
+                  <tr key={`no-live-${creator.creator_username}`} className="border-t border-red-300/10">
+                    <td className="p-3 font-black text-white">{creator.creator_username}</td>
+                    <td className="p-3 text-white/65">{creator.agency}</td>
+                    <td className="p-3 text-white/65">{creator.team}</td>
+                    <td className="p-3 font-bold text-red-100">{formatNumber(safeNumber(creator.days_since_joining))}</td>
+                    <td className="p-3 font-bold text-white">{formatHours(creator.totalLiveHours)}h</td>
+                    <td className="p-3">{formatNumber(creator.totalLiveStreams)}</td>
+                    <td className="p-3">{formatNumber(safeNumber(creator.diamonds))}</td>
+                  </tr>
+                ))}
+                {!noLiveSinceJoiningRows.length ? (
+                  <tr>
+                    <td className="p-4 text-white/50" colSpan={7}>
+                      No creators found for these filters.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -1062,5 +1126,6 @@ export default function DataAnalysisPage() {
         </section>
       </div>
     </main>
+    </DataAccessGuard>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import DataAccessGuard from "../components/DataAccessGuard";
 
 type CreatorStat = {
   stat_date: string;
@@ -157,8 +158,6 @@ export default function GraduationTrackerPage() {
   const [graduationReportAgency, setGraduationReportAgency] = useState("All");
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
-  const [password, setPassword] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
 
   const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[4];
   const lastDay = getLastDayForMonth(month);
@@ -444,14 +443,6 @@ export default function GraduationTrackerPage() {
     URL.revokeObjectURL(url);
   }
 
-  function checkPassword() {
-    if (password === "G") {
-      setAuthenticated(true);
-    } else {
-      alert("Incorrect password");
-    }
-  }
-
   function handleMonthChange(newMonth: string) {
     monthManuallySelectedRef.current = true;
     const newLastDay = getLastDayForMonth(newMonth);
@@ -462,34 +453,8 @@ export default function GraduationTrackerPage() {
     setGraduationReportAgency("All");
   }
 
-  if (!authenticated) {
-    return (
-      <main className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-3xl border border-green-300/20 bg-black p-8">
-          <h1 className="text-3xl font-black text-green-300 mb-4">Graduation Tracker</h1>
-          <p className="text-white/50 mb-6">Enter password to continue.</p>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") checkPassword();
-            }}
-            className="w-full rounded-xl border border-green-300/20 bg-black px-4 py-3 text-white outline-none"
-            placeholder="Password"
-          />
-          <button
-            onClick={checkPassword}
-            className="mt-4 w-full rounded-xl bg-green-300 py-3 font-black text-black"
-          >
-            ENTER
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   return (
+    <DataAccessGuard>
     <main className="min-h-screen bg-[#070707] px-4 py-6 text-white">
       <style>{`
         @keyframes graduationShimmer {
@@ -518,24 +483,24 @@ export default function GraduationTrackerPage() {
 
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
               <Link
-                href="/"
+                href="/data/menu"
                 className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-center font-black uppercase text-white transition hover:scale-[1.02] hover:bg-white/10"
               >
-                🏠 Home
+                Back to Data
               </Link>
 
               <Link
                 href="/data-analysis"
                 className="rounded-xl border border-green-300/30 bg-green-400/10 px-6 py-3 text-center font-black uppercase text-green-300 transition hover:scale-[1.02] hover:bg-green-400/20"
               >
-                📊 Back to Analysis
+                Back to Analysis
               </Link>
 
               <Link
                 href="/data-analysis/upload?from=graduation"
                 className="rounded-xl bg-yellow-300 px-6 py-3 text-center font-black uppercase text-black transition hover:scale-[1.02] hover:bg-yellow-200"
               >
-                📤 Upload Data
+                Upload Data
               </Link>
             </div>
           </div>
@@ -784,5 +749,6 @@ export default function GraduationTrackerPage() {
         </section>
       </div>
     </main>
+    </DataAccessGuard>
   );
 }

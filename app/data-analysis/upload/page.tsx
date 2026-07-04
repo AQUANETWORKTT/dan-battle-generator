@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import DataAccessGuard from "../../components/DataAccessGuard";
 
 type DayFileMap = Record<number, File | null>;
 type ExistingDayMap = Record<number, number>;
@@ -222,14 +223,27 @@ export default function DataAnalysisUploadPage() {
   }
 
   return (
+    <DataAccessGuard>
     <main className="min-h-screen bg-[#070707] px-4 py-8 text-white">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-3">
           <Link
             href={returnTarget.href}
             className="inline-flex rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-black uppercase text-white transition hover:bg-white/10"
           >
             {returnTarget.label}
+          </Link>
+          <Link
+            href="/data/menu"
+            className="inline-flex rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-5 py-3 font-black uppercase text-yellow-200 transition hover:bg-yellow-300/20"
+          >
+            Back to Data
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-black uppercase text-white transition hover:bg-white/10"
+          >
+            Back Home
           </Link>
         </div>
 
@@ -424,5 +438,6 @@ export default function DataAnalysisUploadPage() {
         </div>
       </div>
     </main>
+    </DataAccessGuard>
   );
 }
