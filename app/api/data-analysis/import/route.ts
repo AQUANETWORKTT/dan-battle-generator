@@ -187,7 +187,11 @@ function getDurationHoursColumn(
   );
 }
 
-function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
+function parseWorkbook(
+  buffer: ArrayBuffer,
+  statDate: string,
+  dataPeriodOverride?: string
+): ParsedRow[] {
   const workbook = XLSX.read(buffer, { type: "array" });
   const firstSheetName = workbook.SheetNames[0];
 
@@ -290,7 +294,7 @@ function parseWorkbook(buffer: ArrayBuffer, statDate: string): ParsedRow[] {
 
       return {
         stat_date: statDate,
-        data_period: dataPeriod,
+        data_period: dataPeriodOverride || dataPeriod,
         creator_id: creatorId,
         creator_username: username.toLowerCase(),
         email: managerEmail,
@@ -459,6 +463,7 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const month = String(formData.get("month") || "2026-05");
+    const importMode = String(formData.get("mode") || "");
 
     if (!/^\d{4}-\d{2}$/.test(month)) {
       return NextResponse.json(
@@ -480,6 +485,79 @@ export async function POST(req: Request) {
     const fileSummaries: { day: number; statDate: string; rows: number; filename: string }[] = [];
 
     const lastDay = new Date(Number(month.split("-")[0]), monthNumber, 0).getDate();
+
+    if (importMode === "mature_month_total") {
+      const file = formData.get("mature_month_file");
+
+      if (!(file instanceof File)) {
+        return NextResponse.json(
+          { error: "Please upload the full previous month Excel file." },
+          { status: 400 }
+        );
+      }
+
+      const statDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+      const buffer = await file.arrayBuffer();
+      const rows = parseWorkbook(buffer, statDate, "mature_month_total");
+
+      if (!rows.length) {
+        return NextResponse.json(
+          { error: "No valid creator rows found in uploaded file." },
+          { status: 400 }
+        );
+      }
+
+      const { error: deleteError } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .delete()
+        .eq("stat_date", statDate)
+        .eq("data_period", "mature_month_total");
+
+      if (deleteError) {
+        return NextResponse.json(
+          { error: deleteError.message },
+          { status: 500 }
+        );
+      }
+
+      const chunkSize = 250;
+
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+
+        const { error } = await submissionsSupabase
+          .from("creator_daily_stats")
+          .insert(chunk);
+
+        if (error) {
+          return NextResponse.json(
+            {
+              error: `Insert failed on rows ${i + 1}-${i + chunk.length}: ${
+                error.message
+              }`,
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        mode: importMode,
+        filesImported: 1,
+        totalRows: rows.length,
+        parsedRows: rows.length,
+        month,
+        files: [
+          {
+            day: lastDay,
+            statDate,
+            rows: rows.length,
+            filename: file.name,
+          },
+        ],
+      });
+    }
 
     for (let day = 1; day <= lastDay; day++) {
       const file = formData.get(`day_${day}`);

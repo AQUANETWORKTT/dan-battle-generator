@@ -6,6 +6,7 @@ import DataAccessGuard from "../../components/DataAccessGuard";
 
 type CreatorStat = {
   stat_date: string;
+  data_period?: string | null;
   creator_username: string;
   agency: string | null;
   team: string | null;
@@ -165,9 +166,11 @@ export default function MatureCreatorsTrackerPage() {
   const [month, setMonth] = useState(getCurrentMonth());
   const [agency, setAgency] = useState("All Agencies");
   const [whatsappAgency, setWhatsappAgency] = useState("All Agencies");
+  const [lastMonthFile, setLastMonthFile] = useState<File | null>(null);
   const [previousRows, setPreviousRows] = useState<CreatorStat[]>([]);
   const [currentRows, setCurrentRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingPreviousMonth, setUploadingPreviousMonth] = useState(false);
   const [message, setMessage] = useState("");
 
   const previousMonth = getPreviousMonth(month);
@@ -176,6 +179,9 @@ export default function MatureCreatorsTrackerPage() {
     return dates[dates.length - 1] || `${month}-01`;
   }, [currentRows, month]);
   const remainingDays = Math.max(getLastDayForMonth(month) - getDayNumber(latestCurrentDate), 0);
+  const hasMatureMonthUpload = previousRows.some(
+    (row) => row.data_period === "mature_month_total"
+  );
 
   useEffect(() => {
     async function loadData() {
@@ -204,7 +210,11 @@ export default function MatureCreatorsTrackerPage() {
   }, [month, previousMonth]);
 
   const trackerRows = useMemo<MatureRow[]>(() => {
-    const previousByCreator = monthlyTotalsByCreator(previousRows);
+    const matureMonthRows = previousRows.filter(
+      (row) => row.data_period === "mature_month_total"
+    );
+    const previousSourceRows = matureMonthRows.length ? matureMonthRows : previousRows;
+    const previousByCreator = monthlyTotalsByCreator(previousSourceRows);
     const currentByCreator = monthlyTotalsByCreator(currentRows);
 
     return Array.from(previousByCreator.values())
@@ -300,6 +310,52 @@ export default function MatureCreatorsTrackerPage() {
     }
   }
 
+  async function uploadPreviousMonthFile() {
+    if (!lastMonthFile) {
+      setMessage("Please choose the full previous month Excel file first.");
+      return;
+    }
+
+    setUploadingPreviousMonth(true);
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("month", previousMonth);
+      formData.append("mode", "mature_month_total");
+      formData.append("mature_month_file", lastMonthFile);
+
+      const res = await fetch("/api/data-analysis/import", {
+        method: "POST",
+        body: formData,
+        cache: "no-store",
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setMessage(json.error || "Could not upload previous month file.");
+        return;
+      }
+
+      const [previousData, currentData] = await Promise.all([
+        fetchMonthRows(previousMonth),
+        fetchMonthRows(month),
+      ]);
+
+      setPreviousRows(previousData);
+      setCurrentRows(currentData);
+      setLastMonthFile(null);
+      setMessage(
+        `Uploaded ${json.totalRows || 0} previous month rows for ${previousMonth}. Mature creator list is now using that monthly total file.`
+      );
+    } catch (error) {
+      console.error(error);
+      setMessage("Could not upload previous month file.");
+    } finally {
+      setUploadingPreviousMonth(false);
+    }
+  }
+
   return (
     <DataAccessGuard>
       <main className="min-h-screen bg-[#090303] px-4 py-6 text-white">
@@ -329,7 +385,7 @@ export default function MatureCreatorsTrackerPage() {
             </p>
           </section>
 
-          <section className="mt-6 grid gap-4 rounded-3xl border border-red-400/20 bg-red-500/[0.04] p-4 md:grid-cols-2">
+          <section className="mt-6 grid gap-4 rounded-3xl border border-red-400/20 bg-red-500/[0.04] p-4 xl:grid-cols-[1fr_1fr_1.4fr]">
             <label className="text-xs font-black uppercase text-white/45">
               Month
               <select value={month} onChange={(event) => setMonth(event.target.value)} className="mt-2 w-full rounded-xl border border-red-300/25 bg-black px-3 py-3 text-white">
@@ -343,6 +399,49 @@ export default function MatureCreatorsTrackerPage() {
                 {agencies.map((item) => <option key={item}>{item}</option>)}
               </select>
             </label>
+
+            <div className="rounded-2xl border border-red-300/20 bg-black/35 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase text-red-200/70">
+                    Upload Last Month
+                  </p>
+                  <p className="mt-1 text-xs text-white/45">
+                    Full month file for {previousMonth}. This sets the mature creator list and previous totals.
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                  hasMatureMonthUpload
+                    ? "bg-green-400/15 text-green-200"
+                    : "bg-white/10 text-white/45"
+                }`}>
+                  {hasMatureMonthUpload ? "Monthly file active" : "Daily fallback"}
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+                <label className="flex min-h-[48px] cursor-pointer items-center rounded-xl border border-dashed border-red-300/25 bg-black px-3 text-sm font-bold text-white/65 hover:border-red-200">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(event) => setLastMonthFile(event.target.files?.[0] || null)}
+                  />
+                  <span className="truncate">
+                    {lastMonthFile ? lastMonthFile.name : "Choose full month Excel file"}
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={uploadPreviousMonthFile}
+                  disabled={uploadingPreviousMonth}
+                  className="rounded-xl bg-red-300 px-4 py-3 text-xs font-black uppercase text-red-950 hover:bg-red-200 disabled:opacity-40"
+                >
+                  {uploadingPreviousMonth ? "Uploading..." : "Upload"}
+                </button>
+              </div>
+            </div>
           </section>
 
           {message ? <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-red-100">{message}</div> : null}
