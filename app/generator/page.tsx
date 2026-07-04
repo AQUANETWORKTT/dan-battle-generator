@@ -2512,6 +2512,18 @@ function renderText(
   return (
     <div className="min-h-screen bg-[#080806] text-white p-8">
       <div className="max-w-[1700px] mx-auto space-y-6">
+        <div className="flex justify-center">
+          <img
+            src="/branding/first-class-hub-logo.png"
+            alt="First Class Hub"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = "/logo.png";
+            }}
+            className="mb-2 h-auto w-full max-w-[520px] object-contain drop-shadow-[0_22px_38px_rgba(0,0,0,0.65)]"
+          />
+        </div>
+
 	<div className="flex gap-3 mb-4">
   <a
     href="/"
