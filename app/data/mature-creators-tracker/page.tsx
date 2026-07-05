@@ -13,6 +13,9 @@ type CreatorStat = {
   group_name: string | null;
   manager_email?: string | null;
   diamonds: number | null;
+  live_hours?: number | null;
+  valid_days?: number | null;
+  valid_live_days?: number | null;
 };
 
 type TierBracket = {
@@ -25,6 +28,8 @@ type CreatorMonthTotal = {
   agency: string;
   team: string;
   diamonds: number;
+  liveHours: number;
+  validDays: number;
   latestDate: string;
 };
 
@@ -42,15 +47,23 @@ type MatureRow = {
   team: string;
   previousDiamonds: number;
   currentDiamonds: number;
+  currentLiveHours: number;
+  currentValidDays: number;
   previousTier: TierBracket;
   nextTier: TierBracket | null;
   maintainNeeded: number;
   rankUpNeeded: number | null;
+  daysNeeded: number;
+  hoursNeeded: number;
   maintainPercent: number;
   rankUpPercent: number | null;
+  daysPercent: number;
+  hoursPercent: number;
   progressPercent: number;
   maintainDailyNeeded: number;
   rankUpDailyNeeded: number | null;
+  canMaintain: boolean;
+  canRankUp: boolean;
 };
 
 const MONTHS = [
@@ -69,6 +82,8 @@ const MONTHS = [
 ];
 
 const MATURE_ENTRY_DIAMONDS = 200000;
+const MAINTAIN_VALID_DAYS_TARGET = 7;
+const MAINTAIN_LIVE_HOURS_TARGET = 15;
 const TIER_BRACKETS: TierBracket[] = [
   { name: "Tier 1", min: 1 },
   { name: "Tier 2", min: 100000 },
@@ -91,6 +106,12 @@ function getCurrentMonth() {
 function safeNumber(value: unknown) {
   const numberValue = Number(value || 0);
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function getValidDayValue(row: CreatorStat) {
+  const uploadedValidDays = safeNumber(row.valid_days ?? row.valid_live_days);
+  if (uploadedValidDays > 0) return uploadedValidDays;
+  return safeNumber(row.live_hours) >= 1 ? 1 : 0;
 }
 
 function formatNumber(value: number) {
@@ -163,12 +184,16 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
         agency,
         team,
         diamonds: safeNumber(row.diamonds),
+        liveHours: safeNumber(row.live_hours),
+        validDays: getValidDayValue(row),
         latestDate: row.stat_date,
       });
       continue;
     }
 
     existing.diamonds += safeNumber(row.diamonds);
+    existing.liveHours += safeNumber(row.live_hours);
+    existing.validDays += getValidDayValue(row);
 
     if (row.stat_date >= existing.latestDate) {
       existing.agency = agency;
@@ -192,6 +217,8 @@ function matureTotalsByCreator(rows: MatureMonthTotal[]) {
       agency: String(row.agency || "First Class"),
       team: String(row.team || "Unassigned"),
       diamonds: safeNumber(row.diamonds),
+      liveHours: 0,
+      validDays: 0,
       latestDate: row.month,
     });
   }
@@ -262,10 +289,16 @@ export default function MatureCreatorsTrackerPage() {
         const current = currentByCreator.get(previous.username);
         const previousDiamonds = previous.diamonds;
         const currentDiamonds = current?.diamonds || 0;
+        const currentLiveHours = current?.liveHours || 0;
+        const currentValidDays = current?.validDays || 0;
         const previousTier = getTierFromDiamonds(previousDiamonds);
         const nextTier = getNextTier(previousTier);
         const maintainNeeded = Math.max(previousTier.min - currentDiamonds, 0);
         const rankUpNeeded = nextTier ? Math.max(nextTier.min - currentDiamonds, 0) : null;
+        const daysNeeded = Math.max(MAINTAIN_VALID_DAYS_TARGET - currentValidDays, 0);
+        const hoursNeeded = Math.max(MAINTAIN_LIVE_HOURS_TARGET - currentLiveHours, 0);
+        const canMaintain = maintainNeeded === 0 && daysNeeded === 0 && hoursNeeded === 0;
+        const canRankUp = rankUpNeeded === 0 && daysNeeded === 0 && hoursNeeded === 0;
 
         return {
           username: previous.username,
@@ -273,12 +306,18 @@ export default function MatureCreatorsTrackerPage() {
           team: current?.team || previous.team,
           previousDiamonds,
           currentDiamonds,
+          currentLiveHours,
+          currentValidDays,
           previousTier,
           nextTier,
           maintainNeeded,
           rankUpNeeded,
+          daysNeeded,
+          hoursNeeded,
           maintainPercent: Math.min((currentDiamonds / previousTier.min) * 100, 100),
           rankUpPercent: nextTier ? Math.min((currentDiamonds / nextTier.min) * 100, 100) : null,
+          daysPercent: Math.min((currentValidDays / MAINTAIN_VALID_DAYS_TARGET) * 100, 100),
+          hoursPercent: Math.min((currentLiveHours / MAINTAIN_LIVE_HOURS_TARGET) * 100, 100),
           progressPercent:
             currentDiamonds >= previousTier.min && nextTier
               ? Math.min((currentDiamonds / nextTier.min) * 100, 100)
@@ -290,6 +329,8 @@ export default function MatureCreatorsTrackerPage() {
                 ? rankUpNeeded / remainingDays
                 : rankUpNeeded
               : null,
+          canMaintain,
+          canRankUp,
         };
       })
       .filter((row) => row.previousDiamonds >= MATURE_ENTRY_DIAMONDS)
@@ -309,8 +350,8 @@ export default function MatureCreatorsTrackerPage() {
     return trackerRows.filter((row) => whatsappAgency === "All Agencies" || row.agency === whatsappAgency);
   }, [trackerRows, whatsappAgency]);
 
-  const maintainedCount = filteredRows.filter((row) => row.maintainNeeded === 0).length;
-  const rankedUpCount = filteredRows.filter((row) => row.rankUpNeeded === 0).length;
+  const maintainedCount = filteredRows.filter((row) => row.canMaintain).length;
+  const rankedUpCount = filteredRows.filter((row) => row.canRankUp).length;
   const maturedPercent = filteredRows.length ? (maintainedCount / filteredRows.length) * 100 : 0;
 
   const whatsappText = useMemo(() => {
@@ -334,6 +375,8 @@ export default function MatureCreatorsTrackerPage() {
           `>> ${creator.username}`,
           `Agency: ${creator.agency}`,
           `Maintain ${creator.previousTier.name} target ${formatNumber(creator.previousTier.min)}: ${formatNumber(creator.maintainNeeded)} needed (${formatNumber(creator.maintainDailyNeeded)}/day)`,
+          `7 day target: ${formatNumber(creator.daysNeeded)} day(s) needed`,
+          `15 hour target: ${formatNumber(creator.hoursNeeded)} hour(s) needed`,
           rankUpLine,
         ].join("\n");
       }),
@@ -548,7 +591,7 @@ export default function MatureCreatorsTrackerPage() {
           </section>
 
           <section className="mt-6 overflow-x-auto rounded-3xl border border-red-300/20 bg-black/50">
-            <table className="w-full min-w-[1180px] text-left text-sm">
+            <table className="w-full min-w-[1320px] text-left text-sm">
               <thead className="bg-red-500/10 text-xs uppercase text-red-100/70">
                 <tr>
                   <th className="p-3">Creator</th>
@@ -558,6 +601,8 @@ export default function MatureCreatorsTrackerPage() {
                   <th className="p-3">Targets</th>
                   <th className="p-3">Maintain</th>
                   <th className="p-3">Rank Up</th>
+                  <th className="p-3">Activity</th>
+                  <th className="p-3">Status</th>
                   <th className="p-3">Needed / Day</th>
                 </tr>
               </thead>
@@ -586,11 +631,32 @@ export default function MatureCreatorsTrackerPage() {
                         <span className="rounded-full border border-red-300/30 bg-red-300/10 px-3 py-1 text-xs font-black uppercase text-red-100">Top tracked tier</span>
                       )}
                     </td>
+                    <td className="p-3">
+                      <div>
+                        <div className="h-2 w-36 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-red-200" style={{ width: `${creator.daysPercent}%` }} /></div>
+                        <p className="mt-1 text-xs text-white/50">7 days: {formatNumber(creator.currentValidDays)}/{MAINTAIN_VALID_DAYS_TARGET} ({formatNumber(creator.daysNeeded)} needed)</p>
+                      </div>
+                      <div className="mt-2">
+                        <div className="h-2 w-36 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-red-300" style={{ width: `${creator.hoursPercent}%` }} /></div>
+                        <p className="mt-1 text-xs text-white/50">15 hours: {formatNumber(creator.currentLiveHours)}/{MAINTAIN_LIVE_HOURS_TARGET} ({formatNumber(creator.hoursNeeded)} needed)</p>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className={`rounded-full border px-3 py-1 text-xs font-black uppercase ${
+                        creator.canRankUp
+                          ? "border-yellow-200/50 bg-yellow-300/15 text-yellow-100"
+                          : creator.canMaintain
+                            ? "border-green-200/50 bg-green-300/15 text-green-100"
+                            : "border-red-300/30 bg-red-300/10 text-red-100"
+                      }`}>
+                        {creator.canRankUp ? "Ranked up" : creator.canMaintain ? "Maintained" : "Not maintained"}
+                      </span>
+                    </td>
                     <td className="p-3"><p className="font-bold text-red-100">Maintain: {formatNumber(creator.maintainDailyNeeded)}</p><p className="mt-1 font-bold text-red-200">Rank up: {creator.rankUpDailyNeeded === null ? "N/A" : formatNumber(creator.rankUpDailyNeeded)}</p></td>
                   </tr>
                 ))}
                 {!filteredRows.length ? (
-                  <tr><td className="p-4 text-white/50" colSpan={8}>{loading ? "Loading mature creator data..." : "No mature creators found for these filters."}</td></tr>
+                  <tr><td className="p-4 text-white/50" colSpan={10}>{loading ? "Loading mature creator data..." : "No mature creators found for these filters."}</td></tr>
                 ) : null}
               </tbody>
             </table>
