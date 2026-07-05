@@ -42,6 +42,7 @@ type TeamPosterTemplate = {
 const TEMPLATE_STORAGE_KEY = "dan-team-diamonds-poster-template-v1";
 const POSTER_WIDTH = 1024;
 const POSTER_HEIGHT = 1536;
+const EXCLUDED_USERNAME = "allannah.unknown444";
 
 function safeNumber(value: unknown) {
   return Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
@@ -230,6 +231,7 @@ export default function TeamDiamondsYesterdayPage() {
         .filter((row) => row.stat_date === yesterday)
         .filter(isTeamDanRow)
         .filter((row) => getUsername(row))
+        .filter((row) => getUsername(row) !== EXCLUDED_USERNAME)
         .sort((a, b) => safeNumber(b.diamonds) - safeNumber(a.diamonds))
         .slice(0, 10);
 
