@@ -120,7 +120,7 @@ const FONT_OPTIONS = [
 const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "date"];
 const DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-default-template-id";
 const DEFAULT_TEMPLATE_SETTING_KEY = "poster-template-default";
-const TEAM_DAN_POSTER_TEMPLATE_STORAGE_KEY = "dan-team-diamonds-poster-template-v1";
+const TEAM_DAN_POSTER_TEMPLATE_NAME = "team-dan-poster";
 
 const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
   backgroundUrl: "",
@@ -433,12 +433,13 @@ function createTeamDanPosterTemplate(): TeamPosterTemplate {
   return { backgroundUrl: "", elements };
 }
 
-function normalizeTeamDanPosterTemplate(input: TeamPosterTemplate): TeamPosterTemplate {
+function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | null): TeamPosterTemplate {
   const base = createTeamDanPosterTemplate();
-  const byId = new Map((input.elements || []).map((element) => [element.id, element]));
+  const incoming = input || {};
+  const byId = new Map((incoming.elements || []).map((element) => [element.id, element]));
 
   return {
-    backgroundUrl: input.backgroundUrl || "",
+    backgroundUrl: incoming.backgroundUrl || "",
     elements: base.elements.map((element) => ({
       ...element,
       ...(byId.get(element.id) || {}),
@@ -1118,13 +1119,37 @@ export default function BattleGeneratorPage() {
     setTeamPosterStatus(`Text font changed to ${fontFamily}. Press Save Template to keep it.`);
   }
 
-  function saveTeamPosterTemplate() {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      TEAM_DAN_POSTER_TEMPLATE_STORAGE_KEY,
-      JSON.stringify(teamPosterTemplate)
-    );
-    setTeamPosterStatus("Team Dan poster template saved.");
+  async function saveTeamPosterTemplate() {
+    const supabase = getPosterSupabaseClient();
+
+    if (!supabase) {
+      setTeamPosterStatus("Supabase env missing. Team Dan template was not saved publicly.");
+      return;
+    }
+
+    const nextTemplate = normalizeTeamDanPosterTemplate(teamPosterTemplate);
+    setTeamPosterStatus("Saving Team Dan poster template...");
+
+    const { error } = await supabase
+      .from("poster_templates")
+      .upsert(
+        {
+          name: TEAM_DAN_POSTER_TEMPLATE_NAME,
+          background_url: nextTemplate.backgroundUrl || null,
+          template_json: nextTemplate,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "name" }
+      );
+
+    if (error) {
+      setTeamPosterStatus(`Team Dan template save failed: ${error.message}`);
+      return;
+    }
+
+    setTeamPosterTemplate(nextTemplate);
+    setSelectedTeamPosterElementId(nextTemplate.elements[0]?.id || "");
+    setTeamPosterStatus("Team Dan poster template saved publicly.");
   }
 
   function resetTeamPosterTemplate() {
@@ -1134,7 +1159,7 @@ export default function BattleGeneratorPage() {
     setTeamPosterStatus("Team Dan poster template reset.");
   }
 
-  function handleTeamPosterBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleTeamPosterBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -1143,15 +1168,53 @@ export default function BattleGeneratorPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setTeamPosterTemplate((prev) => ({
-        ...prev,
-        backgroundUrl: String(reader.result || ""),
-      }));
-      setTeamPosterStatus("Background added. Press Save Template to keep it.");
-    };
-    reader.readAsDataURL(file);
+    const supabase = getPosterSupabaseClient();
+
+    if (!supabase) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTeamPosterTemplate((prev) => ({
+          ...prev,
+          backgroundUrl: String(reader.result || ""),
+        }));
+        setTeamPosterStatus("Background added locally only. Supabase env is missing.");
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    setTeamPosterStatus("Uploading Team Dan background...");
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+    const safeName = file.name
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^a-z0-9-_]+/gi, "-")
+      .replace(/-+/g, "-")
+      .toLowerCase();
+
+    const filePath = `${TEAM_DAN_POSTER_TEMPLATE_NAME}/${Date.now()}-${safeName}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("poster-backgrounds")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      setTeamPosterStatus(`Team Dan background upload failed: ${uploadError.message}`);
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from("poster-backgrounds")
+      .getPublicUrl(filePath);
+
+    setTeamPosterTemplate((prev) => ({
+      ...prev,
+      backgroundUrl: data.publicUrl,
+    }));
+    setTeamPosterStatus("Background uploaded. Press Save Template to save publicly.");
   }
 
   function handleTeamPosterAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1198,18 +1261,37 @@ export default function BattleGeneratorPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(TEAM_DAN_POSTER_TEMPLATE_STORAGE_KEY);
-    if (!saved) return;
+    async function loadTeamPosterTemplate() {
+      const supabase = getPosterSupabaseClient();
 
-    try {
-      const parsed = normalizeTeamDanPosterTemplate(JSON.parse(saved) as TeamPosterTemplate);
+      if (!supabase) {
+        setTeamPosterStatus("Supabase env missing. Team Dan poster using default template.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("poster_templates")
+        .select("template_json")
+        .eq("name", TEAM_DAN_POSTER_TEMPLATE_NAME)
+        .maybeSingle();
+
+      if (error) {
+        setTeamPosterStatus(`Team Dan template load failed: ${error.message}`);
+        return;
+      }
+
+      if (!data?.template_json) {
+        setTeamPosterStatus("No public Team Dan template saved yet. Press Save Template to create one.");
+        return;
+      }
+
+      const parsed = normalizeTeamDanPosterTemplate(data.template_json as TeamPosterTemplate);
       setTeamPosterTemplate(parsed);
       setSelectedTeamPosterElementId(parsed.elements[0]?.id || "");
-      setTeamPosterStatus("Saved Team Dan poster template loaded.");
-    } catch {
-      setTeamPosterStatus("Team Dan poster builder ready.");
+      setTeamPosterStatus("Team Dan poster template loaded publicly.");
     }
+
+    loadTeamPosterTemplate();
   }, []);
 
   useEffect(() => {
