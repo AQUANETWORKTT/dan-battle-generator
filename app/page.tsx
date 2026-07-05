@@ -1,5 +1,4 @@
 import Link from "next/link";
-import FirstClassLogo from "./components/FirstClassLogo";
 
 export default function HomePage() {
   return (
@@ -12,10 +11,6 @@ export default function HomePage() {
       <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/75" />
 
       <div className="relative z-10 w-full max-w-6xl">
-        <div className="mb-12 text-center">
-          <FirstClassLogo />
-        </div>
-
         <div className="grid gap-6 md:grid-cols-3">
           <Link
             href="/generator"

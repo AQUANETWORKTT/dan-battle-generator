@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Dan's Space",
     description: "Creator events, leaderboards and analytics",
-    images: ["/logo.png"],
   },
 };
 

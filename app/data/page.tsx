@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DATA_ACCESS_PASSWORD, DATA_ACCESS_STORAGE_KEY } from "../components/DataAccessGuard";
-import FirstClassLogo from "../components/FirstClassLogo";
 
 function DataPasswordContent() {
   const router = useRouter();
@@ -51,7 +50,6 @@ function DataPasswordContent() {
           <p className="text-center text-xs font-black uppercase tracking-[0.3em] text-yellow-100/70">
             Protected Area
           </p>
-          <FirstClassLogo compact className="mt-3" />
           <form onSubmit={handleSubmit} className="mt-4 grid gap-3">
             <label className="text-xs font-black uppercase text-white/45">
               Password

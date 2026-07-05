@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import FirstClassLogo from "../components/FirstClassLogo";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -34,8 +33,6 @@ export default function LoginPage() {
       <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/70" />
 
       <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/20 bg-black/35 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
-        <FirstClassLogo compact className="mb-5" />
-
         <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="password"
