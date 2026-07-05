@@ -78,17 +78,16 @@ function getUsername(row: CreatorStat) {
 }
 
 function isTeamDanRow(row: CreatorStat) {
-  const haystack = [
-    row.team,
-    row.group_name,
-    row.manager_email,
-    row.creator_network_manager,
-    row["Creator Network manager"],
-  ]
-    .join(" ")
+  const managerEmail = String(
+    row.manager_email ||
+      row.creator_network_manager ||
+      row["Creator Network manager"] ||
+      ""
+  )
+    .trim()
     .toLowerCase();
 
-  return haystack.includes("team dan") || haystack.includes("dan first class") || haystack.includes("dan_") || haystack.includes("dan@");
+  return managerEmail === "firstclassagency_dan@outlook.com";
 }
 
 function createDefaultTemplate(): TeamPosterTemplate {
@@ -310,7 +309,7 @@ export default function TeamDiamondsYesterdayPage() {
             <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Dan</p>
             <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
             <p className="mt-3 max-w-3xl text-white/60">
-              Uses Daniel creator daily stats, filters Team Dan, sorts yesterday by diamonds, fills the saved poster template, and downloads the final PNG.
+              Uses Daniel creator daily stats, filters firstclassagency_dan@outlook.com, sorts yesterday by diamonds, fills the saved poster template, and downloads the final PNG.
             </p>
           </section>
 
@@ -318,7 +317,7 @@ export default function TeamDiamondsYesterdayPage() {
             <div className="space-y-4 rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div>
                 <p className="text-xs font-black uppercase text-white/45">Team</p>
-                <p className="mt-2 text-2xl font-black text-yellow-200">Team Dan</p>
+                <p className="mt-2 text-lg font-black text-yellow-200">firstclassagency_dan@outlook.com</p>
               </div>
               <button type="button" onClick={buildPreview} disabled={loading} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">
                 {loading ? "Building..." : "Preview"}
