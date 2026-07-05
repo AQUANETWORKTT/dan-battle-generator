@@ -18,7 +18,7 @@ type Battle = {
   image2: string;
 };
 
-type Mode = "single" | "mass";
+type Mode = "single" | "mass" | "team";
 
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
 
@@ -57,8 +57,30 @@ type PosterTemplateRow = {
   template_json: PosterTemplateJson;
 };
 
+type TeamPosterElement = {
+  id: string;
+  kind: "avatar" | "username" | "diamonds" | "text";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  value: string;
+  imageUrl?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  color?: string;
+  fontWeight?: number;
+};
+
+type TeamPosterTemplate = {
+  backgroundUrl: string;
+  elements: TeamPosterElement[];
+};
+
 const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1920;
+const TEAM_POSTER_WIDTH = 1024;
+const TEAM_POSTER_HEIGHT = 1536;
 
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
@@ -98,6 +120,7 @@ const FONT_OPTIONS = [
 const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "date"];
 const DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-default-template-id";
 const DEFAULT_TEMPLATE_SETTING_KEY = "poster-template-default";
+const TEAM_DAN_POSTER_TEMPLATE_STORAGE_KEY = "dan-team-diamonds-poster-template-v1";
 
 const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
   backgroundUrl: "",
@@ -360,6 +383,69 @@ function getTikTokUsername(url: string) {
   return match ? match[1].toLowerCase() : "";
 }
 
+function createTeamDanPosterTemplate(): TeamPosterTemplate {
+  const elements: TeamPosterElement[] = [];
+  const startY = 455;
+  const rowGap = 103;
+
+  for (let index = 0; index < 10; index += 1) {
+    const rowY = startY + index * rowGap;
+
+    elements.push({
+      id: `avatar-${index + 1}`,
+      kind: "avatar",
+      x: 145,
+      y: rowY,
+      width: 92,
+      height: 92,
+      value: `Creator ${index + 1} Avatar`,
+    });
+
+    elements.push({
+      id: `username-${index + 1}`,
+      kind: "username",
+      x: 275,
+      y: rowY + 15,
+      width: 430,
+      height: 58,
+      value: `CREATOR ${index + 1}`,
+      fontFamily: "Luckiest Guy",
+      fontSize: 42,
+      color: "#FFFFFF",
+      fontWeight: 900,
+    });
+
+    elements.push({
+      id: `diamonds-${index + 1}`,
+      kind: "diamonds",
+      x: 725,
+      y: rowY + 15,
+      width: 210,
+      height: 58,
+      value: `DIAMONDS ${index + 1}`,
+      fontFamily: "Luckiest Guy",
+      fontSize: 42,
+      color: "#FACC15",
+      fontWeight: 900,
+    });
+  }
+
+  return { backgroundUrl: "", elements };
+}
+
+function normalizeTeamDanPosterTemplate(input: TeamPosterTemplate): TeamPosterTemplate {
+  const base = createTeamDanPosterTemplate();
+  const byId = new Map((input.elements || []).map((element) => [element.id, element]));
+
+  return {
+    backgroundUrl: input.backgroundUrl || "",
+    elements: base.elements.map((element) => ({
+      ...element,
+      ...(byId.get(element.id) || {}),
+    })),
+  };
+}
+
 function cleanFileName(value: string) {
   return value
     .replaceAll(" ", "-")
@@ -499,6 +585,7 @@ function TimeSelect({
 export default function BattleGeneratorPage() {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const teamPosterRef = useRef<HTMLDivElement | null>(null);
 
   const [activeMode, setActiveMode] = useState<Mode>("single");
 
@@ -532,6 +619,11 @@ export default function BattleGeneratorPage() {
   const [templateStatus, setTemplateStatus] = useState("Not saved yet");
   const [undoStack, setUndoStack] = useState<PosterTemplateJson[]>([]);
   const [redoStack, setRedoStack] = useState<PosterTemplateJson[]>([]);
+  const [teamPosterTemplate, setTeamPosterTemplate] = useState<TeamPosterTemplate>(() =>
+    createTeamDanPosterTemplate()
+  );
+  const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
+  const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
 
   const selectedBattle = battles.find((b) => b.id === selectedId) || null;
 
@@ -1007,8 +1099,117 @@ export default function BattleGeneratorPage() {
     setTemplateStatus("Background uploaded. Press Save to attach it to this template.");
   }
 
+  function updateTeamPosterElement(id: string, changes: Partial<TeamPosterElement>) {
+    setTeamPosterTemplate((prev) => ({
+      ...prev,
+      elements: prev.elements.map((element) =>
+        element.id === id ? { ...element, ...changes } : element
+      ),
+    }));
+  }
+
+  function updateAllTeamPosterTextFonts(fontFamily: string) {
+    setTeamPosterTemplate((prev) => ({
+      ...prev,
+      elements: prev.elements.map((element) =>
+        element.kind === "avatar" ? element : { ...element, fontFamily }
+      ),
+    }));
+    setTeamPosterStatus(`Text font changed to ${fontFamily}. Press Save Template to keep it.`);
+  }
+
+  function saveTeamPosterTemplate() {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      TEAM_DAN_POSTER_TEMPLATE_STORAGE_KEY,
+      JSON.stringify(teamPosterTemplate)
+    );
+    setTeamPosterStatus("Team Dan poster template saved.");
+  }
+
+  function resetTeamPosterTemplate() {
+    const nextTemplate = createTeamDanPosterTemplate();
+    setTeamPosterTemplate(nextTemplate);
+    setSelectedTeamPosterElementId(nextTemplate.elements[0]?.id || "");
+    setTeamPosterStatus("Team Dan poster template reset.");
+  }
+
+  function handleTeamPosterBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a PNG or JPG image.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setTeamPosterTemplate((prev) => ({
+        ...prev,
+        backgroundUrl: String(reader.result || ""),
+      }));
+      setTeamPosterStatus("Background added. Press Save Template to keep it.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleTeamPosterAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a PNG or JPG image.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateTeamPosterElement(selectedTeamPosterElementId, {
+        imageUrl: String(reader.result || ""),
+      });
+      setTeamPosterStatus("Avatar image added.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function downloadTeamPosterTemplatePreview() {
+    const node = teamPosterRef.current;
+    if (!node) return;
+
+    const blob = await htmlToImage.toBlob(node, {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: TEAM_POSTER_WIDTH,
+      height: TEAM_POSTER_HEIGHT,
+      backgroundColor: "#000000",
+      style: {
+        transform: "none",
+        transformOrigin: "top left",
+      },
+    });
+
+    if (!blob) return;
+    saveAs(blob, `team-dan-poster-template-${Date.now()}.png`);
+  }
+
   useEffect(() => {
     loadPosterTemplates();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(TEAM_DAN_POSTER_TEMPLATE_STORAGE_KEY);
+    if (!saved) return;
+
+    try {
+      const parsed = normalizeTeamDanPosterTemplate(JSON.parse(saved) as TeamPosterTemplate);
+      setTeamPosterTemplate(parsed);
+      setSelectedTeamPosterElementId(parsed.elements[0]?.id || "");
+      setTeamPosterStatus("Saved Team Dan poster template loaded.");
+    } catch {
+      setTeamPosterStatus("Team Dan poster builder ready.");
+    }
   }, []);
 
   useEffect(() => {
@@ -2509,6 +2710,214 @@ function renderText(
     );
   }
 
+  function TeamPosterCanvas({ scale = 0.42 }: { scale?: number }) {
+    return (
+      <div
+        className="mx-auto overflow-hidden rounded-xl border border-yellow-300/20 bg-black shadow-2xl shadow-yellow-950/30"
+        style={{ width: TEAM_POSTER_WIDTH * scale, height: TEAM_POSTER_HEIGHT * scale }}
+      >
+        <div
+          ref={teamPosterRef}
+          className="relative overflow-hidden bg-black"
+          style={{
+            width: TEAM_POSTER_WIDTH,
+            height: TEAM_POSTER_HEIGHT,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            backgroundImage: teamPosterTemplate.backgroundUrl
+              ? `url(${teamPosterTemplate.backgroundUrl})`
+              : "linear-gradient(180deg, #090909 0%, #241d05 55%, #050505 100%)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          {teamPosterTemplate.elements.map((element) => {
+            const selected = element.id === selectedTeamPosterElementId;
+
+            return (
+              <Rnd
+                key={element.id}
+                bounds="parent"
+                scale={scale}
+                size={{ width: element.width, height: element.height }}
+                position={{ x: element.x, y: element.y }}
+                onDragStop={(_, data) =>
+                  updateTeamPosterElement(element.id, {
+                    x: Math.round(data.x),
+                    y: Math.round(data.y),
+                  })
+                }
+                onResizeStop={(_, __, ref, ___, position) =>
+                  updateTeamPosterElement(element.id, {
+                    x: Math.round(position.x),
+                    y: Math.round(position.y),
+                    width: Math.round(ref.offsetWidth),
+                    height: Math.round(ref.offsetHeight),
+                  })
+                }
+                onMouseDown={() => setSelectedTeamPosterElementId(element.id)}
+              >
+                {element.kind === "avatar" ? (
+                  <div
+                    className={`flex h-full w-full items-center justify-center overflow-hidden rounded-full border-4 bg-black/45 ${
+                      selected ? "border-yellow-300" : "border-yellow-200/60"
+                    }`}
+                  >
+                    {element.imageUrl ? (
+                      <img src={element.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-black text-yellow-100/70">+</span>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className={`flex h-full w-full items-center justify-center rounded-lg border-2 bg-black/35 px-2 text-center ${
+                      selected ? "border-yellow-300" : "border-yellow-200/35"
+                    }`}
+                    style={{
+                      color: element.color || "#FACC15",
+                      fontFamily: element.fontFamily || "Luckiest Guy",
+                      fontSize: element.fontSize || 42,
+                      fontWeight: element.fontWeight || 900,
+                      textShadow: "3px 3px 0 #000",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {element.value || ""}
+                  </div>
+                )}
+              </Rnd>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function TeamPosterBuilder() {
+    const selectedElement = teamPosterTemplate.elements.find(
+      (element) => element.id === selectedTeamPosterElementId
+    );
+    const backgroundInputId = `team-dan-background-${stableId}`;
+    const avatarInputId = `team-dan-avatar-${stableId}`;
+
+    return (
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <section className="space-y-5">
+          <div className="space-y-4 rounded-xl border border-yellow-300/25 bg-black/35 p-5">
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">
+                Team Dan Poster Builder
+              </h2>
+              <p className="mt-2 text-sm text-white/45">
+                Save this template, then use Team Diamonds Yesterday in Data to fill it from Team Dan.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <label
+                htmlFor={backgroundInputId}
+                className="cursor-pointer rounded-lg border border-white/20 bg-black/40 px-3 py-4 text-center text-xs font-black uppercase tracking-widest text-white transition hover:border-yellow-300"
+              >
+                Background
+              </label>
+              <button type="button" onClick={saveTeamPosterTemplate} className="rounded-lg bg-yellow-300 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200">
+                Save Template
+              </button>
+              <button type="button" onClick={downloadTeamPosterTemplatePreview} className="rounded-lg bg-green-400 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-green-300">
+                Download PNG
+              </button>
+              <button type="button" onClick={resetTeamPosterTemplate} className="rounded-lg border border-white/20 bg-white/10 px-3 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-white/20">
+                Reset
+              </button>
+            </div>
+
+            <input id={backgroundInputId} type="file" accept="image/*" className="hidden" onChange={handleTeamPosterBackgroundUpload} />
+
+            <label className="block">
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Text Font</p>
+              <select
+                value={teamPosterTemplate.elements.find((element) => element.kind !== "avatar")?.fontFamily || "Luckiest Guy"}
+                onChange={(event) => updateAllTeamPosterTextFonts(event.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
+              >
+                {FONT_OPTIONS.map((font) => (
+                  <option key={font} value={font}>{font}</option>
+                ))}
+              </select>
+            </label>
+
+            <p className="text-xs text-white/45">{teamPosterStatus}</p>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-white/15 bg-black/35 p-5">
+            <h3 className="text-sm font-black uppercase tracking-widest text-yellow-300">
+              Selected Item
+            </h3>
+
+            {selectedElement ? (
+              <>
+                <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                  <p className="text-xs font-black uppercase tracking-widest text-white/45">Item</p>
+                  <p className="mt-1 font-black uppercase text-white">{selectedElement.kind}</p>
+                </div>
+
+                {selectedElement.kind === "avatar" ? (
+                  <>
+                    <label htmlFor={avatarInputId} className="block cursor-pointer rounded-lg bg-yellow-300 px-4 py-4 text-center text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200">
+                      Upload Avatar
+                    </label>
+                    <input id={avatarInputId} type="file" accept="image/*" className="hidden" onChange={handleTeamPosterAvatarUpload} />
+                  </>
+                ) : (
+                  <>
+                    <TextInput
+                      label={selectedElement.kind === "username" ? "Username" : selectedElement.kind === "diamonds" ? "Diamonds" : "Text"}
+                      value={selectedElement.value}
+                      onChange={(value) => updateTeamPosterElement(selectedElement.id, { value })}
+                    />
+                    <label className="block">
+                      <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Font</p>
+                      <select
+                        value={selectedElement.fontFamily || "Luckiest Guy"}
+                        onChange={(event) => updateTeamPosterElement(selectedElement.id, { fontFamily: event.target.value })}
+                        className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
+                      >
+                        {FONT_OPTIONS.map((font) => (
+                          <option key={font} value={font}>{font}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <TextInput
+                        label="Font Size"
+                        value={String(selectedElement.fontSize || 42)}
+                        onChange={(value) => updateTeamPosterElement(selectedElement.id, { fontSize: Number(value) || 42 })}
+                      />
+                      <label className="block">
+                        <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Colour</p>
+                        <input
+                          type="color"
+                          value={selectedElement.color || "#FACC15"}
+                          onChange={(event) => updateTeamPosterElement(selectedElement.id, { color: event.target.value })}
+                          className="h-[46px] w-full rounded-lg border border-white/15 bg-black/45 p-1"
+                        />
+                      </label>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-white/45">Select an item on the poster.</p>
+            )}
+          </div>
+        </section>
+
+        <section>{TeamPosterCanvas({})}</section>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#080806] text-white p-8">
       <div className="max-w-[1700px] mx-auto space-y-6">
@@ -2542,7 +2951,7 @@ function renderText(
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <button
               type="button"
               onClick={() => setActiveMode("single")}
@@ -2565,6 +2974,18 @@ function renderText(
               }`}
             >
               Mass Poster Generator
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveMode("team")}
+              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
+                activeMode === "team"
+                  ? "bg-yellow-300 text-black"
+                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
+              }`}
+            >
+              Team Dan Poster Builder
             </button>
           </div>
         </div>
@@ -2782,6 +3203,7 @@ function renderText(
             </section>
           </div>
         )}
+        {activeMode === "team" && TeamPosterBuilder()}
           </>
         )}
       </div>

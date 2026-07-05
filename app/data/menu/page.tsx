@@ -23,6 +23,13 @@ const links = [
     className: "border-red-300/25 bg-red-400/10 hover:border-red-300/60 hover:bg-red-400/15",
     titleClassName: "text-red-300",
   },
+  {
+    href: "/data/team-diamonds-yesterday",
+    title: "Team Diamonds Yesterday",
+    description: "Preview and download the Team Dan diamonds poster from yesterday's daily stats.",
+    className: "border-yellow-300/25 bg-yellow-400/10 hover:border-yellow-300/60 hover:bg-yellow-400/15",
+    titleClassName: "text-yellow-300",
+  },
 ];
 
 export default function DataMenuPage() {
@@ -45,7 +52,7 @@ export default function DataMenuPage() {
             <p className="mt-3 max-w-2xl text-white/60">Choose which data tool you want to open.</p>
           </section>
 
-          <section className="mt-6 grid gap-4 md:grid-cols-3">
+          <section className="mt-6 grid gap-4 md:grid-cols-4">
             {links.map((item) => (
               <Link
                 key={item.href}
