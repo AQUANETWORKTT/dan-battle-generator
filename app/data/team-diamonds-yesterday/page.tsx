@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
 import DataAccessGuard from "../../components/DataAccessGuard";
@@ -40,10 +41,12 @@ type TeamPosterElement = {
 
 type TeamPosterTemplate = {
   backgroundUrl: string;
+  backgroundPath?: string;
   elements: TeamPosterElement[];
 };
 
 const TEMPLATE_STORAGE_KEY = "dan-team-diamonds-poster-template-v1";
+const TEAM_DAN_POSTER_TEMPLATE_NAME = "team-dan-poster";
 const POSTER_WIDTH = 1024;
 const POSTER_HEIGHT = 1536;
 const EXCLUDED_USERNAME = "allannah.unknown444";
@@ -145,8 +148,63 @@ function normalizeTemplate(input: Partial<TeamPosterTemplate> | null): TeamPoste
   const byId = new Map((input?.elements || []).map((element) => [element.id, element]));
   return {
     backgroundUrl: input?.backgroundUrl || "",
+    backgroundPath: input?.backgroundPath || "",
     elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
   };
+}
+
+function getPosterSupabaseClient() {
+  const url =
+    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) return null;
+  return createClient(url, anonKey);
+}
+
+function getBackgroundPathFromUrl(url: string) {
+  const marker = "/storage/v1/object/public/poster-backgrounds/";
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex === -1) return "";
+  return decodeURIComponent(url.slice(markerIndex + marker.length).split("?")[0] || "");
+}
+
+async function resolveTemplateBackground(template: TeamPosterTemplate) {
+  const supabase = getPosterSupabaseClient();
+  const backgroundPath = template.backgroundPath || getBackgroundPathFromUrl(template.backgroundUrl);
+
+  if (!supabase || !backgroundPath) return template;
+
+  const { data, error } = await supabase.storage
+    .from("poster-backgrounds")
+    .createSignedUrl(backgroundPath, 60 * 60 * 24 * 7);
+
+  if (error || !data?.signedUrl) return { ...template, backgroundPath };
+  return { ...template, backgroundPath, backgroundUrl: data.signedUrl };
+}
+
+async function getPublicSavedTemplate() {
+  const supabase = getPosterSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("poster_templates")
+    .select("template_json,background_url")
+    .eq("name", TEAM_DAN_POSTER_TEMPLATE_NAME)
+    .maybeSingle();
+
+  if (error || !data?.template_json) return null;
+
+  const rawTemplate = data.template_json as TeamPosterTemplate;
+  const template = normalizeTemplate({
+    ...rawTemplate,
+    backgroundUrl: rawTemplate.backgroundUrl || data.background_url || "",
+  });
+
+  return resolveTemplateBackground(template);
 }
 
 function getSavedTemplate() {
@@ -238,22 +296,39 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
 
 export default function TeamDiamondsYesterdayPage() {
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
+  const [savedTemplate, setSavedTemplate] = useState<TeamPosterTemplate | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const previewScale = 0.42;
-  const visibleTemplate = useMemo(() => template || getSavedTemplate(), [template]);
+  const visibleTemplate = useMemo(() => template || savedTemplate || getSavedTemplate(), [template, savedTemplate]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTemplate() {
+      const publicTemplate = await getPublicSavedTemplate();
+      if (!cancelled && publicTemplate) setSavedTemplate(publicTemplate);
+    }
+
+    loadTemplate();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function buildPreview() {
     setLoading(true);
     setMessage("");
 
     try {
-      const savedTemplate = getSavedTemplate();
-      if (!savedTemplate) {
+      const publicTemplate = await getPublicSavedTemplate();
+      const activeTemplate = publicTemplate || savedTemplate || getSavedTemplate();
+      if (!activeTemplate) {
         setMessage("Save a Team Dan Poster Builder template in the poster generator first.");
         return;
       }
+      if (publicTemplate) setSavedTemplate(publicTemplate);
 
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
@@ -298,8 +373,8 @@ export default function TeamDiamondsYesterdayPage() {
       }));
 
       const filledTemplate: TeamPosterTemplate = {
-        ...savedTemplate,
-        elements: savedTemplate.elements.map((element) => {
+        ...activeTemplate,
+        elements: activeTemplate.elements.map((element) => {
           const diamondMatch = element.id.match(/^(avatar|username|diamonds)-(\d+)$/);
           const hourTextMatch = element.id.match(/^(avatar|username)-hours-(\d+)$/);
           const hourValueMatch = element.id.match(/^hours-(\d+)$/);

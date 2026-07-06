@@ -74,6 +74,7 @@ type TeamPosterElement = {
 
 type TeamPosterTemplate = {
   backgroundUrl: string;
+  backgroundPath?: string;
   elements: TeamPosterElement[];
 };
 
@@ -451,6 +452,7 @@ function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | nu
 
   return {
     backgroundUrl: incoming.backgroundUrl || "",
+    backgroundPath: incoming.backgroundPath || "",
     elements: base.elements.map((element) => ({
       ...element,
       ...(byId.get(element.id) || {}),
@@ -1224,6 +1226,7 @@ export default function BattleGeneratorPage() {
     setTeamPosterTemplate((prev) => ({
       ...prev,
       backgroundUrl: data.publicUrl,
+      backgroundPath: filePath,
     }));
     setTeamPosterStatus("Background uploaded. Press Save Template to save publicly.");
   }
