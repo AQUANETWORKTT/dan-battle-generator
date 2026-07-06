@@ -59,7 +59,7 @@ type PosterTemplateRow = {
 
 type TeamPosterElement = {
   id: string;
-  kind: "avatar" | "username" | "diamonds" | "text";
+  kind: "avatar" | "username" | "diamonds" | "hours" | "text";
   x: number;
   y: number;
   width: number;
@@ -385,30 +385,36 @@ function getTikTokUsername(url: string) {
 
 function createTeamDanPosterTemplate(): TeamPosterTemplate {
   const elements: TeamPosterElement[] = [];
-  const startY = 455;
-  const rowGap = 103;
+  const rowGap = 98;
 
-  for (let index = 0; index < 10; index += 1) {
-    const rowY = startY + index * rowGap;
+  const addLeaderboardRow = (
+    group: "diamonds" | "hours",
+    index: number,
+    rowY: number
+  ) => {
+    const suffix = group === "diamonds" ? `${index + 1}` : `hours-${index + 1}`;
+    const valueId = group === "diamonds" ? `diamonds-${index + 1}` : `hours-${index + 1}`;
+    const valueLabel = group === "diamonds" ? "DIAMONDS" : "HOURS";
+    const valueColor = group === "diamonds" ? "#FACC15" : "#38BDF8";
 
     elements.push({
-      id: `avatar-${index + 1}`,
+      id: `avatar-${suffix}`,
       kind: "avatar",
       x: 145,
       y: rowY,
       width: 92,
       height: 92,
-      value: `Creator ${index + 1} Avatar`,
+      value: `${valueLabel} ${index + 1} Avatar`,
     });
 
     elements.push({
-      id: `username-${index + 1}`,
+      id: `username-${suffix}`,
       kind: "username",
       x: 275,
       y: rowY + 15,
       width: 430,
       height: 58,
-      value: `CREATOR ${index + 1}`,
+      value: `${valueLabel} CREATOR ${index + 1}`,
       fontFamily: "Luckiest Guy",
       fontSize: 42,
       color: "#FFFFFF",
@@ -416,18 +422,23 @@ function createTeamDanPosterTemplate(): TeamPosterTemplate {
     });
 
     elements.push({
-      id: `diamonds-${index + 1}`,
-      kind: "diamonds",
+      id: valueId,
+      kind: group,
       x: 725,
       y: rowY + 15,
       width: 210,
       height: 58,
-      value: `DIAMONDS ${index + 1}`,
+      value: `${valueLabel} ${index + 1}`,
       fontFamily: "Luckiest Guy",
       fontSize: 42,
-      color: "#FACC15",
+      color: valueColor,
       fontWeight: 900,
     });
+  };
+
+  for (let index = 0; index < 5; index += 1) {
+    addLeaderboardRow("diamonds", index, 390 + index * rowGap);
+    addLeaderboardRow("hours", index, 925 + index * rowGap);
   }
 
   return { backgroundUrl: "", elements };
@@ -2954,7 +2965,7 @@ function renderText(
                 ) : (
                   <>
                     <TextInput
-                      label={selectedElement.kind === "username" ? "Username" : selectedElement.kind === "diamonds" ? "Diamonds" : "Text"}
+                      label={selectedElement.kind === "username" ? "Username" : selectedElement.kind === "diamonds" ? "Diamonds" : selectedElement.kind === "hours" ? "Hours" : "Text"}
                       value={selectedElement.value}
                       onChange={(value) => updateTeamPosterElement(selectedElement.id, { value })}
                     />

@@ -7,6 +7,7 @@ import { toBlob } from "html-to-image";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 type CreatorStat = {
+  [key: string]: unknown;
   stat_date: string;
   creator_username?: string | null;
   "Creator's username"?: string | null;
@@ -17,11 +18,14 @@ type CreatorStat = {
   creator_network_manager?: string | null;
   "Creator Network manager"?: string | null;
   diamonds?: number | string | null;
+  live_hours?: number | string | null;
+  live_duration?: string | number | null;
+  "LIVE duration"?: string | number | null;
 };
 
 type TeamPosterElement = {
   id: string;
-  kind: "avatar" | "username" | "diamonds" | "text";
+  kind: "avatar" | "username" | "diamonds" | "hours" | "text";
   x: number;
   y: number;
   width: number;
@@ -60,6 +64,30 @@ function formatCompactDiamonds(value: number) {
   return value.toLocaleString("en-GB");
 }
 
+function durationToHours(value: unknown) {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return 0;
+
+  const hours = Number(text.match(/(\d+(?:\.\d+)?)\s*h/)?.[1] || 0);
+  const minutes = Number(text.match(/(\d+(?:\.\d+)?)\s*m/)?.[1] || 0);
+  const seconds = Number(text.match(/(\d+(?:\.\d+)?)\s*s/)?.[1] || 0);
+
+  if (hours || minutes || seconds) {
+    return Number((hours + minutes / 60 + seconds / 3600).toFixed(2));
+  }
+
+  return safeNumber(value);
+}
+
+function getLiveHours(row: CreatorStat) {
+  return durationToHours(row.live_hours ?? row.live_duration ?? row["LIVE duration"]);
+}
+
+function formatPosterHours(value: number) {
+  if (value <= 0) return "0H";
+  return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}H`;
+}
+
 function getCurrentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -93,14 +121,20 @@ function isTeamDanRow(row: CreatorStat) {
 
 function createDefaultTemplate(): TeamPosterTemplate {
   const elements: TeamPosterElement[] = [];
-  const startY = 455;
-  const rowGap = 103;
+  const rowGap = 98;
 
-  for (let index = 0; index < 10; index += 1) {
-    const rowY = startY + index * rowGap;
-    elements.push({ id: `avatar-${index + 1}`, kind: "avatar", x: 145, y: rowY, width: 92, height: 92, value: "" });
-    elements.push({ id: `username-${index + 1}`, kind: "username", x: 275, y: rowY + 15, width: 430, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 42, color: "#FFFFFF", fontWeight: 900 });
-    elements.push({ id: `diamonds-${index + 1}`, kind: "diamonds", x: 725, y: rowY + 15, width: 210, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 42, color: "#FACC15", fontWeight: 900 });
+  const addLeaderboardRow = (group: "diamonds" | "hours", index: number, rowY: number) => {
+    const suffix = group === "diamonds" ? `${index + 1}` : `hours-${index + 1}`;
+    const valueId = group === "diamonds" ? `diamonds-${index + 1}` : `hours-${index + 1}`;
+    const valueColor = group === "diamonds" ? "#FACC15" : "#38BDF8";
+    elements.push({ id: `avatar-${suffix}`, kind: "avatar", x: 145, y: rowY, width: 92, height: 92, value: "" });
+    elements.push({ id: `username-${suffix}`, kind: "username", x: 275, y: rowY + 15, width: 430, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 42, color: "#FFFFFF", fontWeight: 900 });
+    elements.push({ id: valueId, kind: group, x: 725, y: rowY + 15, width: 210, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 42, color: valueColor, fontWeight: 900 });
+  };
+
+  for (let index = 0; index < 5; index += 1) {
+    addLeaderboardRow("diamonds", index, 390 + index * rowGap);
+    addLeaderboardRow("hours", index, 925 + index * rowGap);
   }
 
   return { backgroundUrl: "", elements };
@@ -231,42 +265,63 @@ export default function TeamDiamondsYesterdayPage() {
         .filter((row) => row.stat_date === yesterday)
         .filter(isTeamDanRow)
         .filter((row) => getUsername(row))
-        .filter((row) => getUsername(row) !== EXCLUDED_USERNAME)
-        .sort((a, b) => safeNumber(b.diamonds) - safeNumber(a.diamonds))
-        .slice(0, 10);
+        .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
 
       if (!rows.length) {
         setMessage(`No Team Dan rows found for ${yesterday}.`);
         return;
       }
 
-      const rowsWithAvatars = await Promise.all(
-        rows.map(async (row) => {
-          const username = getUsername(row);
-          return {
-            username,
-            diamonds: safeNumber(row.diamonds),
-            avatar: await fetchTikTokAvatar(username),
-          };
+      const diamondRows = [...rows]
+        .sort((a, b) => safeNumber(b.diamonds) - safeNumber(a.diamonds))
+        .slice(0, 5);
+      const hourRows = [...rows]
+        .sort((a, b) => getLiveHours(b) - getLiveHours(a))
+        .slice(0, 5);
+      const avatarByUsername = new Map<string, string>();
+
+      await Promise.all(
+        Array.from(new Set([...diamondRows, ...hourRows].map(getUsername))).map(async (username) => {
+          avatarByUsername.set(username, await fetchTikTokAvatar(username));
         })
       );
+
+      const diamondCreators = diamondRows.map((row) => ({
+        username: getUsername(row),
+        value: formatCompactDiamonds(safeNumber(row.diamonds)),
+        avatar: avatarByUsername.get(getUsername(row)) || "",
+      }));
+      const hourCreators = hourRows.map((row) => ({
+        username: getUsername(row),
+        value: formatPosterHours(getLiveHours(row)),
+        avatar: avatarByUsername.get(getUsername(row)) || "",
+      }));
 
       const filledTemplate: TeamPosterTemplate = {
         ...savedTemplate,
         elements: savedTemplate.elements.map((element) => {
-          const match = element.id.match(/^(avatar|username|diamonds)-(\d+)$/);
-          if (!match) return element;
-          const row = rowsWithAvatars[Number(match[2]) - 1];
-          if (!row) return element.kind === "avatar" ? { ...element, imageUrl: "" } : { ...element, value: "" };
-          if (element.kind === "avatar") return { ...element, imageUrl: row.avatar, value: row.username };
-          if (element.kind === "username") return { ...element, value: row.username.toUpperCase() };
-          if (element.kind === "diamonds") return { ...element, value: formatCompactDiamonds(row.diamonds) };
+          const diamondMatch = element.id.match(/^(avatar|username|diamonds)-(\d+)$/);
+          const hourTextMatch = element.id.match(/^(avatar|username)-hours-(\d+)$/);
+          const hourValueMatch = element.id.match(/^hours-(\d+)$/);
+          const hourIndex = Number((hourTextMatch?.[2] || hourValueMatch?.[1] || "0")) - 1;
+          const creator = diamondMatch
+            ? diamondCreators[Number(diamondMatch[2]) - 1]
+            : hourTextMatch || hourValueMatch
+              ? hourCreators[hourIndex]
+              : null;
+          if (!creator) {
+            if (!diamondMatch && !hourTextMatch && !hourValueMatch) return element;
+            return element.kind === "avatar" ? { ...element, imageUrl: "" } : { ...element, value: "" };
+          }
+          if (element.kind === "avatar") return { ...element, imageUrl: creator.avatar, value: creator.username };
+          if (element.kind === "username") return { ...element, value: creator.username.toUpperCase() };
+          if (element.kind === "diamonds" || element.kind === "hours") return { ...element, value: creator.value };
           return element;
         }),
       };
 
       setTemplate(filledTemplate);
-      setMessage(`Preview built from Team Dan top ${rowsWithAvatars.length} for ${yesterday}.`);
+      setMessage(`Preview built from Team Dan top 5 diamonds and top 5 hours for ${yesterday}.`);
     } catch (error) {
       console.error(error);
       setMessage(error instanceof Error ? error.message : "Could not build Team Dan poster.");
@@ -311,7 +366,7 @@ export default function TeamDiamondsYesterdayPage() {
             <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Dan</p>
             <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
             <p className="mt-3 max-w-3xl text-white/60">
-              Uses Daniel creator daily stats, filters firstclassagency_dan@outlook.com, sorts yesterday by diamonds, fills the saved poster template, and downloads the final PNG.
+              Uses Daniel creator daily stats, filters firstclassagency_dan@outlook.com, fills the saved poster template with top 5 diamonds and top 5 live hours, and downloads the final PNG.
             </p>
           </section>
 

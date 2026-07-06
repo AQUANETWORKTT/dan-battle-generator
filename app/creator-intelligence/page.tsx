@@ -189,6 +189,7 @@ const MONTHS = [
 ];
 
 const GRADUATION_TARGET = 200000;
+const CREATOR_REPORT_LIVE_DAY_TARGET = 5;
 const MINIMUM_TRACKER_DIAMONDS = 1000;
 const CHART_METRICS: {
   key: ChartMetricKey;
@@ -833,10 +834,10 @@ function buildProfileInsights(
 function buildCreatorReportActions(creator: CreatorSummary) {
   const actions: string[] = [];
 
-  if (creator.oneHourDays < creator.healthWindowDays) {
+  if (creator.oneHourDays < CREATOR_REPORT_LIVE_DAY_TARGET) {
     actions.push("Push for a consistent daily live routine.");
   }
-  if (creator.oneHourDays === creator.healthWindowDays && creator.healthWindowHours < 14) {
+  if (creator.oneHourDays >= CREATOR_REPORT_LIVE_DAY_TARGET && creator.healthWindowHours < 14) {
     actions.push("You are showing up daily. Next target: push more sessions closer to two hours.");
   } else if (creator.healthWindowHours < creator.oneHourDays) {
     actions.push("Start by making each live at least one full hour.");
@@ -865,7 +866,7 @@ function buildCreatorReportTips(creator: CreatorSummary) {
     .slice(-7)
     .filter((point) => point.liveHours > 0 && point.liveHours < 1);
 
-  if (creator.oneHourDays < creator.healthWindowDays) {
+  if (creator.oneHourDays < CREATOR_REPORT_LIVE_DAY_TARGET) {
     tips.push({
       title: "Build a reliable live routine",
       description:
@@ -882,7 +883,7 @@ function buildCreatorReportTips(creator: CreatorSummary) {
     });
   }
 
-  if (creator.oneHourDays === creator.healthWindowDays && creator.healthWindowHours < 14) {
+  if (creator.oneHourDays >= CREATOR_REPORT_LIVE_DAY_TARGET && creator.healthWindowHours < 14) {
     tips.push({
       title: "Turn daily lives into stronger sessions",
       description:
