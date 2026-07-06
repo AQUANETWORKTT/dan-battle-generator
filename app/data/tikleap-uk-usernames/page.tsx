@@ -4,145 +4,111 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
-const TIKLEAP_UK_USERNAMES = [
-  "__tfooo__",
-  "gudagol011",
-  "bawa_295",
-  "king_kaly",
-  "j_ames06",
-  "legit.official1",
-  "fearless___punjaban",
-  "uk_aman01",
-  "sammybevan",
-  "shakeel.mehar_804",
-  "toldytejko",
-  "justmdfaiz",
-  "driving_withtwins",
-  "coldbloxsab",
-  "zille_amna888",
-  "feqar.aykonkun",
-  "ceejay_francis",
-  "dan..jones",
-  "woodymaher",
-  "joleneburnsmusic",
-  "azxq2kguc9",
-  "loveandpeace9998",
-  "s_sheemza_",
-  "ya_na_sunshine",
-  "emanshehzadi.live",
-  "_hayden.s08",
-  "sjpb77",
-  "shakab155",
-  "adryanacotisel",
-  "dextermaherr",
-  "sikandarchoudhry007",
-  "irishqueennew",
-  "halooaziz",
-  "emily.jane.xoxo",
-  "_sohe1",
-  "sab_games22",
-  "mohammaad.sultan",
-  "askofeddie0",
-  "boosty.blanco",
-  "itsnotginty1",
-  "mbaands8",
-  "shanggozi_",
-  "apgoeslive",
-  "eviechappelll",
-  "betterliam",
-  "cellargone",
-  "alvesj82",
-  "ruxiiugaas",
-  "brettboyy3",
-  "versace1112__",
-  "panda_dxs",
-  "andrewbiggiemorris",
-  "rafyalirana",
-  "lorelyndslq3",
-  "thezachloizou",
-  "nomercy_daddy",
-  "yasmin.majerska",
-  "musicalchrissy88",
-  "4twentytalentshow26",
-  "mularrrrrr",
-  "dai_ling_ping",
-  "jasminlangley",
-  "thisis__ak",
-  "444sahibax",
-  "guriebrothers",
-  "aron270724",
-  "chilliconcarnage",
-  "_brooketaylorxx",
-  "noriience",
-  ".dylann7",
-  "nrz1no",
-  "jb0_40",
-  "adamlough",
-  "maize.jx",
-  "gadjiev95fuad",
-  "nana.themoon",
-  "thejamescope",
-  "leilag_",
-  "louise.wynne",
-  "prince_silva1",
-  "dyk0swf9i1",
-  "envyy80",
-  "lcm0395",
-  "aayad38",
-  "goldynar786",
-  "mahambutt720",
-  "yhmaka",
-  "graymonroe_",
-  "elaine.louca",
-  "sharni.ds",
-  "izzylq",
-  "bk2bunny",
-  "stealth_mc",
-  "ben.toye.lives",
-  "laurenleig.h",
-  "00._pavkataa_.00",
-  "blackqueen4life1",
-  "2026_carcrazy",
-  "nurseruvah",
-];
+type CountryUsernames = {
+  code: string;
+  label: string;
+  usernames: string[];
+  period?: string;
+  sourceUrl?: string;
+};
+
+type TikleapResponse = {
+  countries?: CountryUsernames[];
+  error?: string;
+};
+
+const CHUNK_SIZES = [24, 24, 24];
+
+function splitForBackstage(names: string[]) {
+  const chunks: string[][] = [];
+  let start = 0;
+
+  for (const size of CHUNK_SIZES) {
+    chunks.push(names.slice(start, start + size));
+    start += size;
+  }
+
+  chunks.push(names.slice(start));
+  return chunks;
+}
+
+function countryText(country: CountryUsernames) {
+  return country.usernames.join("\n");
+}
+
+function allCountriesText(countries: CountryUsernames[]) {
+  return countries
+    .map((country) => `${country.label}${country.period ? ` - ${country.period}` : ""}\n${countryText(country)}`)
+    .join("\n\n");
+}
 
 export default function TikleapUkUsernamesPage() {
-  const [generated, setGenerated] = useState(false);
+  const [countries, setCountries] = useState<CountryUsernames[]>([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const usernameList = useMemo(() => TIKLEAP_UK_USERNAMES.join("\n"), []);
+  const totalUsernames = useMemo(
+    () => countries.reduce((total, country) => total + country.usernames.length, 0),
+    [countries]
+  );
+  const downloadText = useMemo(() => allCountriesText(countries), [countries]);
 
-  async function copyUsernames() {
-    await navigator.clipboard.writeText(usernameList);
-    setMessage(`Copied ${TIKLEAP_UK_USERNAMES.length} usernames.`);
+  async function generateUsernames() {
+    setLoading(true);
+    setMessage("");
+    setCountries([]);
+
+    try {
+      const res = await fetch(`/api/tikleap/uk-last-day-usernames?t=${Date.now()}`, { cache: "no-store" });
+      const json = (await res.json()) as TikleapResponse;
+
+      if (!res.ok) throw new Error(json.error || "Could not pull Tikleap usernames.");
+      const nextCountries = json.countries || [];
+      setCountries(nextCountries);
+      setMessage(`Generated ${nextCountries.length} countries with ${nextCountries.reduce((total, country) => total + country.usernames.length, 0)} usernames.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not pull Tikleap usernames.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copyCountry(country: CountryUsernames) {
+    await navigator.clipboard.writeText(countryText(country));
+    setMessage(`Copied ${country.label} with ${country.usernames.length} usernames.`);
+  }
+
+  async function copyBackstageList(country: CountryUsernames, index: number, names: string[]) {
+    await navigator.clipboard.writeText(names.join("\n"));
+    setMessage(`Copied ${country.label} list ${index + 1} with ${names.length} usernames.`);
   }
 
   function downloadUsernames() {
-    const blob = new Blob([usernameList], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([downloadText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "tikleap-uk-last-day-usernames.txt";
+    link.download = "tikleap-yesterday-usernames-uk-australia-uae.txt";
     link.click();
     URL.revokeObjectURL(url);
-    setMessage(`Downloaded ${TIKLEAP_UK_USERNAMES.length} usernames.`);
+    setMessage(`Downloaded ${totalUsernames} usernames across ${countries.length} countries.`);
   }
 
   return (
     <DataAccessGuard>
       <main className="min-h-screen bg-[#070707] px-4 py-8 text-white">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <div className="mb-5 flex flex-wrap gap-3">
-            <Link href="/data/menu" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black uppercase hover:bg-white/10">
-              Back to Data
+            <Link href="/" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black uppercase hover:bg-white/10">
+              Back Home
             </Link>
           </div>
 
           <section className="rounded-3xl border border-sky-300/25 bg-sky-300/10 p-6">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-200/70">Tikleap UK</p>
-            <h1 className="mt-3 text-4xl font-black uppercase text-sky-300 md:text-6xl">Last-Day Usernames</h1>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-200/70">Tikleap</p>
+            <h1 className="mt-3 text-4xl font-black uppercase text-cyan-200 md:text-6xl">🏆 Daily Rankings</h1>
             <p className="mt-3 max-w-3xl text-white/60">
-              Generates the UK Tikleap last-day ranking as plain usernames only. Source pull: 05.07.2026, 99 entries.
+              Pulls the previous day Tikleap Last Day archive for UK, Australia and United Arab Emirates, then splits each country into pasteable Backstage lists.
             </p>
           </section>
 
@@ -150,51 +116,91 @@ export default function TikleapUkUsernamesPage() {
             <div className="space-y-4 rounded-3xl border border-sky-300/20 bg-black/50 p-5">
               <div>
                 <p className="text-xs font-black uppercase text-white/45">Output</p>
-                <p className="mt-2 text-lg font-black text-sky-200">{TIKLEAP_UK_USERNAMES.length} usernames</p>
+                <p className="mt-2 text-lg font-black text-sky-200">{totalUsernames ? `${totalUsernames} usernames` : "Ready to pull"}</p>
+                <p className="mt-1 text-xs font-bold uppercase text-white/45">UK, Australia, United Arab Emirates</p>
               </div>
 
               <button
                 type="button"
-                onClick={() => {
-                  setGenerated(true);
-                  setMessage(`Generated ${TIKLEAP_UK_USERNAMES.length} usernames.`);
-                }}
-                className="w-full rounded-xl bg-sky-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-sky-200"
+                onClick={generateUsernames}
+                disabled={loading}
+                className="w-full rounded-xl bg-sky-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Generate Usernames
-              </button>
-
-              <button
-                type="button"
-                onClick={copyUsernames}
-                disabled={!generated}
-                className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Copy List
+                {loading ? "Pulling..." : "Generate All Countries"}
               </button>
 
               <button
                 type="button"
                 onClick={downloadUsernames}
-                disabled={!generated}
+                disabled={!countries.length || loading}
                 className="w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Download TXT
+                Download All TXT
               </button>
 
               {message ? <p className="rounded-xl border border-sky-300/20 bg-sky-300/10 p-3 text-sm text-sky-100">{message}</p> : null}
             </div>
 
             <div className="rounded-3xl border border-sky-300/20 bg-black/50 p-5">
-              {generated ? (
-                <textarea
-                  readOnly
-                  value={usernameList}
-                  className="min-h-[620px] w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-4 font-mono text-sm leading-6 text-white outline-none"
-                />
+              {countries.length ? (
+                <div className="grid gap-5">
+                  {countries.map((country) => (
+                    <section key={country.code} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h2 className="text-2xl font-black uppercase text-sky-200">{country.label}</h2>
+                          <p className="text-xs font-bold uppercase text-white/45">
+                            {country.usernames.length} usernames{country.period ? ` - ${country.period}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => copyCountry(country)}
+                            disabled={!country.usernames.length || loading}
+                            className="rounded-xl bg-yellow-300 px-4 py-3 text-xs font-black uppercase text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Copy {country.label}
+                          </button>
+                          {country.sourceUrl ? (
+                            <a href={country.sourceUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-black uppercase text-sky-100 hover:bg-white/10">
+                              Source
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        {splitForBackstage(country.usernames).map((names, index) => (
+                          <section key={`${country.code}-${index}`} className="rounded-xl border border-white/10 bg-black/35 p-3">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <h3 className="text-sm font-black uppercase text-white">Backstage List {index + 1}</h3>
+                                <p className="text-xs font-bold uppercase text-white/45">{names.length} usernames</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyBackstageList(country, index, names)}
+                                disabled={!names.length || loading}
+                                className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black uppercase text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                Copy
+                              </button>
+                            </div>
+                            <textarea
+                              readOnly
+                              value={names.join("\n")}
+                              className="h-52 w-full resize-none rounded-lg border border-white/10 bg-black/50 p-3 font-mono text-sm leading-6 text-white outline-none"
+                            />
+                          </section>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
               ) : (
                 <div className="flex min-h-[620px] items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-white/55">
-                  Select Generate Usernames to build the plain UK ranking list.
+                  Select Generate All Countries to pull the previous day Tikleap usernames.
                 </div>
               )}
             </div>

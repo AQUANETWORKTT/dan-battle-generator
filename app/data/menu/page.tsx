@@ -30,13 +30,6 @@ const links = [
     className: "border-yellow-300/25 bg-yellow-400/10 hover:border-yellow-300/60 hover:bg-yellow-400/15",
     titleClassName: "text-yellow-300",
   },
-  {
-    href: "/data/tikleap-uk-usernames",
-    title: "Tikleap UK Usernames",
-    description: "Generate the UK last-day Tikleap ranking as a plain username list.",
-    className: "border-sky-300/25 bg-sky-400/10 hover:border-sky-300/60 hover:bg-sky-400/15",
-    titleClassName: "text-sky-300",
-  },
 ];
 
 export default function DataMenuPage() {
