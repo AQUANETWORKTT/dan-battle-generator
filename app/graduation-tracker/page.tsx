@@ -1,8 +1,9 @@
 "use client";
 
+
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import DataAccessGuard from "../components/DataAccessGuard";
+import { useEffect, useMemo, useState } from "react";
+import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 type CreatorStat = {
   stat_date: string;
@@ -76,10 +77,6 @@ function getLastDayForMonth(month: string) {
   return new Date(Number(year), Number(monthNumber), 0).getDate();
 }
 
-function getMonthFromDate(dateValue: string) {
-  return dateValue.slice(0, 7);
-}
-
 function getDayNumber(dateValue: string) {
   const dayText = String(dateValue || "").split("T")[0].split("-")[2];
   return Number(dayText || 0);
@@ -148,9 +145,7 @@ function getProgressBarClasses(status: GraduationStatus) {
 }
 
 export default function GraduationTrackerPage() {
-  const [month, setMonth] = useState("2026-05");
-  const monthManuallySelectedRef = useRef(false);
-  const dataLoadRequestRef = useRef(0);
+  const [month, setMonth] = useState("2026-07");
   const [endDay, setEndDay] = useState(getLastDayForMonth("2026-05"));
   const [agency, setAgency] = useState("All");
   const [team, setTeam] = useState("All Teams");
@@ -158,6 +153,8 @@ export default function GraduationTrackerPage() {
   const [graduationReportAgency, setGraduationReportAgency] = useState("All");
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
 
   const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[4];
   const lastDay = getLastDayForMonth(month);
@@ -167,64 +164,51 @@ export default function GraduationTrackerPage() {
   );
 
   useEffect(() => {
-    async function selectLatestDataMonth() {
-      const res = await fetch(`/api/data-analysis/upload-status?latest=true&t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data?.latestDate) return;
-
-      const latestMonth = getMonthFromDate(data.latestDate);
-      const latestDay = getDayNumber(data.latestDate);
-
-      if (!monthManuallySelectedRef.current && MONTHS.some((item) => item.value === latestMonth)) {
-        setMonth(latestMonth);
-        setEndDay(latestDay || getLastDayForMonth(latestMonth));
-      }
-    }
-
-    selectLatestDataMonth();
-  }, []);
-
-  useEffect(() => {
-    const requestId = dataLoadRequestRef.current + 1;
-    dataLoadRequestRef.current = requestId;
-    const controller = new AbortController();
-
     async function loadData() {
       setLoading(true);
 
-      try {
-        const res = await fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const json = await res.json();
+      const lastMonthDay = getLastDayForMonth(month);
+      const startDate = `${month}-01`;
+      const endDate = `${month}-${String(lastMonthDay).padStart(2, "0")}`;
 
-        if (dataLoadRequestRef.current !== requestId) return;
+      const allData: CreatorStat[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
 
-        if (!res.ok) {
-          console.error(json.error || "Failed to load creator daily stats.");
+      while (hasMore) {
+        const to = from + pageSize - 1;
+
+        const { data, error } = await submissionsSupabase
+          .from("creator_daily_stats")
+          .select("*")
+          .gte("stat_date", startDate)
+          .lte("stat_date", endDate)
+          .order("stat_date", { ascending: true })
+          .range(from, to);
+
+        if (error) {
+          console.error(error);
           setRows([]);
+          setLoading(false);
           return;
         }
 
-        setRows((json.rows || []) as CreatorStat[]);
-      } catch (error) {
-        if (controller.signal.aborted || dataLoadRequestRef.current !== requestId) return;
-        console.error(error);
-        setRows([]);
-      } finally {
-        if (dataLoadRequestRef.current === requestId) {
-          setLoading(false);
+        const batch = (data || []) as CreatorStat[];
+        allData.push(...batch);
+
+        if (batch.length < pageSize) {
+          hasMore = false;
+        } else {
+          from += pageSize;
         }
       }
+
+      setRows(allData);
+      setLoading(false);
     }
 
     loadData();
-
-    return () => controller.abort();
   }, [month]);
 
   const rowsUntilEndDay = useMemo(() => {
@@ -280,7 +264,15 @@ export default function GraduationTrackerPage() {
         const agencyMatch = agency === "All" || rowAgency === selectedAgency;
         const teamMatch = team === "All Teams" || rowTeam === selectedTeam;
 
-        const searchText = String(row.creator_username || "").toLowerCase();
+        const searchText = [
+          row.creator_username,
+          row.email,
+          row.agency,
+          row.team,
+          row.group_name,
+        ]
+          .join(" ")
+          .toLowerCase();
 
         const searchMatch = !search.trim() || searchText.includes(search.toLowerCase());
         const totalDiamonds = currentTotals.get(row.creator_username) || 0;
@@ -368,8 +360,7 @@ export default function GraduationTrackerPage() {
           graduationReportAgency === "All" ||
           String(creator.agency || "").trim().toLowerCase() ===
             String(graduationReportAgency || "").trim().toLowerCase();
-        const hasGraduationChance =
-          creator.progressPercent >= REPORT_MINIMUM_PROGRESS || creator.status === "green";
+        const hasGraduationChance = creator.progressPercent >= REPORT_MINIMUM_PROGRESS;
         const stillNeedsToGraduate = creator.diamonds < GRADUATION_TARGET;
 
         return agencyMatch && hasGraduationChance && stillNeedsToGraduate;
@@ -393,7 +384,7 @@ export default function GraduationTrackerPage() {
     const header = [
       "🎓 Graduation Eligibility Report",
       `Agency: ${graduationReportAgency}`,
-      `Includes: on-target creators or ${REPORT_MINIMUM_PROGRESS}%+ progress`,
+      `Minimum progress: ${REPORT_MINIMUM_PROGRESS}%`,
       `Target: ${formatNumber(GRADUATION_TARGET)} diamonds`,
       "",
     ];
@@ -401,7 +392,7 @@ export default function GraduationTrackerPage() {
     if (!graduationReportRows.length) {
       return [
         ...header,
-        `No graduation report creators found for this agency on target or at ${REPORT_MINIMUM_PROGRESS}%+ progress.`,
+        `No graduation report creators found for this agency at ${REPORT_MINIMUM_PROGRESS}%+ progress.`,
       ].join("\n");
     }
 
@@ -436,15 +427,22 @@ export default function GraduationTrackerPage() {
     link.href = url;
     link.download = `graduation-report-${month}-${graduationReportAgency
       .replace(/\s+/g, "-")
-      .toLowerCase()}-on-target-or-${REPORT_MINIMUM_PROGRESS}-percent-plus.txt`;
+      .toLowerCase()}-${REPORT_MINIMUM_PROGRESS}-percent-plus.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
 
+  function checkPassword() {
+    if (password === "G") {
+      setAuthenticated(true);
+    } else {
+      alert("Incorrect password");
+    }
+  }
+
   function handleMonthChange(newMonth: string) {
-    monthManuallySelectedRef.current = true;
     const newLastDay = getLastDayForMonth(newMonth);
     setMonth(newMonth);
     setEndDay(newLastDay);
@@ -453,8 +451,34 @@ export default function GraduationTrackerPage() {
     setGraduationReportAgency("All");
   }
 
+  if (!authenticated) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-3xl border border-green-300/20 bg-black p-8">
+          <h1 className="text-3xl font-black text-green-300 mb-4">Graduation Tracker</h1>
+          <p className="text-white/50 mb-6">Enter password to continue.</p>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") checkPassword();
+            }}
+            className="w-full rounded-xl border border-green-300/20 bg-black px-4 py-3 text-white outline-none"
+            placeholder="Password"
+          />
+          <button
+            onClick={checkPassword}
+            className="mt-4 w-full rounded-xl bg-green-300 py-3 font-black text-black"
+          >
+            ENTER
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <DataAccessGuard>
     <main className="min-h-screen bg-[#070707] px-4 py-6 text-white">
       <style>{`
         @keyframes graduationShimmer {
@@ -483,24 +507,24 @@ export default function GraduationTrackerPage() {
 
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col">
               <Link
-                href="/data/menu"
+                href="/"
                 className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-center font-black uppercase text-white transition hover:scale-[1.02] hover:bg-white/10"
               >
-                Back to Data
+                🏠 Home
               </Link>
 
               <Link
                 href="/data-analysis"
                 className="rounded-xl border border-green-300/30 bg-green-400/10 px-6 py-3 text-center font-black uppercase text-green-300 transition hover:scale-[1.02] hover:bg-green-400/20"
               >
-                Back to Analysis
+                📊 Back to Analysis
               </Link>
 
               <Link
-                href="/data-analysis/upload?from=graduation"
+                href="/data-analysis/upload"
                 className="rounded-xl bg-yellow-300 px-6 py-3 text-center font-black uppercase text-black transition hover:scale-[1.02] hover:bg-yellow-200"
               >
-                Upload Data
+                📤 Upload Data
               </Link>
             </div>
           </div>
@@ -625,7 +649,7 @@ export default function GraduationTrackerPage() {
               <div>
                 <h3 className="text-lg font-black uppercase text-green-200">WhatsApp Graduation Report</h3>
                 <p className="mt-1 text-sm text-white/45">
-                  Select an agency for this report. On-target creators and creators at {REPORT_MINIMUM_PROGRESS}%+ progress are included while they are under 200k diamonds.
+                  Select an agency for this report. Only creators at {REPORT_MINIMUM_PROGRESS}%+ progress and under 200k diamonds are included.
                 </p>
               </div>
 
@@ -749,6 +773,5 @@ export default function GraduationTrackerPage() {
         </section>
       </div>
     </main>
-    </DataAccessGuard>
   );
 }
