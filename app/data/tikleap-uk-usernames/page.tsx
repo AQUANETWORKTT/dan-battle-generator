@@ -14,6 +14,7 @@ type CountryUsernames = {
 
 type TikleapResponse = {
   countries?: CountryUsernames[];
+  errors?: Array<{ code: string; label: string; error: string }>;
   error?: string;
 };
 
@@ -44,6 +45,7 @@ function allCountriesText(countries: CountryUsernames[]) {
 
 export default function TikleapUkUsernamesPage() {
   const [countries, setCountries] = useState<CountryUsernames[]>([]);
+  const [countryErrors, setCountryErrors] = useState<TikleapResponse["errors"]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -57,6 +59,7 @@ export default function TikleapUkUsernamesPage() {
     setLoading(true);
     setMessage("");
     setCountries([]);
+    setCountryErrors([]);
 
     try {
       const res = await fetch(`/api/tikleap/uk-last-day-usernames?t=${Date.now()}`, { cache: "no-store" });
@@ -64,8 +67,15 @@ export default function TikleapUkUsernamesPage() {
 
       if (!res.ok) throw new Error(json.error || "Could not pull Tikleap usernames.");
       const nextCountries = json.countries || [];
+      const nextErrors = json.errors || [];
       setCountries(nextCountries);
-      setMessage(`Generated ${nextCountries.length} countries with ${nextCountries.reduce((total, country) => total + country.usernames.length, 0)} usernames.`);
+      setCountryErrors(nextErrors);
+      setMessage(
+        `Generated ${nextCountries.length} countries with ${nextCountries.reduce(
+          (total, country) => total + country.usernames.length,
+          0
+        )} usernames${nextErrors.length ? `; ${nextErrors.length} country could not be pulled.` : "."}`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not pull Tikleap usernames.");
     } finally {
@@ -139,10 +149,19 @@ export default function TikleapUkUsernamesPage() {
               </button>
 
               {message ? <p className="rounded-xl border border-sky-300/20 bg-sky-300/10 p-3 text-sm text-sky-100">{message}</p> : null}
+              {countryErrors?.length ? (
+                <div className="space-y-2 rounded-xl border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">
+                  {countryErrors.map((countryError) => (
+                    <p key={countryError.code}>
+                      <strong>{countryError.label}:</strong> {countryError.error}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-3xl border border-sky-300/20 bg-black/50 p-5">
-              {countries.length ? (
+              {countries.length || countryErrors?.length ? (
                 <div className="grid gap-5">
                   {countries.map((country) => (
                     <section key={country.code} className="rounded-2xl border border-white/10 bg-white/5 p-4">

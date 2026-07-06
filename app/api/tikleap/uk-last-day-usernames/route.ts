@@ -17,6 +17,8 @@ type TikleapRow = {
 
 type CountryConfig = (typeof COUNTRIES)[number];
 
+type CountryResult = Awaited<ReturnType<typeof pullCountry>>;
+
 function getTikleapCookie() {
   return process.env.TIKLEAP_COOKIE || process.env.TIKLEAP_SESSION_COOKIE || "";
 }
@@ -55,14 +57,32 @@ async function fetchTikleapHtml(url: string, cookie: string) {
     cache: "no-store",
     headers: {
       Accept: "text/html,application/xhtml+xml",
+      "Accept-Encoding": "gzip, deflate, br, zstd",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cache-Control": "max-age=0",
       Cookie: cookie,
+      Priority: "u=0, i",
+      "Sec-Ch-Ua": "\"Google Chrome\";v=\"149\", \"Chromium\";v=\"149\", \"Not(A:Brand\";v=\"24\"",
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": "\"Windows\"",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1",
       "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
     },
   });
 
   const html = await res.text();
   if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error(
+        `Tikleap blocked the server request for ${url}. The premium cookie is present, but Tikleap requires a real browser session for this page.`
+      );
+    }
+
     throw new Error(`Tikleap returned ${res.status} while loading ${url}.`);
   }
 
@@ -159,10 +179,34 @@ export async function GET() {
       );
     }
 
-    const countries = await Promise.all(COUNTRIES.map((country) => pullCountry(country, cookie)));
+    const countries: CountryResult[] = [];
+    const errors: Array<{ code: string; label: string; error: string }> = [];
+
+    for (const country of COUNTRIES) {
+      try {
+        countries.push(await pullCountry(country, cookie));
+      } catch (error) {
+        errors.push({
+          code: country.code,
+          label: country.label,
+          error: error instanceof Error ? error.message : `Could not pull ${country.label}.`,
+        });
+      }
+    }
+
+    if (!countries.length) {
+      return NextResponse.json(
+        {
+          error: errors[0]?.error || "Could not pull Tikleap usernames.",
+          errors,
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       countries,
+      errors,
     });
   } catch (error) {
     return NextResponse.json(
