@@ -11,7 +11,7 @@ export default function HomePage() {
       <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/75" />
 
       <div className="relative z-10 w-full max-w-6xl">
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-3">
           <Link
             href="/generator"
             className="group rounded-3xl border border-yellow-300/30 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
@@ -47,21 +47,6 @@ export default function HomePage() {
               </h2>
               <p className="mt-3 text-white/60">
                 AI analysis, graduation tracking and mature creator tracking.
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/daily-rankings"
-            className="group relative overflow-hidden rounded-3xl border border-cyan-300/40 bg-cyan-400/10 p-8 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl transition hover:border-cyan-200 hover:bg-cyan-400/15"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_42%)]" />
-            <div className="relative">
-              <h2 className="text-2xl font-black uppercase text-cyan-200">
-                🏆 Daily Rankings
-              </h2>
-              <p className="mt-3 text-white/60">
-                Pull Tikleap yesterday rankings for Backstage.
               </p>
             </div>
           </Link>

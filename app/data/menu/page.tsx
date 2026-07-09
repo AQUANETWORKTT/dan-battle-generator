@@ -24,8 +24,16 @@ const links = [
     titleClassName: "text-red-300",
   },
   {
+    href: "/creator-intelligence",
+    title: "Creator Intelligence",
+    description: "Full creator health dashboard using Dan creator daily stats, manager groups, reports and trend tracking.",
+    className: "border-sky-300/25 bg-sky-400/10 hover:border-sky-300/60 hover:bg-sky-400/15",
+    titleClassName: "text-sky-300",
+  },
+  {
     href: "/data/team-diamonds-yesterday",
     title: "Team Diamonds Yesterday",
+    maintenance: true,
     description: "Preview and download the Team Dan diamonds poster from yesterday's daily stats.",
     className: "border-yellow-300/25 bg-yellow-400/10 hover:border-yellow-300/60 hover:bg-yellow-400/15",
     titleClassName: "text-yellow-300",
@@ -52,13 +60,19 @@ export default function DataMenuPage() {
             <p className="mt-3 max-w-2xl text-white/60">Choose which data tool you want to open.</p>
           </section>
 
-          <section className="mt-6 grid gap-4 md:grid-cols-4">
+          <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {links.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-3xl border p-5 transition hover:-translate-y-0.5 ${item.className}`}
+                className={`relative overflow-hidden rounded-3xl border p-5 transition hover:-translate-y-0.5 ${item.className}`}
               >
+                {"maintenance" in item && item.maintenance ? (
+                  <div className="absolute inset-x-0 top-0 h-8 border-b border-yellow-200/40 bg-[repeating-linear-gradient(135deg,#facc15_0,#facc15_14px,#050505_14px,#050505_28px)] shadow-lg shadow-black/40" aria-label="Under maintenance" />
+                ) : null}
+                {"maintenance" in item && item.maintenance ? (
+                  <p className="relative mt-7 inline-flex rounded-full border border-yellow-200/50 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-yellow-200">Under maintenance</p>
+                ) : null}
                 <h2 className={`text-2xl font-black uppercase ${item.titleClassName}`}>{item.title}</h2>
                 <p className="mt-3 text-sm text-white/55">{item.description}</p>
               </Link>

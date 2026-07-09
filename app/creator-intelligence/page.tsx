@@ -52,8 +52,6 @@ type CreatorStat = {
 };
 
 type HealthStatus = "Elite" | "Healthy" | "Needs Attention" | "Low Performance" | "Low Quality";
-type GraduationTrackerStatus = "gold" | "green" | "amber" | "red";
-
 type HealthBreakdown = {
   liveDays: number;
   liveHours: number;
@@ -134,20 +132,6 @@ type AgencyHealthTrendPoint = {
   creators: number;
 };
 
-type GraduationTrackerRow = {
-  username: string;
-  manager: string;
-  daysSinceJoining: number;
-  diamonds: number;
-  remainingDiamonds: number;
-  remainingDays: number;
-  avgNeededPerDay: number;
-  progressPercent: number;
-  pacePercent: number;
-  status: GraduationTrackerStatus;
-  statusLabel: string;
-};
-
 type WeeklyHealthComparison = {
   creator: CreatorSummary;
   previousScore: number | null;
@@ -173,24 +157,9 @@ type ManagerHealthTrendPoint = {
   score: number;
 };
 
-const MONTHS = [
-  { value: "2026-01", label: "January 2026" },
-  { value: "2026-02", label: "February 2026" },
-  { value: "2026-03", label: "March 2026" },
-  { value: "2026-04", label: "April 2026" },
-  { value: "2026-05", label: "May 2026" },
-  { value: "2026-06", label: "June 2026" },
-  { value: "2026-07", label: "July 2026" },
-  { value: "2026-08", label: "August 2026" },
-  { value: "2026-09", label: "September 2026" },
-  { value: "2026-10", label: "October 2026" },
-  { value: "2026-11", label: "November 2026" },
-  { value: "2026-12", label: "December 2026" },
-];
 
-const GRADUATION_TARGET = 200000;
 const CREATOR_REPORT_LIVE_DAY_TARGET = 5;
-const MINIMUM_TRACKER_DIAMONDS = 1000;
+
 const CHART_METRICS: {
   key: ChartMetricKey;
   label: string;
@@ -207,11 +176,11 @@ const CHART_METRICS: {
 ];
 
 const MANAGER_LABELS: Record<string, string> = {
-  "james_aquaagency@outlook.com": "James",
-  "alfie_aquaagency@outlook.com": "Alfie",
-  "ellie_aquaagency@outlook.com": "Ellie",
-  "harryj_aquaagency@outlook.com": "Harry",
-  "teamkieran@example.com": "Team Kieran",
+  "firstclassagency_dan@outlook.com": "Dan",
+  "firstclassagency_chris@outlook.com": "Chris",
+  "firstclassagency_dylan@outlook.com": "Dylan",
+  "firstclassagency_luke@outlook.com": "Luke",
+  "firstclassagency_ellie@outlook.com": "Ellie",
 };
 
 function safeNumber(value: unknown) {
@@ -228,27 +197,15 @@ function cleanText(value: unknown, fallback = "") {
   return String(value || fallback).trim();
 }
 
-function getLastDayForMonth(month: string) {
-  const [year, monthNumber] = month.split("-");
-  return new Date(Number(year), Number(monthNumber), 0).getDate();
+function toDateInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function getDefaultMonthValue() {
-  return MONTHS[0].value;
-}
-
-function getMonthFromDate(dateValue: string) {
-  return dateValue.slice(0, 7);
-}
-
-function getPreviousMonthStart(month: string) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(year, monthNumber - 2, 1);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
-function getDayNumber(dateValue: string) {
-  return Number(String(dateValue).split("-")[2] || 1);
+function addDays(dateValue: string, days: number) {
+  const [year, monthNumber, day] = dateValue.split("-").map(Number);
+  const date = new Date(year, monthNumber - 1, day);
+  date.setDate(date.getDate() + days);
+  return toDateInputValue(date);
 }
 
 function formatNumber(value: number) {
@@ -321,53 +278,15 @@ function getAgencyFromGroup(groupValue: string, fallback: string) {
   if (clean.includes("aqua")) return "Aqua";
   if (clean.includes("respawn")) return "Respawn";
   if (clean.includes("paradise")) return "Paradise";
+  if (clean.includes("storm")) return "Storm";
   if (clean.includes("strive")) return "Strive";
 
   return fallback || "First Class";
 }
 
-function isAquaRow(row: CreatorStat) {
-  const groupValue = getText(row, ["team", "group_name", "Group"], "");
-  const agencyValue = getAgencyFromGroup(groupValue, getText(row, ["agency"], ""));
-  return agencyValue === "Aqua";
-}
-
-function cleanGraduationStatus(status: string) {
-  return status
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]/g, " ")
-    .replace(/\s+/g, " ");
-}
-
-function isGraduationEligibleStatus(status: string) {
-  const cleanStatus = cleanGraduationStatus(status);
-
-  if (!cleanStatus) return false;
-  if (cleanStatus.includes("non new")) return false;
-  if (cleanStatus.includes("quit")) return false;
-  if (cleanStatus === "graduated") return false;
-  if (cleanStatus.includes("graduated") && !cleanStatus.includes("not graduated")) return false;
-
-  return (
-    cleanStatus.includes("not graduated") ||
-    cleanStatus.includes("non graduated") ||
-    cleanStatus.includes("not reached")
-  );
-}
-
-function graduationStatusClasses(status: GraduationTrackerStatus) {
-  if (status === "gold") return "border-yellow-200 bg-yellow-50 text-yellow-800";
-  if (status === "green") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "amber") return "border-orange-200 bg-orange-50 text-orange-700";
-  return "border-red-200 bg-red-50 text-red-700";
-}
-
-function graduationProgressClasses(status: GraduationTrackerStatus) {
-  if (status === "gold") return "bg-yellow-500";
-  if (status === "green") return "bg-emerald-500";
-  if (status === "amber") return "bg-orange-500";
-  return "bg-red-500";
+function isAquaRow(row?: CreatorStat) {
+  void row;
+  return true;
 }
 
 function getManagerRaw(row: CreatorStat) {
@@ -401,7 +320,7 @@ function getManagerLabel(value: string, groupValue = "") {
   if (clean.includes("@")) {
     const localPart = clean.split("@")[0];
     const namePart = localPart
-      .replace(/_?(aqua|respawn|paradise|strive)?agency$/i, "")
+      .replace(/_?(aqua|respawn|paradise|storm|strive)?agency$/i, "")
       .replace(/respawn\d*$/i, "")
       .replace(/jb$/i, "");
     return `Team ${titleCaseName(namePart)}`;
@@ -412,8 +331,14 @@ function getManagerLabel(value: string, groupValue = "") {
   return "Unassigned";
 }
 
+function formatManagerWithGroup(managerLabel: string, agency: string) {
+  if (!agency || managerLabel === "Unassigned") return managerLabel;
+  if (managerLabel.toLowerCase().includes(`(${agency.toLowerCase()})`)) return managerLabel;
+  return `${managerLabel} (${agency})`;
+}
+
 function getPlainManagerName(managerLabel: string) {
-  return managerLabel.replace(/^Team\s+/i, "");
+  return managerLabel.replace(/^Team\s+/i, "").replace(/\s*\([^)]*\)\s*$/, "");
 }
 
 function getCreatorMetaLine(creator: Pick<CreatorSummary, "agency" | "group" | "managerLabel">) {
@@ -681,7 +606,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         group: groupValue,
         agency: agencyValue,
         managerRaw,
-        managerLabel: getManagerLabel(managerRaw, groupValue),
+        managerLabel: formatManagerWithGroup(getManagerLabel(managerRaw, groupValue), agencyValue),
         graduationStatus: getText(latest, ["graduation_status", "Graduation status"], "Unknown"),
         tierStatus: getText(latest, ["tier_status", "Tier status"], "Unknown"),
         sourceStatus: getText(latest, ["status", "Status"], ""),
@@ -1391,7 +1316,7 @@ function buildCreatorReportHtml({
       <div class="meta">${getCreatorMetaLine(creator)} &bull; ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
       <div class="score ${toneClass}"><strong>${creator.healthScore}</strong><span>/100 weekly performance${getCreatorReportScoreLabel(creator.healthStatus) ? ` &bull; ${getCreatorReportScoreLabel(creator.healthStatus)}` : ""}</span></div>
     </div>
-    ${agencyLogo ? `<img class="logo" src="${agencyLogo}" alt="Aqua logo" />` : ""}
+    ${agencyLogo ? `<img class="logo" src="${agencyLogo}" alt="First Class logo" />` : ""}
   </section>
 
   <section class="grid">
@@ -1651,9 +1576,9 @@ function AgencyHealthTrendChart({ points }: { points: AgencyHealthTrendPoint[] }
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="text-xl font-black uppercase text-sky-900">Aqua Health Score Trend</h3>
+          <h3 className="text-xl font-black uppercase text-sky-900">First Class Health Score Trend</h3>
           <p className="text-sm text-slate-500">
-            Average mature creator health score, excluding new creators.
+            Average First Class creator health score, excluding new creators.
           </p>
         </div>
         <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
@@ -1739,9 +1664,7 @@ function CreatorListPanel({
 function downloadReport(creator: CreatorSummary, reportType: "creator" | "internal") {
   const insights = buildInsights(creator);
   const agencyLogo =
-    reportType === "creator" && creator.agency === "Aqua"
-      ? `${window.location.origin}/logos/aqua.png`
-      : "";
+    reportType === "creator" ? `${window.location.origin}/logo.png` : "";
   const title =
     reportType === "creator"
       ? `${creator.username} - Weekly Creator Report`
@@ -1813,7 +1736,7 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
       <h1>${title}</h1>
       <p class="note">${getCreatorMetaLine(creator)}</p>
     </div>
-    ${agencyLogo ? `<img class="agency-logo" src="${agencyLogo}" alt="Aqua logo" />` : ""}
+    ${agencyLogo ? `<img class="agency-logo" src="${agencyLogo}" alt="First Class logo" />` : ""}
   </div>
   <table>${rows.map(([label, value]) => `<tr><td>${label}</td><td>${value}</td></tr>`).join("")}</table>
   <h2>Weekly breakdown</h2>
@@ -1951,7 +1874,7 @@ function downloadManagerReport(
     <div>
       <p class="label">Manager Team Health Report</p>
       <h1>${escapeHtml(managerSummary.manager)}</h1>
-      <p class="muted">${reportDate} &bull; Aqua Creator Intelligence</p>
+      <p class="muted">${reportDate} &bull; First Class Creator Intelligence</p>
     </div>
     <div class="score">
       <span class="label">7-Day Team Health</span>
@@ -2040,7 +1963,7 @@ function downloadManagerReport(
     <div>
       <h2>Bringing The Average Down</h2>
       <div class="panel">
-        <p class="muted">Only creators below the current Aqua agency average of ${formatNumber(agencyAverageScore)}/100 are shown here.</p>
+        <p class="muted">Only creators below the current First Class average of ${formatNumber(agencyAverageScore)}/100 are shown here.</p>
         <table>
           <tr><th>Creator</th><th>Score</th><th>First Fix</th></tr>
           ${belowAgencyAverageCreators
@@ -2052,7 +1975,7 @@ function downloadManagerReport(
           ${
             belowAgencyAverageCreators.length
               ? ""
-              : `<tr><td colspan="3">No creators in this manager team are currently below the Aqua agency average.</td></tr>`
+              : `<tr><td colspan="3">No creators in this manager team are currently below the First Class average.</td></tr>`
           }
         </table>
       </div>
@@ -2115,12 +2038,11 @@ function downloadManagerReport(
 }
 
 export default function CreatorIntelligencePage() {
-  const [month, setMonth] = useState(() => getDefaultMonthValue());
-  const [startDay, setStartDay] = useState(1);
-  const [endDay, setEndDay] = useState(() => getLastDayForMonth(getDefaultMonthValue()));
+  const [rollingEndDate, setRollingEndDate] = useState("");
   const [manager, setManager] = useState("All Managers");
-  const [graduationStatus, setGraduationStatus] = useState("All Graduation");
-  const [tierStatus, setTierStatus] = useState("All Tiers");
+  const [groupFilter, setGroupFilter] = useState("All Groups");
+
+
   const [healthStatus, setHealthStatus] = useState("All Health");
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<CreatorStat[]>([]);
@@ -2135,14 +2057,8 @@ export default function CreatorIntelligencePage() {
     "matches",
   ]);
 
-  const lastDay = getLastDayForMonth(month);
-  const dayOptions = useMemo(
-    () => Array.from({ length: lastDay }, (_, index) => index + 1),
-    [lastDay]
-  );
-
   useEffect(() => {
-    async function selectLatestDataMonth() {
+    async function selectLatestDataDate() {
       const { data, error } = await submissionsSupabase
         .from("creator_daily_stats")
         .select("stat_date")
@@ -2150,26 +2066,23 @@ export default function CreatorIntelligencePage() {
         .limit(1)
         .maybeSingle();
 
-      if (error || !data?.stat_date) return;
-
-      const latestMonth = getMonthFromDate(data.stat_date);
-      const latestDay = getDayNumber(data.stat_date);
-
-      if (MONTHS.some((item) => item.value === latestMonth)) {
-        setMonth(latestMonth);
-        setStartDay(1);
-        setEndDay(latestDay || getLastDayForMonth(latestMonth));
+      if (error || !data?.stat_date) {
+        setRollingEndDate(toDateInputValue(new Date()));
+        return;
       }
+
+      setRollingEndDate(data.stat_date);
     }
 
-    selectLatestDataMonth();
+    selectLatestDataDate();
   }, []);
 
   useEffect(() => {
+    if (!rollingEndDate) return;
+
     async function loadData() {
       setLoading(true);
-      const startDate = getPreviousMonthStart(month);
-      const endDate = `${month}-${String(getLastDayForMonth(month)).padStart(2, "0")}`;
+      const startDate = addDays(rollingEndDate, -29);
       const allRows: CreatorStat[] = [];
       const pageSize = 1000;
       let from = 0;
@@ -2180,7 +2093,7 @@ export default function CreatorIntelligencePage() {
           .from("creator_daily_stats")
           .select("*")
           .gte("stat_date", startDate)
-          .lte("stat_date", endDate)
+          .lte("stat_date", rollingEndDate)
           .order("stat_date", { ascending: true })
           .range(from, from + pageSize - 1);
 
@@ -2202,14 +2115,13 @@ export default function CreatorIntelligencePage() {
     }
 
     loadData();
-  }, [month]);
+  }, [rollingEndDate]);
 
   const dateRangeRows = useMemo(() => {
-    return rows.filter((row) => {
-      const day = getDayNumber(row.stat_date);
-      return row.stat_date.startsWith(`${month}-`) && day >= startDay && day <= endDay;
-    });
-  }, [rows, month, startDay, endDay]);
+    if (!rollingEndDate) return [];
+    const startDate = addDays(rollingEndDate, -29);
+    return rows.filter((row) => row.stat_date >= startDate && row.stat_date <= rollingEndDate);
+  }, [rows, rollingEndDate]);
 
   const allSummaries = useMemo(() => buildCreatorSummaries(dateRangeRows, rows), [dateRangeRows, rows]);
   const aquaRows = useMemo(() => dateRangeRows.filter(isAquaRow), [dateRangeRows]);
@@ -2227,7 +2139,7 @@ export default function CreatorIntelligencePage() {
   const aquaSummaries = useMemo(
     () =>
       allSummaries.filter(
-        (creator) => creator.agency === "Aqua" && activeAquaCreatorKeys.has(creator.key)
+        (creator) => activeAquaCreatorKeys.has(creator.key)
       ),
     [activeAquaCreatorKeys, allSummaries]
   );
@@ -2237,28 +2149,19 @@ export default function CreatorIntelligencePage() {
     return ["All Managers", ...Array.from(values).sort()];
   }, [aquaSummaries]);
 
+  const groups = useMemo(() => {
+    const values = new Set(aquaSummaries.map((item) => item.agency || item.group).filter(Boolean));
+    return ["All Groups", ...Array.from(values).sort()];
+  }, [aquaSummaries]);
+
   const activeManager = managers.includes(manager) ? manager : "All Managers";
+  const activeGroup = groups.includes(groupFilter) ? groupFilter : "All Groups";
 
-  const graduationStatuses = useMemo(() => {
-    const values = new Set(aquaSummaries.map((item) => item.graduationStatus).filter(Boolean));
-    return ["All Graduation", ...Array.from(values).sort()];
-  }, [aquaSummaries]);
-
-  const tierStatuses = useMemo(() => {
-    const coreTiers = Array.from({ length: 10 }, (_, index) => `Tier ${index + 1}`);
-    const uploadedTiers = Array.from(
-      new Set(aquaSummaries.map((item) => item.tierStatus).filter(Boolean))
-    ).filter((item) => !coreTiers.some((tier) => tier.toLowerCase() === item.toLowerCase()));
-    return ["All Tiers", ...coreTiers, ...uploadedTiers.sort()];
-  }, [aquaSummaries]);
 
   const filteredCreators = useMemo(() => {
     return aquaSummaries.filter((creator) => {
       const managerMatch = activeManager === "All Managers" || creator.managerLabel === activeManager;
-      const graduationMatch =
-        graduationStatus === "All Graduation" || creator.graduationStatus === graduationStatus;
-      const tierMatch =
-        tierStatus === "All Tiers" || creator.tierStatus.toLowerCase() === tierStatus.toLowerCase();
+      const groupMatch = activeGroup === "All Groups" || creator.agency === activeGroup || creator.group === activeGroup;
       const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
       const haystack = [
         creator.username,
@@ -2276,19 +2179,17 @@ export default function CreatorIntelligencePage() {
 
       return (
         managerMatch &&
-        graduationMatch &&
-        tierMatch &&
+        groupMatch &&
         healthMatch &&
         searchMatch
       );
     });
   }, [
     aquaSummaries,
-    graduationStatus,
     healthStatus,
     activeManager,
+    activeGroup,
     search,
-    tierStatus,
   ]);
 
   const matureFilteredCreators = useMemo(
@@ -2298,10 +2199,7 @@ export default function CreatorIntelligencePage() {
 
   const managerHealthSummaries = useMemo<ManagerHealthSummary[]>(() => {
     const managerFilteredCreators = aquaSummaries.filter((creator) => {
-      const graduationMatch =
-        graduationStatus === "All Graduation" || creator.graduationStatus === graduationStatus;
-      const tierMatch =
-        tierStatus === "All Tiers" || creator.tierStatus.toLowerCase() === tierStatus.toLowerCase();
+      const groupMatch = activeGroup === "All Groups" || creator.agency === activeGroup || creator.group === activeGroup;
       const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
       const haystack = [
         creator.username,
@@ -2316,7 +2214,7 @@ export default function CreatorIntelligencePage() {
         .toLowerCase();
       const searchMatch = !search.trim() || haystack.includes(search.toLowerCase());
 
-      return graduationMatch && tierMatch && healthMatch && searchMatch;
+      return groupMatch && healthMatch && searchMatch;
     });
     const grouped = new Map<string, CreatorSummary[]>();
 
@@ -2349,7 +2247,7 @@ export default function CreatorIntelligencePage() {
         };
       })
       .sort((a, b) => a.averageScore - b.averageScore);
-  }, [aquaSummaries, graduationStatus, healthStatus, search, tierStatus]);
+  }, [activeGroup, aquaSummaries, healthStatus, search]);
 
   const managerGrowthSummaries = useMemo(
     () =>
@@ -2407,13 +2305,7 @@ export default function CreatorIntelligencePage() {
   );
 
   const hiddenPotentialCreators = useMemo(
-    () =>
-      newCreators.filter(
-        (creator) =>
-          creator.dailyAverageDiamonds >= 1200 ||
-          creator.dph >= 1000 ||
-          creator.healthScore >= 70
-      ),
+    () => newCreators,
     [newCreators]
   );
 
@@ -2488,14 +2380,14 @@ export default function CreatorIntelligencePage() {
   const agencyHealthTrend = useMemo<AgencyHealthTrendPoint[]>(() => {
     const dates = Array.from(new Set(aquaRows.map((row) => row.stat_date))).sort((a, b) =>
       a.localeCompare(b)
-    );
+    ).slice(-14);
 
     return dates.map((date) => {
       const rowsUpToDate = aquaRows.filter(
         (row) => row.stat_date <= date && activeAquaCreatorKeys.has(getUsername(row).toLowerCase())
       );
       const matureCreators = buildCreatorSummaries(rowsUpToDate).filter(
-        (creator) => creator.agency === "Aqua" && !creator.isNewCreator
+        (creator) => !creator.isNewCreator
       );
       const average =
         matureCreators.length > 0
@@ -2525,7 +2417,7 @@ export default function CreatorIntelligencePage() {
         activeAquaCreatorKeys.has(getUsername(row).toLowerCase())
     );
     const previousSummaries = buildCreatorSummaries(previousRows).filter(
-      (creator) => creator.agency === "Aqua" && !creator.isNewCreator
+      (creator) => !creator.isNewCreator
     );
     const previousByCreator = new Map(
       previousSummaries.map((creator) => [creator.key, creator.healthScore])
@@ -2571,80 +2463,6 @@ export default function CreatorIntelligencePage() {
         .sort((a, b) => (a.change ?? 0) - (b.change ?? 0)),
     [weeklyHealthComparison]
   );
-
-  const latestGraduationUploadDay = useMemo(() => {
-    const uploadedDays = aquaRows
-      .filter(
-        (row) =>
-          getNumber(row, ["diamonds", "Diamonds"]) > 0 ||
-          getDurationHours(row, ["live_hours", "LIVE duration"]) > 0 ||
-          getNumber(row, ["matches", "Matches"]) > 0
-      )
-      .map((row) => getDayNumber(row.stat_date))
-      .filter((day) => day > 0);
-
-    return uploadedDays.length ? Math.min(Math.max(...uploadedDays), lastDay) : Math.min(endDay, lastDay);
-  }, [aquaRows, endDay, lastDay]);
-
-  const graduationTrackerRows = useMemo<GraduationTrackerRow[]>(() => {
-    const currentMonthDay = Math.min(latestGraduationUploadDay, lastDay);
-    const targetToDate = (GRADUATION_TARGET / lastDay) * currentMonthDay;
-    const remainingDays = Math.max(lastDay - currentMonthDay, 0);
-
-    return filteredCreators
-      .filter(
-        (creator) =>
-          creator.diamonds >= MINIMUM_TRACKER_DIAMONDS &&
-          isGraduationEligibleStatus(creator.graduationStatus)
-      )
-      .map((creator) => {
-        const remainingDiamonds = Math.max(GRADUATION_TARGET - creator.diamonds, 0);
-        const avgNeededPerDay =
-          remainingDays > 0 ? remainingDiamonds / remainingDays : remainingDiamonds;
-        const progressPercent = Math.min((creator.diamonds / GRADUATION_TARGET) * 100, 100);
-        const pacePercent = targetToDate > 0 ? (creator.diamonds / targetToDate) * 100 : 0;
-        let status: GraduationTrackerStatus = "red";
-        let statusLabel = "Far Behind";
-
-        if (creator.diamonds >= GRADUATION_TARGET) {
-          status = "gold";
-          statusLabel = "Graduated";
-        } else if (pacePercent >= 100) {
-          status = "green";
-          statusLabel = "On Target";
-        } else if (pacePercent >= 75) {
-          status = "amber";
-          statusLabel = "Slightly Behind";
-        }
-
-        return {
-          username: creator.username,
-          manager: creator.managerLabel,
-          daysSinceJoining: creator.daysSinceJoining,
-          diamonds: creator.diamonds,
-          remainingDiamonds,
-          remainingDays,
-          avgNeededPerDay,
-          progressPercent,
-          pacePercent,
-          status,
-          statusLabel,
-        };
-      })
-      .sort((a, b) => {
-        if (a.status !== b.status) {
-          const order: Record<GraduationTrackerStatus, number> = {
-            gold: 0,
-            green: 1,
-            amber: 2,
-            red: 3,
-          };
-          return order[a.status] - order[b.status];
-        }
-
-        return b.progressPercent - a.progressPercent;
-      });
-  }, [filteredCreators, lastDay, latestGraduationUploadDay]);
 
   const groupedCreators = useMemo(
     () => {
@@ -2748,7 +2566,7 @@ export default function CreatorIntelligencePage() {
 
   function copyNewCreatorsText() {
     copyWhatsAppText(
-      "New Aqua Creators",
+      "New First Class Creators",
       newCreators.length
         ? newCreators.map((creator) =>
             [
@@ -2763,7 +2581,7 @@ export default function CreatorIntelligencePage() {
 
   function copyHiddenPotentialText() {
     copyWhatsAppText(
-      "High Potential Aqua Creators",
+      "High Potential First Class Creators",
       hiddenPotentialCreators.length
         ? hiddenPotentialCreators.map((creator) =>
             [
@@ -2774,22 +2592,6 @@ export default function CreatorIntelligencePage() {
             ].join("\n")
           )
         : ["No hidden potential creators found for the current filters."]
-    );
-  }
-
-  function copyGraduationPaceText() {
-    const graduationPaceCreators = graduationTrackerRows.filter((creator) => creator.pacePercent >= 70);
-    copyWhatsAppText(
-      "Aqua Graduation Progress",
-      graduationPaceCreators.length
-        ? graduationPaceCreators.map((creator) =>
-            [
-              `💎 ${creator.username}`,
-              `• Diamonds: ${formatNumber(creator.diamonds)}`,
-              `• Progress: ${formatNumber(creator.progressPercent)}%`,
-            ].join("\n")
-          )
-        : ["No creators are currently over 70% graduation pace for these filters."]
     );
   }
 
@@ -2812,8 +2614,8 @@ export default function CreatorIntelligencePage() {
               Back home
             </Link>
             <Image
-              src="/logos/aqua.png"
-              alt="Aqua"
+              src="/logo.png"
+              alt="First Class"
               width={240}
               height={120}
               className="mx-auto mt-3 h-20 w-auto object-contain md:h-28"
@@ -2823,7 +2625,7 @@ export default function CreatorIntelligencePage() {
               Creator Intelligence
             </h1>
             <p className="mx-auto mt-2 max-w-3xl text-sm text-slate-500 md:text-base">
-              Aqua-only creator health tracker with manager focus, graduation tracking, new creator performance and report views.
+              First Class creator health tracker with manager focus, group filters, new creator performance and report views.
             </p>
           </div>
 
@@ -2834,55 +2636,18 @@ export default function CreatorIntelligencePage() {
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
-            This page is locked to Aqua creators. Uploads can still contain every agency; this dashboard only reads Aqua for intelligence.
+            This page uses the latest rolling 30 days from Dan creator daily stats. The trend chart uses the latest 14 uploaded days.
           </div>
-          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="text-xs font-bold uppercase text-slate-500">
-              Month
+              Group
               <select
-                value={month}
-                onChange={(event) => {
-                  const nextMonth = event.target.value;
-                  setMonth(nextMonth);
-                  setStartDay(1);
-                  setEndDay(getLastDayForMonth(nextMonth));
-                }}
+                value={activeGroup}
+                onChange={(event) => setGroupFilter(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
               >
-                {MONTHS.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-xs font-bold uppercase text-slate-500">
-              Start
-              <select
-                value={startDay}
-                onChange={(event) => setStartDay(Number(event.target.value))}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
-              >
-                {dayOptions.map((day) => (
-                  <option key={day} value={day}>
-                    Day {day}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-xs font-bold uppercase text-slate-500">
-              End
-              <select
-                value={endDay}
-                onChange={(event) => setEndDay(Number(event.target.value))}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
-              >
-                {dayOptions.map((day) => (
-                  <option key={day} value={day}>
-                    Day {day}
-                  </option>
+                {groups.map((item) => (
+                  <option key={item}>{item}</option>
                 ))}
               </select>
             </label>
@@ -2921,34 +2686,6 @@ export default function CreatorIntelligencePage() {
                 placeholder="Creator..."
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950 placeholder:text-slate-300"
               />
-            </label>
-          </div>
-
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <label className="text-xs font-bold uppercase text-slate-500">
-              Graduation
-              <select
-                value={graduationStatus}
-                onChange={(event) => setGraduationStatus(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
-              >
-                {graduationStatuses.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-xs font-bold uppercase text-slate-500">
-              Tier
-              <select
-                value={tierStatus}
-                onChange={(event) => setTierStatus(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
-              >
-                {tierStatuses.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
             </label>
           </div>
         </section>
@@ -3441,7 +3178,7 @@ export default function CreatorIntelligencePage() {
                 {formatNumber(stableCreators.length)} stable
               </span>
               <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-black text-red-700">
-                {formatNumber(notImprovingCreators.length)} not improving
+                {formatNumber(notImprovingCreators.length)} declining
               </span>
             </div>
           </div>
@@ -3512,7 +3249,7 @@ export default function CreatorIntelligencePage() {
             </div>
 
             <div>
-              <h3 className="mb-3 text-lg font-black uppercase text-red-700">Not Improving</h3>
+              <h3 className="mb-3 text-lg font-black uppercase text-red-700">Declining</h3>
               <div className="max-h-[520px] space-y-2 overflow-y-auto pr-2">
                 {notImprovingCreators.map((item) => (
                   <button
@@ -3537,7 +3274,7 @@ export default function CreatorIntelligencePage() {
                 ))}
                 {!notImprovingCreators.length ? (
                   <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    No non-improving creators found for these filters.
+                    No declining creators found for these filters.
                   </p>
                 ) : null}
               </div>
@@ -3699,99 +3436,6 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>
 
-        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-2xl font-black uppercase text-sky-950">Aqua Graduation Tracker</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Tracks eligible Aqua creators towards {formatNumber(GRADUATION_TARGET)} diamonds. Pace is measured against the latest uploaded day.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={copyGraduationPaceText}
-                className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
-              >
-                Copy WhatsApp Text
-              </button>
-              <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
-                Target pace day {latestGraduationUploadDay}:{" "}
-                {formatNumber((GRADUATION_TARGET / lastDay) * Math.min(latestGraduationUploadDay, lastDay))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-4 grid gap-4 md:grid-cols-4">
-            <MetricCard label="Tracker creators" value={formatNumber(graduationTrackerRows.length)} />
-            <MetricCard
-              label="Graduated"
-              value={formatNumber(graduationTrackerRows.filter((creator) => creator.status === "gold").length)}
-            />
-            <MetricCard
-              label="On target"
-              value={formatNumber(graduationTrackerRows.filter((creator) => creator.status === "green").length)}
-            />
-            <MetricCard label="Minimum entry" value={formatNumber(MINIMUM_TRACKER_DIAMONDS)} />
-          </div>
-
-          <div className="max-h-[620px] overflow-auto rounded-2xl border border-slate-200">
-            <table className="w-full min-w-[1000px] text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="p-3">Creator</th>
-                  <th className="p-3">Manager</th>
-                  <th className="p-3">Days Joined</th>
-                  <th className="p-3">Diamonds</th>
-                  <th className="p-3">Progress</th>
-                  <th className="p-3">Pace</th>
-                  <th className="p-3">Needed</th>
-                  <th className="p-3">Days Left</th>
-                  <th className="p-3">Avg Needed / Day</th>
-                  <th className="p-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {graduationTrackerRows.map((creator) => (
-                  <tr key={`graduation-${creator.username}`} className="border-t border-slate-100">
-                    <td className="p-3 font-black text-slate-950">{creator.username}</td>
-                    <td className="p-3 text-slate-600">{creator.manager}</td>
-                    <td className="p-3">{formatNumber(creator.daysSinceJoining)}</td>
-                    <td className="p-3 font-bold text-sky-800">{formatNumber(creator.diamonds)}</td>
-                    <td className="p-3">
-                      <div className="h-3 w-36 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className={`h-full ${graduationProgressClasses(creator.status)}`}
-                          style={{ width: `${creator.progressPercent}%` }}
-                        />
-                      </div>
-                      <span className="mt-1 block text-xs text-slate-500">
-                        {formatPercent(creator.progressPercent)}
-                      </span>
-                    </td>
-                    <td className="p-3">{formatPercent(creator.pacePercent)}</td>
-                    <td className="p-3">{formatNumber(creator.remainingDiamonds)}</td>
-                    <td className="p-3">{formatNumber(creator.remainingDays)}</td>
-                    <td className="p-3 font-bold text-slate-800">{formatNumber(creator.avgNeededPerDay)}</td>
-                    <td className="p-3">
-                      <span className={`rounded-full border px-3 py-1 text-xs font-black ${graduationStatusClasses(creator.status)}`}>
-                        {creator.statusLabel}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {!graduationTrackerRows.length ? (
-                  <tr>
-                    <td className="p-4 text-slate-500" colSpan={10}>
-                      No eligible Aqua graduation creators found for these filters.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
         <section className="mt-6 grid gap-6 xl:grid-cols-2">
           <div className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
@@ -3833,7 +3477,7 @@ export default function CreatorIntelligencePage() {
               </div>
             ) : null}
             <div className="mt-5 grid gap-3">
-              {newCreators.slice(0, 12).map((creator) => (
+              {newCreators.map((creator) => (
                 <button
                   key={`new-${creator.key}`}
                   type="button"
