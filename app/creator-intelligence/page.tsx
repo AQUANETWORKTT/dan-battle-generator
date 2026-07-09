@@ -51,7 +51,7 @@ type CreatorStat = {
   status?: string | null;
 };
 
-type HealthStatus = "Elite" | "Healthy" | "Needs Attention" | "Low Performance" | "Low Quality";
+type HealthStatus = "Elite" | "Healthy" | "Needs Attention" | "Inconsistent but High Diamonds" | "Low Quality";
 type HealthBreakdown = {
   liveDays: number;
   liveHours: number;
@@ -468,7 +468,7 @@ function getHealthStatus(score: number, diamonds = 0): HealthStatus {
   if (score >= 85) return "Elite";
   if (score >= 70) return "Healthy";
   if (score >= 50) return "Needs Attention";
-  if (diamonds >= 5000) return "Low Performance";
+  if (diamonds >= 5000) return "Inconsistent but High Diamonds";
   return "Low Quality";
 }
 
@@ -476,7 +476,7 @@ function statusClasses(status: HealthStatus) {
   if (status === "Elite") return "border-purple-200 bg-purple-50 text-purple-700";
   if (status === "Healthy") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "Needs Attention") return "border-orange-200 bg-orange-50 text-orange-700";
-  if (status === "Low Performance") return "border-sky-200 bg-sky-50 text-sky-700";
+  if (status === "Inconsistent but High Diamonds") return "border-sky-200 bg-sky-50 text-sky-700";
   return "border-red-200 bg-red-50 text-red-700";
 }
 
@@ -916,7 +916,7 @@ function reportToneClass(status: HealthStatus) {
   if (status === "Elite") return "elite";
   if (status === "Healthy") return "healthy";
   if (status === "Needs Attention") return "attention";
-  if (status === "Low Performance") return "performance";
+  if (status === "Inconsistent but High Diamonds") return "performance";
   return "quality";
 }
 
@@ -1907,7 +1907,7 @@ function downloadManagerReport(
     <div class="card"><div class="label">Elite</div><div class="value elite-value">${formatNumber(managerSummary.elite)}</div></div>
     <div class="card"><div class="label">Healthy</div><div class="value good">${formatNumber(managerSummary.healthy)}</div></div>
     <div class="card"><div class="label">Needs Attention</div><div class="value warn">${formatNumber(managerSummary.needsAttention)}</div></div>
-    <div class="card"><div class="label">Low Performance</div><div class="value performance-value">${formatNumber(managerSummary.lowPerformance)}</div></div>
+    <div class="card"><div class="label">Inconsistent but High Diamonds</div><div class="value performance-value">${formatNumber(managerSummary.lowPerformance)}</div></div>
     <div class="card"><div class="label">Low Quality</div><div class="value bad">${formatNumber(managerSummary.lowQuality)}</div></div>
   </section>
 
@@ -2242,7 +2242,7 @@ export default function CreatorIntelligencePage() {
           elite: matureCreators.filter((creator) => creator.healthStatus === "Elite").length,
           healthy: matureCreators.filter((creator) => creator.healthStatus === "Healthy").length,
           needsAttention: matureCreators.filter((creator) => creator.healthStatus === "Needs Attention").length,
-          lowPerformance: matureCreators.filter((creator) => creator.healthStatus === "Low Performance").length,
+          lowPerformance: matureCreators.filter((creator) => creator.healthStatus === "Inconsistent but High Diamonds").length,
           lowQuality: matureCreators.filter((creator) => creator.healthStatus === "Low Quality").length,
         };
       })
@@ -2324,7 +2324,7 @@ export default function CreatorIntelligencePage() {
   const focusCreators = useMemo(
     () => {
       const lowPerformance = matureFilteredCreators
-        .filter((creator) => creator.healthStatus === "Low Performance")
+        .filter((creator) => creator.healthStatus === "Inconsistent but High Diamonds")
         .sort((a, b) => a.healthScore - b.healthScore);
       const needsAttention = matureFilteredCreators
         .filter((creator) => creator.healthStatus === "Needs Attention")
@@ -2367,7 +2367,7 @@ export default function CreatorIntelligencePage() {
       elite: matureFilteredCreators.filter((row) => row.healthStatus === "Elite").length,
       healthy: matureFilteredCreators.filter((row) => row.healthStatus === "Healthy").length,
       needsAttention: matureFilteredCreators.filter((row) => row.healthStatus === "Needs Attention").length,
-      lowPerformance: matureFilteredCreators.filter((row) => row.healthStatus === "Low Performance").length,
+      lowPerformance: matureFilteredCreators.filter((row) => row.healthStatus === "Inconsistent but High Diamonds").length,
       lowQuality: matureFilteredCreators.filter((row) => row.healthStatus === "Low Quality").length,
       averageDph: totalHours > 0 ? totalDiamonds / totalHours : 0,
       totalDiamonds,
@@ -2467,7 +2467,7 @@ export default function CreatorIntelligencePage() {
   const groupedCreators = useMemo(
     () => {
       const coreGroups = [
-        { title: "Low Performance", status: "Low Performance" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Low Performance") },
+        { title: "Inconsistent but High Diamonds", status: "Inconsistent but High Diamonds" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Inconsistent but High Diamonds") },
         { title: "Low Quality", status: "Low Quality" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Low Quality") },
         { title: "Needs Attention", status: "Needs Attention" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Needs Attention") },
         { title: "Healthy", status: "Healthy" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Healthy") },
@@ -2672,7 +2672,7 @@ export default function CreatorIntelligencePage() {
                 onChange={(event) => setHealthStatus(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
               >
-                {["All Health", "Elite", "Healthy", "Needs Attention", "Low Performance", "Low Quality"].map((item) => (
+                {["All Health", "Elite", "Healthy", "Needs Attention", "Inconsistent but High Diamonds", "Low Quality"].map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
@@ -2700,7 +2700,7 @@ export default function CreatorIntelligencePage() {
                 : "0/100"
             }
           />
-          <MetricCard label="Low performance creators" value={formatNumber(totals.lowPerformance)} />
+          <MetricCard label="Inconsistent but high diamonds creators" value={formatNumber(totals.lowPerformance)} />
           <MetricCard label="Low quality creators" value={formatNumber(totals.lowQuality)} />
           <MetricCard label="Needs attention" value={formatNumber(totals.needsAttention)} />
           <MetricCard label="Healthy creators" value={formatNumber(totals.healthy)} />
@@ -2968,7 +2968,7 @@ export default function CreatorIntelligencePage() {
               <div>
                 <h2 className="text-3xl font-black uppercase text-sky-900">Manager Focus Queue</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Uses the selected manager filter. Priority order is the top 10% most fixable Low Quality creators, then Low Performance, Needs Attention, and Healthy.
+                  Uses the selected manager filter. Priority order is the top 10% most fixable Low Quality creators, then Inconsistent but High Diamonds, Needs Attention, and Healthy.
                 </p>
               </div>
               <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-black text-orange-700">
@@ -3329,7 +3329,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Health Tracker</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Last seven uploaded days. Below 50 with 5,000+ diamonds is Low Performance; below 50 under 5,000 diamonds is Low Quality.
+                Last seven uploaded days. Below 50 with 5,000+ diamonds is Inconsistent but High Diamonds; below 50 under 5,000 diamonds is Low Quality.
               </p>
             </div>
             <p className="text-sm font-bold text-slate-500">
@@ -3338,7 +3338,7 @@ export default function CreatorIntelligencePage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">
-            {(["Elite", "Healthy", "Needs Attention", "Low Performance", "Low Quality"] as HealthStatus[]).map((status) => {
+            {(["Elite", "Healthy", "Needs Attention", "Inconsistent but High Diamonds", "Low Quality"] as HealthStatus[]).map((status) => {
               const count = matureFilteredCreators.filter((creator) => creator.healthStatus === status).length;
               const selected = healthStatus === status;
 
