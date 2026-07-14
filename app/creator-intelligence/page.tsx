@@ -2081,16 +2081,16 @@ async function renderManagerHealthLeaderboardToPngBlob(
   const sortedManagers = [...managerSummaries]
     .filter((managerSummary) => managerSummary.matureCreators > 0)
     .sort((a, b) => b.averageScore - a.averageScore || b.matureCreators - a.matureCreators);
-  const rowHeight = 58;
-  const posterHeight = Math.max(760, 320 + sortedManagers.length * rowHeight);
+  const rowHeight = 62;
+  const posterHeight = Math.max(780, 390 + sortedManagers.length * (rowHeight + 8));
   const rows = sortedManagers
     .map((managerSummary, index) => {
       const tone = getManagerLeaderboardTone(managerSummary.averageScore);
 
       return `
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}44 inset;font-weight:950;">
-          <div style="text-align:center;font-size:26px;color:#ffffff;">${index + 1}</div>
-          <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:${rowHeight}px;margin-bottom:8px;border:1px solid ${tone.border};border-radius:12px;background:linear-gradient(90deg,rgba(19,14,3,.98),${tone.bg});box-shadow:0 8px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);font-weight:950;overflow:hidden;">
+          <div style="align-self:stretch;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#facc15,#a16207);color:#080704;font-size:24px;font-weight:950;">${index + 1}</div>
+          <div style="min-width:0;overflow:hidden;padding:0 12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;letter-spacing:.2px;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
           <div style="text-align:center;font-size:30px;color:#ffffff;">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#ffffff;">/100</span></div>
           <div style="text-align:center;font-size:20px;color:#facc15;text-shadow:0 0 10px #facc1588;">${formatNumber(managerSummary.elite)}</div>
           <div style="text-align:center;font-size:20px;color:#e2e8f0;text-shadow:0 0 10px #ffffff55;">${formatNumber(managerSummary.healthy)}</div>
@@ -2106,30 +2106,30 @@ async function renderManagerHealthLeaderboardToPngBlob(
     ? sortedManagers.reduce((sum, managerSummary) => sum + managerSummary.averageScore, 0) / sortedManagers.length
     : 0;
   const posterHtml = `
-    <div style="position:relative;width:1000px;min-height:${posterHeight}px;overflow:hidden;background:radial-gradient(circle at 50% 0%,rgba(250,204,21,.12),transparent 34%),#000000;border:4px solid #facc15;color:#fff7ed;font-family:Arial,sans-serif;padding:42px 32px 44px;box-shadow:0 0 30px #facc1533 inset;">
-      <div style="position:absolute;inset:18px;border:2px solid #facc15;opacity:.75;"></div>
-      <div style="position:absolute;left:-110px;right:-110px;top:110px;height:130px;border-top:5px solid #facc15;border-radius:50%;opacity:.35;"></div>
+    <div style="position:relative;width:1000px;min-height:${posterHeight}px;overflow:hidden;background:radial-gradient(circle at 50% -10%,rgba(250,204,21,.16),transparent 30%),radial-gradient(circle at 0% 100%,rgba(161,98,7,.12),transparent 34%),#000000;border:2px solid #facc15;color:#fff7ed;font-family:Arial,sans-serif;padding:32px 32px 38px;box-shadow:0 0 30px #facc1526 inset;">
+      <div style="position:absolute;inset:14px;border:1px solid rgba(250,204,21,.42);border-radius:18px;"></div>
+      <div style="position:absolute;left:30px;right:30px;top:170px;height:1px;background:linear-gradient(90deg,transparent,#facc15,transparent);opacity:.75;"></div>
       <div style="position:relative;z-index:1;text-align:center;">
-        <img src="/logo.png" alt="First Class logo" style="position:absolute;left:0;top:-12px;width:108px;height:auto;object-fit:contain;filter:drop-shadow(0 0 16px #facc15);" />
-        <div style="font-size:64px;font-weight:950;line-height:.95;text-transform:uppercase;letter-spacing:2px;color:#fff7ed;text-shadow:0 0 24px #facc15,5px 5px 0 #000;">${escapeHtml(agencyTitle)}</div>
-        <div style="margin-top:10px;font-size:26px;font-weight:950;text-transform:uppercase;letter-spacing:7px;color:#facc15;text-shadow:0 0 16px #facc15;">Manager Health Leaderboard</div>
+        <img src="/logo.png" alt="First Class logo" style="height:66px;width:auto;object-fit:contain;" />
+        <div style="margin-top:8px;font-size:56px;font-weight:950;line-height:.95;text-transform:uppercase;letter-spacing:1px;color:#fff7ed;">${escapeHtml(agencyTitle)}</div>
+        <div style="margin-top:9px;font-size:15px;font-weight:950;text-transform:uppercase;letter-spacing:5px;color:#facc15;">Manager Health Leaderboard</div>
       </div>
-      <div style="position:relative;z-index:1;margin:34px 0 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
-        <div style="border:2px solid #facc15;background:rgba(3,3,3,.86);padding:15px;">
-          <div style="font-size:34px;font-weight:950;color:#fef3c7;text-shadow:0 0 16px #facc15;">${formatNumber(sortedManagers.length)}</div>
-          <div style="font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fde68a;">Managers</div>
+      <div style="position:relative;z-index:1;margin:30px 0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+        <div style="border:1px solid #8a6508;border-radius:14px;background:linear-gradient(145deg,rgba(54,39,6,.8),rgba(4,4,4,.96));padding:14px;">
+          <div style="font-size:32px;font-weight:950;color:#fff7d6;">${formatNumber(sortedManagers.length)}</div>
+          <div style="margin-top:3px;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#facc15;">Managers</div>
         </div>
-        <div style="border:2px solid #facc15;background:rgba(3,3,3,.86);padding:15px;">
-          <div style="font-size:34px;font-weight:950;color:#fef3c7;text-shadow:0 0 16px #facc15;">${formatNumber(leaderboardAverage)}<span style="font-size:18px;">/100</span></div>
-          <div style="font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fde68a;">Average Score</div>
+        <div style="border:1px solid #8a6508;border-radius:14px;background:linear-gradient(145deg,rgba(54,39,6,.8),rgba(4,4,4,.96));padding:14px;">
+          <div style="font-size:32px;font-weight:950;color:#fff7d6;">${formatNumber(leaderboardAverage)}<span style="font-size:16px;">/100</span></div>
+          <div style="margin-top:3px;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#facc15;">Average Score</div>
         </div>
-        <div style="border:2px solid #facc15;background:rgba(3,3,3,.86);padding:15px;">
-          <div style="font-size:34px;font-weight:950;color:#fef3c7;text-shadow:0 0 16px #facc15;">${formatNumber(totalScored)}</div>
-          <div style="font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fde68a;">Scored Creators</div>
+        <div style="border:1px solid #8a6508;border-radius:14px;background:linear-gradient(145deg,rgba(54,39,6,.8),rgba(4,4,4,.96));padding:14px;">
+          <div style="font-size:32px;font-weight:950;color:#fff7d6;">${formatNumber(totalScored)}</div>
+          <div style="margin-top:3px;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#facc15;">Scored Creators</div>
         </div>
       </div>
       <div style="position:relative;z-index:1;">
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.98),rgba(86,59,6,.94));font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;color:#ffffff;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:40px;margin-bottom:8px;padding:0 1px;border-bottom:1px solid #8a6508;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:1px;color:#fff7d6;">
           <div style="text-align:center;">#</div>
           <div>Manager</div>
           <div style="text-align:center;">Score</div>
@@ -2536,7 +2536,6 @@ export default function CreatorIntelligencePage() {
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";
   const activeGroup = groups.includes(groupFilter) ? groupFilter : "All Groups";
-  const isFirstClassView = ["First Class", "Team Dan", "Team Mike / Indi", "Team Storm", "Exempt"].includes(activeGroup);
 
 
   const filteredCreators = useMemo(() => {
@@ -3028,42 +3027,7 @@ export default function CreatorIntelligencePage() {
   }
 
   return (
-    <main className={`min-h-screen px-4 py-6 md:px-8 ${isFirstClassView ? "first-class-theme bg-[#090804] text-amber-50" : "bg-slate-50 text-slate-950"}`}>
-      {isFirstClassView ? (
-        <style jsx>{`
-          .first-class-theme :global(.rounded-3xl) {
-            border-color: #8a6508;
-            background: linear-gradient(145deg, #151006, #090804);
-            box-shadow: none;
-          }
-          .first-class-theme :global(.rounded-2xl) {
-            border-color: #705207;
-          }
-          .first-class-theme :global(h1), .first-class-theme :global(h2), .first-class-theme :global(h3) {
-            color: #fff7d6;
-          }
-          .first-class-theme :global(p), .first-class-theme :global(label) {
-            color: #d6c89d;
-          }
-          .first-class-theme :global(select), .first-class-theme :global(input) {
-            border-color: #8a6508;
-            background: #0d0a04;
-            color: #fff7d6;
-          }
-          .first-class-theme :global(.bg-sky-50), .first-class-theme :global(.bg-slate-50), .first-class-theme :global(.bg-white) {
-            background: #100c05;
-          }
-          .first-class-theme :global(.border-sky-200), .first-class-theme :global(.border-slate-200), .first-class-theme :global(.border-sky-100) {
-            border-color: #705207;
-          }
-          .first-class-theme :global(.text-sky-900), .first-class-theme :global(.text-sky-950), .first-class-theme :global(.text-slate-950), .first-class-theme :global(.text-slate-700) {
-            color: #fff7d6;
-          }
-          .first-class-theme :global(.text-slate-500), .first-class-theme :global(.text-slate-400) {
-            color: #c9ba8c;
-          }
-        `}</style>
-      ) : null}
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 md:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex-1 text-center md:pl-40">
