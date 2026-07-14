@@ -1933,10 +1933,10 @@ function getHealthPosterTone(status: HealthStatus) {
 }
 
 function getManagerLeaderboardTone(score: number) {
-  if (score >= 85) return { color: "#facc15", border: "#f59e0b", bg: "rgba(113,63,18,.38)" };
-  if (score >= 70) return { color: "#fde68a", border: "#eab308", bg: "rgba(101,77,13,.34)" };
-  if (score >= 50) return { color: "#fbbf24", border: "#d97706", bg: "rgba(124,45,18,.34)" };
-  return { color: "#f97316", border: "#ea580c", bg: "rgba(127,29,29,.38)" };
+  if (score >= 75) return { label: "ELITE", color: "#ffffff", accent: "#facc15", border: "#fbbf24", bg: "rgba(113,63,18,.48)" };
+  if (score >= 65) return { label: "ABOVE AVERAGE", color: "#ffffff", accent: "#fde68a", border: "#eab308", bg: "rgba(101,77,13,.42)" };
+  if (score >= 50) return { label: "AVERAGE", color: "#ffffff", accent: "#fef3c7", border: "#ca8a04", bg: "rgba(120,87,14,.40)" };
+  return { label: "IMPROVE", color: "#ffffff", accent: "#fde68a", border: "#a16207", bg: "rgba(92,61,8,.42)" };
 }
 
 async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSummary) {
@@ -2067,14 +2067,12 @@ async function renderManagerHealthLeaderboardToPngBlob(
       const tone = getManagerLeaderboardTone(managerSummary.averageScore);
 
       return `
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 106px 80px 75px 110px 112px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.95),${tone.bg});box-shadow:0 0 18px ${tone.border}33 inset;font-weight:950;">
-          <div style="text-align:center;font-size:26px;color:#fff7ed;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 140px 170px 130px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(37,25,4,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}33 inset;font-weight:950;">
+          <div style="text-align:center;font-size:26px;color:#ffffff;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
           <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
-          <div style="text-align:center;font-size:30px;color:${tone.color};text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#fff7ed;">/100</span></div>
-          <div style="text-align:center;font-size:20px;color:#fde68a;">${formatNumber(managerSummary.matureCreators)}</div>
-          <div style="text-align:center;font-size:20px;color:#c084fc;">${formatNumber(managerSummary.elite)}</div>
-          <div style="text-align:center;font-size:20px;color:#fde68a;">${formatNumber(managerSummary.healthy + managerSummary.needsAttention)}</div>
-          <div style="text-align:center;font-size:20px;color:#f87171;">${formatNumber(managerSummary.lowPerformance + managerSummary.lowQuality)}</div>
+          <div style="text-align:center;font-size:30px;color:#ffffff;text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#ffffff;">/100</span></div>
+          <div style="text-align:center;font-size:16px;letter-spacing:1px;color:${tone.accent};">${tone.label}</div>
+          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.matureCreators)}</div>
         </div>
       `;
     })
@@ -2108,14 +2106,12 @@ async function renderManagerHealthLeaderboardToPngBlob(
         </div>
       </div>
       <div style="position:relative;z-index:1;">
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 106px 80px 75px 110px 112px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.98),rgba(74,52,10,.94));font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:1px;color:#fff7ed;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 140px 170px 130px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(54,37,4,.98),rgba(109,76,9,.94));font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:1px;color:#ffffff;">
           <div style="text-align:center;">#</div>
           <div>Manager</div>
           <div style="text-align:center;">Score</div>
+          <div style="text-align:center;">Band</div>
           <div style="text-align:center;">Scored</div>
-          <div style="text-align:center;">Elite</div>
-          <div style="text-align:center;">Average+</div>
-          <div style="text-align:center;">Improve</div>
         </div>
         ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:34px;text-align:center;font-size:28px;font-weight:950;">No scored managers yet.</div>`}
       </div>
@@ -3236,11 +3232,13 @@ export default function CreatorIntelligencePage() {
                     </div>
                     <span
                       className={`shrink-0 rounded-full border px-3 py-1 text-sm font-black ${
-                        managerSummary.averageScore >= 70
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : managerSummary.averageScore >= 50
-                            ? "border-orange-200 bg-orange-50 text-orange-700"
-                            : "border-red-200 bg-red-50 text-red-700"
+                        managerSummary.averageScore >= 75
+                          ? "border-yellow-300 bg-yellow-100 text-yellow-900"
+                          : managerSummary.averageScore >= 65
+                            ? "border-amber-300 bg-amber-100 text-amber-900"
+                            : managerSummary.averageScore >= 50
+                              ? "border-yellow-200 bg-yellow-50 text-yellow-800"
+                              : "border-yellow-300 bg-yellow-100 text-yellow-900"
                       }`}
                     >
                       {formatNumber(managerSummary.averageScore)}/100
@@ -3251,11 +3249,13 @@ export default function CreatorIntelligencePage() {
                     <div className="h-3 overflow-hidden rounded-full bg-white">
                       <div
                         className={`h-full ${
-                          managerSummary.averageScore >= 70
-                            ? "bg-emerald-500"
-                            : managerSummary.averageScore >= 50
-                              ? "bg-orange-500"
-                              : "bg-red-500"
+                          managerSummary.averageScore >= 75
+                            ? "bg-yellow-500"
+                            : managerSummary.averageScore >= 65
+                              ? "bg-amber-500"
+                              : managerSummary.averageScore >= 50
+                                ? "bg-yellow-400"
+                                : "bg-yellow-600"
                         }`}
                         style={{ width: `${scoreWidth}%` }}
                       />
