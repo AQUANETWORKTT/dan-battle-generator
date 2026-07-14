@@ -338,11 +338,12 @@ const FIRST_CLASS_DEFAULT_GROUP = "Mike / Indi";
 const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }> = {
   cjtokens1237: { name: "CJ", group: "Dan" },
   teamalf: { name: "Alf", group: "Dan" },
+  firstclassagencyalf: { name: "Alf", group: "Dan" },
   firstclassagencyabbie: { name: "Abbie", group: "Dan" },
   firstclassagencyolivia: { name: "Liv", group: "Dan" },
   sjm20101: { name: "Steven", group: "Dan" },
   firstclassagencypaige: { name: "Paige", group: "Dan" },
-  jasminabidzane: { name: "Jasmine", group: "Dan" },
+  jasminabidzane: { name: "Jasmina", group: "Dan" },
   connorfirstclass: { name: "Connor", group: "Dan" },
   brandyfalconer35: { name: "Brandy", group: "Dan" },
   fearnegurry1: { name: "Fearne", group: "Dan" },
