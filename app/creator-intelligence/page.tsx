@@ -83,6 +83,7 @@ type CreatorSummary = {
   agency: string;
   managerRaw: string;
   managerLabel: string;
+  managerGroup: string;
   graduationStatus: string;
   tierStatus: string;
   sourceStatus: string;
@@ -333,10 +334,30 @@ function getManagerLabel(value: string, groupValue = "") {
   return "Unassigned";
 }
 
-const RESERVED_LEADERBOARD_TEAMS = ["Team Dan"];
-const FIRST_CLASS_DEFAULT_TEAM = "Team Mike / Indi";
-const DAN_MANAGER_KEYS = ["jasminabidzane", "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7", "louisesquelch", "ashwalbridge", "firstclassagencykyran"];
-const MIKE_INDI_MANAGER_KEYS = ["bmwe46320d", "zaliheyoncu", "firstclassagencykayden", "xaramills17", "rachellouise18", "firstclassagencylauren", "liamproctor04", "abbidl", "kishaunnolan1", "calliecrawford14", "megan25121990"];
+const FIRST_CLASS_DEFAULT_GROUP = "Mike / Indi";
+const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }> = {
+  jasminabidzane: { name: "Jasmine", group: "Dan" },
+  connorfirstclass: { name: "Connor", group: "Dan" },
+  brandyfalconer35: { name: "Brandy", group: "Dan" },
+  fearnegurry1: { name: "Fearne", group: "Dan" },
+  demileawebster7: { name: "Demi", group: "Dan" },
+  louisesquelch: { name: "Louise", group: "Dan" },
+  ashwalbridge: { name: "Ash", group: "Dan" },
+  firstclassagencykyran: { name: "Kyran", group: "Dan" },
+  bmwe46320d: { name: "Madz", group: "Mike / Indi" },
+  zaliheyoncu: { name: "Zalihe", group: "Mike / Indi" },
+  firstclassagencykayden: { name: "Kayden", group: "Mike / Indi" },
+  xaramills17: { name: "Xara", group: "Mike / Indi" },
+  rachellouise18: { name: "Rach", group: "Mike / Indi" },
+  firstclassagencylauren: { name: "Lauren", group: "Mike / Indi" },
+  liamproctor04: { name: "Liam", group: "Mike / Indi" },
+  abbidl: { name: "Abbi", group: "Mike / Indi" },
+  kishaunnolan1: { name: "Kash", group: "Mike / Indi" },
+  calliecrawford14: { name: "Callie", group: "Mike / Indi" },
+  megan25121990: { name: "Megan", group: "Mike / Indi" },
+  hannakingismail92: { name: "Hanna", group: "Storm" },
+  stormlive: { name: "Denz", group: "Storm" },
+};
 const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
 const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
@@ -350,12 +371,17 @@ function hasManagerKey(value: string, keys: string[]) {
   return keys.some((key) => normalized.includes(key));
 }
 
-function getFirstClassLeaderboardTeam(managerRaw: string, managerLabel: string) {
+function getFirstClassManagerDetails(managerRaw: string, managerLabel: string) {
   const managerDetails = `${managerRaw} ${managerLabel}`;
-  if (hasManagerKey(managerDetails, DAN_MANAGER_KEYS)) return "Team Dan";
-  if (hasManagerKey(managerDetails, STORM_MANAGER_KEYS)) return "Team Storm";
-  if (hasManagerKey(managerDetails, MIKE_INDI_MANAGER_KEYS)) return FIRST_CLASS_DEFAULT_TEAM;
-  return FIRST_CLASS_DEFAULT_TEAM;
+  const configKey = Object.keys(FIRST_CLASS_MANAGER_CONFIG).find((key) => hasManagerKey(managerDetails, [key]));
+  const config = configKey ? FIRST_CLASS_MANAGER_CONFIG[configKey] : null;
+  const name = config?.name || getPlainManagerName(managerLabel);
+  const group = config?.group || FIRST_CLASS_DEFAULT_GROUP;
+
+  return {
+    managerLabel: `Team ${name} (First Class — ${group})`,
+    managerGroup: group,
+  };
 }
 
 function getCreatorIntelligenceGroup(groupValue: string, managerRaw: string, managerLabel: string) {
@@ -383,9 +409,6 @@ function getLeaderboardManagerFontSize(manager: string) {
 
 function formatManagerWithGroup(managerLabel: string, agency: string) {
   if (!agency || managerLabel === "Unassigned") return managerLabel;
-  if (managerLabel === FIRST_CLASS_DEFAULT_TEAM || RESERVED_LEADERBOARD_TEAMS.includes(managerLabel)) {
-    return managerLabel;
-  }
   if (managerLabel.toLowerCase().includes(`(${agency.toLowerCase()})`)) return managerLabel;
   return `${managerLabel} (${agency})`;
 }
@@ -615,6 +638,8 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       const agencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"));
       const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) >= 1).length;
       const managerRaw = getManagerRaw(latest);
+      const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
+      const firstClassManager = getFirstClassManagerDetails(managerRaw, baseManagerLabel);
       const diamonds = creatorRows.reduce((sum, row) => sum + getNumber(row, ["diamonds", "Diamonds"]), 0);
       const liveHours = creatorRows.reduce(
         (sum, row) => sum + getDurationHours(row, ["live_hours", "LIVE duration"]),
@@ -677,13 +702,14 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         id: getText(latest, ["creator_id", "Creator ID"], key),
         username: getUsername(latest),
         email: getText(latest, ["creator_email", "Creator email"], "No email"),
-        group: getCreatorIntelligenceGroup(groupValue, managerRaw, getManagerLabel(managerRaw, groupValue)),
+        group: getCreatorIntelligenceGroup(groupValue, managerRaw, baseManagerLabel),
         agency: agencyValue,
         managerRaw,
+        managerGroup: agencyValue === "First Class" ? firstClassManager.managerGroup : agencyValue,
         managerLabel:
           agencyValue === "First Class"
-            ? getFirstClassLeaderboardTeam(managerRaw, getManagerLabel(managerRaw, groupValue))
-            : formatManagerWithGroup(getManagerLabel(managerRaw, groupValue), agencyValue),
+            ? firstClassManager.managerLabel
+            : formatManagerWithGroup(baseManagerLabel, agencyValue),
         graduationStatus: getText(latest, ["graduation_status", "Graduation status"], "Unknown"),
         tierStatus: getText(latest, ["tier_status", "Tier status"], "Unknown"),
         sourceStatus: getText(latest, ["status", "Status"], ""),
@@ -2462,9 +2488,8 @@ export default function CreatorIntelligencePage() {
   }, [aquaSummaries]);
 
   const groups = useMemo(() => {
-    const values = new Set(aquaSummaries.map((item) => item.agency || item.group).filter(Boolean));
-    return ["All Groups", ...Array.from(values).sort()];
-  }, [aquaSummaries]);
+    return ["All Groups", "First Class", "Dan", "Mike / Indi", "Aqua", "Paradise", "Respawn", "Storm"];
+  }, []);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";
   const activeGroup = groups.includes(groupFilter) ? groupFilter : "All Groups";
@@ -2473,7 +2498,11 @@ export default function CreatorIntelligencePage() {
   const filteredCreators = useMemo(() => {
     return aquaSummaries.filter((creator) => {
       const managerMatch = activeManager === "All Managers" || creator.managerLabel === activeManager;
-      const groupMatch = activeGroup === "All Groups" || creator.agency === activeGroup || creator.group === activeGroup;
+      const groupMatch =
+        activeGroup === "All Groups" ||
+        creator.agency === activeGroup ||
+        creator.managerGroup === activeGroup ||
+        creator.group === activeGroup;
       const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
       const haystack = [
         creator.username,
@@ -2511,12 +2540,17 @@ export default function CreatorIntelligencePage() {
 
   const managerHealthSummaries = useMemo<ManagerHealthSummary[]>(() => {
     const managerFilteredCreators = aquaSummaries.filter((creator) => {
-      const groupMatch = activeGroup === "All Groups" || creator.agency === activeGroup || creator.group === activeGroup;
+      const groupMatch =
+        activeGroup === "All Groups" ||
+        creator.agency === activeGroup ||
+        creator.managerGroup === activeGroup ||
+        creator.group === activeGroup;
       const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
       const haystack = [
         creator.username,
         creator.agency,
         creator.group,
+        creator.managerGroup,
         creator.managerLabel,
         creator.managerRaw,
         creator.graduationStatus,
@@ -2559,29 +2593,7 @@ export default function CreatorIntelligencePage() {
           lowQuality: matureCreators.filter((creator) => creator.healthStatus === "Low Quality").length,
         };
       })
-    for (const manager of RESERVED_LEADERBOARD_TEAMS) {
-      if (!summaries.some((summary) => summary.manager === manager)) {
-        summaries.push({
-          manager,
-          creators: [],
-          totalCreators: 0,
-          matureCreators: 0,
-          newCreators: 0,
-          averageScore: 0,
-          elite: 0,
-          healthy: 0,
-          needsAttention: 0,
-          lowPerformance: 0,
-          lowQuality: 0,
-        });
-      }
-    }
-
-    return summaries.sort((a, b) => {
-      if (a.manager === "Team Dan") return -1;
-      if (b.manager === "Team Dan") return 1;
-      return a.averageScore - b.averageScore;
-    });
+    return summaries.sort((a, b) => a.averageScore - b.averageScore);
   }, [activeGroup, aquaSummaries, healthStatus, search]);
 
   const managerGrowthSummaries = useMemo(
