@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { saveAs } from "file-saver";
+import { toBlob } from "html-to-image";
 import { useEffect, useMemo, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -353,6 +355,19 @@ function getCreatorMetaLine(creator: Pick<CreatorSummary, "agency" | "group" | "
   return `${creator.agency} / ${managerName}`;
 }
 
+function getReportAgencyName(creators: Pick<CreatorSummary, "agency">[], fallback = "First Class") {
+  const agencyNames = Array.from(
+    new Set(
+      creators
+        .map((creator) => creator.agency.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (agencyNames.length === 1) return agencyNames[0];
+  return fallback;
+}
+
 function getUsername(row: CreatorStat) {
   return getText(row, ["creator_username", "Creator's username", "creator_id", "Creator ID"], "Unknown");
 }
@@ -478,6 +493,14 @@ function statusClasses(status: HealthStatus) {
   if (status === "Needs Attention") return "border-orange-200 bg-orange-50 text-orange-700";
   if (status === "Inconsistent but High Diamonds") return "border-sky-200 bg-sky-50 text-sky-700";
   return "border-red-200 bg-red-50 text-red-700";
+}
+
+function getHealthStatusLabel(status: HealthStatus | "All Health") {
+  if (status === "All Health") return "All Health";
+  if (status === "Elite") return "Elite";
+  if (status === "Healthy") return "Above Average";
+  if (status === "Needs Attention") return "Average";
+  return "Needs Improvement";
 }
 
 function getCreatorTags(creator: {
@@ -921,9 +944,7 @@ function reportToneClass(status: HealthStatus) {
 }
 
 function getCreatorReportScoreLabel(status: HealthStatus) {
-  if (status === "Elite") return "Elite";
-  if (status === "Healthy") return "High Quality";
-  return "";
+  return getHealthStatusLabel(status);
 }
 
 function buildScoreImprovementTips(creator: CreatorSummary) {
@@ -1690,7 +1711,7 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
       "Weekly performance",
       reportType === "creator"
         ? `${creator.healthScore}/100`
-        : `${creator.healthScore}/100 ${creator.healthStatus}`,
+        : `${creator.healthScore}/100 ${getHealthStatusLabel(creator.healthStatus)}`,
     ],
     ["Weekly target", getWeeklyTargetText(creator)],
     ["Weekly diamonds", formatNumber(weeklyDiamonds)],
@@ -1789,12 +1810,249 @@ function escapeHtml(value: string | number) {
     .replace(/'/g, "&#39;");
 }
 
+async function waitForPosterAssets(root: Document | HTMLElement) {
+  const images = Array.from(root.querySelectorAll("img"));
+  await Promise.all(
+    images.map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+      });
+    })
+  );
+}
+
+function getHealthPosterTone(status: HealthStatus) {
+  if (status === "Elite") return { label: "ELITE", color: "#facc15", border: "#f59e0b" };
+  if (status === "Healthy") return { label: "ABOVE AVERAGE", color: "#fde68a", border: "#eab308" };
+  if (status === "Needs Attention") return { label: "AVERAGE", color: "#fbbf24", border: "#d97706" };
+  return { label: "NEEDS IMPROVEMENT", color: "#f97316", border: "#ea580c" };
+}
+
+function getManagerLeaderboardTone(score: number) {
+  if (score >= 85) return { color: "#facc15", border: "#f59e0b", bg: "rgba(113,63,18,.38)" };
+  if (score >= 70) return { color: "#fde68a", border: "#eab308", bg: "rgba(101,77,13,.34)" };
+  if (score >= 50) return { color: "#fbbf24", border: "#d97706", bg: "rgba(124,45,18,.34)" };
+  return { color: "#f97316", border: "#ea580c", bg: "rgba(127,29,29,.38)" };
+}
+
+async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSummary) {
+  const scoredCreators = [...managerSummary.creators]
+    .filter((creator) => !creator.isNewCreator)
+    .sort((a, b) => b.healthScore - a.healthScore);
+  const needsImprovementCount = managerSummary.lowPerformance + managerSummary.lowQuality;
+  const lastSevenDiamonds = managerSummary.creators.reduce(
+    (sum, creator) => sum + creator.dailyPoints.slice(-7).reduce((pointSum, point) => pointSum + point.diamonds, 0),
+    0
+  );
+  const lastSevenHours = managerSummary.creators.reduce(
+    (sum, creator) => sum + creator.dailyPoints.slice(-7).reduce((pointSum, point) => pointSum + point.liveHours, 0),
+    0
+  );
+  const qualityItems = [
+    { label: "ELITE", range: "85-100", count: managerSummary.elite, color: "#facc15", border: "#f59e0b" },
+    { label: "ABOVE AVERAGE", range: "70-84", count: managerSummary.healthy, color: "#fde68a", border: "#eab308" },
+    { label: "AVERAGE", range: "50-69", count: managerSummary.needsAttention, color: "#fbbf24", border: "#d97706" },
+    { label: "NEEDS IMPROVEMENT", range: "<=49", count: needsImprovementCount, color: "#f97316", border: "#ea580c" },
+  ];
+  const qualityRows = qualityItems
+    .map(
+      (item) => `
+        <div style="display:grid;grid-template-columns:32px 1fr 52px;align-items:center;min-height:42px;border:2px solid ${item.border};background:linear-gradient(90deg,rgba(3,3,3,.96),rgba(38,31,9,.88));box-shadow:0 0 18px ${item.border}55 inset;">
+          <div style="text-align:center;color:${item.color};font-size:23px;font-weight:950;text-shadow:0 0 12px ${item.color};">*</div>
+          <div style="min-width:0;color:${item.color};font-size:18px;font-weight:950;line-height:1.05;text-shadow:0 0 10px ${item.color}99;">${item.label}<br><span style="font-size:13px;color:#fff7ed;">(${item.range})</span></div>
+          <div style="padding-right:12px;text-align:right;color:${item.color};font-size:32px;font-weight:950;line-height:1;text-shadow:0 0 12px ${item.color};">${formatNumber(item.count)}</div>
+        </div>
+      `
+    )
+    .join("");
+  const rows = scoredCreators
+    .map((creator, index) => {
+      const tone = getHealthPosterTone(creator.healthStatus);
+      return `
+        <div style="display:grid;grid-template-columns:54px 1fr 144px 214px;align-items:center;height:44px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border}99;background:linear-gradient(90deg,rgba(3,3,3,.96),rgba(17,17,17,.9));box-shadow:0 0 18px ${tone.border}33 inset;">
+          <div style="text-align:center;color:#fff7ed;font-size:23px;font-weight:950;text-shadow:0 0 10px ${tone.color};">${index + 1}</div>
+          <div style="overflow:hidden;padding-right:12px;color:#fff7ed;font-size:22px;font-weight:950;white-space:nowrap;text-overflow:ellipsis;text-shadow:2px 2px 0 #000;">${escapeHtml(creator.username)}</div>
+          <div style="color:${tone.color};font-size:27px;font-weight:950;text-align:center;text-shadow:0 0 12px ${tone.color};">${formatNumber(creator.healthScore)} <span style="font-size:14px;color:#fff7ed;">/100</span></div>
+          <div style="display:flex;align-items:center;gap:7px;overflow:hidden;padding-right:8px;color:${tone.color};font-size:15px;font-weight:950;white-space:nowrap;text-shadow:0 0 10px ${tone.color};"><span style="font-size:18px;">*</span>${tone.label}</div>
+        </div>
+      `;
+    })
+    .join("");
+  const posterHtml = `
+    <div style="position:relative;width:1000px;min-height:720px;overflow:hidden;box-sizing:border-box;padding:26px 28px 34px;background:
+      radial-gradient(circle at 50% 0%, rgba(250,204,21,.28), transparent 24%),
+      radial-gradient(circle at 0% 18%, rgba(245,158,11,.18), transparent 28%),
+      radial-gradient(circle at 100% 22%, rgba(234,179,8,.18), transparent 27%),
+      linear-gradient(180deg,#030303 0%,#15110a 48%,#030303 100%);
+      color:#fff7ed;font-family:Arial,Helvetica,sans-serif;">
+      <div style="position:absolute;inset:18px;border:2px solid rgba(250,204,21,.72);box-shadow:0 0 32px rgba(250,204,21,.5),0 0 90px rgba(245,158,11,.2) inset;"></div>
+      <div style="position:absolute;left:-120px;right:-120px;top:88px;height:110px;border-top:5px solid rgba(250,204,21,.48);border-radius:50%;filter:drop-shadow(0 0 16px #facc15);transform:rotate(-7deg);"></div>
+      <div style="position:absolute;left:-120px;right:-120px;bottom:20px;height:90px;border-bottom:4px solid rgba(250,204,21,.36);border-radius:50%;filter:drop-shadow(0 0 14px #facc15);transform:rotate(5deg);"></div>
+      <div style="position:relative;z-index:1;text-align:center;">
+        <img src="/logo.png" style="height:68px;width:auto;object-fit:contain;filter:drop-shadow(0 0 16px #facc15);" />
+        <div style="margin-top:4px;font-size:64px;font-weight:950;letter-spacing:0;text-transform:uppercase;line-height:.92;color:#fff7ed;text-shadow:0 0 18px #facc15,4px 5px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
+        <div style="margin-top:8px;font-size:23px;font-weight:950;letter-spacing:7px;color:#fff7ed;text-transform:uppercase;text-shadow:0 0 12px #facc15;">Creator Health Scores</div>
+      </div>
+      <div style="position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.22fr) minmax(0,.9fr);gap:16px;margin-top:22px;">
+        <div style="border:3px solid #facc15;background:rgba(3,3,3,.9);box-shadow:0 0 32px #facc1555 inset,0 0 26px #facc1533;padding:17px;text-align:center;">
+          <div style="font-size:22px;font-weight:950;text-transform:uppercase;letter-spacing:4px;color:#fff7ed;">Team Average Health Score</div>
+          <div style="display:flex;align-items:flex-end;justify-content:center;margin-top:8px;">
+            <span style="font-size:96px;font-weight:950;line-height:.86;color:#fef3c7;text-shadow:0 0 28px #facc15,4px 5px 0 #000;">${formatNumber(managerSummary.averageScore)}</span>
+            <span style="padding-bottom:11px;font-size:30px;font-weight:950;color:#fff7ed;">/100</span>
+          </div>
+          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-weight:900;">
+            <div style="min-width:0;border:1px solid #facc15;padding:8px;color:#fde68a;font-size:15px;line-height:1.1;">${formatNumber(managerSummary.matureCreators)}<br>scored</div>
+            <div style="min-width:0;border:1px solid #facc15;padding:8px;color:#fde68a;font-size:15px;line-height:1.1;">${formatNumber(lastSevenDiamonds)}<br>diamonds</div>
+            <div style="min-width:0;border:1px solid #facc15;padding:8px;color:#fde68a;font-size:15px;line-height:1.1;">${formatHours(lastSevenHours)}h<br>live</div>
+          </div>
+        </div>
+        <div>
+          <div style="border:2px solid #facc15;background:rgba(3,3,3,.92);padding:10px;text-align:center;font-size:22px;font-weight:950;text-transform:uppercase;letter-spacing:2px;">Quality Breakdown</div>
+          ${qualityRows}
+        </div>
+      </div>
+      <div style="position:relative;z-index:1;margin-top:16px;">
+        <div style="display:grid;grid-template-columns:54px 1fr 144px 214px;align-items:center;height:42px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.97),rgba(55,42,11,.86));box-shadow:0 0 24px #facc1533 inset;color:#fff7ed;text-transform:uppercase;font-size:16px;font-weight:950;letter-spacing:2px;">
+          <div style="text-align:center;">#</div>
+          <div>Creator</div>
+          <div style="text-align:center;">Score</div>
+          <div>Quality</div>
+        </div>
+        ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:28px;text-align:center;font-size:28px;font-weight:950;">No scored creators yet.</div>`}
+      </div>
+    </div>
+  `;
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-10000px";
+  host.style.top = "0";
+  host.style.width = "1000px";
+  host.innerHTML = posterHtml;
+  document.body.appendChild(host);
+
+  try {
+    await waitForPosterAssets(host);
+    const poster = host.firstElementChild as HTMLElement | null;
+    if (!poster) throw new Error("Could not create team health poster.");
+    const posterHeight = Math.ceil(poster.scrollHeight);
+    const blob = await toBlob(poster, {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: 1000,
+      height: posterHeight,
+      backgroundColor: "#030303",
+    });
+    if (!blob) throw new Error("Could not render team health poster.");
+    return blob;
+  } finally {
+    host.remove();
+  }
+}
+
+async function renderManagerHealthLeaderboardToPngBlob(
+  managerSummaries: ManagerHealthSummary[],
+  agencyName: string
+) {
+  const sortedManagers = [...managerSummaries]
+    .filter((managerSummary) => managerSummary.matureCreators > 0)
+    .sort((a, b) => b.averageScore - a.averageScore || b.matureCreators - a.matureCreators);
+  const rowHeight = 58;
+  const posterHeight = Math.max(760, 320 + sortedManagers.length * rowHeight);
+  const rows = sortedManagers
+    .map((managerSummary, index) => {
+      const tone = getManagerLeaderboardTone(managerSummary.averageScore);
+
+      return `
+        <div style="display:grid;grid-template-columns:70px 1fr 130px 118px 118px 118px 150px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.95),${tone.bg});box-shadow:0 0 18px ${tone.border}33 inset;font-weight:950;">
+          <div style="text-align:center;font-size:28px;color:#fff7ed;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
+          <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:24px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(managerSummary.manager)}</div>
+          <div style="text-align:center;font-size:30px;color:${tone.color};text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#fff7ed;">/100</span></div>
+          <div style="text-align:center;font-size:20px;color:#fde68a;">${formatNumber(managerSummary.matureCreators)}</div>
+          <div style="text-align:center;font-size:20px;color:#c084fc;">${formatNumber(managerSummary.elite)}</div>
+          <div style="text-align:center;font-size:20px;color:#fde68a;">${formatNumber(managerSummary.healthy + managerSummary.needsAttention)}</div>
+          <div style="text-align:center;font-size:20px;color:#f87171;">${formatNumber(managerSummary.lowPerformance + managerSummary.lowQuality)}</div>
+        </div>
+      `;
+    })
+    .join("");
+  const agencyTitle = agencyName === "All Groups" ? "All Groups" : agencyName;
+  const totalScored = sortedManagers.reduce((sum, managerSummary) => sum + managerSummary.matureCreators, 0);
+  const leaderboardAverage = sortedManagers.length
+    ? sortedManagers.reduce((sum, managerSummary) => sum + managerSummary.averageScore, 0) / sortedManagers.length
+    : 0;
+  const posterHtml = `
+    <div style="position:relative;width:1000px;min-height:${posterHeight}px;overflow:hidden;background:radial-gradient(circle at 50% 0%,#3f2d08 0,#130f08 34%,#030303 68%);border:4px solid #facc15;color:#fff7ed;font-family:Arial,sans-serif;padding:42px 32px 44px;box-shadow:0 0 42px #facc1566 inset;">
+      <div style="position:absolute;inset:18px;border:2px solid #facc15;opacity:.75;"></div>
+      <div style="position:absolute;left:-110px;right:-110px;top:110px;height:130px;border-top:5px solid #facc15;border-radius:50%;opacity:.35;"></div>
+      <div style="position:relative;z-index:1;text-align:center;">
+        <img src="/logo.png" alt="First Class logo" style="position:absolute;left:0;top:-12px;width:108px;height:auto;object-fit:contain;filter:drop-shadow(0 0 16px #facc15);" />
+        <div style="font-size:64px;font-weight:950;line-height:.95;text-transform:uppercase;letter-spacing:2px;color:#fff7ed;text-shadow:0 0 24px #facc15,5px 5px 0 #000;">${escapeHtml(agencyTitle)}</div>
+        <div style="margin-top:10px;font-size:26px;font-weight:950;text-transform:uppercase;letter-spacing:7px;color:#facc15;text-shadow:0 0 16px #facc15;">Manager Health Leaderboard</div>
+      </div>
+      <div style="position:relative;z-index:1;margin:34px 0 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+        <div style="border:2px solid #facc15;background:rgba(3,3,3,.86);padding:15px;">
+          <div style="font-size:34px;font-weight:950;color:#fef3c7;text-shadow:0 0 16px #facc15;">${formatNumber(sortedManagers.length)}</div>
+          <div style="font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fde68a;">Managers</div>
+        </div>
+        <div style="border:2px solid #facc15;background:rgba(3,3,3,.86);padding:15px;">
+          <div style="font-size:34px;font-weight:950;color:#fef3c7;text-shadow:0 0 16px #facc15;">${formatNumber(leaderboardAverage)}<span style="font-size:18px;">/100</span></div>
+          <div style="font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fde68a;">Average Score</div>
+        </div>
+        <div style="border:2px solid #facc15;background:rgba(3,3,3,.86);padding:15px;">
+          <div style="font-size:34px;font-weight:950;color:#fef3c7;text-shadow:0 0 16px #facc15;">${formatNumber(totalScored)}</div>
+          <div style="font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fde68a;">Scored Creators</div>
+        </div>
+      </div>
+      <div style="position:relative;z-index:1;">
+        <div style="display:grid;grid-template-columns:70px 1fr 130px 118px 118px 118px 150px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.98),rgba(74,52,10,.94));font-size:15px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fff7ed;">
+          <div style="text-align:center;">#</div>
+          <div>Manager</div>
+          <div style="text-align:center;">Score</div>
+          <div style="text-align:center;">Scored</div>
+          <div style="text-align:center;">Elite</div>
+          <div style="text-align:center;">Average+</div>
+          <div style="text-align:center;">Improve</div>
+        </div>
+        ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:34px;text-align:center;font-size:28px;font-weight:950;">No scored managers yet.</div>`}
+      </div>
+    </div>
+  `;
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-10000px";
+  host.style.top = "0";
+  host.style.width = "1000px";
+  host.innerHTML = posterHtml;
+  document.body.appendChild(host);
+
+  try {
+    await waitForPosterAssets(host);
+    const poster = host.firstElementChild as HTMLElement | null;
+    if (!poster) throw new Error("Could not create manager leaderboard poster.");
+    const height = Math.ceil(poster.scrollHeight);
+    const blob = await toBlob(poster, {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: 1000,
+      height,
+      backgroundColor: "#030303",
+    });
+    if (!blob) throw new Error("Could not render manager leaderboard poster.");
+    return blob;
+  } finally {
+    host.remove();
+  }
+}
+
 function downloadManagerReport(
   managerSummary: ManagerHealthSummary,
   movementItems: WeeklyHealthComparison[],
   agencyAverageScore: number,
   managerTrend: ManagerHealthTrendPoint[]
 ) {
+  const reportAgencyName = getReportAgencyName(managerSummary.creators);
   const matureCreators = managerSummary.creators.filter((creator) => !creator.isNewCreator);
   const creatorsForStats = matureCreators.length ? matureCreators : managerSummary.creators;
   const strongestCreators = [...creatorsForStats].sort((a, b) => b.healthScore - a.healthScore).slice(0, 8);
@@ -1874,7 +2132,7 @@ function downloadManagerReport(
     <div>
       <p class="label">Manager Team Health Report</p>
       <h1>${escapeHtml(managerSummary.manager)}</h1>
-      <p class="muted">${reportDate} &bull; First Class Creator Intelligence</p>
+      <p class="muted">${reportDate} &bull; ${escapeHtml(reportAgencyName)} Creator Intelligence</p>
     </div>
     <div class="score">
       <span class="label">7-Day Team Health</span>
@@ -1905,10 +2163,10 @@ function downloadManagerReport(
   <h2>Team Mix</h2>
   <section class="grid">
     <div class="card"><div class="label">Elite</div><div class="value elite-value">${formatNumber(managerSummary.elite)}</div></div>
-    <div class="card"><div class="label">Healthy</div><div class="value good">${formatNumber(managerSummary.healthy)}</div></div>
-    <div class="card"><div class="label">Needs Attention</div><div class="value warn">${formatNumber(managerSummary.needsAttention)}</div></div>
-    <div class="card"><div class="label">Inconsistent but High Diamonds</div><div class="value performance-value">${formatNumber(managerSummary.lowPerformance)}</div></div>
-    <div class="card"><div class="label">Low Quality</div><div class="value bad">${formatNumber(managerSummary.lowQuality)}</div></div>
+    <div class="card"><div class="label">Above Average</div><div class="value good">${formatNumber(managerSummary.healthy)}</div></div>
+    <div class="card"><div class="label">Average</div><div class="value warn">${formatNumber(managerSummary.needsAttention)}</div></div>
+    <div class="card"><div class="label">Needs Improvement</div><div class="value performance-value">${formatNumber(managerSummary.lowPerformance)}</div></div>
+    <div class="card"><div class="label">Needs Improvement</div><div class="value bad">${formatNumber(managerSummary.lowQuality)}</div></div>
   </section>
 
   <h2>Manager Action Summary</h2>
@@ -1963,7 +2221,7 @@ function downloadManagerReport(
     <div>
       <h2>Bringing The Average Down</h2>
       <div class="panel">
-        <p class="muted">Only creators below the current First Class average of ${formatNumber(agencyAverageScore)}/100 are shown here.</p>
+        <p class="muted">Only creators below the current ${escapeHtml(reportAgencyName)} average of ${formatNumber(agencyAverageScore)}/100 are shown here.</p>
         <table>
           <tr><th>Creator</th><th>Score</th><th>First Fix</th></tr>
           ${belowAgencyAverageCreators
@@ -1975,7 +2233,7 @@ function downloadManagerReport(
           ${
             belowAgencyAverageCreators.length
               ? ""
-              : `<tr><td colspan="3">No creators in this manager team are currently below the First Class average.</td></tr>`
+              : `<tr><td colspan="3">No creators in this manager team are currently below the ${escapeHtml(reportAgencyName)} average.</td></tr>`
           }
         </table>
       </div>
@@ -2008,7 +2266,7 @@ function downloadManagerReport(
 
         return `<tr>
           <td><strong>${escapeHtml(creator.username)}</strong><br><span class="muted">${escapeHtml(creator.tierStatus)}</span></td>
-          <td><span class="pill ${statusClass}">${escapeHtml(creator.healthStatus)}</span></td>
+          <td><span class="pill ${statusClass}">${escapeHtml(getHealthStatusLabel(creator.healthStatus))}</span></td>
           <td>${formatNumber(creator.healthScore)}/100</td>
           <td>${contribution}</td>
           <td>${formatNumber(creator.oneHourDays)}/${formatNumber(creator.healthWindowDays)}</td>
@@ -2467,10 +2725,10 @@ export default function CreatorIntelligencePage() {
   const groupedCreators = useMemo(
     () => {
       const coreGroups = [
-        { title: "Inconsistent but High Diamonds", status: "Inconsistent but High Diamonds" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Inconsistent but High Diamonds") },
-        { title: "Low Quality", status: "Low Quality" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Low Quality") },
-        { title: "Needs Attention", status: "Needs Attention" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Needs Attention") },
-        { title: "Healthy", status: "Healthy" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Healthy") },
+        { title: "Needs Improvement", status: "Inconsistent but High Diamonds" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Inconsistent but High Diamonds") },
+        { title: "Needs Improvement", status: "Low Quality" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Low Quality") },
+        { title: "Average", status: "Needs Attention" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Needs Attention") },
+        { title: "Above Average", status: "Healthy" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Healthy") },
         { title: "Elite", status: "Elite" as HealthStatus, creators: matureFilteredCreators.filter((creator) => creator.healthStatus === "Elite") },
       ];
 
@@ -2550,9 +2808,9 @@ export default function CreatorIntelligencePage() {
 
   function getCopiedHealthQualityLabel(creator: CreatorSummary) {
     if (creator.healthStatus === "Elite" || creator.healthScore >= 85) return "Elite";
-    if (creator.healthScore <= 50) return "Low Quality";
-    if (creator.healthStatus === "Healthy" || creator.healthScore >= 70) return "High Quality";
-    return "Good Quality";
+    if (creator.healthStatus === "Healthy" || creator.healthScore >= 70) return "Above Average";
+    if (creator.healthScore >= 50) return "Average";
+    return "Needs Improvement";
   }
 
   function copyManagerTeamHealthText(managerSummary: ManagerHealthSummary) {
@@ -2562,6 +2820,35 @@ export default function CreatorIntelligencePage() {
         .sort((a, b) => b.healthScore - a.healthScore)
         .map((creator) => `${creator.username}: ${creator.healthScore}/100 (${getCopiedHealthQualityLabel(creator)})`)
     );
+  }
+
+  async function downloadTeamHealthScorePng(managerSummary: ManagerHealthSummary) {
+    const matureCount = managerSummary.creators.filter((creator) => !creator.isNewCreator).length;
+
+    if (!matureCount) {
+      alert(`${managerSummary.manager} has no scored creators yet. New creators are excluded from this report.`);
+      return;
+    }
+
+    const blob = await renderTeamHealthPosterToPngBlob(managerSummary);
+    const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    const safeTeamName = managerSummary.manager.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    saveAs(blob, `first-class-team-health-score-${safeTeamName}-${timestamp}.png`);
+  }
+
+  async function downloadManagerHealthLeaderboardPng() {
+    const scoredManagers = managerHealthSummaries.filter((managerSummary) => managerSummary.matureCreators > 0);
+
+    if (!scoredManagers.length) {
+      alert("No scored managers found for this group yet.");
+      return;
+    }
+
+    const leaderboardName = activeGroup === "All Groups" ? "All Groups" : activeGroup;
+    const blob = await renderManagerHealthLeaderboardToPngBlob(scoredManagers, leaderboardName);
+    const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    const safeGroupName = leaderboardName.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    saveAs(blob, `first-class-manager-health-leaderboard-${safeGroupName}-${timestamp}.png`);
   }
 
   function copyNewCreatorsText() {
@@ -2673,7 +2960,9 @@ export default function CreatorIntelligencePage() {
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950"
               >
                 {["All Health", "Elite", "Healthy", "Needs Attention", "Inconsistent but High Diamonds", "Low Quality"].map((item) => (
-                  <option key={item}>{item}</option>
+                  <option key={item} value={item}>
+                    {getHealthStatusLabel(item as HealthStatus | "All Health")}
+                  </option>
                 ))}
               </select>
             </label>
@@ -2700,10 +2989,9 @@ export default function CreatorIntelligencePage() {
                 : "0/100"
             }
           />
-          <MetricCard label="Inconsistent but high diamonds creators" value={formatNumber(totals.lowPerformance)} />
-          <MetricCard label="Low quality creators" value={formatNumber(totals.lowQuality)} />
-          <MetricCard label="Needs attention" value={formatNumber(totals.needsAttention)} />
-          <MetricCard label="Healthy creators" value={formatNumber(totals.healthy)} />
+          <MetricCard label="Needs improvement creators" value={formatNumber(totals.lowPerformance + totals.lowQuality)} />
+          <MetricCard label="Average creators" value={formatNumber(totals.needsAttention)} />
+          <MetricCard label="Above average creators" value={formatNumber(totals.healthy)} />
           <MetricCard label="Elite creators" value={formatNumber(totals.elite)} />
           <MetricCard label="New creators" value={formatNumber(totals.newCreators)} />
           <MetricCard label="Average DPH (diamonds per hour)" value={formatNumber(totals.averageDph)} />
@@ -2799,9 +3087,18 @@ export default function CreatorIntelligencePage() {
                 Team average by manager, with new creators counted separately from scored creators.
               </p>
             </div>
-            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
-              {formatNumber(managerHealthSummaries.length)} managers
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
+                {formatNumber(managerHealthSummaries.length)} managers
+              </span>
+              <button
+                type="button"
+                onClick={() => void downloadManagerHealthLeaderboardPng()}
+                className="rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-yellow-800 hover:bg-yellow-100"
+              >
+                Download Manager Leaderboard PNG
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-3 xl:grid-cols-2">
@@ -2864,19 +3161,19 @@ export default function CreatorIntelligencePage() {
                     </div>
                     <div className="rounded-xl bg-emerald-50 p-2 font-bold text-emerald-700">
                       <p>{formatNumber(managerSummary.healthy)}</p>
-                      <p className="mt-1 text-[10px] uppercase">Healthy</p>
+                      <p className="mt-1 text-[10px] uppercase">Above Avg</p>
                     </div>
                     <div className="rounded-xl bg-orange-50 p-2 font-bold text-orange-700">
                       <p>{formatNumber(managerSummary.needsAttention)}</p>
-                      <p className="mt-1 text-[10px] uppercase">Attention</p>
+                      <p className="mt-1 text-[10px] uppercase">Average</p>
                     </div>
                     <div className="rounded-xl bg-sky-50 p-2 font-bold text-sky-700">
                       <p>{formatNumber(managerSummary.lowPerformance)}</p>
-                      <p className="mt-1 text-[10px] uppercase">Low Perf</p>
+                      <p className="mt-1 text-[10px] uppercase">Improve</p>
                     </div>
                     <div className="rounded-xl bg-red-50 p-2 font-bold text-red-700">
                       <p>{formatNumber(managerSummary.lowQuality)}</p>
-                      <p className="mt-1 text-[10px] uppercase">Low Qual</p>
+                      <p className="mt-1 text-[10px] uppercase">Improve</p>
                     </div>
                   </div>
 
@@ -2905,6 +3202,13 @@ export default function CreatorIntelligencePage() {
                       className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 hover:bg-cyan-100"
                     >
                       Copy Health Scores
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void downloadTeamHealthScorePng(managerSummary)}
+                      className="rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs font-black text-yellow-700 hover:bg-yellow-100"
+                    >
+                      Download Health Scores PNG
                     </button>
                     <button
                       type="button"
@@ -2942,7 +3246,7 @@ export default function CreatorIntelligencePage() {
                         >
                           <span>
                             <span className="block font-black text-slate-950">{creator.username}</span>
-                            <span className="block text-xs text-slate-500">{creator.healthStatus}</span>
+                            <span className="block text-xs text-slate-500">{getHealthStatusLabel(creator.healthStatus)}</span>
                           </span>
                           <span className={`rounded-full border px-3 py-1 text-xs font-black ${statusClasses(creator.healthStatus)}`}>
                             {creator.healthScore}/100
@@ -2968,7 +3272,7 @@ export default function CreatorIntelligencePage() {
               <div>
                 <h2 className="text-3xl font-black uppercase text-sky-900">Manager Focus Queue</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Uses the selected manager filter. Priority order is the top 10% most fixable Low Quality creators, then Inconsistent but High Diamonds, Needs Attention, and Healthy.
+                  Uses the selected manager filter. Priority order is the top 10% most fixable Needs Improvement creators, then Average and Above Average creators.
                 </p>
               </div>
               <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-black text-orange-700">
@@ -2991,7 +3295,7 @@ export default function CreatorIntelligencePage() {
                       <p className="mt-1 text-xs text-slate-500">{getCreatorMetaLine(creator)}</p>
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-xs font-black ${statusClasses(creator.healthStatus)}`}>
-                      {creator.healthStatus} {creator.healthScore}/100
+                      {getHealthStatusLabel(creator.healthStatus)} {creator.healthScore}/100
                     </span>
                   </div>
                   <p className="mt-2 text-xs font-bold text-slate-500">
@@ -3029,14 +3333,14 @@ export default function CreatorIntelligencePage() {
                     selectedCreator.healthStatus
                   )}`}
                 >
-                  Weekly performance {selectedCreator.healthScore}/100 {selectedCreator.healthStatus}
+                  Weekly performance {selectedCreator.healthScore}/100 {getHealthStatusLabel(selectedCreator.healthStatus)}
                 </span>
                 <span
                   className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${statusClasses(
                     selectedCreator.monthlyHealthStatus
                   )}`}
                 >
-                  30-day performance {selectedCreator.monthlyHealthScore}/100 {selectedCreator.monthlyHealthStatus}
+                  30-day performance {selectedCreator.monthlyHealthScore}/100 {getHealthStatusLabel(selectedCreator.monthlyHealthStatus)}
                 </span>
               </div>
             </div>
@@ -3285,9 +3589,9 @@ export default function CreatorIntelligencePage() {
         <section className="mb-6 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-2xl font-black uppercase text-red-700">Low Quality List</h2>
+              <h2 className="text-2xl font-black uppercase text-red-700">Needs Improvement List</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Below 50 score and under 5,000 diamonds. The highest-scoring 10% are surfaced in the manager focus queue because they are closest to being moved up.
+                Below 50 score. The highest-scoring 10% are surfaced in the manager focus queue because they are closest to moving up.
               </p>
             </div>
             <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-black text-red-700">
@@ -3318,7 +3622,7 @@ export default function CreatorIntelligencePage() {
             </div>
             {!lowQualityCreators.length ? (
               <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                No Low Quality creators in these filters.
+                No Needs Improvement creators in these filters.
               </p>
             ) : null}
           </div>
@@ -3329,7 +3633,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Health Tracker</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Last seven uploaded days. Below 50 with 5,000+ diamonds is Inconsistent but High Diamonds; below 50 under 5,000 diamonds is Low Quality.
+                Last seven uploaded days. Below 50 is Needs Improvement, 50-69 is Average, 70-84 is Above Average, and 85+ is Elite.
               </p>
             </div>
             <p className="text-sm font-bold text-slate-500">
@@ -3354,7 +3658,7 @@ export default function CreatorIntelligencePage() {
                   }`}
                 >
                   <span className={`rounded-full border px-3 py-1 text-xs font-black ${statusClasses(status)}`}>
-                    {status}
+                    {getHealthStatusLabel(status)}
                   </span>
                   <p className="mt-4 text-4xl font-black text-slate-950">{formatNumber(count)}</p>
                   <p className="mt-1 text-xs font-bold uppercase text-slate-400">Creators</p>
@@ -3569,7 +3873,7 @@ export default function CreatorIntelligencePage() {
                     label="Weekly performance"
                     value={`${selectedCreator.healthScore}/100`}
                   />
-                  <MetricCard label="Status" value={selectedCreator.healthStatus} />
+                  <MetricCard label="Status" value={getHealthStatusLabel(selectedCreator.healthStatus)} />
                   <MetricCard label="Diamonds" value={formatNumber(selectedCreator.diamonds)} />
                   <MetricCard label="Hours" value={formatHours(selectedCreator.healthWindowHours)} />
                   <MetricCard label="Battles" value={formatNumber(selectedCreator.healthWindowMatches)} />
