@@ -334,36 +334,36 @@ function getManagerLabel(value: string, groupValue = "") {
   return "Unassigned";
 }
 
-const FIRST_CLASS_DEFAULT_GROUP = "Mike / Indi";
+const FIRST_CLASS_DEFAULT_GROUP = "Team Mike / Indi";
 const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }> = {
-  cjtokens1237: { name: "CJ", group: "Dan" },
-  teamalf: { name: "Alf", group: "Dan" },
-  firstclassagencyalf: { name: "Alf", group: "Dan" },
-  firstclassagencyabbie: { name: "Abbie", group: "Dan" },
-  firstclassagencyolivia: { name: "Liv", group: "Dan" },
-  sjm20101: { name: "Steven", group: "Dan" },
-  firstclassagencypaige: { name: "Paige", group: "Dan" },
-  jasminabidzane: { name: "Jasmina", group: "Dan" },
-  connorfirstclass: { name: "Connor", group: "Dan" },
-  brandyfalconer35: { name: "Brandy", group: "Dan" },
-  fearnegurry1: { name: "Fearne", group: "Dan" },
-  demileawebster7: { name: "Demi", group: "Dan" },
-  louisesquelch: { name: "Louise", group: "Dan" },
-  ashwalbridge: { name: "Ash", group: "Dan" },
-  firstclassagencykyran: { name: "Kyran", group: "Dan" },
-  bmwe46320d: { name: "Madz", group: "Mike / Indi" },
-  zaliheyoncu: { name: "Zalihe", group: "Mike / Indi" },
-  firstclassagencykayden: { name: "Kayden", group: "Mike / Indi" },
-  xaramills17: { name: "Xara", group: "Mike / Indi" },
-  rachellouise18: { name: "Rach", group: "Mike / Indi" },
-  firstclassagencylauren: { name: "Lauren", group: "Mike / Indi" },
-  liamproctor04: { name: "Liam", group: "Mike / Indi" },
-  abbidl: { name: "Abbi", group: "Mike / Indi" },
-  kishaunnolan1: { name: "Kash", group: "Mike / Indi" },
-  calliecrawford14: { name: "Callie", group: "Mike / Indi" },
-  megan25121990: { name: "Megan", group: "Mike / Indi" },
-  hannakingismail92: { name: "Hanna", group: "Storm" },
-  stormlive: { name: "Denz", group: "Storm" },
+  cjtokens1237: { name: "CJ", group: "Team Dan" },
+  teamalf: { name: "Alf", group: "Team Dan" },
+  firstclassagencyalf: { name: "Alf", group: "Team Dan" },
+  firstclassagencyabbie: { name: "Abbie", group: "Team Dan" },
+  firstclassagencyolivia: { name: "Liv", group: "Team Dan" },
+  sjm20101: { name: "Steven", group: "Team Dan" },
+  firstclassagencypaige: { name: "Paige", group: "Team Dan" },
+  jasminabidzane: { name: "Jasmina", group: "Team Dan" },
+  connorfirstclass: { name: "Connor", group: "Team Dan" },
+  brandyfalconer35: { name: "Brandy", group: "Team Dan" },
+  fearnegurry1: { name: "Fearne", group: "Team Dan" },
+  demileawebster7: { name: "Demi", group: "Team Dan" },
+  louisesquelch: { name: "Louise", group: "Team Dan" },
+  ashwalbridge: { name: "Ash", group: "Team Dan" },
+  firstclassagencykyran: { name: "Kyran", group: "Team Dan" },
+  bmwe46320d: { name: "Madz", group: "Team Mike / Indi" },
+  zaliheyoncu: { name: "Zalihe", group: "Team Mike / Indi" },
+  firstclassagencykayden: { name: "Kayden", group: "Team Mike / Indi" },
+  xaramills17: { name: "Xara", group: "Team Mike / Indi" },
+  rachellouise18: { name: "Rach", group: "Team Mike / Indi" },
+  firstclassagencylauren: { name: "Lauren", group: "Team Mike / Indi" },
+  liamproctor04: { name: "Liam", group: "Team Mike / Indi" },
+  abbidl: { name: "Abbi", group: "Team Mike / Indi" },
+  kishaunnolan1: { name: "Kash", group: "Team Mike / Indi" },
+  calliecrawford14: { name: "Callie", group: "Team Mike / Indi" },
+  megan25121990: { name: "Megan", group: "Team Mike / Indi" },
+  hannakingismail92: { name: "Hanna", group: "Team Storm" },
+  stormlive: { name: "Denz", group: "Team Storm" },
 };
 const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
@@ -2065,14 +2065,14 @@ async function renderManagerHealthLeaderboardToPngBlob(
       const tone = getManagerLeaderboardTone(managerSummary.averageScore);
 
       return `
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 80px 84px 122px 80px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(37,25,4,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}33 inset;font-weight:950;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}44 inset;font-weight:950;">
           <div style="text-align:center;font-size:26px;color:#ffffff;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
           <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
           <div style="text-align:center;font-size:30px;color:#ffffff;text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#ffffff;">/100</span></div>
-          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.lowPerformance + managerSummary.lowQuality)}</div>
-          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.needsAttention)}</div>
-          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.healthy)}</div>
-          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.elite)}</div>
+          <div style="text-align:center;font-size:20px;color:#facc15;text-shadow:0 0 10px #facc1588;">${formatNumber(managerSummary.elite)}</div>
+          <div style="text-align:center;font-size:20px;color:#e2e8f0;text-shadow:0 0 10px #ffffff55;">${formatNumber(managerSummary.healthy)}</div>
+          <div style="text-align:center;font-size:20px;color:#d08a48;text-shadow:0 0 10px #d08a4888;">${formatNumber(managerSummary.needsAttention)}</div>
+          <div style="text-align:center;font-size:20px;color:#f87171;text-shadow:0 0 10px #f8717188;">${formatNumber(managerSummary.lowPerformance + managerSummary.lowQuality)}</div>
         </div>
       `;
     })
@@ -2106,14 +2106,14 @@ async function renderManagerHealthLeaderboardToPngBlob(
         </div>
       </div>
       <div style="position:relative;z-index:1;">
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 80px 84px 122px 80px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(54,37,4,.98),rgba(109,76,9,.94));font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;color:#ffffff;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.98),rgba(86,59,6,.94));font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;color:#ffffff;">
           <div style="text-align:center;">#</div>
           <div>Manager</div>
           <div style="text-align:center;">Score</div>
-          <div style="text-align:center;">Improve</div>
-          <div style="text-align:center;">Average</div>
-          <div style="text-align:center;">Above Avg</div>
           <div style="text-align:center;">Elite</div>
+          <div style="text-align:center;">Above Avg</div>
+          <div style="text-align:center;">Average</div>
+          <div style="text-align:center;">Improve</div>
         </div>
         ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:34px;text-align:center;font-size:28px;font-weight:950;">No scored managers yet.</div>`}
       </div>
@@ -2508,7 +2508,7 @@ export default function CreatorIntelligencePage() {
   }, [aquaSummaries]);
 
   const groups = useMemo(() => {
-    return ["All Groups", "First Class", "Dan", "Mike / Indi", "Aqua", "Paradise", "Respawn", "Storm"];
+    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Storm"];
   }, []);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";
