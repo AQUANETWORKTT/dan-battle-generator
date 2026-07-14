@@ -333,8 +333,44 @@ function getManagerLabel(value: string, groupValue = "") {
   return "Unassigned";
 }
 
+// First Class is shown as two leadership teams in manager leaderboards while
+// preserving each creator's original group and manager data.
+function getManagerLeaderboardLabel(value: string, groupValue = "") {
+  const group = groupValue.trim().toLowerCase();
+  const manager = value.trim().toLowerCase();
+
+  if (group.includes("dan first class") || group === "team dan" || manager.includes("dan")) {
+    return "First Class — Dan";
+  }
+
+  if (
+    group.includes("mike first class") ||
+    group.includes("indi first class") ||
+    group === "team mike" ||
+    group === "team indi" ||
+    manager.includes("mike") ||
+    manager.includes("indi")
+  ) {
+    return "First Class — Mike & Indi";
+  }
+
+  return getManagerLabel(value, groupValue);
+}
+
+function isLeaderboardManager(managerLabel: string) {
+  const clean = managerLabel.trim().toLowerCase();
+  return clean !== "unassigned" && !clean.startsWith("unassigned ");
+}
+
+function getLeaderboardManagerFontSize(manager: string) {
+  if (manager.length > 28) return 17;
+  if (manager.length > 22) return 19;
+  return 24;
+}
+
 function formatManagerWithGroup(managerLabel: string, agency: string) {
   if (!agency || managerLabel === "Unassigned") return managerLabel;
+  if (managerLabel.startsWith("First Class —")) return managerLabel;
   if (managerLabel.toLowerCase().includes(`(${agency.toLowerCase()})`)) return managerLabel;
   return `${managerLabel} (${agency})`;
 }
@@ -629,7 +665,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         group: groupValue,
         agency: agencyValue,
         managerRaw,
-        managerLabel: formatManagerWithGroup(getManagerLabel(managerRaw, groupValue), agencyValue),
+        managerLabel: formatManagerWithGroup(getManagerLeaderboardLabel(managerRaw, groupValue), agencyValue),
         graduationStatus: getText(latest, ["graduation_status", "Graduation status"], "Unknown"),
         tierStatus: getText(latest, ["tier_status", "Tier status"], "Unknown"),
         sourceStatus: getText(latest, ["status", "Status"], ""),
@@ -1967,7 +2003,7 @@ async function renderManagerHealthLeaderboardToPngBlob(
       return `
         <div style="display:grid;grid-template-columns:70px 1fr 130px 118px 118px 118px 150px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.95),${tone.bg});box-shadow:0 0 18px ${tone.border}33 inset;font-weight:950;">
           <div style="text-align:center;font-size:28px;color:#fff7ed;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
-          <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:24px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(managerSummary.manager)}</div>
+          <div style="min-width:0;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(managerSummary.manager)}</div>
           <div style="text-align:center;font-size:30px;color:${tone.color};text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#fff7ed;">/100</span></div>
           <div style="text-align:center;font-size:20px;color:#fde68a;">${formatNumber(managerSummary.matureCreators)}</div>
           <div style="text-align:center;font-size:20px;color:#c084fc;">${formatNumber(managerSummary.elite)}</div>
@@ -2478,6 +2514,7 @@ export default function CreatorIntelligencePage() {
 
     for (const creator of managerFilteredCreators) {
       const managerName = creator.managerLabel || "Unassigned";
+      if (!isLeaderboardManager(managerName)) continue;
       grouped.set(managerName, [...(grouped.get(managerName) || []), creator]);
     }
 
