@@ -333,44 +333,59 @@ function getManagerLabel(value: string, groupValue = "") {
   return "Unassigned";
 }
 
-// First Class is shown as two leadership teams in manager leaderboards while
-// preserving each creator's original group and manager data.
-function getManagerLeaderboardLabel(value: string, groupValue = "") {
-  const group = groupValue.trim().toLowerCase();
-  const manager = value.trim().toLowerCase();
+const RESERVED_LEADERBOARD_TEAMS = ["Team Dan"];
+const FIRST_CLASS_DEFAULT_TEAM = "Team Mike / Indi";
+const DAN_MANAGER_KEYS = ["jasminabidzane", "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7", "louisesquelch", "ashwalbridge", "firstclassagencykyran"];
+const MIKE_INDI_MANAGER_KEYS = ["bmwe46320d", "zaliheyoncu", "firstclassagencykayden", "xaramills17", "rachellouise18", "firstclassagencylauren", "liamproctor04", "abbidl", "kishaunnolan1", "calliecrawford14", "megan25121990"];
+const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
+const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
+const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
 
-  if (group.includes("dan first class") || group === "team dan" || manager.includes("dan")) {
-    return "First Class — Dan";
-  }
+function normalizeManagerKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
 
-  if (
-    group.includes("mike first class") ||
-    group.includes("indi first class") ||
-    group === "team mike" ||
-    group === "team indi" ||
-    manager.includes("mike") ||
-    manager.includes("indi")
-  ) {
-    return "First Class — Mike & Indi";
-  }
+function hasManagerKey(value: string, keys: string[]) {
+  const normalized = normalizeManagerKey(value);
+  return keys.some((key) => normalized.includes(key));
+}
 
-  return getManagerLabel(value, groupValue);
+function getFirstClassLeaderboardTeam(managerRaw: string, managerLabel: string) {
+  const managerDetails = `${managerRaw} ${managerLabel}`;
+  if (hasManagerKey(managerDetails, DAN_MANAGER_KEYS)) return "Team Dan";
+  if (hasManagerKey(managerDetails, STORM_MANAGER_KEYS)) return "Team Storm";
+  if (hasManagerKey(managerDetails, MIKE_INDI_MANAGER_KEYS)) return FIRST_CLASS_DEFAULT_TEAM;
+  return FIRST_CLASS_DEFAULT_TEAM;
+}
+
+function getCreatorIntelligenceGroup(groupValue: string, managerRaw: string, managerLabel: string) {
+  if (hasManagerKey(`${managerRaw} ${managerLabel}`, STORM_MANAGER_KEYS)) return "Team Storm";
+  return groupValue;
+}
+
+function isExcludedFromLeaderboards(creator: Pick<CreatorSummary, "managerRaw" | "managerLabel">) {
+  const managerDetails = `${creator.managerRaw} ${creator.managerLabel}`;
+  return hasManagerKey(managerDetails, EXCLUDED_MANAGER_KEYS) || LEGACY_EXCLUDED_MANAGER_LABELS.includes(normalizeManagerKey(creator.managerLabel));
 }
 
 function isLeaderboardManager(managerLabel: string) {
   const clean = managerLabel.trim().toLowerCase();
-  return clean !== "unassigned" && !clean.startsWith("unassigned ");
+  return !clean.startsWith("unassigned");
 }
 
 function getLeaderboardManagerFontSize(manager: string) {
-  if (manager.length > 28) return 17;
-  if (manager.length > 22) return 19;
-  return 24;
+  const length = getPlainManagerName(manager).length;
+  if (length > 28) return 15;
+  if (length > 22) return 17;
+  if (length > 17) return 19;
+  return 21;
 }
 
 function formatManagerWithGroup(managerLabel: string, agency: string) {
   if (!agency || managerLabel === "Unassigned") return managerLabel;
-  if (managerLabel.startsWith("First Class —")) return managerLabel;
+  if (managerLabel === FIRST_CLASS_DEFAULT_TEAM || RESERVED_LEADERBOARD_TEAMS.includes(managerLabel)) {
+    return managerLabel;
+  }
   if (managerLabel.toLowerCase().includes(`(${agency.toLowerCase()})`)) return managerLabel;
   return `${managerLabel} (${agency})`;
 }
@@ -662,10 +677,13 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         id: getText(latest, ["creator_id", "Creator ID"], key),
         username: getUsername(latest),
         email: getText(latest, ["creator_email", "Creator email"], "No email"),
-        group: groupValue,
+        group: getCreatorIntelligenceGroup(groupValue, managerRaw, getManagerLabel(managerRaw, groupValue)),
         agency: agencyValue,
         managerRaw,
-        managerLabel: formatManagerWithGroup(getManagerLeaderboardLabel(managerRaw, groupValue), agencyValue),
+        managerLabel:
+          agencyValue === "First Class"
+            ? getFirstClassLeaderboardTeam(managerRaw, getManagerLabel(managerRaw, groupValue))
+            : formatManagerWithGroup(getManagerLabel(managerRaw, groupValue), agencyValue),
         graduationStatus: getText(latest, ["graduation_status", "Graduation status"], "Unknown"),
         tierStatus: getText(latest, ["tier_status", "Tier status"], "Unknown"),
         sourceStatus: getText(latest, ["status", "Status"], ""),
@@ -2001,9 +2019,9 @@ async function renderManagerHealthLeaderboardToPngBlob(
       const tone = getManagerLeaderboardTone(managerSummary.averageScore);
 
       return `
-        <div style="display:grid;grid-template-columns:70px 1fr 130px 118px 118px 118px 150px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.95),${tone.bg});box-shadow:0 0 18px ${tone.border}33 inset;font-weight:950;">
-          <div style="text-align:center;font-size:28px;color:#fff7ed;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
-          <div style="min-width:0;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(managerSummary.manager)}</div>
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 106px 80px 75px 110px 112px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.95),${tone.bg});box-shadow:0 0 18px ${tone.border}33 inset;font-weight:950;">
+          <div style="text-align:center;font-size:26px;color:#fff7ed;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
+          <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
           <div style="text-align:center;font-size:30px;color:${tone.color};text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#fff7ed;">/100</span></div>
           <div style="text-align:center;font-size:20px;color:#fde68a;">${formatNumber(managerSummary.matureCreators)}</div>
           <div style="text-align:center;font-size:20px;color:#c084fc;">${formatNumber(managerSummary.elite)}</div>
@@ -2042,7 +2060,7 @@ async function renderManagerHealthLeaderboardToPngBlob(
         </div>
       </div>
       <div style="position:relative;z-index:1;">
-        <div style="display:grid;grid-template-columns:70px 1fr 130px 118px 118px 118px 150px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.98),rgba(74,52,10,.94));font-size:15px;font-weight:950;text-transform:uppercase;letter-spacing:2px;color:#fff7ed;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 106px 80px 75px 110px 112px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.98),rgba(74,52,10,.94));font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:1px;color:#fff7ed;">
           <div style="text-align:center;">#</div>
           <div>Manager</div>
           <div style="text-align:center;">Score</div>
@@ -2514,11 +2532,11 @@ export default function CreatorIntelligencePage() {
 
     for (const creator of managerFilteredCreators) {
       const managerName = creator.managerLabel || "Unassigned";
-      if (!isLeaderboardManager(managerName)) continue;
+      if (!isLeaderboardManager(managerName) || isExcludedFromLeaderboards(creator)) continue;
       grouped.set(managerName, [...(grouped.get(managerName) || []), creator]);
     }
 
-    return Array.from(grouped.entries())
+    const summaries = Array.from(grouped.entries())
       .map(([managerName, creators]) => {
         const matureCreators = creators.filter((creator) => !creator.isNewCreator);
         const scoreBase = matureCreators.length ? matureCreators : creators;
@@ -2541,7 +2559,29 @@ export default function CreatorIntelligencePage() {
           lowQuality: matureCreators.filter((creator) => creator.healthStatus === "Low Quality").length,
         };
       })
-      .sort((a, b) => a.averageScore - b.averageScore);
+    for (const manager of RESERVED_LEADERBOARD_TEAMS) {
+      if (!summaries.some((summary) => summary.manager === manager)) {
+        summaries.push({
+          manager,
+          creators: [],
+          totalCreators: 0,
+          matureCreators: 0,
+          newCreators: 0,
+          averageScore: 0,
+          elite: 0,
+          healthy: 0,
+          needsAttention: 0,
+          lowPerformance: 0,
+          lowQuality: 0,
+        });
+      }
+    }
+
+    return summaries.sort((a, b) => {
+      if (a.manager === "Team Dan") return -1;
+      if (b.manager === "Team Dan") return 1;
+      return a.averageScore - b.averageScore;
+    });
   }, [activeGroup, aquaSummaries, healthStatus, search]);
 
   const managerGrowthSummaries = useMemo(
