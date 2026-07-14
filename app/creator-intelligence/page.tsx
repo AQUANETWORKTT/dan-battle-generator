@@ -575,8 +575,8 @@ function getDailyPoint(row: CreatorStat): CreatorDailyPoint {
 }
 
 function getHealthStatus(score: number, diamonds = 0): HealthStatus {
-  if (score >= 85) return "Elite";
-  if (score >= 70) return "Healthy";
+  if (score >= 75) return "Elite";
+  if (score >= 65) return "Healthy";
   if (score >= 50) return "Needs Attention";
   if (diamonds >= 5000) return "Inconsistent but High Diamonds";
   return "Low Quality";
@@ -1933,10 +1933,8 @@ function getHealthPosterTone(status: HealthStatus) {
 }
 
 function getManagerLeaderboardTone(score: number) {
-  if (score >= 75) return { label: "ELITE", color: "#ffffff", accent: "#facc15", border: "#fbbf24", bg: "rgba(113,63,18,.48)" };
-  if (score >= 65) return { label: "ABOVE AVERAGE", color: "#ffffff", accent: "#fde68a", border: "#eab308", bg: "rgba(101,77,13,.42)" };
-  if (score >= 50) return { label: "AVERAGE", color: "#ffffff", accent: "#fef3c7", border: "#ca8a04", bg: "rgba(120,87,14,.40)" };
-  return { label: "IMPROVE", color: "#ffffff", accent: "#fde68a", border: "#a16207", bg: "rgba(92,61,8,.42)" };
+  void score;
+  return { border: "#eab308", bg: "rgba(101,77,13,.42)" };
 }
 
 async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSummary) {
@@ -1953,9 +1951,9 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
     0
   );
   const qualityItems = [
-    { label: "ELITE", range: "85-100", count: managerSummary.elite, color: "#facc15", border: "#f59e0b" },
-    { label: "ABOVE AVERAGE", range: "70-84", count: managerSummary.healthy, color: "#fde68a", border: "#eab308" },
-    { label: "AVERAGE", range: "50-69", count: managerSummary.needsAttention, color: "#fbbf24", border: "#d97706" },
+    { label: "ELITE", range: "75-100", count: managerSummary.elite, color: "#facc15", border: "#f59e0b" },
+    { label: "ABOVE AVERAGE", range: "65-74", count: managerSummary.healthy, color: "#fde68a", border: "#eab308" },
+    { label: "AVERAGE", range: "50-64", count: managerSummary.needsAttention, color: "#fbbf24", border: "#d97706" },
     { label: "NEEDS IMPROVEMENT", range: "<=49", count: needsImprovementCount, color: "#f97316", border: "#ea580c" },
   ];
   const qualityRows = qualityItems
@@ -2067,12 +2065,14 @@ async function renderManagerHealthLeaderboardToPngBlob(
       const tone = getManagerLeaderboardTone(managerSummary.averageScore);
 
       return `
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 140px 170px 130px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(37,25,4,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}33 inset;font-weight:950;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 80px 84px 122px 80px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(37,25,4,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}33 inset;font-weight:950;">
           <div style="text-align:center;font-size:26px;color:#ffffff;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
           <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
           <div style="text-align:center;font-size:30px;color:#ffffff;text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#ffffff;">/100</span></div>
-          <div style="text-align:center;font-size:16px;letter-spacing:1px;color:${tone.accent};">${tone.label}</div>
-          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.matureCreators)}</div>
+          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.lowPerformance + managerSummary.lowQuality)}</div>
+          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.needsAttention)}</div>
+          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.healthy)}</div>
+          <div style="text-align:center;font-size:20px;color:#ffffff;">${formatNumber(managerSummary.elite)}</div>
         </div>
       `;
     })
@@ -2106,12 +2106,14 @@ async function renderManagerHealthLeaderboardToPngBlob(
         </div>
       </div>
       <div style="position:relative;z-index:1;">
-        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 140px 170px 130px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(54,37,4,.98),rgba(109,76,9,.94));font-size:14px;font-weight:950;text-transform:uppercase;letter-spacing:1px;color:#ffffff;">
+        <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 80px 84px 122px 80px;align-items:center;height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(54,37,4,.98),rgba(109,76,9,.94));font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;color:#ffffff;">
           <div style="text-align:center;">#</div>
           <div>Manager</div>
           <div style="text-align:center;">Score</div>
-          <div style="text-align:center;">Band</div>
-          <div style="text-align:center;">Scored</div>
+          <div style="text-align:center;">Improve</div>
+          <div style="text-align:center;">Average</div>
+          <div style="text-align:center;">Above Avg</div>
+          <div style="text-align:center;">Elite</div>
         </div>
         ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:34px;text-align:center;font-size:28px;font-weight:950;">No scored managers yet.</div>`}
       </div>
@@ -3744,7 +3746,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Health Tracker</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Last seven uploaded days. Below 50 is Needs Improvement, 50-69 is Average, 70-84 is Above Average, and 85+ is Elite.
+                Last seven uploaded days. Below 50 is Needs Improvement, 50-64 is Average, 65-74 is Above Average, and 75+ is Elite.
               </p>
             </div>
             <p className="text-sm font-bold text-slate-500">
