@@ -369,6 +369,8 @@ const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
 const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
 const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
+const NO_MANAGER_KBON_KEYS = ["kbon03"];
+const TEAM_DAN_CREATOR_KEYS = ["kayjb3"];
 const EXCLUDED_LEADERBOARD_CREATOR_KEYS = ["allannahunknown444"];
 const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
 
@@ -381,8 +383,20 @@ function hasManagerKey(value: string, keys: string[]) {
   return keys.some((key) => normalized.includes(key));
 }
 
-function getFirstClassManagerDetails(managerRaw: string, managerLabel: string) {
+function getFirstClassManagerDetails(managerRaw: string, managerLabel: string, username = "") {
   const managerDetails = `${managerRaw} ${managerLabel}`;
+  if (TEAM_DAN_CREATOR_KEYS.includes(normalizeManagerKey(username))) {
+    return { managerLabel: "Team Dan (First Class — Team Dan)", managerGroup: "Exempt" };
+  }
+  if (hasManagerKey(managerDetails, ["firstclassagencydan"])) {
+    return { managerLabel: "Team Dan (First Class — Team Dan)", managerGroup: "Exempt" };
+  }
+  if (hasManagerKey(managerDetails, ["firstclassagencymikeindi", "mikeindi"])) {
+    return { managerLabel: "Team Mike / Indi (First Class — Team Mike / Indi)", managerGroup: "Exempt" };
+  }
+  if (hasManagerKey(managerDetails, NO_MANAGER_KBON_KEYS)) {
+    return { managerLabel: "No Manager On Backstage", managerGroup: "First Class" };
+  }
   if (hasManagerKey(managerDetails, NO_MANAGER_ON_BACKSTAGE_KEYS)) {
     return { managerLabel: "No Manager On Backstage", managerGroup: "First Class" };
   }
@@ -415,9 +429,14 @@ function isExcludedFromDashboardData(creator: Pick<CreatorSummary, "managerRaw">
   return hasManagerKey(creator.managerRaw, EXCLUDED_DATA_MANAGER_KEYS);
 }
 
+function isExemptManagerLabel(managerLabel: string) {
+  const clean = normalizeManagerKey(managerLabel);
+  return clean === "teamdanfirstclassteamdan" || clean === "teammikeindifirstclassteammikeindi";
+}
+
 function isLeaderboardManager(managerLabel: string) {
   const clean = managerLabel.trim().toLowerCase();
-  return !clean.startsWith("unassigned") && clean !== "no manager on backstage";
+  return !clean.startsWith("unassigned") && clean !== "no manager on backstage" && !isExemptManagerLabel(managerLabel);
 }
 
 function getLeaderboardManagerFontSize(manager: string) {
@@ -660,7 +679,11 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) >= 1).length;
       const managerRaw = getManagerRaw(latest);
       const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
-      const firstClassManager = getFirstClassManagerDetails(managerRaw, baseManagerLabel);
+      const firstClassManager = getFirstClassManagerDetails(
+        managerRaw,
+        baseManagerLabel,
+        getUsername(latest)
+      );
       const diamonds = creatorRows.reduce((sum, row) => sum + getNumber(row, ["diamonds", "Diamonds"]), 0);
       const liveHours = creatorRows.reduce(
         (sum, row) => sum + getDurationHours(row, ["live_hours", "LIVE duration"]),
@@ -1927,9 +1950,9 @@ async function waitForPosterAssets(root: Document | HTMLElement) {
 
 function getHealthPosterTone(status: HealthStatus) {
   if (status === "Elite") return { label: "ELITE", color: "#facc15", border: "#f59e0b" };
-  if (status === "Healthy") return { label: "ABOVE AVERAGE", color: "#fde68a", border: "#eab308" };
-  if (status === "Needs Attention") return { label: "AVERAGE", color: "#fbbf24", border: "#d97706" };
-  return { label: "NEEDS IMPROVEMENT", color: "#f97316", border: "#ea580c" };
+  if (status === "Healthy") return { label: "ABOVE AVERAGE", color: "#e2e8f0", border: "#cbd5e1" };
+  if (status === "Needs Attention") return { label: "AVERAGE", color: "#d08a48", border: "#b87333" };
+  return { label: "IMPROVE", color: "#f87171", border: "#ef4444" };
 }
 
 function getManagerLeaderboardTone(score: number) {
@@ -1952,9 +1975,9 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
   );
   const qualityItems = [
     { label: "ELITE", range: "75-100", count: managerSummary.elite, color: "#facc15", border: "#f59e0b" },
-    { label: "ABOVE AVERAGE", range: "65-74", count: managerSummary.healthy, color: "#fde68a", border: "#eab308" },
-    { label: "AVERAGE", range: "50-64", count: managerSummary.needsAttention, color: "#fbbf24", border: "#d97706" },
-    { label: "NEEDS IMPROVEMENT", range: "<=49", count: needsImprovementCount, color: "#f97316", border: "#ea580c" },
+    { label: "ABOVE AVERAGE", range: "65-74", count: managerSummary.healthy, color: "#e2e8f0", border: "#cbd5e1" },
+    { label: "AVERAGE", range: "50-64", count: managerSummary.needsAttention, color: "#d08a48", border: "#b87333" },
+    { label: "IMPROVE", range: "<=49", count: needsImprovementCount, color: "#f87171", border: "#ef4444" },
   ];
   const qualityRows = qualityItems
     .map(
@@ -1982,10 +2005,10 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
     .join("");
   const posterHtml = `
     <div style="position:relative;width:1000px;min-height:720px;overflow:hidden;box-sizing:border-box;padding:26px 28px 34px;background:
-      radial-gradient(circle at 50% 0%, rgba(250,204,21,.28), transparent 24%),
-      radial-gradient(circle at 0% 18%, rgba(245,158,11,.18), transparent 28%),
-      radial-gradient(circle at 100% 22%, rgba(234,179,8,.18), transparent 27%),
-      linear-gradient(180deg,#030303 0%,#15110a 48%,#030303 100%);
+      radial-gradient(circle at 50% 0%, rgba(250,204,21,.12), transparent 24%),
+      radial-gradient(circle at 0% 18%, rgba(245,158,11,.08), transparent 28%),
+      radial-gradient(circle at 100% 22%, rgba(234,179,8,.08), transparent 27%),
+      #000000;
       color:#fff7ed;font-family:Arial,Helvetica,sans-serif;">
       <div style="position:absolute;inset:18px;border:2px solid rgba(250,204,21,.72);box-shadow:0 0 32px rgba(250,204,21,.5),0 0 90px rgba(245,158,11,.2) inset;"></div>
       <div style="position:absolute;left:-120px;right:-120px;top:88px;height:110px;border-top:5px solid rgba(250,204,21,.48);border-radius:50%;filter:drop-shadow(0 0 16px #facc15);transform:rotate(-7deg);"></div>
@@ -2066,9 +2089,9 @@ async function renderManagerHealthLeaderboardToPngBlob(
 
       return `
         <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 120px 72px 122px 84px 80px;align-items:center;height:${rowHeight}px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border};background:linear-gradient(90deg,rgba(3,3,3,.98),${tone.bg});box-shadow:0 0 20px ${tone.border}44 inset;font-weight:950;">
-          <div style="text-align:center;font-size:26px;color:#ffffff;text-shadow:0 0 10px ${tone.border};">${index + 1}</div>
-          <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;text-shadow:3px 3px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
-          <div style="text-align:center;font-size:30px;color:#ffffff;text-shadow:0 0 14px ${tone.border};">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#ffffff;">/100</span></div>
+          <div style="text-align:center;font-size:26px;color:#ffffff;">${index + 1}</div>
+          <div style="min-width:0;overflow:hidden;padding-right:12px;white-space:nowrap;font-size:${getLeaderboardManagerFontSize(managerSummary.manager)}px;color:#fff7ed;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
+          <div style="text-align:center;font-size:30px;color:#ffffff;">${formatNumber(managerSummary.averageScore)}<span style="font-size:14px;color:#ffffff;">/100</span></div>
           <div style="text-align:center;font-size:20px;color:#facc15;text-shadow:0 0 10px #facc1588;">${formatNumber(managerSummary.elite)}</div>
           <div style="text-align:center;font-size:20px;color:#e2e8f0;text-shadow:0 0 10px #ffffff55;">${formatNumber(managerSummary.healthy)}</div>
           <div style="text-align:center;font-size:20px;color:#d08a48;text-shadow:0 0 10px #d08a4888;">${formatNumber(managerSummary.needsAttention)}</div>
@@ -2083,7 +2106,7 @@ async function renderManagerHealthLeaderboardToPngBlob(
     ? sortedManagers.reduce((sum, managerSummary) => sum + managerSummary.averageScore, 0) / sortedManagers.length
     : 0;
   const posterHtml = `
-    <div style="position:relative;width:1000px;min-height:${posterHeight}px;overflow:hidden;background:radial-gradient(circle at 50% 0%,#3f2d08 0,#130f08 34%,#030303 68%);border:4px solid #facc15;color:#fff7ed;font-family:Arial,sans-serif;padding:42px 32px 44px;box-shadow:0 0 42px #facc1566 inset;">
+    <div style="position:relative;width:1000px;min-height:${posterHeight}px;overflow:hidden;background:radial-gradient(circle at 50% 0%,rgba(250,204,21,.12),transparent 34%),#000000;border:4px solid #facc15;color:#fff7ed;font-family:Arial,sans-serif;padding:42px 32px 44px;box-shadow:0 0 30px #facc1533 inset;">
       <div style="position:absolute;inset:18px;border:2px solid #facc15;opacity:.75;"></div>
       <div style="position:absolute;left:-110px;right:-110px;top:110px;height:130px;border-top:5px solid #facc15;border-radius:50%;opacity:.35;"></div>
       <div style="position:relative;z-index:1;text-align:center;">
@@ -2110,10 +2133,10 @@ async function renderManagerHealthLeaderboardToPngBlob(
           <div style="text-align:center;">#</div>
           <div>Manager</div>
           <div style="text-align:center;">Score</div>
-          <div style="text-align:center;">Elite</div>
-          <div style="text-align:center;">Above Avg</div>
-          <div style="text-align:center;">Average</div>
-          <div style="text-align:center;">Improve</div>
+          <div style="text-align:center;color:#facc15;text-shadow:0 0 10px #facc15;">Elite</div>
+          <div style="text-align:center;color:#e2e8f0;text-shadow:0 0 8px #ffffff99;">Above Avg</div>
+          <div style="text-align:center;color:#d08a48;text-shadow:0 0 8px #d08a4888;">Average</div>
+          <div style="text-align:center;color:#f87171;text-shadow:0 0 8px #f8717188;">Improve</div>
         </div>
         ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:34px;text-align:center;font-size:28px;font-weight:950;">No scored managers yet.</div>`}
       </div>
@@ -2508,21 +2531,23 @@ export default function CreatorIntelligencePage() {
   }, [aquaSummaries]);
 
   const groups = useMemo(() => {
-    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Storm"];
+    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Storm", "Exempt"];
   }, []);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";
   const activeGroup = groups.includes(groupFilter) ? groupFilter : "All Groups";
+  const isFirstClassView = ["First Class", "Team Dan", "Team Mike / Indi", "Team Storm", "Exempt"].includes(activeGroup);
 
 
   const filteredCreators = useMemo(() => {
     return aquaSummaries.filter((creator) => {
       const managerMatch = activeManager === "All Managers" || creator.managerLabel === activeManager;
       const groupMatch =
-        activeGroup === "All Groups" ||
-        creator.agency === activeGroup ||
-        creator.managerGroup === activeGroup ||
-        creator.group === activeGroup;
+        activeGroup === "All Groups"
+          ? true
+          : creator.managerGroup === "Exempt"
+            ? activeGroup === "Exempt"
+            : creator.agency === activeGroup || creator.managerGroup === activeGroup || creator.group === activeGroup;
       const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
       const haystack = [
         creator.username,
@@ -2561,10 +2586,11 @@ export default function CreatorIntelligencePage() {
   const managerHealthSummaries = useMemo<ManagerHealthSummary[]>(() => {
     const managerFilteredCreators = aquaSummaries.filter((creator) => {
       const groupMatch =
-        activeGroup === "All Groups" ||
-        creator.agency === activeGroup ||
-        creator.managerGroup === activeGroup ||
-        creator.group === activeGroup;
+        activeGroup === "All Groups"
+          ? true
+          : creator.managerGroup === "Exempt"
+            ? activeGroup === "Exempt"
+            : creator.agency === activeGroup || creator.managerGroup === activeGroup || creator.group === activeGroup;
       const healthMatch = healthStatus === "All Health" || creator.healthStatus === healthStatus;
       const haystack = [
         creator.username,
@@ -3002,7 +3028,42 @@ export default function CreatorIntelligencePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 md:px-8">
+    <main className={`min-h-screen px-4 py-6 md:px-8 ${isFirstClassView ? "first-class-theme bg-[#090804] text-amber-50" : "bg-slate-50 text-slate-950"}`}>
+      {isFirstClassView ? (
+        <style jsx>{`
+          .first-class-theme :global(.rounded-3xl) {
+            border-color: #8a6508;
+            background: linear-gradient(145deg, #151006, #090804);
+            box-shadow: none;
+          }
+          .first-class-theme :global(.rounded-2xl) {
+            border-color: #705207;
+          }
+          .first-class-theme :global(h1), .first-class-theme :global(h2), .first-class-theme :global(h3) {
+            color: #fff7d6;
+          }
+          .first-class-theme :global(p), .first-class-theme :global(label) {
+            color: #d6c89d;
+          }
+          .first-class-theme :global(select), .first-class-theme :global(input) {
+            border-color: #8a6508;
+            background: #0d0a04;
+            color: #fff7d6;
+          }
+          .first-class-theme :global(.bg-sky-50), .first-class-theme :global(.bg-slate-50), .first-class-theme :global(.bg-white) {
+            background: #100c05;
+          }
+          .first-class-theme :global(.border-sky-200), .first-class-theme :global(.border-slate-200), .first-class-theme :global(.border-sky-100) {
+            border-color: #705207;
+          }
+          .first-class-theme :global(.text-sky-900), .first-class-theme :global(.text-sky-950), .first-class-theme :global(.text-slate-950), .first-class-theme :global(.text-slate-700) {
+            color: #fff7d6;
+          }
+          .first-class-theme :global(.text-slate-500), .first-class-theme :global(.text-slate-400) {
+            color: #c9ba8c;
+          }
+        `}</style>
+      ) : null}
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex-1 text-center md:pl-40">
