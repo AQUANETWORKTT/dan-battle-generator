@@ -336,6 +336,12 @@ function getManagerLabel(value: string, groupValue = "") {
 
 const FIRST_CLASS_DEFAULT_GROUP = "Mike / Indi";
 const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }> = {
+  cjtokens1237: { name: "CJ", group: "Dan" },
+  teamalf: { name: "Alf", group: "Dan" },
+  firstclassagencyabbie: { name: "Abbie", group: "Dan" },
+  firstclassagencyolivia: { name: "Liv", group: "Dan" },
+  sjm20101: { name: "Steven", group: "Dan" },
+  firstclassagencypaige: { name: "Paige", group: "Dan" },
   jasminabidzane: { name: "Jasmine", group: "Dan" },
   connorfirstclass: { name: "Connor", group: "Dan" },
   brandyfalconer35: { name: "Brandy", group: "Dan" },
@@ -360,6 +366,9 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
 };
 const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
+const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
+const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
+const EXCLUDED_LEADERBOARD_CREATOR_KEYS = ["allannahunknown444"];
 const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
 
 function normalizeManagerKey(value: string) {
@@ -373,6 +382,9 @@ function hasManagerKey(value: string, keys: string[]) {
 
 function getFirstClassManagerDetails(managerRaw: string, managerLabel: string) {
   const managerDetails = `${managerRaw} ${managerLabel}`;
+  if (hasManagerKey(managerDetails, NO_MANAGER_ON_BACKSTAGE_KEYS)) {
+    return { managerLabel: "No Manager On Backstage", managerGroup: "First Class" };
+  }
   const configKey = Object.keys(FIRST_CLASS_MANAGER_CONFIG).find((key) => hasManagerKey(managerDetails, [key]));
   const config = configKey ? FIRST_CLASS_MANAGER_CONFIG[configKey] : null;
   const name = config?.name || getPlainManagerName(managerLabel);
@@ -389,14 +401,22 @@ function getCreatorIntelligenceGroup(groupValue: string, managerRaw: string, man
   return groupValue;
 }
 
-function isExcludedFromLeaderboards(creator: Pick<CreatorSummary, "managerRaw" | "managerLabel">) {
+function isExcludedFromLeaderboards(creator: Pick<CreatorSummary, "username" | "managerRaw" | "managerLabel">) {
   const managerDetails = `${creator.managerRaw} ${creator.managerLabel}`;
-  return hasManagerKey(managerDetails, EXCLUDED_MANAGER_KEYS) || LEGACY_EXCLUDED_MANAGER_LABELS.includes(normalizeManagerKey(creator.managerLabel));
+  return (
+    hasManagerKey(managerDetails, EXCLUDED_MANAGER_KEYS) ||
+    EXCLUDED_LEADERBOARD_CREATOR_KEYS.includes(normalizeManagerKey(creator.username)) ||
+    LEGACY_EXCLUDED_MANAGER_LABELS.includes(normalizeManagerKey(creator.managerLabel))
+  );
+}
+
+function isExcludedFromDashboardData(creator: Pick<CreatorSummary, "managerRaw">) {
+  return hasManagerKey(creator.managerRaw, EXCLUDED_DATA_MANAGER_KEYS);
 }
 
 function isLeaderboardManager(managerLabel: string) {
   const clean = managerLabel.trim().toLowerCase();
-  return !clean.startsWith("unassigned");
+  return !clean.startsWith("unassigned") && clean !== "no manager on backstage";
 }
 
 function getLeaderboardManagerFontSize(manager: string) {
@@ -780,6 +800,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         creatorTags: getCreatorTags(summary),
       };
     })
+    .filter((creator) => !isExcludedFromDashboardData(creator))
     .sort((a, b) => b.diamonds - a.diamonds);
 }
 
