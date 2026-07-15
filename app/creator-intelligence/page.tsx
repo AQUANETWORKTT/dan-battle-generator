@@ -594,7 +594,7 @@ function getDailyPoint(row: CreatorStat): CreatorDailyPoint {
 }
 
 function getHealthStatus(score: number, diamonds = 0): HealthStatus {
-  if (score >= 75) return "Elite";
+  if (score >= 85) return "Elite";
   if (score >= 65) return "Healthy";
   if (score >= 50) return "Needs Attention";
   if (diamonds >= 5000) return "Inconsistent but High Diamonds";
@@ -1977,8 +1977,8 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
     0
   );
   const qualityItems = [
-    { label: "ELITE", range: "75-100", count: managerSummary.elite, color: "#facc15", border: "#f59e0b" },
-    { label: "ABOVE AVERAGE", range: "65-74", count: managerSummary.healthy, color: "#e2e8f0", border: "#cbd5e1" },
+    { label: "ELITE", range: "85-100", count: managerSummary.elite, color: "#facc15", border: "#f59e0b" },
+    { label: "ABOVE AVERAGE", range: "65-84", count: managerSummary.healthy, color: "#e2e8f0", border: "#cbd5e1" },
     { label: "AVERAGE", range: "50-64", count: managerSummary.needsAttention, color: "#d08a48", border: "#b87333" },
     { label: "IMPROVE", range: "<=49", count: needsImprovementCount, color: "#f87171", border: "#ef4444" },
   ];
@@ -2985,7 +2985,7 @@ export default function CreatorIntelligencePage() {
 
   function getCopiedHealthQualityLabel(creator: CreatorSummary) {
     if (creator.healthStatus === "Elite" || creator.healthScore >= 85) return "Elite";
-    if (creator.healthStatus === "Healthy" || creator.healthScore >= 70) return "Above Average";
+    if (creator.healthStatus === "Healthy" || creator.healthScore >= 65) return "Above Average";
     if (creator.healthScore >= 50) return "Average";
     return "Needs Improvement";
   }
@@ -3302,7 +3302,7 @@ export default function CreatorIntelligencePage() {
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <span
                         className={`rounded-full border px-3 py-1 text-sm font-black ${
-                          managerSummary.averageScore >= 75
+                          managerSummary.averageScore >= 85
                             ? "border-yellow-300 bg-yellow-100 text-yellow-900"
                             : managerSummary.averageScore >= 65
                               ? "border-amber-300 bg-amber-100 text-amber-900"
@@ -3323,7 +3323,7 @@ export default function CreatorIntelligencePage() {
                     <div className="h-3 overflow-hidden rounded-full bg-white">
                       <div
                         className={`h-full ${
-                          managerSummary.averageScore >= 75
+                          managerSummary.averageScore >= 85
                             ? "bg-yellow-500"
                             : managerSummary.averageScore >= 65
                               ? "bg-amber-500"
@@ -3818,7 +3818,7 @@ export default function CreatorIntelligencePage() {
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Health Tracker</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Last seven uploaded days. Below 50 is Needs Improvement, 50-64 is Average, 65-74 is Above Average, and 75+ is Elite.
+                Last seven uploaded days. Below 50 is Needs Improvement, 50-64 is Average, 65-84 is Above Average, and 85+ is Elite.
               </p>
             </div>
             <p className="text-sm font-bold text-slate-500">
