@@ -2966,9 +2966,8 @@ export default function CreatorIntelligencePage() {
     }
 
     const blob = await renderTeamHealthPosterToPngBlob(managerSummary);
-    const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
-    const safeTeamName = managerSummary.manager.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    saveAs(blob, `first-class-team-health-score-${safeTeamName}-${timestamp}.png`);
+    const teamName = managerSummary.manager.replace(/\s*\([^)]*\)\s*$/, "");
+    saveAs(blob, `${teamName} Health Scores.png`);
   }
 
   async function downloadManagerHealthLeaderboardPng() {
