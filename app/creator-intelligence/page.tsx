@@ -148,6 +148,7 @@ type ManagerHealthSummary = {
   matureCreators: number;
   newCreators: number;
   averageScore: number;
+  monthlyAverageScore: number;
   elite: number;
   healthy: number;
   needsAttention: number;
@@ -2660,6 +2661,10 @@ export default function CreatorIntelligencePage() {
           scoreBase.length > 0
             ? scoreBase.reduce((sum, creator) => sum + creator.healthScore, 0) / scoreBase.length
             : 0;
+        const monthlyAverageScore =
+          scoreBase.length > 0
+            ? scoreBase.reduce((sum, creator) => sum + creator.monthlyHealthScore, 0) / scoreBase.length
+            : 0;
 
         return {
           manager: managerName,
@@ -2668,6 +2673,7 @@ export default function CreatorIntelligencePage() {
           matureCreators: matureCreators.length,
           newCreators: creators.length - matureCreators.length,
           averageScore,
+          monthlyAverageScore,
           elite: matureCreators.filter((creator) => creator.healthStatus === "Elite").length,
           healthy: matureCreators.filter((creator) => creator.healthStatus === "Healthy").length,
           needsAttention: matureCreators.filter((creator) => creator.healthStatus === "Needs Attention").length,
@@ -3293,19 +3299,24 @@ export default function CreatorIntelligencePage() {
                         {formatNumber(managerSummary.newCreators)} new
                       </p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-3 py-1 text-sm font-black ${
-                        managerSummary.averageScore >= 75
-                          ? "border-yellow-300 bg-yellow-100 text-yellow-900"
-                          : managerSummary.averageScore >= 65
-                            ? "border-amber-300 bg-amber-100 text-amber-900"
-                            : managerSummary.averageScore >= 50
-                              ? "border-yellow-200 bg-yellow-50 text-yellow-800"
-                              : "border-yellow-300 bg-yellow-100 text-yellow-900"
-                      }`}
-                    >
-                      {formatNumber(managerSummary.averageScore)}/100
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-sm font-black ${
+                          managerSummary.averageScore >= 75
+                            ? "border-yellow-300 bg-yellow-100 text-yellow-900"
+                            : managerSummary.averageScore >= 65
+                              ? "border-amber-300 bg-amber-100 text-amber-900"
+                              : managerSummary.averageScore >= 50
+                                ? "border-yellow-200 bg-yellow-50 text-yellow-800"
+                                : "border-yellow-300 bg-yellow-100 text-yellow-900"
+                        }`}
+                      >
+                        7-day {formatNumber(managerSummary.averageScore)}/100
+                      </span>
+                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-800">
+                        30-day {formatNumber(managerSummary.monthlyAverageScore)}/100
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-4">
@@ -3324,7 +3335,7 @@ export default function CreatorIntelligencePage() {
                       />
                     </div>
                     <p className="mt-2 text-xs font-bold text-slate-500">
-                      Team average across scored creators
+                      7-day team average across scored creators
                     </p>
                   </div>
 
