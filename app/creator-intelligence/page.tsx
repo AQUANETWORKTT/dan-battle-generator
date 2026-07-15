@@ -434,9 +434,13 @@ function isExemptManagerLabel(managerLabel: string) {
   return clean === "teamdanfirstclassteamdan" || clean === "teammikeindifirstclassteammikeindi";
 }
 
-function isLeaderboardManager(managerLabel: string) {
+function isLeaderboardManager(managerLabel: string, includeExempt = false) {
   const clean = managerLabel.trim().toLowerCase();
-  return !clean.startsWith("unassigned") && clean !== "no manager on backstage" && !isExemptManagerLabel(managerLabel);
+  return (
+    !clean.startsWith("unassigned") &&
+    clean !== "no manager on backstage" &&
+    (includeExempt || !isExemptManagerLabel(managerLabel))
+  );
 }
 
 function getLeaderboardManagerFontSize(manager: string) {
@@ -2649,7 +2653,7 @@ export default function CreatorIntelligencePage() {
 
     for (const creator of managerFilteredCreators) {
       const managerName = creator.managerLabel || "Unassigned";
-      if (!isLeaderboardManager(managerName) || isExcludedFromLeaderboards(creator)) continue;
+      if (!isLeaderboardManager(managerName, activeGroup === "Exempt") || isExcludedFromLeaderboards(creator)) continue;
       grouped.set(managerName, [...(grouped.get(managerName) || []), creator]);
     }
 
