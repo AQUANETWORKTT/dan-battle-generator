@@ -2005,6 +2005,25 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
       `;
     })
     .join("");
+  const healthScoreRules = [
+    { title: "Live hours", detail: "1.5 points per live hour, up to 20 hours", points: "0–30" },
+    { title: "Days live", detail: "3 points for every day you go live", points: "0–21" },
+    { title: "Valid live days", detail: "2 extra points for each day with 1+ hour live", points: "0–14" },
+    { title: "Battles", detail: "1 point per 7 battles, up to 70 battles", points: "0–10" },
+    { title: "Diamonds per hour", detail: "Weekly average, from 0 to 2,500 DPH", points: "0–25" },
+  ]
+    .map(
+      (rule) => `
+        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid rgba(250,204,21,.62);background:linear-gradient(90deg,rgba(3,3,3,.96),rgba(73,53,8,.72));padding:10px 12px;box-shadow:0 0 16px rgba(250,204,21,.16) inset;">
+          <div style="min-width:0;">
+            <div style="color:#fde68a;font-size:15px;font-weight:950;letter-spacing:1.5px;text-transform:uppercase;">${rule.title}</div>
+            <div style="margin-top:2px;color:#fff7ed;font-size:12px;font-weight:700;line-height:1.2;">${rule.detail}</div>
+          </div>
+          <div style="min-width:52px;text-align:right;color:#facc15;font-size:21px;font-weight:950;line-height:1;text-shadow:0 0 10px #facc15;">${rule.points}<span style="display:block;margin-top:2px;font-size:9px;letter-spacing:1px;color:#fff7ed;">POINTS</span></div>
+        </div>
+      `
+    )
+    .join("");
   const posterHtml = `
     <div style="position:relative;width:1000px;min-height:720px;overflow:hidden;box-sizing:border-box;padding:26px 28px 34px;background:
       radial-gradient(circle at 50% 0%, rgba(250,204,21,.12), transparent 24%),
@@ -2046,6 +2065,10 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
           <div>Quality</div>
         </div>
         ${rows || `<div style="border:2px solid #facc15;border-top:0;background:rgba(3,3,3,.9);padding:28px;text-align:center;font-size:28px;font-weight:950;">No scored creators yet.</div>`}
+      </div>
+      <div style="position:relative;z-index:1;margin-top:18px;border:2px solid #facc15;background:rgba(3,3,3,.9);box-shadow:0 0 28px #facc1533 inset;padding:14px;">
+        <div style="margin-bottom:10px;text-align:center;color:#fff7ed;font-size:20px;font-weight:950;letter-spacing:4px;text-transform:uppercase;text-shadow:0 0 12px #facc15;">Health Score Rules</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">${healthScoreRules}</div>
       </div>
     </div>
   `;
