@@ -2017,7 +2017,7 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
       <div style="position:absolute;left:-120px;right:-120px;bottom:20px;height:90px;border-bottom:4px solid rgba(250,204,21,.36);border-radius:50%;filter:drop-shadow(0 0 14px #facc15);transform:rotate(5deg);"></div>
       <div style="position:relative;z-index:1;text-align:center;">
         <img src="/logo.png" style="height:68px;width:auto;object-fit:contain;filter:drop-shadow(0 0 16px #facc15);" />
-        <div style="margin-top:4px;font-size:64px;font-weight:950;letter-spacing:0;text-transform:uppercase;line-height:.92;color:#fff7ed;text-shadow:0 0 18px #facc15,4px 5px 0 #000;">${escapeHtml(getPlainManagerName(managerSummary.manager))}</div>
+        <div style="margin-top:4px;font-size:64px;font-weight:950;letter-spacing:0;text-transform:uppercase;line-height:.92;color:#fff7ed;text-shadow:0 0 18px #facc15,4px 5px 0 #000;">${escapeHtml(managerSummary.manager.replace(/\s*\([^)]*\)\s*$/, ""))}</div>
         <div style="margin-top:8px;font-size:23px;font-weight:950;letter-spacing:7px;color:#fff7ed;text-transform:uppercase;text-shadow:0 0 12px #facc15;">Creator Health Scores</div>
       </div>
       <div style="position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.22fr) minmax(0,.9fr);gap:16px;margin-top:22px;">
