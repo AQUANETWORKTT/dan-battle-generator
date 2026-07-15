@@ -2110,7 +2110,6 @@ async function renderManagerHealthLeaderboardToPngBlob(
   const posterHtml = `
     <div style="position:relative;width:1000px;min-height:${posterHeight}px;overflow:hidden;background:radial-gradient(circle at 50% -10%,rgba(250,204,21,.16),transparent 30%),radial-gradient(circle at 0% 100%,rgba(161,98,7,.12),transparent 34%),#000000;border:2px solid #facc15;color:#fff7ed;font-family:Arial,sans-serif;padding:32px 32px 38px;box-shadow:0 0 30px #facc1526 inset;">
       <div style="position:absolute;inset:14px;border:1px solid rgba(250,204,21,.42);border-radius:18px;"></div>
-      <div style="position:absolute;left:30px;right:30px;top:170px;height:1px;background:linear-gradient(90deg,transparent,#facc15,transparent);opacity:.75;"></div>
       <div style="position:relative;z-index:1;text-align:center;">
         <img src="/logo.png" alt="First Class logo" style="height:66px;width:auto;object-fit:contain;" />
         <div style="margin-top:8px;font-size:56px;font-weight:950;line-height:.95;text-transform:uppercase;letter-spacing:1px;color:#fff7ed;">${escapeHtml(agencyTitle)}</div>
