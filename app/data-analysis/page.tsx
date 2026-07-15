@@ -83,6 +83,23 @@ const MONTHS = [
 const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm"];
 const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Storm"];
 const GRADUATION_TARGET = 200000;
+const STORM_CREATOR_USERNAMES = new Set(["hannakingwoodward"]);
+
+function getAgencyForAnalysisRow(row: CreatorStat) {
+  const username = String(row.creator_username || "").trim().toLowerCase();
+  const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
+
+  if (
+    STORM_CREATOR_USERNAMES.has(username) ||
+    source.includes("storm") ||
+    source.includes("strive") ||
+    /hanna.*ismail/.test(source)
+  ) {
+    return "Storm";
+  }
+
+  return row.agency;
+}
 
 function safeNumber(value: number | null | undefined) {
   return Number(value || 0);
@@ -349,11 +366,7 @@ export default function DataAnalysisPage() {
         setRows(
           ((json.rows || []) as CreatorStat[]).map((row) => ({
             ...row,
-            agency:
-              String(row.agency || "").trim().toLowerCase() === "strive" ||
-              /(hanna.*ismail|stormlive)/i.test(String(row.team || row.group_name || ""))
-                ? "Storm"
-                : row.agency,
+            agency: getAgencyForAnalysisRow(row),
           }))
         );
       } catch (error) {
