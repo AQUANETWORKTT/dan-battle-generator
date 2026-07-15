@@ -281,10 +281,9 @@ function getAgencyFromGroup(groupValue: string, fallback: string) {
   if (clean.includes("aqua")) return "Aqua";
   if (clean.includes("respawn")) return "Respawn";
   if (clean.includes("paradise")) return "Paradise";
-  if (clean.includes("storm")) return "Storm";
-  if (clean.includes("strive")) return "Strive";
+  if (clean.includes("storm") || clean.includes("strive")) return "Storm";
 
-  return fallback || "First Class";
+  return fallback === "Strive" ? "Storm" : fallback || "First Class";
 }
 
 function isAquaRow(row?: CreatorStat) {
@@ -675,10 +674,13 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       );
       const latest = sortedRows[sortedRows.length - 1] || creatorRows[0];
       const groupValue = getText(latest, ["team", "group_name", "Group"], "Unassigned");
-      const agencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"));
+      const sourceAgencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"));
       const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) >= 1).length;
       const managerRaw = getManagerRaw(latest);
       const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
+      const agencyValue = hasManagerKey(`${managerRaw} ${baseManagerLabel}`, STORM_MANAGER_KEYS)
+        ? "Storm"
+        : sourceAgencyValue;
       const firstClassManager = getFirstClassManagerDetails(
         managerRaw,
         baseManagerLabel,

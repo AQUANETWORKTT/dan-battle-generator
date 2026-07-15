@@ -80,8 +80,8 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026" },
 ];
 
-const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Strive"];
-const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Strive"];
+const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm"];
+const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Storm"];
 const GRADUATION_TARGET = 200000;
 
 function safeNumber(value: number | null | undefined) {
@@ -346,7 +346,16 @@ export default function DataAnalysisPage() {
           return;
         }
 
-        setRows((json.rows || []) as CreatorStat[]);
+        setRows(
+          ((json.rows || []) as CreatorStat[]).map((row) => ({
+            ...row,
+            agency:
+              String(row.agency || "").trim().toLowerCase() === "strive" ||
+              /(hanna.*ismail|stormlive)/i.test(String(row.team || row.group_name || ""))
+                ? "Storm"
+                : row.agency,
+          }))
+        );
       } catch (error) {
         if (controller.signal.aborted || dataLoadRequestRef.current !== requestId) return;
         console.error(error);
