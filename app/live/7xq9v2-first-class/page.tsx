@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FIRST_CLASS_CREATORS, FIRST_CLASS_EVENT, isPlaceholderCreator } from "@/lib/first-class-tournament";
+import { FIRST_CLASS_CAPTAINS, FIRST_CLASS_CREATORS, FIRST_CLASS_EVENT, isPlaceholderCreator } from "@/lib/first-class-tournament";
 
 type LeaderboardCreator = (typeof FIRST_CLASS_CREATORS)[number] & { diamonds: number };
 
@@ -15,6 +15,18 @@ const podiumStyles = [
   { border: "border-slate-200", glow: "shadow-[0_0_18px_rgba(226,232,240,0.52)]", text: "text-slate-100" },
   { border: "border-orange-400", glow: "shadow-[0_0_18px_rgba(251,146,60,0.55)]", text: "text-orange-200" },
 ];
+
+const teamPlacementStyles = [
+  "text-amber-300 drop-shadow-[0_0_14px_rgba(252,211,77,0.65)]",
+  "text-slate-200 drop-shadow-[0_0_14px_rgba(226,232,240,0.55)]",
+  "text-orange-400 drop-shadow-[0_0_14px_rgba(251,146,60,0.6)]",
+];
+
+// Paste your future uploaded asset paths here when they are ready.
+const FIRST_CLASS_BACKGROUND_IMAGE = "";
+const FIRST_CLASS_TITLE_LOGO = "";
+const FIRST_CLASS_EVENT_FROM = "2026-07-24";
+const FIRST_CLASS_EVENT_TO = "2026-07-31";
 
 function Avatar({ username, className = "" }: { username: string; className?: string }) {
   const [imageError, setImageError] = useState(false);
@@ -59,7 +71,7 @@ export default function FirstClassLeaderboard() {
   const [scores, setScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetch("/api/events/first-class/stats", { cache: "no-store" })
+    fetch(`/api/events/first-class/stats?from=${FIRST_CLASS_EVENT_FROM}&to=${FIRST_CLASS_EVENT_TO}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((data) => setScores(data.scores || {}))
       .catch(() => undefined)
@@ -79,24 +91,21 @@ export default function FirstClassLeaderboard() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#061927] text-white">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(45,212,191,0.20),transparent_31%),radial-gradient(circle_at_86%_26%,rgba(59,130,246,0.20),transparent_28%),linear-gradient(145deg,#061927_0%,#0b2940_48%,#061927_100%)]" />
+      {FIRST_CLASS_BACKGROUND_IMAGE && <img src={FIRST_CLASS_BACKGROUND_IMAGE} alt="" className="pointer-events-none fixed inset-0 h-full w-full object-cover opacity-30" />}
       <div className="floating-orb fixed left-[8%] top-24 h-48 w-48 rounded-full bg-teal-300/10 blur-3xl" />
       <div className="floating-orb-delayed fixed bottom-20 right-[6%] h-60 w-60 rounded-full bg-blue-400/10 blur-3xl" />
 
-      <div className="first-class-intro fixed inset-0 z-50 grid place-items-center bg-[#061927]" aria-hidden="true">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,rgba(45,212,191,0.16),transparent_32%)]" />
-        <img src="/first-class/plane.png" alt="" className="first-class-plane relative w-[145vw] max-w-none sm:w-[115vw]" />
-      </div>
-
-      <section className="first-class-content relative mx-auto max-w-6xl px-4 pb-14 pt-5 sm:px-6">
+      <section className="relative mx-auto max-w-6xl px-4 pb-14 pt-5 sm:px-6">
         <header className="relative overflow-hidden rounded-[34px] border border-white/15 bg-slate-950/45 px-5 py-9 text-center shadow-2xl backdrop-blur-xl sm:px-10 sm:py-12">
-          <img src="/world-cup-2026/agencies/first-class.png" alt="First Class" className="relative mx-auto mb-5 h-14 w-auto object-contain drop-shadow-[0_0_18px_rgba(252,211,77,0.32)] sm:h-20" />
+          <div className="relative mb-7 grid w-full grid-cols-5 items-center gap-1 sm:mb-9 sm:gap-5"><img src="/logos/aqua.png" alt="Aqua" className="h-14 w-full object-contain sm:h-28" /><img src="/first-class/respawn-header.png" alt="Respawn" className="h-14 w-full object-contain sm:h-28" /><img src="/world-cup-2026/agencies/first-class.png" alt="First Class" className="h-14 w-full object-contain drop-shadow-[0_0_24px_rgba(252,211,77,0.38)] sm:h-28" /><img src="/first-class/storm-transparent.png" alt="Storm" className="h-14 w-full object-contain sm:h-28" /><img src="/first-class/paradise-header.png" alt="Paradise" className="h-14 w-full object-contain sm:h-28" /></div>
           <p className="relative text-xs font-black uppercase tracking-[0.42em] text-teal-200">Cross Agency Creator Tournament</p>
-          <h1 className="relative mt-3 text-4xl font-black uppercase italic tracking-tight sm:text-7xl">First Class <span className="text-teal-300">Ascend</span></h1>
+          {FIRST_CLASS_TITLE_LOGO ? <img src={FIRST_CLASS_TITLE_LOGO} alt="First Class Ascend" className="relative mx-auto mt-3 h-20 max-w-full object-contain sm:h-28" /> : <h1 className="relative mt-3 text-4xl font-black uppercase italic tracking-tight sm:text-7xl">First Class <span className="text-teal-300">Ascend</span></h1>}
           <p className="relative mx-auto mt-4 max-w-xl text-sm font-medium text-white/65 sm:text-base">20 evenly balanced teams. One leaderboard. Every diamond counts.</p>
           <div className="relative mt-7 flex flex-wrap justify-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-white/80">
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">20 teams</span>
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">720 creators</span>
             <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-amber-100">◆ Live points leaderboard</span>
+            <span className="rounded-full border border-teal-300/30 bg-teal-300/10 px-4 py-2 text-teal-100">24–31 July 2026</span>
           </div>
         </header>
 
@@ -110,10 +119,11 @@ export default function FirstClassLeaderboard() {
             const leaders = team.creators.slice(0, 3);
             const open = openTeam === team.number;
             const accent = teamColours[(team.number - 1) % teamColours.length];
+            const captainUsername = FIRST_CLASS_CAPTAINS[team.number] || team.creators[0]?.username || "";
             return <article key={team.number} className="overflow-hidden rounded-[28px] border border-white/12 bg-slate-950/50 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <button type="button" onClick={() => setOpenTeam(open ? null : team.number)} className="group grid w-full grid-cols-[35px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 text-left sm:grid-cols-[55px_minmax(0,1fr)_185px_145px] sm:gap-5 sm:px-6 sm:py-5">
-                <span className="text-2xl font-black italic text-white/45 sm:text-3xl">{position + 1}</span>
-                <div className="min-w-0"><div className="flex items-center gap-3"><Avatar username={team.creators[0]?.username || ""} className="h-12 w-12 shrink-0 rounded-full border-2 border-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.45)] sm:h-16 sm:w-16" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Team captain</p><h3 className="truncate text-lg font-black uppercase italic text-amber-200 sm:text-2xl">Team {team.creators[0]?.username || "Captain"}</h3></div></div></div>
+                <span className={`text-2xl font-black italic sm:text-3xl ${teamPlacementStyles[position] || "text-white/45"}`}>{position + 1}</span>
+                <div className="min-w-0"><div className="flex items-center gap-3"><Avatar username={captainUsername} className="h-12 w-12 shrink-0 rounded-full border-2 border-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.45)] sm:h-16 sm:w-16" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Team {team.number}</p><h3 className="break-words text-lg font-black uppercase italic leading-tight text-amber-200 sm:text-2xl">Team {captainUsername || "Captain"}</h3></div></div></div>
                 <div className="flex items-center justify-self-end gap-2 sm:gap-3">{leaders.map((creator, index) => { const podium = podiumStyles[index]; return <div key={creator.username} className="relative text-center"><Avatar username={creator.username} className={`h-9 w-9 rounded-full border-2 bg-slate-950 text-[9px] sm:h-12 sm:w-12 sm:text-xs ${podium.border} ${podium.glow}`} /><span className={`mt-1 block text-[9px] ${podium.text}`}>◆</span></div>; })}</div>
                 <div className="text-right"><p className="text-xl font-black italic sm:text-3xl">{team.total.toLocaleString()}</p><p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/45">Points</p></div>
                 <span className="col-span-full -mx-4 -mb-4 mt-3 grid h-10 place-items-center border-t border-white/10 bg-black/15 text-[10px] font-black uppercase tracking-[0.26em] text-teal-100 transition hover:bg-teal-300/10 hover:text-teal-50 sm:-mx-6 sm:-mb-5 sm:mt-4">{open ? "Hide Team" : "View Team"}</span>

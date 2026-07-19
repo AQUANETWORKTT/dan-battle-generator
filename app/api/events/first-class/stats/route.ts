@@ -4,6 +4,9 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 export const dynamic = "force-dynamic";
 
+const EVENT_FROM = "2026-07-24";
+const EVENT_TO = "2026-07-31";
+
 type StatRow = {
   creator_username: string;
   diamonds: number | null;
@@ -12,6 +15,11 @@ type StatRow = {
 export async function GET(req: Request) {
   const usernames = FIRST_CLASS_CREATORS.map((creator) => creator.username.toLowerCase());
 
+  // Keep the public board at zero until the tournament begins.
+  if (new Date().toISOString().slice(0, 10) < EVENT_FROM) {
+    return NextResponse.json({ scores: {}, updatedAt: new Date().toISOString() });
+  }
+
   // Do not make a database request until real usernames have replaced the starter roster.
   if (usernames.every(isPlaceholderCreator)) {
     return NextResponse.json({ scores: {}, updatedAt: new Date().toISOString() });
@@ -19,8 +27,8 @@ export async function GET(req: Request) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
+    const from = searchParams.get("from") || EVENT_FROM;
+    const to = searchParams.get("to") || EVENT_TO;
     let query = submissionsSupabase
       .from("creator_daily_stats")
       .select("creator_username, diamonds")

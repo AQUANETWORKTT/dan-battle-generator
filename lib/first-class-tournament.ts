@@ -26,8 +26,8 @@ const TEAM_USERNAMES = [
   "dam_it_chan sgtgramps jacobr015 z.diness goldengun_2 legallymixed maikatemc titch_5 leanneonlife shannonloganxox tina_be00 6quack7 mads.mcleod16 rileyup06 mace6760 waifbaes xo_faye_xo18 holzystreams angel_93_14 theruleofghoul no1fitzy aviationsoph2006 jadesmith0250 hollymay_2007 bradddzsj karolina.l06 mads.ell22 chelsea.ward80 shannonmx2 beth_rowlands21 hazstacksgwop1 angelinaroyle17 aims.ad77 matt_gaming80 bastreams01",
   "2026_phyco leeimahn96 j.wliveacc charlievenables2 bexaroonie its_watsonspamm tezz1994 abbiegrant26 kets540 smokeandstilettos emma_2025xx willjohno97 _lucy_no1 piercdntattdd sdplays94 y0ur_l0cal_j nutty_nat17 sarafraser82 shelbywigfield 4rr0n_b graveyardlace hannahbrissenden12 jordan.sears_ callsignviper20 gamingwithcookiz shareenafenwick scottishcammy xaraoneill aronmirmusic lilo_foreverx slappyskillzgaming quin_oflynn katie_mellor2001 ukswagashotz patriziatigue3",
   "x_cj_tokens_x kyzwrld1 sam252410 recoverywithlily2.2 elllllsssssss_xo23 white.trxsh101 austeja_123k2004 rhir3a pyroindigame janieb551 queenangeltv teegz9971 nyriqontop _.reyno xx_star_xx30 mollsjadex owen.whittaker0 mrjigglebac xkialouiseee smilie848 izzybusking inactiveuser2999 theofficialwill007 gavzywz nikita123455 mikehalesmma activ3_j7 slamth0t tny.2.0 jcxttt chelsnorton788 morgan_wynn25 astromort .leonajayne rxchierich",
-  "robscottw caitlinjervis68 flatline_official kitokovacs raachlouisexxx trevortilcock5 penii1722 starlight00p00 lewisalanhardacre henrymunslow itsriverlea jess_22_c .jackhill3 sophiehaynes37 xephno1 j96x01 megs_lilyxoxo melissaah1997 itsyouboy96 jp_0251 f3arax jodiemccaffrey2 a1.backupp3 x.alice.x04 roootsyy strorny03 elowenmagik dr.donut045 itz._.b00 ..tyler_xanderc urfavv_caz lillimae_20 kyle94678 bonnieclydescooking westhamdan5",
-  "laurenleig.h josh4pffitness26 alisha06 thackers123 ateamxo lonnell6 that.mum.over.the freddie.toll1 bailedonbails upliftingjono deannalangham07 veronica_rose22 kitch469 callum.072 carys.windibank codexsystems chloes1252 damo_bafc thee.mr.0 katiemilne05 teresadonovan12 grannybasheraaron69 2_57am tix_privv thepanicbandit keirdaleoakesss q4mzs1 angelinagittoesxmain sharna.xxx itsnotmeitsyoux2 mattyjf_21 mrspopeye26 autistic_streamer bowen_142 andypandy3762",
+  "laurenleig.h caitlinjervis68 flatline_official kitokovacs raachlouisexxx trevortilcock5 penii1722 starlight00p00 lewisalanhardacre henrymunslow itsriverlea jess_22_c .jackhill3 sophiehaynes37 xephno1 j96x01 megs_lilyxoxo melissaah1997 itsyouboy96 jp_0251 f3arax jodiemccaffrey2 a1.backupp3 x.alice.x04 roootsyy strorny03 elowenmagik dr.donut045 itz._.b00 ..tyler_xanderc urfavv_caz lillimae_20 kyle94678 bonnieclydescooking westhamdan5",
+  "ateamxo josh4pffitness26 alisha06 thackers123 robscottw lonnell6 that.mum.over.the freddie.toll1 bailedonbails upliftingjono deannalangham07 veronica_rose22 kitch469 callum.072 carys.windibank codexsystems chloes1252 damo_bafc thee.mr.0 katiemilne05 teresadonovan12 grannybasheraaron69 2_57am tix_privv thepanicbandit keirdaleoakesss q4mzs1 angelinagittoesxmain sharna.xxx itsnotmeitsyoux2 mattyjf_21 mrspopeye26 autistic_streamer bowen_142 andypandy3762",
   "harryjonesey sambaileysingerofficial theoneinthehat wahid.hussain928 stepbystepwithjack addy_w786 queeniesouthxx ashleygardner93 sc95__ gethinmayers usernothere251 qdedbyjiggle 420_unknown.c1 leonathegirl4 chloefredajanetarot jakeandbailey0 jasminaanastasija0 poppytownend iswxz._.20 kaydkamara xtaylameaglen robertparrott4 lyndsey299 kayla_181206 adelleturnerr hexsc lewismurray51 ethan_jones_22 nicolecarrott baby_mama29_ chloe.roberts111 harrisongunn4 mister.robert.house mommabrookes92 jennygump11",
   "arabellama_y paigeoliviaax1 poppy_cooper06 sadeelizabethxx soph06782 lucy_ann1481 cheeky4787 xlaurenjohnson_a0rrnb3ll uknwn06 miss_readxo x_ruby_x3 harleyj23x zcastle1234 chrisinit89 dylan.cryo whossoleice chloechapman2003 leahx.06 bigdadgaming mikeybrenmusic chrisdoestoomuch01 eilismoore2023 lacey.xo.1 amber20269 klslouis shannon.clarke070 misschae.x09 hobbsherbs1 faxthemachine irrelevant.white.dee kraken25000 gamervet9 shazisback shannonlouiseshac kombojones",
   "crystalrose.rx jayyy02413 brandyfalconer theartfulsunshine nalathehuntress meganstone71 leighanne.thomson joshuahurd1 captainbeard22 cameron_daviesmusic nataliejaynexx stacieholton1 eggbertplays dobbie.9718 charliec203 ameliapipes1 itslouisnotlewis joshyouare_holding willowde_vil1 billie.anderson73 clashelniko .jason.07 gtk.ghost.s bpeakyy bethsharples3 britishscottuk tazzzex3 iconicamzyxo xiiifr3sh lianafoster tiarniigeorgette.x kamron621 chuckymufc chefmang01 csphantom2",
@@ -39,6 +39,30 @@ const TEAM_USERNAMES = [
 export const FIRST_CLASS_CREATORS: TournamentCreator[] = TEAM_USERNAMES.flatMap((team, teamIndex) =>
   team.split(" ").map((username, slot) => ({ username, teamNumber: teamIndex + 1, slot: slot + 1 }))
 );
+
+// Captains stay fixed even when the live points ranking changes.
+export const FIRST_CLASS_CAPTAINS: Record<number, string> = {
+  1: "jdmpixxie",
+  2: "arrcch",
+  3: "mrsmrsmcdermott1",
+  4: "demilea_05",
+  5: "dens2511",
+  6: "soph.x19x",
+  7: "elliex035",
+  8: "failuretothrive2008",
+  9: "turbotagz",
+  10: "dam_it_chan",
+  11: "abbiegrant26",
+  12: "x_cj_tokens_x",
+  13: "laurenleig.h",
+  14: "ateamxo",
+  15: "theoneinthehat",
+  16: "paigeoliviaax1",
+  17: "nalathehuntress",
+  18: "hannakingwoodward",
+  19: "soph99004",
+  20: "hollyshepherd7",
+};
 
 export function isPlaceholderCreator(username: string) {
   return /^creator-\d+$/i.test(username);
