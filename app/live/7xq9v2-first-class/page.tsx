@@ -23,8 +23,8 @@ const teamPlacementStyles = [
 ];
 
 // Paste your future uploaded asset paths here when they are ready.
-const FIRST_CLASS_BACKGROUND_IMAGE = "";
-const FIRST_CLASS_TITLE_LOGO = "";
+const FIRST_CLASS_BACKGROUND_IMAGE = "/first-class/champion-background.png";
+const FIRST_CLASS_TITLE_LOGO = "/first-class/rise-to-glory-title.png";
 const FIRST_CLASS_EVENT_FROM = "2026-07-24";
 const FIRST_CLASS_EVENT_TO = "2026-07-31";
 
@@ -91,7 +91,7 @@ export default function FirstClassLeaderboard() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#061927] text-white">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(45,212,191,0.20),transparent_31%),radial-gradient(circle_at_86%_26%,rgba(59,130,246,0.20),transparent_28%),linear-gradient(145deg,#061927_0%,#0b2940_48%,#061927_100%)]" />
-      {FIRST_CLASS_BACKGROUND_IMAGE && <img src={FIRST_CLASS_BACKGROUND_IMAGE} alt="" className="pointer-events-none fixed inset-0 h-full w-full object-cover opacity-30" />}
+      {FIRST_CLASS_BACKGROUND_IMAGE && <img src={FIRST_CLASS_BACKGROUND_IMAGE} alt="" className="pointer-events-none fixed inset-0 h-full w-full object-cover opacity-80" />}
       <div className="floating-orb fixed left-[8%] top-24 h-48 w-48 rounded-full bg-teal-300/10 blur-3xl" />
       <div className="floating-orb-delayed fixed bottom-20 right-[6%] h-60 w-60 rounded-full bg-blue-400/10 blur-3xl" />
 
@@ -99,7 +99,7 @@ export default function FirstClassLeaderboard() {
         <header className="relative overflow-hidden rounded-[34px] border border-white/15 bg-slate-950/45 px-5 py-9 text-center shadow-2xl backdrop-blur-xl sm:px-10 sm:py-12">
           <div className="relative mb-7 grid w-full grid-cols-5 items-center gap-1 sm:mb-9 sm:gap-5"><img src="/logos/aqua.png" alt="Aqua" className="h-14 w-full object-contain sm:h-28" /><img src="/first-class/respawn-header.png" alt="Respawn" className="h-14 w-full object-contain sm:h-28" /><img src="/world-cup-2026/agencies/first-class.png" alt="First Class" className="h-14 w-full object-contain drop-shadow-[0_0_24px_rgba(252,211,77,0.38)] sm:h-28" /><img src="/first-class/storm-transparent.png" alt="Storm" className="h-14 w-full object-contain sm:h-28" /><img src="/first-class/paradise-header.png" alt="Paradise" className="h-14 w-full object-contain sm:h-28" /></div>
           <p className="relative text-xs font-black uppercase tracking-[0.42em] text-teal-200">Cross Agency Creator Tournament</p>
-          {FIRST_CLASS_TITLE_LOGO ? <img src={FIRST_CLASS_TITLE_LOGO} alt="First Class Ascend" className="relative mx-auto mt-3 h-20 max-w-full object-contain sm:h-28" /> : <h1 className="relative mt-3 text-4xl font-black uppercase italic tracking-tight sm:text-7xl">First Class <span className="text-teal-300">Ascend</span></h1>}
+          {FIRST_CLASS_TITLE_LOGO ? <img src={FIRST_CLASS_TITLE_LOGO} alt="Rise to Glory" className="relative mx-auto mt-4 h-40 w-full max-w-none object-contain sm:h-72" /> : <h1 className="relative mt-3 text-4xl font-black uppercase italic tracking-tight sm:text-7xl">First Class <span className="text-teal-300">Ascend</span></h1>}
           <p className="relative mx-auto mt-4 max-w-xl text-sm font-medium text-white/65 sm:text-base">20 evenly balanced teams. One leaderboard. Every diamond counts.</p>
           <div className="relative mt-7 flex flex-wrap justify-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-white/80">
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">20 teams</span>
