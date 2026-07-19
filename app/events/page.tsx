@@ -23,6 +23,15 @@ const events = [
     creatorHref: "/live/8f3k2j9m-sunset",
     colour: "orange",
   },
+  {
+    name: "First Class: Ascend",
+    status: "Tournament Setup",
+    logo: "/world-cup-2026/agencies/first-class.png",
+    leaderboardHref: "/live/7xq9v2-first-class",
+    adminHref: "/data-analysis",
+    creatorHref: "/live/7xq9v2-first-class",
+    colour: "orange",
+  },
 ];
 
 export default function EventsPage() {
