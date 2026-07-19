@@ -28,7 +28,6 @@ const events = [
     status: "Tournament Setup",
     logo: "/world-cup-2026/agencies/first-class.png",
     leaderboardHref: "/live/7xq9v2-first-class",
-    adminHref: "/data-analysis",
     creatorHref: "/live/7xq9v2-first-class",
     colour: "orange",
   },
@@ -66,7 +65,7 @@ export default function EventsPage() {
           </h1>
 
           <p className="mt-2 max-w-xl text-sm text-zinc-600">
-            Select an event to view the live leaderboard or update scores.
+            Select an event to view the live leaderboard or copy its creator link.
           </p>
         </div>
 
@@ -117,16 +116,18 @@ export default function EventsPage() {
                     View Leaderboard
                   </Link>
 
-                  <Link
-                    href={event.adminHref}
-                    className={`rounded-2xl px-5 py-3 text-center text-sm font-black uppercase ${
-                      isGreen
-                        ? "border border-green-500 bg-green-50 text-green-700"
-                        : "border border-orange-500 bg-orange-50 text-orange-700"
-                    }`}
-                  >
-                    Admin Scores
-                  </Link>
+                  {event.adminHref && (
+                    <Link
+                      href={event.adminHref}
+                      className={`rounded-2xl px-5 py-3 text-center text-sm font-black uppercase ${
+                        isGreen
+                          ? "border border-green-500 bg-green-50 text-green-700"
+                          : "border border-orange-500 bg-orange-50 text-orange-700"
+                      }`}
+                    >
+                      Admin Scores
+                    </Link>
+                  )}
 
                   <button
                     type="button"
