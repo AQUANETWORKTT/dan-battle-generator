@@ -801,7 +801,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         liveStreamsChange,
         dph: 0,
         dailyAverageDiamonds: diamonds / activeDataDays,
-        isNewCreator: daysSinceJoining > 0 && daysSinceJoining <= 14,
+        isNewCreator: daysSinceJoining > 0 && daysSinceJoining <= 7,
         healthWindowDays: health.healthWindowDays,
         liveAppearDays: health.liveAppearDays,
         oneHourDays: health.oneHourDays,
@@ -3935,7 +3935,7 @@ export default function CreatorIntelligencePage() {
               <div>
                 <h2 className="text-2xl font-black uppercase text-sky-900">New Creators</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Creators 14 days in or less are shown here instead of being placed into health buckets.
+                  Creators 7 days in or less are shown here instead of being placed into health buckets. From day 8 onwards, creators are included in the health score.
                 </p>
               </div>
               <button
