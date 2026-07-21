@@ -88,7 +88,6 @@ const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1920;
 const TEAM_POSTER_WIDTH = 1024;
 const TEAM_POSTER_HEIGHT = 1536;
-const RACE_TO_GLORY_POSTER_SIZE = 1200;
 
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
@@ -618,7 +617,7 @@ export default function BattleGeneratorPage() {
   );
   const [raceToGloryStatus, setRaceToGloryStatus] = useState("Load the live top 20 or enter the leaderboard manually.");
   const [raceToGloryLoading, setRaceToGloryLoading] = useState(false);
-  const [raceToGloryLayout, setRaceToGloryLayout] = useState<"single" | "split">("split");
+  const [raceToGloryLayout, setRaceToGloryLayout] = useState<"single" | "split">("single");
   const raceToGloryPosterRef = useRef<HTMLDivElement | null>(null);
 
   const [paste, setPaste] = useState("");
@@ -2876,8 +2875,8 @@ function renderText(
     const blob = await htmlToImage.toBlob(node, {
       cacheBust: true,
       pixelRatio: 1,
-      width: raceToGloryLayout === "split" ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_WIDTH,
-      height: raceToGloryLayout === "split" ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_HEIGHT,
+      width: TEAM_POSTER_WIDTH,
+      height: TEAM_POSTER_HEIGHT,
       backgroundColor: "#07111f",
     });
     if (blob) saveAs(blob, "race-to-glory-top-20.png");
@@ -2888,6 +2887,16 @@ function renderText(
     const posterColumns = isSplitLayout
       ? [raceToGloryRows.slice(0, 10), raceToGloryRows.slice(10, 20)]
       : [raceToGloryRows];
+    const getTeamLeaders = (teamName: string) => {
+      const match = teamName.match(/^team\s+(.+?)\s*&\s*(.+)$/i);
+      return match ? { captain: match[1], viceCaptain: match[2] } : { captain: teamName, viceCaptain: "" };
+    };
+    const getRowTone = (rank: number) => {
+      if (rank === 1) return { card: "border-amber-300 bg-amber-300/20 shadow-[0_0_18px_rgba(252,211,77,.45)]", rank: "text-amber-200" };
+      if (rank === 2) return { card: "border-slate-200 bg-slate-200/15 shadow-[0_0_18px_rgba(226,232,240,.32)]", rank: "text-slate-100" };
+      if (rank === 3) return { card: "border-orange-400 bg-orange-400/15 shadow-[0_0_18px_rgba(251,146,60,.34)]", rank: "text-orange-200" };
+      return { card: "border-yellow-300/70 bg-black/65 shadow-[0_0_16px_rgba(250,204,21,.12)]", rank: "text-yellow-300" };
+    };
 
     return (
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[440px_minmax(0,1fr)]">
@@ -2930,8 +2939,8 @@ function renderText(
         </section>
 
         <section className="overflow-auto rounded-xl border border-sky-300/20 bg-black/35 p-5">
-          <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: (isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_WIDTH) * 0.42, height: (isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_HEIGHT) * 0.42 }}>
-            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_WIDTH, height: isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.72), rgba(2,6,12,.88)), url(/first-class/champion-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
+          <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: TEAM_POSTER_WIDTH * 0.42, height: TEAM_POSTER_HEIGHT * 0.42 }}>
+            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.72), rgba(2,6,12,.88)), url(/first-class/champion-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.20),transparent_36%)]" />
               <div className="relative">
                 <img src="/first-class/rise-to-glory-logo.png" alt="Rise to Glory" className="mx-auto w-full object-contain" style={{ height: 170 }} />
@@ -2941,11 +2950,13 @@ function renderText(
                     <div key={columnIndex} className="space-y-3">
                       {column.map((row, rowIndex) => {
                         const rank = isSplitLayout ? columnIndex * 10 + rowIndex + 1 : rowIndex + 1;
+                        const leaders = getTeamLeaders(row.teamName);
+                        const tone = getRowTone(rank);
                         return (
-                          <div key={rank} className="grid h-[51px] grid-cols-[52px_minmax(0,1fr)_155px] items-center overflow-hidden rounded-lg border border-yellow-300/70 bg-black/65 shadow-[0_0_16px_rgba(250,204,21,.12)]">
-                            <span className="border-r border-yellow-300/60 text-center text-2xl font-black italic text-yellow-300">{rank}</span>
-                            <span className="truncate px-4 text-lg font-black uppercase text-white">{row.teamName || "TEAM NAME"}</span>
-                            <span className="border-l border-yellow-300/60 px-4 text-right text-lg font-black text-yellow-300">{row.diamonds || "0"}</span>
+                          <div key={rank} className={`grid h-[51px] grid-cols-[52px_minmax(0,1fr)_230px] items-center overflow-hidden rounded-lg border ${tone.card}`}>
+                            <span className={`border-r border-current/40 text-center text-2xl font-black italic ${tone.rank}`}>{rank}</span>
+                            <span className="flex min-w-0 items-center gap-2 overflow-hidden px-4 text-lg font-black uppercase leading-tight"><span className="shrink-0 text-white">Team</span><span className="truncate text-white">{leaders.captain || "Captain"}</span>{leaders.viceCaptain && <><span className="shrink-0 text-white/55">/</span><span className="truncate text-sky-200">{leaders.viceCaptain}</span></>}</span>
+                            <span className="border-l border-yellow-300/60 px-5 text-left text-xl font-black text-yellow-300">{row.diamonds || "0"}</span>
                           </div>
                         );
                       })}

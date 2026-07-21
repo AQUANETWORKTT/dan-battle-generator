@@ -17,15 +17,9 @@ const podiumStyles = [
 ];
 
 const teamPlacementStyles = [
-  "text-amber-300 drop-shadow-[0_0_14px_rgba(252,211,77,0.65)]",
-  "text-slate-200 drop-shadow-[0_0_14px_rgba(226,232,240,0.55)]",
-  "text-orange-400 drop-shadow-[0_0_14px_rgba(251,146,60,0.6)]",
-];
-
-const teamPlacementCardStyles = [
-  "border-amber-300/70 bg-gradient-to-r from-amber-300/15 via-slate-950/60 to-slate-950/50 shadow-[0_0_28px_rgba(252,211,77,0.15)]",
-  "border-slate-200/65 bg-gradient-to-r from-slate-200/12 via-slate-950/60 to-slate-950/50 shadow-[0_0_24px_rgba(226,232,240,0.12)]",
-  "border-orange-400/65 bg-gradient-to-r from-orange-400/12 via-slate-950/60 to-slate-950/50 shadow-[0_0_24px_rgba(251,146,60,0.12)]",
+  "text-white",
+  "text-white/85",
+  "text-white/70",
 ];
 
 // Paste your future uploaded asset paths here when they are ready.
@@ -144,10 +138,10 @@ export default function FirstClassLeaderboard() {
             const open = openTeam === team.number;
             const captainUsername = FIRST_CLASS_CAPTAINS[team.number] || team.creators[0]?.username || "";
             const viceCaptainUsername = FIRST_CLASS_VICE_CAPTAINS[team.number] || "";
-            return <article key={team.number} className={`overflow-hidden rounded-[28px] border shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl ${teamPlacementCardStyles[position] || "border-white/12 bg-slate-950/50"}`}>
+            return <article key={team.number} className="overflow-hidden rounded-[28px] border border-white/12 bg-slate-950/50 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <button type="button" onClick={() => setOpenTeam(open ? null : team.number)} className="group grid w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-4 text-left sm:grid-cols-[55px_minmax(0,1fr)_185px_145px] sm:gap-5 sm:px-6 sm:py-5">
                 <span className={`text-2xl font-black italic sm:text-3xl ${teamPlacementStyles[position] || "text-white/45"}`}>{position + 1}</span>
-<div className="min-w-0"><div className="flex items-center gap-2 sm:gap-3"><div className="flex -space-x-3"><Avatar username={captainUsername} className="relative z-10 h-12 w-12 shrink-0 rounded-full border-2 border-amber-300 shadow-[0_0_20px_rgba(252,211,77,0.55)] sm:h-[72px] sm:w-[72px]" /><Avatar username={viceCaptainUsername} className="mt-7 h-8 w-8 shrink-0 rounded-full border-2 border-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.38)] sm:mt-11 sm:h-11 sm:w-11" /></div><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Team {team.number}</p><h3 className="whitespace-nowrap text-sm font-black uppercase italic tracking-tight text-amber-200 sm:text-2xl sm:tracking-normal">{captainUsername || "Captain"}</h3><p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-amber-100/60 sm:text-[10px]">Captain</p><p className="mt-1 truncate text-[8px] font-black uppercase tracking-[0.12em] text-sky-200 sm:text-[10px]">VC · {viceCaptainUsername}</p></div></div></div>
+<div className="min-w-0"><div className="flex items-center gap-2 sm:gap-3"><div className="flex -space-x-3"><Avatar username={captainUsername} className="relative z-10 h-12 w-12 shrink-0 rounded-full border-2 border-white shadow-[0_0_20px_rgba(255,255,255,0.35)] sm:h-[72px] sm:w-[72px]" /><Avatar username={viceCaptainUsername} className="mt-7 h-8 w-8 shrink-0 rounded-full border-2 border-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.38)] sm:mt-11 sm:h-11 sm:w-11" /></div><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Team {team.number}</p><h3 className="whitespace-nowrap text-sm font-black uppercase italic tracking-tight text-white sm:text-2xl sm:tracking-normal">{captainUsername || "Captain"}</h3><p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-white/55 sm:text-[10px]">Captain</p><p className="mt-1 truncate text-[8px] font-black uppercase tracking-[0.12em] text-sky-200 sm:text-[10px]">Vice captain · {viceCaptainUsername}</p></div></div></div>
                 <div className="hidden items-center justify-self-end gap-2 sm:flex sm:gap-3">{leaders.map((creator, index) => { const podium = podiumStyles[index]; return <div key={creator.username} className="relative text-center"><Avatar username={creator.username} className={`h-9 w-9 rounded-full border-2 bg-slate-950 text-[9px] sm:h-12 sm:w-12 sm:text-xs ${podium.border} ${podium.glow}`} /><span className={`mt-1 block text-[9px] ${podium.text}`}>◆</span></div>; })}</div>
                 <div className="justify-self-end whitespace-nowrap text-right"><p className="text-xl font-black italic sm:text-3xl">{team.total.toLocaleString()}</p><p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/45 sm:tracking-[0.2em]">Points</p></div>
                 <span className="col-span-full -mx-4 -mb-4 mt-3 grid h-10 place-items-center border-t border-white/10 bg-black/15 text-[10px] font-black uppercase tracking-[0.26em] text-teal-100 transition hover:bg-teal-300/10 hover:text-teal-50 sm:-mx-6 sm:-mb-5 sm:mt-4">{open ? "Hide Team" : "View Team"}</span>
