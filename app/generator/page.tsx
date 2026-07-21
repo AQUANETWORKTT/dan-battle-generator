@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import * as htmlToImage from "html-to-image";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { FIRST_CLASS_CREATORS } from "@/lib/first-class-tournament";
+import { FIRST_CLASS_CAPTAINS, FIRST_CLASS_CREATORS, FIRST_CLASS_VICE_CAPTAINS } from "@/lib/first-class-tournament";
 
 type Battle = {
   id: string;
@@ -22,7 +22,7 @@ type Battle = {
 type Mode = "single" | "mass" | "team" | "glory";
 
 type RaceToGloryRow = {
-  username: string;
+  teamName: string;
   diamonds: string;
 };
 
@@ -613,7 +613,7 @@ export default function BattleGeneratorPage() {
       : "single"
   );
   const [raceToGloryRows, setRaceToGloryRows] = useState<RaceToGloryRow[]>(() =>
-    Array.from({ length: 20 }, () => ({ username: "", diamonds: "" }))
+    Array.from({ length: 20 }, () => ({ teamName: "", diamonds: "" }))
   );
   const [raceToGloryStatus, setRaceToGloryStatus] = useState("Load the live top 20 or enter the leaderboard manually.");
   const [raceToGloryLoading, setRaceToGloryLoading] = useState(false);
@@ -2833,20 +2833,26 @@ function renderText(
       if (!response.ok) throw new Error(data.error || "Could not load the leaderboard.");
 
       const scores = data.scores || {};
-      const topTwenty = FIRST_CLASS_CREATORS
-        .map((creator) => ({
-          username: creator.username,
-          diamonds: Number(scores[creator.username.toLowerCase()] || 0),
-        }))
-        .sort((a, b) => b.diamonds - a.diamonds || a.username.localeCompare(b.username))
-        .slice(0, 20);
+      const topTwenty = Array.from({ length: 20 }, (_, index) => {
+        const teamNumber = index + 1;
+        const captain = FIRST_CLASS_CAPTAINS[teamNumber] || `Team ${teamNumber}`;
+        const viceCaptain = FIRST_CLASS_VICE_CAPTAINS[teamNumber] || "";
+        const diamonds = FIRST_CLASS_CREATORS
+          .filter((creator) => creator.teamNumber === teamNumber)
+          .reduce((total, creator) => total + Number(scores[creator.username.toLowerCase()] || 0), 0);
+
+        return {
+          teamName: viceCaptain ? `Team ${captain} & ${viceCaptain}` : `Team ${captain}`,
+          diamonds,
+        };
+      }).sort((a, b) => b.diamonds - a.diamonds || a.teamName.localeCompare(b.teamName));
 
       setRaceToGloryRows(
         Array.from({ length: 20 }, (_, index) => {
           const creator = topTwenty[index];
           return creator
-            ? { username: creator.username, diamonds: creator.diamonds.toLocaleString("en-GB") }
-            : { username: "", diamonds: "" };
+            ? { teamName: creator.teamName, diamonds: creator.diamonds.toLocaleString("en-GB") }
+            : { teamName: "", diamonds: "" };
         })
       );
       setRaceToGloryStatus("Loaded the live Race to Glory top 20.");
@@ -2888,7 +2894,7 @@ function renderText(
           <div>
             <p className="text-xs font-black uppercase tracking-[0.25em] text-sky-200">Race to Glory</p>
             <h2 className="mt-2 text-xl font-black uppercase tracking-widest text-white">Top 20 Leaderboard Poster</h2>
-            <p className="mt-2 text-sm text-white/45">Twenty creator names and diamond totals, styled to match Rise to Glory. Choose a full 20-row board or a 10 + 10 split.</p>
+            <p className="mt-2 text-sm text-white/45">Twenty tournament teams and their diamond totals, styled to match Rise to Glory. Choose a full 20-row board or a 10 + 10 split.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -2915,7 +2921,7 @@ function renderText(
             {raceToGloryRows.map((row, index) => (
               <div key={index} className="grid grid-cols-[34px_minmax(0,1fr)_120px] gap-2">
                 <span className="grid place-items-center text-sm font-black text-sky-200">{index + 1}</span>
-                <input value={row.username} onChange={(event) => updateRaceToGloryRow(index, "username", event.target.value)} placeholder="Creator name" className="min-w-0 rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm font-bold text-white outline-none focus:border-sky-300" />
+                <input value={row.teamName} onChange={(event) => updateRaceToGloryRow(index, "teamName", event.target.value)} placeholder="Team name" className="min-w-0 rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm font-bold text-white outline-none focus:border-sky-300" />
                 <input value={row.diamonds} onChange={(event) => updateRaceToGloryRow(index, "diamonds", event.target.value)} placeholder="Diamonds" className="min-w-0 rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm font-bold text-white outline-none focus:border-sky-300" />
               </div>
             ))}
@@ -2937,7 +2943,7 @@ function renderText(
                         return (
                           <div key={rank} className="grid h-[51px] grid-cols-[52px_minmax(0,1fr)_155px] items-center overflow-hidden rounded-lg border border-yellow-300/70 bg-black/65 shadow-[0_0_16px_rgba(250,204,21,.12)]">
                             <span className="border-r border-yellow-300/60 text-center text-2xl font-black italic text-yellow-300">{rank}</span>
-                            <span className="truncate px-4 text-lg font-black uppercase text-white">{row.username || "CREATOR NAME"}</span>
+                            <span className="truncate px-4 text-lg font-black uppercase text-white">{row.teamName || "TEAM NAME"}</span>
                             <span className="border-l border-yellow-300/60 px-4 text-right text-lg font-black text-yellow-300">{row.diamonds || "0"}</span>
                           </div>
                         );
