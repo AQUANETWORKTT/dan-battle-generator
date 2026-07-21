@@ -2872,14 +2872,22 @@ function renderText(
   async function downloadRaceToGloryPoster() {
     const node = raceToGloryPosterRef.current;
     if (!node) return;
-    const blob = await htmlToImage.toBlob(node, {
-      cacheBust: true,
-      pixelRatio: 1,
-      width: TEAM_POSTER_WIDTH,
-      height: TEAM_POSTER_HEIGHT,
-      backgroundColor: "#07111f",
-    });
-    if (blob) saveAs(blob, "race-to-glory-top-20.png");
+    const originalTransform = node.style.transform;
+
+    try {
+      // The editor preview is scaled down for the page; exports must use the full canvas.
+      node.style.transform = "none";
+      const blob = await htmlToImage.toBlob(node, {
+        cacheBust: true,
+        pixelRatio: 1,
+        width: TEAM_POSTER_WIDTH,
+        height: TEAM_POSTER_HEIGHT,
+        backgroundColor: "#07111f",
+      });
+      if (blob) saveAs(blob, "race-to-glory-top-20.png");
+    } finally {
+      node.style.transform = originalTransform;
+    }
   }
 
   function RaceToGloryBuilder() {
