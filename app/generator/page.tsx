@@ -2900,9 +2900,9 @@ function renderText(
       return match ? { captain: match[1], viceCaptain: match[2] } : { captain: teamName, viceCaptain: "" };
     };
     const getRowTone = (rank: number) => {
-      if (rank === 1) return { card: "border-amber-300 bg-amber-300/20 shadow-[0_0_18px_rgba(252,211,77,.45)]", rank: "text-amber-200" };
-      if (rank === 2) return { card: "border-slate-200 bg-slate-200/15 shadow-[0_0_18px_rgba(226,232,240,.32)]", rank: "text-slate-100" };
-      if (rank === 3) return { card: "border-orange-400 bg-orange-400/15 shadow-[0_0_18px_rgba(251,146,60,.34)]", rank: "text-orange-200" };
+      if (rank === 1) return { card: "border-amber-300 bg-amber-300/55 shadow-[0_0_18px_rgba(252,211,77,.45)]", rank: "text-amber-200" };
+      if (rank === 2) return { card: "border-slate-200 bg-slate-200/50 shadow-[0_0_18px_rgba(226,232,240,.32)]", rank: "text-slate-100" };
+      if (rank === 3) return { card: "border-orange-400 bg-orange-400/50 shadow-[0_0_18px_rgba(251,146,60,.34)]", rank: "text-orange-200" };
       return { card: "border-yellow-300/70 bg-black/65 shadow-[0_0_16px_rgba(250,204,21,.12)]", rank: "text-yellow-300" };
     };
 
