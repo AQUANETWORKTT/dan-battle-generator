@@ -88,6 +88,7 @@ const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1920;
 const TEAM_POSTER_WIDTH = 1024;
 const TEAM_POSTER_HEIGHT = 1536;
+const RACE_TO_GLORY_POSTER_SIZE = 1200;
 
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
@@ -617,7 +618,7 @@ export default function BattleGeneratorPage() {
   );
   const [raceToGloryStatus, setRaceToGloryStatus] = useState("Load the live top 20 or enter the leaderboard manually.");
   const [raceToGloryLoading, setRaceToGloryLoading] = useState(false);
-  const [raceToGloryLayout, setRaceToGloryLayout] = useState<"single" | "split">("single");
+  const [raceToGloryLayout, setRaceToGloryLayout] = useState<"single" | "split">("split");
   const raceToGloryPosterRef = useRef<HTMLDivElement | null>(null);
 
   const [paste, setPaste] = useState("");
@@ -2875,8 +2876,8 @@ function renderText(
     const blob = await htmlToImage.toBlob(node, {
       cacheBust: true,
       pixelRatio: 1,
-      width: TEAM_POSTER_WIDTH,
-      height: TEAM_POSTER_HEIGHT,
+      width: raceToGloryLayout === "split" ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_WIDTH,
+      height: raceToGloryLayout === "split" ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_HEIGHT,
       backgroundColor: "#07111f",
     });
     if (blob) saveAs(blob, "race-to-glory-top-20.png");
@@ -2929,8 +2930,8 @@ function renderText(
         </section>
 
         <section className="overflow-auto rounded-xl border border-sky-300/20 bg-black/35 p-5">
-          <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: TEAM_POSTER_WIDTH * 0.42, height: TEAM_POSTER_HEIGHT * 0.42 }}>
-            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.72), rgba(2,6,12,.88)), url(/first-class/champion-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
+          <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: (isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_WIDTH) * 0.42, height: (isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_HEIGHT) * 0.42 }}>
+            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_WIDTH, height: isSplitLayout ? RACE_TO_GLORY_POSTER_SIZE : TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.72), rgba(2,6,12,.88)), url(/first-class/champion-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.20),transparent_36%)]" />
               <div className="relative">
                 <img src="/first-class/rise-to-glory-logo.png" alt="Rise to Glory" className="mx-auto w-full object-contain" style={{ height: 170 }} />
