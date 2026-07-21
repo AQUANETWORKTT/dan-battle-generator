@@ -11,6 +11,7 @@ const events = [
     logo: "/world-cup-2026/logo.png",
     leaderboardHref: "/live/world-cup-2026",
     adminHref: "/events/world-cup-2026/admin",
+    downloadHref: "",
     creatorHref: "/live/world-cup-2026",
     colour: "green",
   },
@@ -20,6 +21,7 @@ const events = [
     logo: "/sunset-showdown/logo.png",
     leaderboardHref: "/live/8f3k2j9m-sunset",
     adminHref: "/events/sunset-showdown/admin",
+    downloadHref: "",
     creatorHref: "/live/8f3k2j9m-sunset",
     colour: "orange",
   },
@@ -28,6 +30,7 @@ const events = [
     status: "Tournament Setup",
     logo: "/world-cup-2026/agencies/first-class.png",
     leaderboardHref: "/live/7xq9v2-first-class",
+    downloadHref: "/generator?mode=glory",
     creatorHref: "/live/7xq9v2-first-class",
     colour: "orange",
   },
@@ -126,6 +129,15 @@ export default function EventsPage() {
                       }`}
                     >
                       Admin Scores
+                    </Link>
+                  )}
+
+                  {event.downloadHref && (
+                    <Link
+                      href={event.downloadHref}
+                      className="rounded-2xl border border-sky-500 bg-sky-50 px-5 py-3 text-center text-sm font-black uppercase text-sky-700"
+                    >
+                      Download Leaderboard
                     </Link>
                   )}
 

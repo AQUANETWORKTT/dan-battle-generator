@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import * as htmlToImage from "html-to-image";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { FIRST_CLASS_CREATORS } from "@/lib/first-class-tournament";
 
 type Battle = {
   id: string;
@@ -18,7 +19,12 @@ type Battle = {
   image2: string;
 };
 
-type Mode = "single" | "mass" | "team";
+type Mode = "single" | "mass" | "team" | "glory";
+
+type RaceToGloryRow = {
+  username: string;
+  diamonds: string;
+};
 
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
 
@@ -601,7 +607,17 @@ export default function BattleGeneratorPage() {
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
 
-  const [activeMode, setActiveMode] = useState<Mode>("single");
+  const [activeMode, setActiveMode] = useState<Mode>(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "glory"
+      ? "glory"
+      : "single"
+  );
+  const [raceToGloryRows, setRaceToGloryRows] = useState<RaceToGloryRow[]>(() =>
+    Array.from({ length: 20 }, () => ({ username: "", diamonds: "" }))
+  );
+  const [raceToGloryStatus, setRaceToGloryStatus] = useState("Load the live top 20 or enter the leaderboard manually.");
+  const [raceToGloryLoading, setRaceToGloryLoading] = useState(false);
+  const raceToGloryPosterRef = useRef<HTMLDivElement | null>(null);
 
   const [paste, setPaste] = useState("");
   const [singlePaste, setSinglePaste] = useState("");
@@ -2806,6 +2822,113 @@ function renderText(
     );
   }
 
+  async function loadRaceToGloryLeaderboard() {
+    setRaceToGloryLoading(true);
+    setRaceToGloryStatus("Loading the Race to Glory leaderboard...");
+
+    try {
+      const response = await fetch("/api/events/first-class/stats", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load the leaderboard.");
+
+      const scores = data.scores || {};
+      const topTwenty = FIRST_CLASS_CREATORS
+        .map((creator) => ({
+          username: creator.username,
+          diamonds: Number(scores[creator.username.toLowerCase()] || 0),
+        }))
+        .sort((a, b) => b.diamonds - a.diamonds || a.username.localeCompare(b.username))
+        .slice(0, 20);
+
+      setRaceToGloryRows(
+        Array.from({ length: 20 }, (_, index) => {
+          const creator = topTwenty[index];
+          return creator
+            ? { username: creator.username, diamonds: creator.diamonds.toLocaleString("en-GB") }
+            : { username: "", diamonds: "" };
+        })
+      );
+      setRaceToGloryStatus("Loaded the live Race to Glory top 20.");
+    } catch (error) {
+      setRaceToGloryStatus(error instanceof Error ? error.message : "Could not load the leaderboard.");
+    } finally {
+      setRaceToGloryLoading(false);
+    }
+  }
+
+  function updateRaceToGloryRow(index: number, field: keyof RaceToGloryRow, value: string) {
+    setRaceToGloryRows((current) =>
+      current.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row)
+    );
+  }
+
+  async function downloadRaceToGloryPoster() {
+    const node = raceToGloryPosterRef.current;
+    if (!node) return;
+    const blob = await htmlToImage.toBlob(node, {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: TEAM_POSTER_WIDTH,
+      height: TEAM_POSTER_HEIGHT,
+      backgroundColor: "#07111f",
+    });
+    if (blob) saveAs(blob, "race-to-glory-top-20.png");
+  }
+
+  function RaceToGloryBuilder() {
+    return (
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[440px_minmax(0,1fr)]">
+        <section className="space-y-5 rounded-xl border border-sky-300/25 bg-black/35 p-5">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-sky-200">Race to Glory</p>
+            <h2 className="mt-2 text-xl font-black uppercase tracking-widest text-white">Top 20 Leaderboard Poster</h2>
+            <p className="mt-2 text-sm text-white/45">Twenty creator names and twenty diamond totals. Load the event standings, then adjust any row before downloading.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => void loadRaceToGloryLeaderboard()} disabled={raceToGloryLoading} className="rounded-lg bg-sky-300 px-3 py-4 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-sky-200 disabled:opacity-50">
+              {raceToGloryLoading ? "Loading..." : "Load Leaderboard"}
+            </button>
+            <button type="button" onClick={() => void downloadRaceToGloryPoster()} className="rounded-lg bg-green-400 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-green-300">
+              Download PNG
+            </button>
+          </div>
+
+          <p className="rounded-lg border border-sky-300/15 bg-sky-300/10 p-3 text-xs font-bold text-sky-100">{raceToGloryStatus}</p>
+
+          <div className="max-h-[680px] space-y-2 overflow-y-auto pr-1">
+            {raceToGloryRows.map((row, index) => (
+              <div key={index} className="grid grid-cols-[34px_minmax(0,1fr)_120px] gap-2">
+                <span className="grid place-items-center text-sm font-black text-sky-200">{index + 1}</span>
+                <input value={row.username} onChange={(event) => updateRaceToGloryRow(index, "username", event.target.value)} placeholder="Creator name" className="min-w-0 rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm font-bold text-white outline-none focus:border-sky-300" />
+                <input value={row.diamonds} onChange={(event) => updateRaceToGloryRow(index, "diamonds", event.target.value)} placeholder="Diamonds" className="min-w-0 rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm font-bold text-white outline-none focus:border-sky-300" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="overflow-auto rounded-xl border border-sky-300/20 bg-black/35 p-5">
+          <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: TEAM_POSTER_WIDTH * 0.42, height: TEAM_POSTER_HEIGHT * 0.42 }}>
+            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#07111f] p-12" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "radial-gradient(circle at top, #0d7490 0%, transparent 36%), linear-gradient(160deg, #06121f 0%, #0a2941 52%, #06111d 100%)" }}>
+              <p className="text-center text-3xl font-black uppercase tracking-[0.32em] text-sky-200">Race to Glory</p>
+              <h3 className="mt-3 text-center text-6xl font-black uppercase italic text-white">Top 20</h3>
+              <p className="mt-3 text-center text-lg font-black uppercase tracking-[0.22em] text-sky-100/70">Live Diamond Leaderboard</p>
+              <div className="mt-10 grid grid-cols-2 gap-x-8 gap-y-3">
+                {raceToGloryRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-[46px_minmax(0,1fr)_110px] items-center gap-3 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-3">
+                    <span className="text-center text-2xl font-black italic text-sky-300">{index + 1}</span>
+                    <span className="truncate text-xl font-black uppercase text-white">{row.username || "CREATOR"}</span>
+                    <span className="text-right text-lg font-black text-yellow-300">{row.diamonds || "0"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function TeamPosterCanvas({ scale = 0.42 }: { scale?: number }) {
     return (
       <div
@@ -3047,7 +3170,7 @@ function renderText(
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <button
               type="button"
               onClick={() => setActiveMode("single")}
@@ -3082,6 +3205,18 @@ function renderText(
               }`}
             >
               Team Dan Poster Builder
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveMode("glory")}
+              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
+                activeMode === "glory"
+                  ? "bg-sky-300 text-slate-950"
+                  : "bg-black/40 text-white border border-white/20 hover:border-sky-300"
+              }`}
+            >
+              Race to Glory Top 20
             </button>
           </div>
         </div>
@@ -3300,6 +3435,7 @@ function renderText(
           </div>
         )}
         {activeMode === "team" && TeamPosterBuilder()}
+        {activeMode === "glory" && RaceToGloryBuilder()}
           </>
         )}
       </div>
