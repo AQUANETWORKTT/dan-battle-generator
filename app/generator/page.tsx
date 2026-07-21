@@ -617,6 +617,7 @@ export default function BattleGeneratorPage() {
   );
   const [raceToGloryStatus, setRaceToGloryStatus] = useState("Load the live top 20 or enter the leaderboard manually.");
   const [raceToGloryLoading, setRaceToGloryLoading] = useState(false);
+  const [raceToGloryLayout, setRaceToGloryLayout] = useState<"single" | "split">("single");
   const raceToGloryPosterRef = useRef<HTMLDivElement | null>(null);
 
   const [paste, setPaste] = useState("");
@@ -2876,13 +2877,18 @@ function renderText(
   }
 
   function RaceToGloryBuilder() {
+    const isSplitLayout = raceToGloryLayout === "split";
+    const posterColumns = isSplitLayout
+      ? [raceToGloryRows.slice(0, 10), raceToGloryRows.slice(10, 20)]
+      : [raceToGloryRows];
+
     return (
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[440px_minmax(0,1fr)]">
         <section className="space-y-5 rounded-xl border border-sky-300/25 bg-black/35 p-5">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.25em] text-sky-200">Race to Glory</p>
             <h2 className="mt-2 text-xl font-black uppercase tracking-widest text-white">Top 20 Leaderboard Poster</h2>
-            <p className="mt-2 text-sm text-white/45">Twenty creator names and twenty diamond totals. Load the event standings, then adjust any row before downloading.</p>
+            <p className="mt-2 text-sm text-white/45">Twenty creator names and diamond totals, styled to match Rise to Glory. Choose a full 20-row board or a 10 + 10 split.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -2891,6 +2897,15 @@ function renderText(
             </button>
             <button type="button" onClick={() => void downloadRaceToGloryPoster()} className="rounded-lg bg-green-400 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-green-300">
               Download PNG
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-2">
+            <button type="button" onClick={() => setRaceToGloryLayout("single")} className={`rounded-md px-3 py-3 text-xs font-black uppercase tracking-wider ${!isSplitLayout ? "bg-yellow-300 text-black" : "text-white/60 hover:bg-white/10"}`}>
+              20 Rows
+            </button>
+            <button type="button" onClick={() => setRaceToGloryLayout("split")} className={`rounded-md px-3 py-3 text-xs font-black uppercase tracking-wider ${isSplitLayout ? "bg-yellow-300 text-black" : "text-white/60 hover:bg-white/10"}`}>
+              10 + 10 Split
             </button>
           </div>
 
@@ -2909,18 +2924,28 @@ function renderText(
 
         <section className="overflow-auto rounded-xl border border-sky-300/20 bg-black/35 p-5">
           <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: TEAM_POSTER_WIDTH * 0.42, height: TEAM_POSTER_HEIGHT * 0.42 }}>
-            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#07111f] p-12" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "radial-gradient(circle at top, #0d7490 0%, transparent 36%), linear-gradient(160deg, #06121f 0%, #0a2941 52%, #06111d 100%)" }}>
-              <p className="text-center text-3xl font-black uppercase tracking-[0.32em] text-sky-200">Race to Glory</p>
-              <h3 className="mt-3 text-center text-6xl font-black uppercase italic text-white">Top 20</h3>
-              <p className="mt-3 text-center text-lg font-black uppercase tracking-[0.22em] text-sky-100/70">Live Diamond Leaderboard</p>
-              <div className="mt-10 grid grid-cols-2 gap-x-8 gap-y-3">
-                {raceToGloryRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-[46px_minmax(0,1fr)_110px] items-center gap-3 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-3">
-                    <span className="text-center text-2xl font-black italic text-sky-300">{index + 1}</span>
-                    <span className="truncate text-xl font-black uppercase text-white">{row.username || "CREATOR"}</span>
-                    <span className="text-right text-lg font-black text-yellow-300">{row.diamonds || "0"}</span>
-                  </div>
-                ))}
+            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.72), rgba(2,6,12,.88)), url(/first-class/champion-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.20),transparent_36%)]" />
+              <div className="relative">
+                <img src="/first-class/rise-to-glory-logo.png" alt="Rise to Glory" className="mx-auto w-full object-contain" style={{ height: 170 }} />
+                <p className="mt-1 text-center text-xl font-black uppercase tracking-[0.35em] text-sky-100">Leaderboard Update</p>
+                <div className={`mt-8 grid gap-6 ${isSplitLayout ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {posterColumns.map((column, columnIndex) => (
+                    <div key={columnIndex} className="space-y-3">
+                      {column.map((row, rowIndex) => {
+                        const rank = isSplitLayout ? columnIndex * 10 + rowIndex + 1 : rowIndex + 1;
+                        return (
+                          <div key={rank} className="grid h-[51px] grid-cols-[52px_minmax(0,1fr)_155px] items-center overflow-hidden rounded-lg border border-yellow-300/70 bg-black/65 shadow-[0_0_16px_rgba(250,204,21,.12)]">
+                            <span className="border-r border-yellow-300/60 text-center text-2xl font-black italic text-yellow-300">{rank}</span>
+                            <span className="truncate px-4 text-lg font-black uppercase text-white">{row.username || "CREATOR NAME"}</span>
+                            <span className="border-l border-yellow-300/60 px-4 text-right text-lg font-black text-yellow-300">{row.diamonds || "0"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-8 text-center text-sm font-black uppercase tracking-[0.42em] text-sky-100/80">One tournament. Every diamond counts.</p>
               </div>
             </div>
           </div>
