@@ -38,16 +38,34 @@ function Avatar({ username, className = "" }: { username: string; className?: st
     if (placeholder) return;
     let cancelled = false;
 
-    fetch("/api/tiktok-avatar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    })
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((data) => {
-        if (!cancelled) setAvatarUrl(data.avatar || "");
+    const localAvatarUrl = `/creators/${encodeURIComponent(username.trim().toLowerCase())}.jpg`;
+    const localImage = new window.Image();
+
+    const loadPublicAvatar = () => {
+      fetch("/api/tiktok-avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
       })
-      .catch(() => undefined);
+        .then((response) => response.ok ? response.json() : Promise.reject())
+        .then((data) => {
+          if (!cancelled) {
+            setImageError(false);
+            setAvatarUrl(data.avatar || "");
+          }
+        })
+        .catch(() => undefined);
+    };
+
+    localImage.onload = () => {
+      if (!cancelled) {
+        setImageError(false);
+        setAvatarUrl(localAvatarUrl);
+      }
+    };
+
+    localImage.onerror = loadPublicAvatar;
+    localImage.src = localAvatarUrl;
 
     return () => { cancelled = true; };
   }, [placeholder, username]);
@@ -58,7 +76,7 @@ function Avatar({ username, className = "" }: { username: string; className?: st
 
   return (
     <img
-      src={`/api/tiktok-avatar-image?url=${encodeURIComponent(avatarUrl)}`}
+      src={avatarUrl.startsWith("/") ? avatarUrl : `/api/tiktok-avatar-image?url=${encodeURIComponent(avatarUrl)}`}
       alt={username}
       className={`object-cover ${className}`}
       onError={() => setImageError(true)}
