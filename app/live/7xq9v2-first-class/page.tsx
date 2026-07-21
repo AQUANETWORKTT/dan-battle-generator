@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FIRST_CLASS_CAPTAINS, FIRST_CLASS_CREATORS, FIRST_CLASS_EVENT, isPlaceholderCreator } from "@/lib/first-class-tournament";
+import { FIRST_CLASS_CAPTAINS, FIRST_CLASS_CREATORS, FIRST_CLASS_EVENT, FIRST_CLASS_VICE_CAPTAINS, isPlaceholderCreator } from "@/lib/first-class-tournament";
 
 type LeaderboardCreator = (typeof FIRST_CLASS_CREATORS)[number] & { diamonds: number };
 
@@ -103,7 +103,7 @@ export default function FirstClassLeaderboard() {
           <p className="relative mx-auto mt-4 max-w-xl text-sm font-medium text-white/65 sm:text-base">20 evenly balanced teams. One leaderboard. Every diamond counts.</p>
           <div className="relative mt-7 flex flex-wrap justify-center gap-3 text-[11px] font-black uppercase tracking-[0.16em] text-white/80">
             <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">20 teams</span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">720 creators</span>
+            <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2">{FIRST_CLASS_CREATORS.length} creators</span>
             <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-amber-100">◆ Live points leaderboard</span>
             <span className="rounded-full border border-teal-300/30 bg-teal-300/10 px-4 py-2 text-teal-100">24–31 July 2026</span>
           </div>
@@ -111,7 +111,7 @@ export default function FirstClassLeaderboard() {
 
         <div className="mt-7 flex items-end justify-between gap-4 px-1">
           <div><p className="text-xs font-black uppercase tracking-[0.25em] text-teal-200">Tournament standings</p><h2 className="mt-1 text-2xl font-black uppercase italic sm:text-3xl">Team leaderboard</h2></div>
-          <p className="hidden text-right text-xs font-bold text-white/45 sm:block">Tap a team to see all 36 creators</p>
+          <p className="hidden text-right text-xs font-bold text-white/45 sm:block">Tap a team to see its full roster</p>
         </div>
 
         <section className="mt-4 space-y-3">
@@ -120,10 +120,11 @@ export default function FirstClassLeaderboard() {
             const open = openTeam === team.number;
             const accent = teamColours[(team.number - 1) % teamColours.length];
             const captainUsername = FIRST_CLASS_CAPTAINS[team.number] || team.creators[0]?.username || "";
+            const viceCaptainUsername = FIRST_CLASS_VICE_CAPTAINS[team.number] || "";
             return <article key={team.number} className="overflow-hidden rounded-[28px] border border-white/12 bg-slate-950/50 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <button type="button" onClick={() => setOpenTeam(open ? null : team.number)} className="group grid w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-4 text-left sm:grid-cols-[55px_minmax(0,1fr)_185px_145px] sm:gap-5 sm:px-6 sm:py-5">
                 <span className={`text-2xl font-black italic sm:text-3xl ${teamPlacementStyles[position] || "text-white/45"}`}>{position + 1}</span>
-                <div className="min-w-0"><div className="flex items-center gap-2 sm:gap-3"><Avatar username={captainUsername} className="h-10 w-10 shrink-0 rounded-full border-2 border-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.45)] sm:h-16 sm:w-16" /><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Team {team.number}</p><h3 className="whitespace-nowrap text-[11px] font-black uppercase italic tracking-tight text-amber-200 sm:text-2xl sm:tracking-normal">Team {captainUsername || "Captain"}</h3></div></div></div>
+                <div className="min-w-0"><div className="flex items-center gap-2 sm:gap-3"><div className="flex -space-x-2"><Avatar username={captainUsername} className="relative z-10 h-10 w-10 shrink-0 rounded-full border-2 border-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.45)] sm:h-16 sm:w-16" /><Avatar username={viceCaptainUsername} className="h-8 w-8 shrink-0 rounded-full border-2 border-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.38)] sm:h-12 sm:w-12" /></div><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/45 sm:text-[10px] sm:tracking-[0.2em]">Team {team.number}</p><h3 className="whitespace-nowrap text-[11px] font-black uppercase italic tracking-tight text-amber-200 sm:text-2xl sm:tracking-normal">Team {captainUsername || "Captain"}</h3><p className="mt-0.5 truncate text-[8px] font-black uppercase tracking-[0.12em] text-sky-200 sm:text-[10px]">VC · {viceCaptainUsername}</p></div></div></div>
                 <div className="hidden items-center justify-self-end gap-2 sm:flex sm:gap-3">{leaders.map((creator, index) => { const podium = podiumStyles[index]; return <div key={creator.username} className="relative text-center"><Avatar username={creator.username} className={`h-9 w-9 rounded-full border-2 bg-slate-950 text-[9px] sm:h-12 sm:w-12 sm:text-xs ${podium.border} ${podium.glow}`} /><span className={`mt-1 block text-[9px] ${podium.text}`}>◆</span></div>; })}</div>
                 <div className="justify-self-end whitespace-nowrap text-right"><p className="text-xl font-black italic sm:text-3xl">{team.total.toLocaleString()}</p><p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/45 sm:tracking-[0.2em]">Points</p></div>
                 <span className="col-span-full -mx-4 -mb-4 mt-3 grid h-10 place-items-center border-t border-white/10 bg-black/15 text-[10px] font-black uppercase tracking-[0.26em] text-teal-100 transition hover:bg-teal-300/10 hover:text-teal-50 sm:-mx-6 sm:-mb-5 sm:mt-4">{open ? "Hide Team" : "View Team"}</span>
