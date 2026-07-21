@@ -2948,10 +2948,10 @@ function renderText(
 
         <section className="overflow-auto rounded-xl border border-sky-300/20 bg-black/35 p-5">
           <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: TEAM_POSTER_WIDTH * 0.42, height: TEAM_POSTER_HEIGHT * 0.42 }}>
-            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.72), rgba(2,6,12,.88)), url(/first-class/champion-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
+            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.38), rgba(2,6,12,.54)), url(/first-class/crew-showdown-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.20),transparent_36%)]" />
               <div className="relative">
-                <img src="/first-class/rise-to-glory-logo.png" alt="Rise to Glory" className="mx-auto w-full object-contain" style={{ height: 170 }} />
+                <img src="/first-class/crew-showdown-logo.png" alt="Crew Showdown" className="mx-auto w-full object-contain" style={{ height: 170 }} />
                 <p className="mt-1 text-center text-xl font-black uppercase tracking-[0.35em] text-sky-100">Leaderboard Update</p>
                 <div className={`mt-8 grid gap-6 ${isSplitLayout ? "grid-cols-2" : "grid-cols-1"}`}>
                   {posterColumns.map((column, columnIndex) => (

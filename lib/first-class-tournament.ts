@@ -1,5 +1,5 @@
 export const FIRST_CLASS_EVENT = {
-  name: "First Class: Ascend",
+  name: "Crew Showdown",
   creatorLink: "/live/7xq9v2-first-class",
   teamCount: 20,
   creatorsPerTeam: 36,

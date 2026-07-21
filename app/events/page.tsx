@@ -26,9 +26,9 @@ const events = [
     colour: "orange",
   },
   {
-    name: "First Class: Ascend",
+    name: "Crew Showdown",
     status: "Tournament Setup",
-    logo: "/world-cup-2026/agencies/first-class.png",
+    logo: "/first-class/crew-showdown-logo.png",
     leaderboardHref: "/live/7xq9v2-first-class",
     downloadHref: "/generator?mode=glory",
     creatorHref: "/live/7xq9v2-first-class",
