@@ -532,26 +532,9 @@ function getHealthBreakdown(
     period === "monthly"
       ? capScore((liveAppearDays / 28) * 21 + (liveDays / 28) * 14, 35)
       : capScore(liveAppearDays * 3 + liveDays * 2, 35);
-  const liveHoursScore =
-    period === "monthly"
-      ? totalHours >= 80
-        ? 30
-        : totalHours >= 60
-          ? 22
-          : totalHours >= 40
-            ? 15
-            : totalHours >= 20
-              ? 8
-              : 0
-      : totalHours >= 20
-        ? 30
-        : totalHours >= 15
-          ? 22
-          : totalHours >= 10
-            ? 15
-            : totalHours >= 5
-              ? 8
-              : 0;
+  // Weekly: 1.5 points per live hour, capped at the 20-hour / 30-point target.
+  // Monthly uses the equivalent 80-hour target, keeping the same 30-point weighting.
+  const liveHoursScore = capScore(totalHours * (period === "monthly" ? 0.375 : 1.5), 30);
   const matchesScore = capScore(Math.floor(totalMatches / (period === "monthly" ? 28 : 7)), 10);
   const dphScore =
     dph >= 2500 ? 25 : dph >= 2000 ? 20 : dph >= 1500 ? 15 : dph >= 1000 ? 10 : dph >= 500 ? 5 : dph >= 100 ? 1 : 0;
