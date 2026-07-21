@@ -2900,10 +2900,10 @@ function renderText(
       return match ? { captain: match[1], viceCaptain: match[2] } : { captain: teamName, viceCaptain: "" };
     };
     const getRowTone = (rank: number) => {
-      if (rank === 1) return { card: "border-amber-300 bg-amber-300/55 shadow-[0_0_18px_rgba(252,211,77,.45)]", rank: "text-amber-200" };
-      if (rank === 2) return { card: "border-slate-200 bg-slate-200/50 shadow-[0_0_18px_rgba(226,232,240,.32)]", rank: "text-slate-100" };
-      if (rank === 3) return { card: "border-orange-400 bg-orange-400/50 shadow-[0_0_18px_rgba(251,146,60,.34)]", rank: "text-orange-200" };
-      return { card: "border-yellow-300/70 bg-black/65 shadow-[0_0_16px_rgba(250,204,21,.12)]", rank: "text-yellow-300" };
+      if (rank === 1) return { card: "border-amber-300 bg-black shadow-[0_0_18px_rgba(252,211,77,.45)]", rank: "text-amber-200" };
+      if (rank === 2) return { card: "border-slate-200 bg-black shadow-[0_0_18px_rgba(226,232,240,.32)]", rank: "text-slate-100" };
+      if (rank === 3) return { card: "border-orange-400 bg-black shadow-[0_0_18px_rgba(251,146,60,.34)]", rank: "text-orange-200" };
+      return { card: "border-yellow-300/70 bg-black shadow-[0_0_16px_rgba(250,204,21,.12)]", rank: "text-yellow-300" };
     };
 
     return (
@@ -2948,12 +2948,12 @@ function renderText(
 
         <section className="overflow-auto rounded-xl border border-sky-300/20 bg-black/35 p-5">
           <div className="mx-auto overflow-hidden rounded-2xl border border-sky-200/20 shadow-2xl" style={{ width: TEAM_POSTER_WIDTH * 0.42, height: TEAM_POSTER_HEIGHT * 0.42 }}>
-            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-10 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.38), rgba(2,6,12,.54)), url(/first-class/crew-showdown-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
+            <div ref={raceToGloryPosterRef} className="relative overflow-hidden bg-[#030609] px-10 pb-20 pt-8" style={{ width: TEAM_POSTER_WIDTH, height: TEAM_POSTER_HEIGHT, transform: "scale(0.42)", transformOrigin: "top left", backgroundImage: "linear-gradient(rgba(2,6,12,.38), rgba(2,6,12,.54)), url(/first-class/crew-showdown-background.png)", backgroundSize: "cover", backgroundPosition: "center" }}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.20),transparent_36%)]" />
               <div className="relative">
                 <img src="/first-class/crew-showdown-logo.png" alt="Crew Showdown" className="mx-auto w-full object-contain" style={{ height: 170 }} />
                 <p className="mt-1 text-center text-xl font-black uppercase tracking-[0.35em] text-sky-100">Leaderboard Update</p>
-                <div className={`mt-8 grid gap-6 ${isSplitLayout ? "grid-cols-2" : "grid-cols-1"}`}>
+                <div className={`mx-auto mt-8 grid w-[90%] gap-6 ${isSplitLayout ? "grid-cols-2" : "grid-cols-1"}`}>
                   {posterColumns.map((column, columnIndex) => (
                     <div key={columnIndex} className="space-y-3">
                       {column.map((row, rowIndex) => {
