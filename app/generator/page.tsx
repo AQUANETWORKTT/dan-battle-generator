@@ -640,6 +640,18 @@ function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | nu
   };
 }
 
+function normalizeManagerLeaderboardTemplate(input?: Partial<TeamPosterTemplate> | null): TeamPosterTemplate {
+  const base = createManagerLeaderboardTemplate();
+  const incoming = input || {};
+  const byId = new Map((incoming.elements || []).map((element) => [element.id, element]));
+
+  return {
+    backgroundUrl: incoming.backgroundUrl || "",
+    backgroundPath: incoming.backgroundPath || "",
+    elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
+  };
+}
+
 function cleanFileName(value: string) {
   return value
     .replaceAll(" ", "-")
@@ -1565,7 +1577,34 @@ export default function BattleGeneratorPage() {
     }));
   }
 
-  function handleManagerLeaderboardBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function saveManagerLeaderboardTemplate() {
+    const supabase = getPosterSupabaseClient();
+    if (!supabase) {
+      setManagerLeaderboardStatus("Supabase is not configured, so this template cannot be saved publicly.");
+      return;
+    }
+
+    const nextTemplate = normalizeManagerLeaderboardTemplate(managerLeaderboardTemplate);
+    setManagerLeaderboardStatus("Saving manager leaderboard template publicly...");
+    const { error } = await supabase
+      .from("poster_templates")
+      .upsert({
+        name: MANAGER_LEADERBOARD_TEMPLATE_NAME,
+        background_url: nextTemplate.backgroundUrl || null,
+        template_json: nextTemplate,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "name" });
+
+    if (error) {
+      setManagerLeaderboardStatus(`Public save failed: ${error.message}`);
+      return;
+    }
+
+    setManagerLeaderboardTemplate(nextTemplate);
+    setManagerLeaderboardStatus("Manager leaderboard template saved publicly.");
+  }
+
+  async function handleManagerLeaderboardBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) {
@@ -1573,12 +1612,27 @@ export default function BattleGeneratorPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setManagerLeaderboardTemplate((prev) => ({ ...prev, backgroundUrl: String(reader.result || "") }));
-      setManagerLeaderboardStatus("Background added. The text overlay is ready to position.");
-    };
-    reader.readAsDataURL(file);
+    const supabase = getPosterSupabaseClient();
+    if (!supabase) {
+      const reader = new FileReader();
+      reader.onload = () => setManagerLeaderboardTemplate((prev) => ({ ...prev, backgroundUrl: String(reader.result || "") }));
+      reader.readAsDataURL(file);
+      setManagerLeaderboardStatus("Background added locally. Public saving needs the Supabase connection.");
+      return;
+    }
+
+    setManagerLeaderboardStatus("Uploading manager leaderboard background...");
+    const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+    const safeName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9-_]+/gi, "-").replace(/-+/g, "-").toLowerCase();
+    const filePath = `${MANAGER_LEADERBOARD_TEMPLATE_NAME}/${Date.now()}-${safeName}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("poster-backgrounds").upload(filePath, file, { cacheControl: "3600", upsert: true });
+    if (uploadError) {
+      setManagerLeaderboardStatus(`Background upload failed: ${uploadError.message}`);
+      return;
+    }
+    const { data } = supabase.storage.from("poster-backgrounds").getPublicUrl(filePath);
+    setManagerLeaderboardTemplate((prev) => ({ ...prev, backgroundUrl: data.publicUrl, backgroundPath: filePath }));
+    setManagerLeaderboardStatus("Background uploaded. Press Save Publicly to keep it for everyone.");
   }
 
   async function downloadManagerLeaderboard() {
@@ -1638,6 +1692,27 @@ export default function BattleGeneratorPage() {
     }
 
     loadTeamPosterTemplate();
+  }, []);
+
+  useEffect(() => {
+    async function loadManagerLeaderboardTemplate() {
+      const supabase = getPosterSupabaseClient();
+      if (!supabase) return;
+
+      const { data, error } = await supabase
+        .from("poster_templates")
+        .select("template_json")
+        .eq("name", MANAGER_LEADERBOARD_TEMPLATE_NAME)
+        .maybeSingle();
+
+      if (error || !data?.template_json) return;
+      const parsed = normalizeManagerLeaderboardTemplate(data.template_json as TeamPosterTemplate);
+      setManagerLeaderboardTemplate(parsed);
+      setSelectedManagerLeaderboardElementId(parsed.elements[0]?.id || "");
+      setManagerLeaderboardStatus("Manager leaderboard template loaded publicly.");
+    }
+
+    loadManagerLeaderboardTemplate();
   }, []);
 
   useEffect(() => {
@@ -3302,7 +3377,7 @@ function renderText(
       const match = element.id.match(/-(\d+)$/);
       const row = match ? rows[Number(match[1]) - 1] : null;
       if (!row) return element.value;
-      return element.id.startsWith("manager-diamonds-") ? `${row.diamonds.toLocaleString()} diamonds` : row.manager;
+      return element.id.startsWith("manager-diamonds-") ? row.diamonds.toLocaleString() : row.manager;
     };
 
     return (
@@ -3349,6 +3424,14 @@ function renderText(
             className="w-full rounded-lg bg-green-400 px-4 py-4 text-sm font-black uppercase tracking-widest text-black transition hover:bg-green-300 disabled:opacity-50"
           >
             Download Leaderboard PNG
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void saveManagerLeaderboardTemplate()}
+            className="w-full rounded-lg bg-sky-300 px-4 py-4 text-sm font-black uppercase tracking-widest text-slate-950 transition hover:bg-sky-200"
+          >
+            Save Publicly
           </button>
 
           <button type="button" onClick={() => setManagerLeaderboardEditMode((value) => !value)} className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-white/10">
