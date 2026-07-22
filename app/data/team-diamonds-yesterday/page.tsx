@@ -301,7 +301,12 @@ export default function TeamDiamondsYesterdayPage() {
   const [loading, setLoading] = useState(false);
 
   const previewScale = 0.42;
-  const visibleTemplate = useMemo(() => template || savedTemplate || getSavedTemplate(), [template, savedTemplate]);
+  // A browser-local template should enhance the poster, not be required for it.
+  // This lets every signed-in user build a poster even when no public custom template exists yet.
+  const visibleTemplate = useMemo(
+    () => template || savedTemplate || getSavedTemplate() || createDefaultTemplate(),
+    [template, savedTemplate]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -323,11 +328,7 @@ export default function TeamDiamondsYesterdayPage() {
 
     try {
       const publicTemplate = await getPublicSavedTemplate();
-      const activeTemplate = publicTemplate || savedTemplate || getSavedTemplate();
-      if (!activeTemplate) {
-        setMessage("Save a Team Dan Poster Builder template in the poster generator first.");
-        return;
-      }
+      const activeTemplate = publicTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
       if (publicTemplate) setSavedTemplate(publicTemplate);
 
       const month = getCurrentMonth();
@@ -461,17 +462,11 @@ export default function TeamDiamondsYesterdayPage() {
             </div>
 
             <div className="overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
-              {visibleTemplate ? (
-                <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
-                  <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
-                    <PosterPreview template={visibleTemplate} />
-                  </div>
+              <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
+                <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
+                  <PosterPreview template={visibleTemplate} />
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/55">
-                  Save a Team Dan template in the poster generator first.
-                </div>
-              )}
+              </div>
             </div>
           </section>
         </div>
