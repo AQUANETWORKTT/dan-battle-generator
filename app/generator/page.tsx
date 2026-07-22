@@ -3490,7 +3490,12 @@ function renderText(
                 })}
               </div>
             </div>
-            {managerLeaderboardTemplate.elements.map((element) => (
+            {managerLeaderboardTemplate.elements
+              .filter((element) => {
+                const rank = Number(element.id.match(/-(\d+)$/)?.[1] || 0);
+                return rank > 0 && rank <= managerLeaderboardRows.length;
+              })
+              .map((element) => (
               <Rnd
                 key={element.id}
                 bounds="parent"
