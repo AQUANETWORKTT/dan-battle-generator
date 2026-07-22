@@ -2325,7 +2325,7 @@ function downloadManagerReport(
 <main>
   <section class="hero">
     <div>
-      <img class="brand-logo" src="/logo.png" alt="First Class" />
+      <img class="brand-logo" src="${window.location.origin}/logo.png" alt="First Class" />
       <p class="label">Manager Team Health Report</p>
       <h1>${escapeHtml(managerSummary.manager)}</h1>
       <p class="muted">${reportDate} &bull; ${escapeHtml(reportAgencyName)} Creator Intelligence</p>
