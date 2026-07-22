@@ -31,6 +31,7 @@ const FIRST_CLASS_EVENT_TO = "2026-07-31";
 function Avatar({ username, className = "" }: { username: string; className?: string }) {
   const [imageError, setImageError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const placeholder = isPlaceholderCreator(username);
   const initial = username.replace("creator-", "").slice(-2);
 
@@ -41,20 +42,29 @@ function Avatar({ username, className = "" }: { username: string; className?: st
     const localAvatarUrl = `/creators/${encodeURIComponent(username.trim().toLowerCase())}.jpg`;
     const localImage = new window.Image();
 
-    const loadPublicAvatar = () => {
-      fetch("/api/tiktok-avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
-      })
-        .then((response) => response.ok ? response.json() : Promise.reject())
-        .then((data) => {
-          if (!cancelled) {
-            setImageError(false);
-            setAvatarUrl(data.avatar || "");
+    const loadPublicAvatar = async () => {
+      // One initial scrape plus two retries covers short-lived TikTok/API failures.
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt += 1) {
+        try {
+          const response = await fetch("/api/tiktok-avatar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username }),
+          });
+          const data = response.ok ? await response.json() : null;
+          if (data?.avatar) {
+            if (!cancelled) {
+              setImageError(false);
+              setAvatarUrl(data.avatar);
+            }
+            return;
           }
-        })
-        .catch(() => undefined);
+        } catch {
+          // Retry below; the placeholder is only shown after all three attempts fail.
+        }
+        if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 350 * (attempt + 1)));
+      }
+      if (!cancelled) setImageError(true);
     };
 
     localImage.onload = () => {
@@ -68,7 +78,7 @@ function Avatar({ username, className = "" }: { username: string; className?: st
     localImage.src = localAvatarUrl;
 
     return () => { cancelled = true; };
-  }, [placeholder, username]);
+  }, [placeholder, retryCount, username]);
 
   if (placeholder || imageError || !avatarUrl) {
     return <span className={`grid place-items-center bg-white/10 font-black text-white/80 ${className}`}>{initial}</span>;
@@ -79,13 +89,20 @@ function Avatar({ username, className = "" }: { username: string; className?: st
       src={avatarUrl.startsWith("/") ? avatarUrl : `/api/tiktok-avatar-image?url=${encodeURIComponent(avatarUrl)}`}
       alt={username}
       className={`object-cover ${className}`}
-      onError={() => setImageError(true)}
+      onError={() => {
+        if (retryCount < 2) {
+          setAvatarUrl("");
+          setRetryCount((count) => count + 1);
+        } else {
+          setImageError(true);
+        }
+      }}
     />
   );
 }
 
 export default function FirstClassLeaderboard() {
-  const [openTeam, setOpenTeam] = useState<number | null>(1);
+  const [openTeam, setOpenTeam] = useState<number | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
