@@ -552,6 +552,7 @@ function getManagerLeaderboardName(row: ManagerLeaderboardStat) {
   const localPart = raw.split("@")[0]
     .replace(/^firstclassagency[_-]?/i, "")
     .replace(/^team[_-]?/i, "")
+    .replace(/[_-]?(aquaagency|aquaagencyout|respawnagency|paradiseagency)$/i, "")
     .replace(/[_.-]+/g, " ")
     .trim();
   const displayName = localPart
