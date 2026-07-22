@@ -148,6 +148,7 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   demileawebster7: "Demi",
   louisesquelch: "Louise",
   ashwalbridge: "Ash",
+  ashwalbridgeaolcom: "Ash",
   firstclassagencykyran: "Kyran",
   kyran: "Kyran",
   kieran: "Kyran",
