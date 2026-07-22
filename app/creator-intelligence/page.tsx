@@ -2540,7 +2540,9 @@ export default function CreatorIntelligencePage() {
 
     async function loadData() {
       setLoading(true);
-      const startDate = addDays(rollingEndDate, -29);
+      const rollingStartDate = addDays(rollingEndDate, -29);
+      const calendarMonthStartDate = `${rollingEndDate.slice(0, 7)}-01`;
+      const startDate = calendarMonthStartDate < rollingStartDate ? calendarMonthStartDate : rollingStartDate;
       const allRows: CreatorStat[] = [];
       const pageSize = 1000;
       let from = 0;
@@ -2830,6 +2832,20 @@ export default function CreatorIntelligencePage() {
     [matureFilteredCreators]
   );
 
+  const calendarMonthDiamonds = useMemo(() => {
+    if (!rollingEndDate) return 0;
+    const monthStart = `${rollingEndDate.slice(0, 7)}-01`;
+    const creatorKeys = new Set(filteredCreators.map((creator) => creator.key));
+    return rows
+      .filter(
+        (row) =>
+          row.stat_date >= monthStart &&
+          row.stat_date <= rollingEndDate &&
+          creatorKeys.has(getUsername(row).toLowerCase())
+      )
+      .reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
+  }, [filteredCreators, rollingEndDate, rows]);
+
   const totals = useMemo(() => {
     const totalDiamonds = filteredCreators.reduce((sum, row) => sum + row.diamonds, 0);
     const totalHours = filteredCreators.reduce((sum, row) => sum + row.liveHours, 0);
@@ -2846,11 +2862,12 @@ export default function CreatorIntelligencePage() {
       lowQuality: matureFilteredCreators.filter((row) => row.healthStatus === "Low Quality").length,
       averageDph: totalHours > 0 ? totalDiamonds / totalHours : 0,
       totalDiamonds,
+      calendarMonthDiamonds,
       totalHours,
       totalMatches,
       totalFollowers,
     };
-  }, [filteredCreators, matureFilteredCreators, newCreators.length]);
+  }, [calendarMonthDiamonds, filteredCreators, matureFilteredCreators, newCreators.length]);
 
   const agencyHealthTrend = useMemo<AgencyHealthTrendPoint[]>(() => {
     const dates = Array.from(new Set(aquaRows.map((row) => row.stat_date))).sort((a, b) =>
@@ -3213,7 +3230,8 @@ export default function CreatorIntelligencePage() {
           <MetricCard label="Elite creators" value={formatNumber(totals.elite)} />
           <MetricCard label="New creators" value={formatNumber(totals.newCreators)} />
           <MetricCard label="Average DPH (diamonds per hour)" value={formatNumber(totals.averageDph)} />
-          <MetricCard label="Total diamonds" value={formatNumber(totals.totalDiamonds)} />
+          <MetricCard label="Total diamonds last 30 days" value={formatNumber(totals.totalDiamonds)} />
+          <MetricCard label="Total diamonds calendar month" value={formatNumber(totals.calendarMonthDiamonds)} />
           <MetricCard label="Total live hours" value={formatHours(totals.totalHours)} />
           <MetricCard label="Total battles" value={formatNumber(totals.totalMatches)} />
           <MetricCard label="Total new followers" value={formatNumber(totals.totalFollowers)} />

@@ -19,11 +19,32 @@ type Battle = {
   image2: string;
 };
 
-type Mode = "single" | "mass" | "team" | "glory";
+type Mode = "single" | "mass" | "team" | "glory" | "manager";
 
 type RaceToGloryRow = {
   teamName: string;
   diamonds: string;
+};
+
+type ManagerLeaderboardRow = {
+  manager: string;
+  diamonds: number;
+};
+
+type ManagerLeaderboardStat = {
+  stat_date?: string | null;
+  creator_username?: string | null;
+  "Creator's username"?: string | null;
+  creator_id?: string | null;
+  "Creator ID"?: string | null;
+  diamonds?: number | string | null;
+  group_name?: string | null;
+  team?: string | null;
+  agency?: string | null;
+  manager_email?: string | null;
+  creator_network_manager?: string | null;
+  "Creator Network manager"?: string | null;
+  email?: string | null;
 };
 
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
@@ -88,6 +109,66 @@ const POSTER_WIDTH = 1080;
 const POSTER_HEIGHT = 1920;
 const TEAM_POSTER_WIDTH = 1024;
 const TEAM_POSTER_HEIGHT = 1536;
+const MANAGER_LEADERBOARD_WIDTH = 1080;
+const MANAGER_LEADERBOARD_HEIGHT = 1920;
+const MANAGER_LEADERBOARD_TEMPLATE_NAME = "manager-leaderboard-overlay";
+const MANAGER_LEADERBOARD_GROUPS = [
+  "Aqua",
+  "Paradise",
+  "Respawn",
+  "Team Storm",
+  "Exempt",
+  "Team Mike / Indi",
+  "Team Dan",
+  "First Class",
+] as const;
+const TEAM_DAN_MANAGER_KEYS = [
+  "cjtokens1237", "teamalf", "firstclassagencyalf", "firstclassagencyabbie",
+  "firstclassagencyolivia", "sjm20101", "firstclassagencypaige", "jasminabidzane",
+  "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7",
+  "louisesquelch", "ashwalbridge", "firstclassagencykyran",
+];
+const TEAM_MIKE_INDI_MANAGER_KEYS = [
+  "bmwe46320d", "zaliheyoncu", "firstclassagencykayden", "xaramills17",
+  "rachellouise18", "firstclassagencylauren", "liamproctor04", "abbidl",
+  "kishaunnolan1", "calliecrawford14", "megan25121990",
+];
+const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
+  cjtokens1237: "CJ",
+  teamalf: "Alf",
+  firstclassagencyalf: "Alf",
+  firstclassagencyabbie: "Abbie",
+  firstclassagencyolivia: "Liv",
+  sjm20101: "Steven",
+  firstclassagencypaige: "Paige",
+  jasminabidzane: "Jasmina",
+  connorfirstclass: "Connor",
+  brandyfalconer35: "Brandy",
+  fearnegurry1: "Fearne",
+  demileawebster7: "Demi",
+  louisesquelch: "Louise",
+  ashwalbridge: "Ash",
+  firstclassagencykyran: "Kyran",
+  bmwe46320d: "Madz",
+  zaliheyoncu: "Zalihe",
+  firstclassagencykayden: "Kayden",
+  xaramills17: "Xara",
+  rachellouise18: "Rach",
+  firstclassagencylauren: "Lauren",
+  liamproctor04: "Liam",
+  abbidl: "Abbi",
+  kishaunnolan1: "Kash",
+  calliecrawford14: "Callie",
+  megan25121990: "Megan",
+};
+const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
+  "teamalf",
+  "firstclassagencyalf",
+  "firstclassagencydan",
+  "teamdan",
+  "firstclassagencyjacob",
+  "teamjacob",
+];
 
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
@@ -390,6 +471,99 @@ function getTikTokUsername(url: string) {
   return match ? match[1].toLowerCase() : "";
 }
 
+function safeNumber(value: unknown) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getManagerLeaderboardGroup(row: ManagerLeaderboardStat) {
+  const source = String(row.team || row.group_name || row.agency || "").trim().toLowerCase();
+  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").toLowerCase();
+
+  if (/(hannakingismail92|stormlive)/.test(manager) || source.includes("storm")) return "Team Storm";
+  if (/(firstclassagencydan|firstclassagencymikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
+  if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key))) return "Team Dan";
+  if (TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => manager.includes(key))) return "Team Mike / Indi";
+  if (source.includes("mike") || source.includes("indi")) return "Team Mike / Indi";
+  if (source.includes("team dan")) return "Team Dan";
+  if (source.includes("paradise")) return "Paradise";
+  if (source.includes("respawn")) return "Respawn";
+  if (source.includes("aqua")) return "Aqua";
+  if (source.includes("first class") || manager.includes("firstclassagency")) return "First Class";
+  return "";
+}
+
+function getManagerLeaderboardName(row: ManagerLeaderboardStat) {
+  const raw = String(
+    row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "Unassigned"
+  ).trim();
+  if (!raw) return "Unassigned";
+
+  const normalized = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const configuredName = Object.entries(MANAGER_LEADERBOARD_DISPLAY_NAMES).find(([key]) => normalized.includes(key))?.[1];
+  if (configuredName) return `Team ${configuredName}`;
+
+  const localPart = raw.split("@")[0]
+    .replace(/^firstclassagency[_-]?/i, "")
+    .replace(/^team[_-]?/i, "")
+    .replace(/[_.-]+/g, " ")
+    .trim();
+  const displayName = localPart
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  return displayName ? `Team ${displayName}` : raw;
+}
+
+function getManagerLeaderboardCreatorKey(row: ManagerLeaderboardStat) {
+  return String(row.creator_username || row["Creator's username"] || row.creator_id || row["Creator ID"] || "").trim().toLowerCase();
+}
+
+function isExcludedFromManagerLeaderboard(row: ManagerLeaderboardStat) {
+  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS.some((key) => manager.includes(key));
+}
+
+function createManagerLeaderboardTemplate(): TeamPosterTemplate {
+  const elements: TeamPosterElement[] = [];
+  const startY = 145;
+  const rowGap = 88;
+
+  for (let index = 0; index < 15; index += 1) {
+    elements.push({
+      id: `manager-name-${index + 1}`,
+      kind: "username",
+      x: 120,
+      y: startY + index * rowGap,
+      width: 570,
+      height: 72,
+      value: `Team Manager ${index + 1}`,
+      fontFamily: "Norwester",
+      fontSize: 42,
+      color: "#ffffff",
+      fontWeight: 900,
+    });
+    elements.push({
+      id: `manager-diamonds-${index + 1}`,
+      kind: "diamonds",
+      x: 720,
+      y: startY + index * rowGap,
+      width: 260,
+      height: 72,
+      value: "0 diamonds",
+      fontFamily: "Norwester",
+      fontSize: 38,
+      color: "#facc15",
+      fontWeight: 900,
+    });
+  }
+
+  return { backgroundUrl: "", elements };
+}
+
 function createTeamDanPosterTemplate(): TeamPosterTemplate {
   const elements: TeamPosterElement[] = [];
   const rowGap = 98;
@@ -619,6 +793,16 @@ export default function BattleGeneratorPage() {
   const [raceToGloryLoading, setRaceToGloryLoading] = useState(false);
   const [raceToGloryLayout, setRaceToGloryLayout] = useState<"single" | "split">("single");
   const raceToGloryPosterRef = useRef<HTMLDivElement | null>(null);
+  const managerLeaderboardPosterRef = useRef<HTMLDivElement | null>(null);
+  const [selectedManagerLeaderboardGroup, setSelectedManagerLeaderboardGroup] = useState("All Groups");
+  const [managerLeaderboardRows, setManagerLeaderboardRows] = useState<ManagerLeaderboardRow[]>([]);
+  const [managerLeaderboardStatus, setManagerLeaderboardStatus] = useState(
+    "Choose a group to build the current calendar-month manager leaderboard."
+  );
+  const [managerLeaderboardLoading, setManagerLeaderboardLoading] = useState(false);
+  const [managerLeaderboardTemplate, setManagerLeaderboardTemplate] = useState<TeamPosterTemplate>(createManagerLeaderboardTemplate);
+  const [selectedManagerLeaderboardElementId, setSelectedManagerLeaderboardElementId] = useState("manager-name-1");
+  const [managerLeaderboardEditMode, setManagerLeaderboardEditMode] = useState(true);
 
   const [paste, setPaste] = useState("");
   const [singlePaste, setSinglePaste] = useState("");
@@ -1285,6 +1469,137 @@ export default function BattleGeneratorPage() {
 
     if (!blob) return;
     saveAs(blob, `team-dan-poster-template-${Date.now()}.png`);
+  }
+
+  async function loadManagerLeaderboard() {
+    const supabase = getPosterSupabaseClient();
+    if (!supabase) {
+      setManagerLeaderboardStatus("Creator Intelligence data is unavailable because the Supabase connection is not configured.");
+      return;
+    }
+
+    setManagerLeaderboardLoading(true);
+    setManagerLeaderboardStatus("Loading Creator Intelligence manager totals...");
+
+    const { data: latestRows, error: latestError } = await supabase
+      .from("creator_daily_stats")
+      .select("stat_date")
+      .order("stat_date", { ascending: false })
+      .limit(1);
+    const latestDate = (latestRows?.[0] as ManagerLeaderboardStat | undefined)?.stat_date;
+
+    if (latestError || !latestDate) {
+      setManagerLeaderboardStatus(`Could not find Creator Intelligence data: ${latestError?.message || "no uploaded data"}.`);
+      setManagerLeaderboardLoading(false);
+      return;
+    }
+
+    const startDate = `${latestDate.slice(0, 7)}-01`;
+    // Creator Intelligence fetches every page of daily data. Do the same here so
+    // later groups are not lost once the month has more than 10,000 records.
+    const rows: ManagerLeaderboardStat[] = [];
+    const pageSize = 1000;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from("creator_daily_stats")
+        .select("*")
+        .gte("stat_date", startDate)
+        .lte("stat_date", latestDate)
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        setManagerLeaderboardStatus(`Manager leaderboard load failed: ${error.message}`);
+        setManagerLeaderboardLoading(false);
+        return;
+      }
+
+      const page = (data || []) as ManagerLeaderboardStat[];
+      rows.push(...page);
+      hasMore = page.length === pageSize;
+      offset += pageSize;
+    }
+    const activeGroup = selectedManagerLeaderboardGroup;
+
+    // Match Creator Intelligence: assign every month-to-date row for a creator to
+    // that creator's latest manager, rather than splitting totals by old daily assignments.
+    const rowsByCreator = new Map<string, ManagerLeaderboardStat[]>();
+    for (const row of rows) {
+      const creatorKey = getManagerLeaderboardCreatorKey(row);
+      if (!creatorKey) continue;
+      const creatorRows = rowsByCreator.get(creatorKey) || [];
+      creatorRows.push(row);
+      rowsByCreator.set(creatorKey, creatorRows);
+    }
+
+    const totals = new Map<string, ManagerLeaderboardRow>();
+    for (const creatorRows of rowsByCreator.values()) {
+      const latestCreatorRow = [...creatorRows].sort((a, b) => String(a.stat_date || "").localeCompare(String(b.stat_date || ""))).at(-1);
+      if (!latestCreatorRow) continue;
+      if (isExcludedFromManagerLeaderboard(latestCreatorRow)) continue;
+      const rowGroup = getManagerLeaderboardGroup(latestCreatorRow);
+      if (!rowGroup || (activeGroup !== "All Groups" && rowGroup !== activeGroup)) continue;
+      const manager = getManagerLeaderboardName(latestCreatorRow);
+      if (manager === "Unassigned") continue;
+      const existing = totals.get(manager) || { manager, diamonds: 0 };
+      existing.diamonds += creatorRows.reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
+      totals.set(manager, existing);
+    }
+
+    const ranked = [...totals.values()]
+      .sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager))
+      .slice(0, 15);
+    setManagerLeaderboardRows(ranked);
+    setManagerLeaderboardStatus(
+      `${activeGroup === "All Groups" ? "All groups" : activeGroup} · current calendar month through ${latestDate} · ${ranked.length} managers ranked.`
+    );
+    setManagerLeaderboardLoading(false);
+  }
+
+  function updateManagerLeaderboardElement(id: string, changes: Partial<TeamPosterElement>) {
+    setManagerLeaderboardTemplate((prev) => ({
+      ...prev,
+      elements: prev.elements.map((element) => element.id === id ? { ...element, ...changes } : element),
+    }));
+  }
+
+  function handleManagerLeaderboardBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) {
+      if (file) alert("Please upload a PNG or JPG image.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setManagerLeaderboardTemplate((prev) => ({ ...prev, backgroundUrl: String(reader.result || "") }));
+      setManagerLeaderboardStatus("Background added. The text overlay is ready to position.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function downloadManagerLeaderboard() {
+    const node = managerLeaderboardPosterRef.current;
+    if (!node) return;
+
+    const wasEditing = managerLeaderboardEditMode;
+    setManagerLeaderboardEditMode(false);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    try {
+      const blob = await htmlToImage.toBlob(node, {
+        cacheBust: true,
+        pixelRatio: 1,
+        width: MANAGER_LEADERBOARD_WIDTH,
+        height: MANAGER_LEADERBOARD_HEIGHT,
+        backgroundColor: managerLeaderboardTemplate.backgroundUrl ? undefined : "transparent",
+      });
+      if (blob) saveAs(blob, `manager-leaderboard-${cleanFileName(selectedManagerLeaderboardGroup || "all-groups")}.png`);
+    } finally {
+      setManagerLeaderboardEditMode(wasEditing);
+    }
   }
 
   useEffect(() => {
@@ -2980,6 +3295,140 @@ function renderText(
     );
   }
 
+  function ManagerLeaderboardBuilder() {
+    const rows = Array.from({ length: 15 }, (_, index) => managerLeaderboardRows[index] || null);
+    const selectedElement = managerLeaderboardTemplate.elements.find((element) => element.id === selectedManagerLeaderboardElementId);
+    const valueForElement = (element: TeamPosterElement) => {
+      const match = element.id.match(/-(\d+)$/);
+      const row = match ? rows[Number(match[1]) - 1] : null;
+      if (!row) return element.value;
+      return element.id.startsWith("manager-diamonds-") ? `${row.diamonds.toLocaleString()} diamonds` : row.manager;
+    };
+
+    return (
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <section className="space-y-5 rounded-xl border border-yellow-300/25 bg-black/35 p-5">
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">Manager Leaderboard</h2>
+            <p className="mt-2 text-sm text-white/45">
+              Text-only overlay for your own background. Drag the manager names and diamond fields into place. It includes up to 15 managers in the selected group.
+            </p>
+          </div>
+
+          <label className="block">
+            <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Creator Intelligence Group</p>
+            <select
+              value={selectedManagerLeaderboardGroup}
+              onChange={(event) => setSelectedManagerLeaderboardGroup(event.target.value)}
+              className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
+            >
+              <option value="All Groups">All Groups</option>
+              {MANAGER_LEADERBOARD_GROUPS.map((group) => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Your Background</p>
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleManagerLeaderboardBackgroundUpload} className="block w-full text-xs text-white/65 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:font-bold file:text-white" />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => void loadManagerLeaderboard()}
+            disabled={managerLeaderboardLoading}
+            className="w-full rounded-lg bg-yellow-300 px-4 py-4 text-sm font-black uppercase tracking-widest text-black transition hover:bg-yellow-200 disabled:opacity-50"
+          >
+            {managerLeaderboardLoading ? "Loading Intelligence..." : "Load Manager Leaderboard"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void downloadManagerLeaderboard()}
+            className="w-full rounded-lg bg-green-400 px-4 py-4 text-sm font-black uppercase tracking-widest text-black transition hover:bg-green-300 disabled:opacity-50"
+          >
+            Download Leaderboard PNG
+          </button>
+
+          <button type="button" onClick={() => setManagerLeaderboardEditMode((value) => !value)} className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-white/10">
+            {managerLeaderboardEditMode ? "Hide edit outlines" : "Show edit outlines"}
+          </button>
+
+          {selectedElement && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-black/30 p-3">
+              <p className="text-xs font-black uppercase tracking-widest text-yellow-200">Editing {selectedElement.id.replaceAll("-", " ")}</p>
+              <label className="block text-xs text-white/55">Font size
+                <input type="number" min="12" max="100" value={selectedElement.fontSize || 36} onChange={(event) => updateManagerLeaderboardElement(selectedElement.id, { fontSize: Number(event.target.value) || 36 })} className="mt-1 w-full rounded bg-white/10 p-2 text-white" />
+              </label>
+              <label className="block text-xs text-white/55">Text colour
+                <input type="color" value={selectedElement.color || "#ffffff"} onChange={(event) => updateManagerLeaderboardElement(selectedElement.id, { color: event.target.value })} className="mt-1 h-9 w-full rounded bg-white/10 p-1" />
+              </label>
+            </div>
+          )}
+
+          <p className="rounded-lg border border-white/10 bg-black/30 p-3 text-xs leading-relaxed text-white/55">
+            {managerLeaderboardStatus}
+          </p>
+        </section>
+
+        <section className="overflow-x-auto rounded-xl border border-yellow-300/20 bg-black/35 p-4">
+          <div
+            ref={managerLeaderboardPosterRef}
+            className="relative mx-auto overflow-hidden bg-transparent"
+            style={{ width: MANAGER_LEADERBOARD_WIDTH, height: MANAGER_LEADERBOARD_HEIGHT, backgroundImage: managerLeaderboardTemplate.backgroundUrl ? `url(${managerLeaderboardTemplate.backgroundUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
+          >
+            <div className="hidden absolute inset-0 opacity-30" style={{ background: "radial-gradient(circle at 50% 0%, #b45309 0%, transparent 42%), linear-gradient(145deg, #020617 0%, #111827 52%, #09090b 100%)" }} />
+            <div className="relative hidden">
+              <p className="text-center text-lg font-black uppercase tracking-[0.45em] text-yellow-200">Creator Intelligence</p>
+              <h3 className="mt-5 text-center text-6xl font-black uppercase tracking-tight text-white">Manager Leaderboard</h3>
+              <p className="mt-4 text-center text-2xl font-black uppercase tracking-[0.2em] text-yellow-300">
+                {selectedManagerLeaderboardGroup === "All Groups" ? "All Groups" : selectedManagerLeaderboardGroup}
+              </p>
+              <p className="mt-2 text-center text-base font-bold uppercase tracking-[0.16em] text-white/50">Current Calendar Month · Top 10 Managers</p>
+
+              <div className="mt-12 space-y-4">
+                {rows.map((row, index) => {
+                  const rank = index + 1;
+                  const podium = rank === 1 ? "border-yellow-300 bg-yellow-300/15" : rank === 2 ? "border-slate-300 bg-slate-300/10" : rank === 3 ? "border-orange-400 bg-orange-400/10" : "border-white/15 bg-black/35";
+                  return (
+                    <div key={rank} className={`grid h-[116px] grid-cols-[92px_minmax(0,1fr)_250px] items-center overflow-hidden rounded-2xl border-2 ${podium}`}>
+                      <div className="flex h-full items-center justify-center border-r border-white/15 text-4xl font-black italic text-yellow-300">{rank}</div>
+                      <div className="min-w-0 px-7">
+                        <p className="truncate text-3xl font-black uppercase text-white">{row?.manager || "Manager"}</p>
+                        <p className="mt-1 text-xs font-black uppercase tracking-[0.2em] text-white/45">Team total</p>
+                      </div>
+                      <div className="border-l border-white/15 px-6 text-right">
+                        <p className="text-3xl font-black text-yellow-300">{row ? row.diamonds.toLocaleString() : "—"}</p>
+                        <p className="mt-1 text-xs font-black uppercase tracking-[0.15em] text-yellow-100/60">Diamonds</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {managerLeaderboardTemplate.elements.map((element) => (
+              <Rnd
+                key={element.id}
+                bounds="parent"
+                size={{ width: element.width, height: element.height }}
+                position={{ x: element.x, y: element.y }}
+                onDragStop={(_, data) => updateManagerLeaderboardElement(element.id, { x: data.x, y: data.y })}
+                onResizeStop={(_, __, ref, ___, position) => updateManagerLeaderboardElement(element.id, { width: Number(ref.style.width.replace("px", "")), height: Number(ref.style.height.replace("px", "")), x: position.x, y: position.y })}
+                onClick={() => setSelectedManagerLeaderboardElementId(element.id)}
+                className={managerLeaderboardEditMode ? `cursor-move rounded border-2 ${selectedManagerLeaderboardElementId === element.id ? "border-yellow-300" : "border-white/35"}` : ""}
+              >
+                <div className="flex h-full w-full items-center whitespace-nowrap px-2" style={{ fontFamily: element.fontFamily || "Anton", fontSize: element.fontSize || 36, color: element.color || "#fff", fontWeight: element.fontWeight || 900, lineHeight: 1, textShadow: "0 2px 4px rgba(0,0,0,.75)" }}>
+                  {valueForElement(element)}
+                </div>
+              </Rnd>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function TeamPosterCanvas({ scale = 0.42 }: { scale?: number }) {
     return (
       <div
@@ -3221,7 +3670,7 @@ function renderText(
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <button
               type="button"
               onClick={() => setActiveMode("single")}
@@ -3256,6 +3705,18 @@ function renderText(
               }`}
             >
               Team Dan Poster Builder
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveMode("manager")}
+              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
+                activeMode === "manager"
+                  ? "bg-yellow-300 text-black"
+                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
+              }`}
+            >
+              Manager Leaderboard
             </button>
 
             <button
@@ -3486,6 +3947,7 @@ function renderText(
           </div>
         )}
         {activeMode === "team" && TeamPosterBuilder()}
+        {activeMode === "manager" && ManagerLeaderboardBuilder()}
         {activeMode === "glory" && RaceToGloryBuilder()}
           </>
         )}
