@@ -172,6 +172,9 @@ const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
   "firstclassagencyjacob",
   "teamjacob",
 ];
+const TEAM_DAN_MANAGER_FALLBACKS = [
+  { key: "ashwalbridge", manager: "Team Ash" },
+];
 
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
@@ -1610,6 +1613,22 @@ export default function BattleGeneratorPage() {
       const existing = totals.get(manager) || { manager, diamonds: 0 };
       existing.diamonds += creatorRows.reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
       totals.set(manager, existing);
+    }
+
+    // Some records use the correct Team Ash manager email but have a stale
+    // creator assignment on their latest row. Keep Ash visible in Team Dan by
+    // falling back to her own current-month manager records.
+    if (activeGroup === "Team Dan") {
+      for (const fallback of TEAM_DAN_MANAGER_FALLBACKS) {
+        if (totals.has(fallback.manager)) continue;
+        const diamonds = rows
+          .filter((row) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "")
+            .includes(fallback.key))
+          .reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
+        if (diamonds > 0) totals.set(fallback.manager, { manager: fallback.manager, diamonds });
+      }
     }
 
     const ranked = [...totals.values()]
