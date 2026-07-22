@@ -2204,7 +2204,7 @@ function buildHealthLedPlan(creators: CreatorSummary[]) {
   ];
 
   const focusFor = (creator: CreatorSummary) => {
-    const diamonds = creator.diamonds;
+    const diamonds = creator.dailyPoints.slice(-7).reduce((sum, point) => sum + point.diamonds, 0);
     const hours = creator.healthWindowHours;
     const battles = creator.healthWindowMatches;
     const dph = creator.dph;
@@ -2221,7 +2221,12 @@ function buildHealthLedPlan(creators: CreatorSummary[]) {
     if (dph >= 2500) return `High-quality live: ${formatNumber(dph)} DPH. The opportunity is scale — add carefully chosen hours or battles while protecting the room quality that is already working.`;
     return `Strong foundation with ${formatNumber(dph)} DPH. Keep daily standards high and use ${primaryGap} as the stretch lever for the next growth target.`;
   };
-  return bands.map((band) => { const members = creators.filter((creator) => band.test(creator.healthScore)).sort((a, b) => a.healthScore - b.healthScore); if (!members.length) return ""; return `<section class="health-band"><h3>${band.label} <span class="muted">(${members.length})</span></h3><p>${band.intro}</p>${members.map((creator) => `<div class="creator-focus"><strong>${escapeHtml(creator.username)} — ${formatNumber(creator.healthScore)}/100</strong><br>${escapeHtml(focusFor(creator))}</div>`).join("")}</section>`; }).join("");
+  return bands.map((band) => { const members = creators.filter((creator) => band.test(creator.healthScore)).sort((a, b) => a.healthScore - b.healthScore); if (!members.length) return ""; return `<section class="health-band"><h3>${band.label} <span class="muted">(${members.length})</span></h3><p>${band.intro}</p><div class="range-names">${members.map((creator) => `<span>${escapeHtml(creator.username)} <b>${formatNumber(creator.healthScore)}</b></span>`).join("")}</div></section>`; }).join("");
+}
+
+function buildCreatorScorecards(creators: CreatorSummary[]) {
+  const tone = (earned: number, max: number) => { const ratio = max ? earned / max : 0; return ratio >= .85 ? "purple" : ratio >= .65 ? "green" : ratio >= .5 ? "orange" : "red"; };
+  return [...creators].sort((a,b)=>b.healthScore-a.healthScore).map((creator) => { const points=creator.healthBreakdown; const weeklyDiamonds=creator.dailyPoints.slice(-7).reduce((sum, point) => sum + point.diamonds, 0); const cells=[["Live days",`${creator.oneHourDays}/${creator.healthWindowDays} days`,points.liveDays,35],["Live hours",`${formatHours(creator.healthWindowHours)}h`,points.liveHours,30],["Battles",`${formatNumber(creator.healthWindowMatches)} battles`,points.matches,10],["DPH",`${formatNumber(creator.dph)} DPH`,points.dph,25],["Diamonds",`${formatNumber(weeklyDiamonds)} diamonds`,creator.healthScore,100]] as const; const tiles=cells.map(([label,value,earned,max])=>'<div class="score-tile '+tone(earned,max)+'"><span>'+label+'</span><strong>'+value+'</strong><em>'+formatNumber(earned)+' / '+formatNumber(max)+' pts</em></div>').join(""); return '<section class="creator-scorecard"><div class="creator-scorecard-head"><div><span class="label">Creator</span><h3>'+escapeHtml(creator.username)+'</h3></div><div class="health-total">'+formatNumber(creator.healthScore)+'<small>/100 health</small></div></div><div class="score-tiles">'+tiles+'</div><div class="scorecard-note"><b>Weekly target</b><span>'+escapeHtml(getWeeklyTargetText(creator))+'</span></div><div class="scorecard-note focus"><b>Manager focus</b><span>'+escapeHtml(buildManagerFocusDetail(creator).slice(0,2).join(" "))+'</span></div></section>'; }).join("");
 }
 
 function downloadManagerReport(
@@ -2231,6 +2236,7 @@ function downloadManagerReport(
   managerTrend: ManagerHealthTrendPoint[]
 ) {
   const healthLedPlan = buildHealthLedPlan(managerSummary.creators);
+  const creatorScorecards = buildCreatorScorecards(managerSummary.creators);
   const fourteenDayTrend = managerTrend.slice(-14);
   const reportAgencyName = getReportAgencyName(managerSummary.creators);
   const matureCreators = managerSummary.creators.filter((creator) => !creator.isNewCreator);
@@ -2253,13 +2259,11 @@ function downloadManagerReport(
     month: "long",
     year: "numeric",
   });
-  const totalDiamonds = managerSummary.creators.reduce((sum, creator) => sum + creator.diamonds, 0);
-  const totalHours = managerSummary.creators.reduce((sum, creator) => sum + creator.healthWindowHours, 0);
-  const totalBattles = managerSummary.creators.reduce((sum, creator) => sum + creator.healthWindowMatches, 0);
-  const averageDph =
-    totalHours > 0
-      ? managerSummary.creators.reduce((sum, creator) => sum + creator.diamonds, 0) / totalHours
-      : 0;
+  const lastSevenPoints = managerSummary.creators.flatMap((creator) => creator.dailyPoints.slice(-7));
+  const totalDiamonds = lastSevenPoints.reduce((sum, point) => sum + point.diamonds, 0);
+  const totalHours = lastSevenPoints.reduce((sum, point) => sum + point.liveHours, 0);
+  const totalBattles = lastSevenPoints.reduce((sum, point) => sum + point.matches, 0);
+  const averageDph = totalHours > 0 ? totalDiamonds / totalHours : 0;
   const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   const html = `<!doctype html>
 <html>
@@ -2303,6 +2307,8 @@ function downloadManagerReport(
     .health-band p { margin: 7px 0 12px; color: #475569; line-height: 1.5; }
     .creator-focus { padding: 12px 0; border-top: 1px solid #dbeafe; line-height: 1.5; }
     .creator-focus strong { color: #1e3a8a; }
+    .range-names{display:flex;flex-wrap:wrap;gap:8px}.range-names span{display:inline-flex;gap:7px;align-items:center;padding:8px 11px;border-radius:999px;background:#172554;color:white;font-size:12px;font-weight:800}.range-names b{color:#93c5fd}
+    .creator-scorecard { margin:20px 0; overflow:hidden; border:1px solid #1e3a8a; border-radius:20px; background:linear-gradient(135deg,#172554,#1e3a8a); color:#fff; box-shadow:0 12px 26px rgba(37,99,235,.18); }.creator-scorecard-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;background:rgba(2,6,23,.34)}.creator-scorecard-head h3{margin:3px 0 0;font-size:22px}.health-total{color:#dbeafe;font-size:30px;font-weight:900;text-align:right}.health-total small{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase}.score-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}.score-tile{min-height:94px;padding:12px;border-radius:13px;color:#fff}.score-tile:nth-child(5){display:none}.score-tile span,.score-tile em{display:block;font-size:10px;font-style:normal;font-weight:800;text-transform:uppercase;letter-spacing:.06em;opacity:.82}.score-tile strong{display:block;margin:9px 0 5px;font-size:15px}.score-tile.purple{background:#7e22ce}.score-tile.green{background:#15803d}.score-tile.orange{background:#c2410c}.score-tile.red{background:#b91c1c}.scorecard-note{display:grid;grid-template-columns:140px 1fr;gap:16px;padding:14px 18px;border-top:1px solid rgba(255,255,255,.16);line-height:1.45}.scorecard-note b{color:#93c5fd;text-transform:uppercase;font-size:11px;letter-spacing:.1em}.scorecard-note.focus b{color:#facc15}#legacy-creator-detail{display:none}.hide-contributors{display:none}.hide-contributors + .panel{display:none}@media(max-width:640px){.creator-scorecard-head{padding:14px}.creator-scorecard-head h3{font-size:17px;overflow-wrap:anywhere}.health-total{font-size:25px}.score-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:8px}.score-tile{min-height:86px;padding:10px}.score-tile strong{font-size:13px;overflow-wrap:anywhere}.scorecard-note{grid-template-columns:1fr;gap:6px;padding:13px 14px;font-size:13px}}
     .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .team-mix .card { border-top: 5px solid #f59e0b; }
     .team-mix .card:nth-child(1) { border-top-color: #a855f7; } .team-mix .card:nth-child(2) { border-top-color: #22c55e; } .team-mix .card:nth-child(3) { border-top-color: #f59e0b; } .team-mix .card:nth-child(4), .team-mix .card:nth-child(5) { border-top-color: #ef4444; }
@@ -2400,7 +2406,7 @@ function downloadManagerReport(
   -->
   <section class="two-col">
     <div>
-      <h2>Biggest Contributors</h2>
+      <h2 class="hide-contributors">Biggest Contributors</h2>
       <div class="panel">
         <table>
           <tr><th>Creator</th><th>Score</th><th>Why</th></tr>
@@ -2437,8 +2443,9 @@ function downloadManagerReport(
     </div>
   </section>
 
-  <h2>Full Creator Detail</h2>
-  <table>
+  <h2>Creator Scorecards</h2>
+  ${creatorScorecards}
+  <table id="legacy-creator-detail">
     <tr>
       <th>Creator</th>
       <th>Status</th>
@@ -2483,13 +2490,9 @@ function downloadManagerReport(
 
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${managerSummary.manager.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-manager-team-health-${timestamp}.html`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  const preview = window.open(url, "_blank", "noopener,noreferrer");
+  if (preview) window.setTimeout(() => preview.print(), 700);
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export default function CreatorIntelligencePage() {
@@ -2658,6 +2661,7 @@ export default function CreatorIntelligencePage() {
 
   const managerHealthSummaries = useMemo<ManagerHealthSummary[]>(() => {
     const managerFilteredCreators = aquaSummaries.filter((creator) => {
+      const managerMatch = activeManager === "All Managers" || creator.managerLabel === activeManager;
       const groupMatch =
         activeGroup === "All Groups"
           ? true
@@ -2679,7 +2683,7 @@ export default function CreatorIntelligencePage() {
         .toLowerCase();
       const searchMatch = !search.trim() || haystack.includes(search.toLowerCase());
 
-      return groupMatch && healthMatch && searchMatch;
+      return managerMatch && groupMatch && healthMatch && searchMatch;
     });
     const grouped = new Map<string, CreatorSummary[]>();
 
@@ -2718,7 +2722,7 @@ export default function CreatorIntelligencePage() {
         };
       })
     return summaries.sort((a, b) => a.averageScore - b.averageScore);
-  }, [activeGroup, aquaSummaries, healthStatus, search]);
+  }, [activeGroup, activeManager, aquaSummaries, healthStatus, search]);
 
   const managerGrowthSummaries = useMemo(
     () =>
@@ -2858,7 +2862,9 @@ export default function CreatorIntelligencePage() {
         (row) => row.stat_date <= date && activeAquaCreatorKeys.has(getUsername(row).toLowerCase())
       );
       const matureCreators = buildCreatorSummaries(rowsUpToDate).filter(
-        (creator) => !creator.isNewCreator
+        (creator) =>
+          !creator.isNewCreator &&
+          (activeManager === "All Managers" || creator.managerLabel === activeManager)
       );
       const average =
         matureCreators.length > 0
@@ -2872,7 +2878,7 @@ export default function CreatorIntelligencePage() {
         creators: matureCreators.length,
       };
     });
-  }, [activeAquaCreatorKeys, aquaRows]);
+  }, [activeAquaCreatorKeys, activeManager, aquaRows]);
 
   const weeklyHealthComparison = useMemo<WeeklyHealthComparison[]>(() => {
     if (!latestAquaDate) return [];
@@ -4095,7 +4101,7 @@ export default function CreatorIntelligencePage() {
                     value={`${selectedCreator.healthScore}/100`}
                   />
                   <MetricCard label="Status" value={getHealthStatusLabel(selectedCreator.healthStatus)} />
-                  <MetricCard label="Diamonds" value={formatNumber(selectedCreator.diamonds)} />
+                  <MetricCard label="Weekly diamonds" value={formatNumber(selectedProfileStats?.diamonds ?? 0)} />
                   <MetricCard label="Hours" value={formatHours(selectedCreator.healthWindowHours)} />
                   <MetricCard label="Battles" value={formatNumber(selectedCreator.healthWindowMatches)} />
                   <MetricCard label="DPH" value={formatNumber(selectedCreator.dph)} />
