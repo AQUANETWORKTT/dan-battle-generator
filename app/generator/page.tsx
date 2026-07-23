@@ -126,7 +126,7 @@ const TEAM_DAN_MANAGER_KEYS = [
   "cjtokens1237", "teamalf", "firstclassagencyalf", "firstclassagencyabbie",
   "firstclassagencyolivia", "sjm20101", "firstclassagencypaige", "jasminabidzane",
   "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7",
-  "louisesquelch", "ashwalbridge", "firstclassagencykyran", "kyran", "kieran", "kaybon03",
+  "louisesquelch", "ashwalbridge", "firstclassagencykyran", "kyran", "kieran", "kaybon03", "kbon03",
 ];
 const TEAM_MIKE_INDI_MANAGER_KEYS = [
   "bmwe46320d", "zaliheyoncu", "firstclassagencykayden", "xaramills17",
@@ -152,7 +152,8 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   firstclassagencykyran: "Kyran",
   kyran: "Kyran",
   kieran: "Kyran",
-  kaybon03: "K-Bon 03",
+  kaybon03: "KJB",
+  kbon03: "KJB",
   bmwe46320d: "Madz",
   zaliheyoncu: "Zalihe",
   firstclassagencykayden: "Kayden",
@@ -547,6 +548,7 @@ function getManagerLeaderboardName(row: ManagerLeaderboardStat) {
   if (!raw) return "Unassigned";
 
   const normalized = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (normalized.includes("kaybon03") || normalized.includes("kbon03")) return "KJB";
   const configuredName = Object.entries(MANAGER_LEADERBOARD_DISPLAY_NAMES).find(([key]) => normalized.includes(key))?.[1];
   if (configuredName) return `Team ${configuredName}`;
 
@@ -3450,7 +3452,7 @@ function renderText(
       const match = element.id.match(/-(\d+)$/);
       const row = match ? rows[Number(match[1]) - 1] : null;
       if (!row) return element.value;
-      return element.id.startsWith("manager-diamonds-") ? row.diamonds.toLocaleString() : row.manager;
+      return element.id.startsWith("manager-diamonds-") ? row.diamonds.toLocaleString() : row.manager.toUpperCase();
     };
 
     return (
