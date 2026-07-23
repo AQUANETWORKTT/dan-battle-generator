@@ -8,39 +8,8 @@ import { jsPDF } from "jspdf";
 import { useEffect, useMemo, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
-async function downloadHtmlAsPdf(html: string, filename: string) {
-  try {
-    const reportDocument = new DOMParser().parseFromString(html, "text/html");
-    const report = reportDocument.querySelector("main") || reportDocument.body;
-    const title = report.querySelector("h1")?.textContent?.trim() || "Manager Team Health Report";
-    if (!report.textContent?.trim()) throw new Error("Could not find the PDF report content.");
-
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const margin = 14;
-    const contentWidth = 210 - margin * 2;
-    const bottom = 297 - margin;
-    let y = margin;
-
-    const clean = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
-    const ensureSpace = (height: number) => { if (y + height > bottom) { pdf.addPage(); y = margin; } };
-    const sectionTitle = (value: string) => { ensureSpace(13); pdf.setFillColor(23, 37, 84); pdf.roundedRect(margin, y, contentWidth, 9, 2, 2, "F"); pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(255, 255, 255); pdf.text(clean(value).toUpperCase(), margin + 4, y + 5.9); y += 13; };
-    const panel = (heading: string, body: string, accent: [number, number, number] = [37, 99, 235]) => {
-      const lines = pdf.splitTextToSize(clean(body), contentWidth - 14);
-      const height = Math.max(18, lines.length * 4.7 + (heading ? 12 : 8));
-      ensureSpace(height + 3); pdf.setFillColor(248, 250, 255); pdf.setDrawColor(191, 219, 254); pdf.roundedRect(margin, y, contentWidth, height, 3, 3, "FD"); pdf.setFillColor(...accent); pdf.roundedRect(margin, y, 4, height, 2, 2, "F"); const startY = y; y += 7;
-      if (heading) { pdf.setFont("helvetica", "bold"); pdf.setFontSize(10.5); pdf.setTextColor(30, 64, 175); pdf.text(clean(heading), margin + 8, y); y += 5; }
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9.3); pdf.setTextColor(51, 65, 85); lines.forEach((line: string) => { pdf.text(line, margin + 8, y); y += 4.7; }); y = startY + height + 4;
-    };
-    pdf.setFillColor(23, 37, 84); pdf.roundedRect(margin, y, contentWidth, 30, 4, 4, "F"); pdf.setFillColor(59, 130, 246); pdf.roundedRect(margin, y, 6, 30, 3, 3, "F"); pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(147, 197, 253); pdf.text("MANAGER TEAM HEALTH REPORT", margin + 11, y + 8); pdf.setFontSize(19); pdf.setTextColor(255, 255, 255); pdf.text(pdf.splitTextToSize(title, contentWidth - 20), margin + 11, y + 17); y += 36;
-    const heroScore = clean(report.querySelector(".hero .score")?.textContent); if (heroScore) panel("Current team health", heroScore, [126, 34, 206]);
-    const cards = Array.from(report.querySelectorAll(".grid .card"));
-    if (cards.length) { sectionTitle("Team summary"); for (let index = 0; index < cards.length; index += 2) { const pair = cards.slice(index, index + 2); ensureSpace(25); pair.forEach((card, cardIndex) => { const x = margin + cardIndex * ((contentWidth - 5) / 2 + 5); const width = (contentWidth - 5) / 2; const label = clean(card.querySelector(".label")?.textContent) || "Metric"; const value = clean(card.querySelector(".value")?.textContent) || clean(card.textContent); pdf.setFillColor(248, 250, 255); pdf.setDrawColor(191, 219, 254); pdf.roundedRect(x, y, width, 21, 3, 3, "FD"); pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5); pdf.setTextColor(100, 116, 139); pdf.text(label.toUpperCase(), x + 4, y + 6); pdf.setFontSize(14); pdf.setTextColor(30, 64, 175); pdf.text(pdf.splitTextToSize(value, width - 8).slice(0, 2), x + 4, y + 14); }); y += 25; } }
-    for (const element of Array.from(report.children)) { if (element.tagName === "H2") { sectionTitle(clean(element.textContent)); continue; } const className = element.className || ""; if (typeof className !== "string") continue; if (className.includes("health-band")) panel(clean(element.querySelector("h3")?.textContent), clean(element.textContent), [37, 99, 235]); else if (className.includes("creator-scorecard")) { const name = clean(element.querySelector("h3")?.textContent) || "Creator"; const score = clean(element.querySelector(".health-total")?.textContent); const tiles = Array.from(element.querySelectorAll(".score-tile")).map((tile) => clean(tile.textContent)).join("  •  "); const notes = Array.from(element.querySelectorAll(".scorecard-note")).map((note) => clean(note.textContent)).join("  "); panel(`${name}  ${score}`, `${tiles}  ${notes}`, [126, 34, 206]); } else if (className.includes("panel") || className.includes("summary-section")) { const heading = clean(element.querySelector("h3")?.textContent); const body = clean(element.textContent); if (body) panel(heading, body); } }
-    saveAs(pdf.output("blob"), filename);
-  } catch (error) {
-    console.error("Manager report PDF export failed", error);
-    alert("The PDF could not be created on this device. Please try again.");
-  }
+function downloadStyledManagerReport(html: string, filename: string) {
+  saveAs(new Blob([html], { type: "text/html;charset=utf-8" }), filename);
 }
 
 type CreatorStat = {
@@ -2524,9 +2493,9 @@ async function downloadManagerReport(
 </body>
 </html>`;
 
-  await downloadHtmlAsPdf(
+  downloadStyledManagerReport(
     html,
-    `${managerSummary.manager.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-manager-team-health-report-${timestamp}.pdf`
+    `${managerSummary.manager.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-manager-team-health-report-${timestamp}.html`
   );
 }
 
@@ -3508,7 +3477,7 @@ export default function CreatorIntelligencePage() {
                       }
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
                     >
-                      Download Manager Report PDF
+                      Download Manager Report
                     </button>
                   </div>
 
