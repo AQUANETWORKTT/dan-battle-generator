@@ -548,7 +548,7 @@ function getManagerLeaderboardName(row: ManagerLeaderboardStat) {
   if (!raw) return "Unassigned";
 
   const normalized = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (normalized.includes("kaybon03") || normalized.includes("kbon03")) return "KJB";
+  if (normalized.includes("kaybon03") || normalized.includes("kbon03")) return "Team KJB";
   const configuredName = Object.entries(MANAGER_LEADERBOARD_DISPLAY_NAMES).find(([key]) => normalized.includes(key))?.[1];
   if (configuredName) return `Team ${configuredName}`;
 
