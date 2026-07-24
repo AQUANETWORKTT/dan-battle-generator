@@ -70,6 +70,7 @@ type CreatorDailyPoint = {
   date: string;
   diamonds: number;
   liveHours: number;
+  liveStreams: number;
   validDays: number;
   matches: number;
   newFollowers: number;
@@ -577,6 +578,7 @@ function getDailyPoint(row: CreatorStat): CreatorDailyPoint {
     date: row.stat_date,
     diamonds,
     liveHours,
+    liveStreams: getNumber(row, ["live_streams", "LIVE streams"]),
     validDays: liveHours >= 1 ? 1 : 0,
     matches,
     newFollowers,
@@ -1340,6 +1342,7 @@ function buildCreatorReportHtml({
   const weeklyHours = weeklyPoints.reduce((sum, point) => sum + point.liveHours, 0);
   const weeklyLiveDays = weeklyPoints.filter((point) => point.liveHours > 0).length;
   const weeklyMatches = weeklyPoints.reduce((sum, point) => sum + point.matches, 0);
+  const weeklyLiveStreams = weeklyPoints.reduce((sum, point) => sum + point.liveStreams, 0);
   const weeklyDph = weeklyHours > 0 ? weeklyDiamonds / weeklyHours : 0;
   const maxDiamonds = Math.max(...weeklyPoints.map((point) => point.diamonds), 1);
   const averageSessionLength = weeklyLiveDays > 0 ? weeklyHours / weeklyLiveDays : weeklyHours;
@@ -1399,7 +1402,7 @@ function buildCreatorReportHtml({
     .score.performance strong { color: #7dd3fc; }
     .score.quality { border-color: rgba(248, 113, 113, .65); background: rgba(127, 29, 29, .52); }
     .score.quality strong { color: #fca5a5; }
-    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+    .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 22px; }
     .card { border: 1px solid rgba(125, 211, 252, .18); background: rgba(15, 23, 42, .86); border-radius: 18px; padding: 16px; }
     .card .label { color: #8fb7d4; font-size: 12px; }
     .card .value { margin-top: 10px; font-size: 28px; font-weight: 900; color: #38bdf8; }
@@ -1407,6 +1410,7 @@ function buildCreatorReportHtml({
     .card.hours .value { color: #38bdf8; }
     .card.days .value { color: #34d399; }
     .card.battles .value { color: #f472b6; }
+    .card.streams .value { color: #c084fc; }
     .wide { border: 1px solid rgba(125, 211, 252, .18); background: rgba(15, 23, 42, .78); border-radius: 20px; padding: 18px; margin-top: 14px; }
     .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
     .day { border: 2px solid rgba(125, 211, 252, .28); background: linear-gradient(180deg, rgba(8, 47, 73, .72), rgba(2, 6, 23, .7)); border-radius: 20px; padding: 16px 12px; min-height: 178px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
@@ -1465,18 +1469,13 @@ function buildCreatorReportHtml({
     <div class="card hours"><div class="label">&#9201; Weekly Hours</div><div class="value">${formatHours(weeklyHours)}h</div></div>
     <div class="card days"><div class="label">&#9989; LIVE Days This Week</div><div class="value">${formatNumber(weeklyLiveDays)}</div></div>
     <div class="card battles"><div class="label">&#9876; Weekly Battles</div><div class="value">${formatNumber(weeklyMatches)}</div></div>
+    <div class="card streams"><div class="label">&#128246; Live Streams</div><div class="value">${formatNumber(weeklyLiveStreams)}</div></div>
   </section>
 
   <h2>Weekly Targets</h2>
   <section class="target-card">
     <strong>Creator target: 5 live days and 20 live hours per week</strong>
     <span>${getWeeklyTargetText(creator)}</span>
-  </section>
-
-  <h2>Tier Status</h2>
-  <section class="tier-card">
-    <strong>${creator.tierStatus || "Tier status not available"}</strong>
-    <span>${creator.sourceStatus ? `Current status: ${creator.sourceStatus}. ` : ""}Keep using the weekly targets to protect or improve tier position.</span>
   </section>
 
   <h2>Weekly Live Breakdown</h2>
@@ -1503,6 +1502,11 @@ function buildCreatorReportHtml({
 
   <h2>What To Improve Next</h2>
   <section class="tips">
+    ${
+      weeklyLiveStreams > weeklyHours
+        ? `<div class="tip"><strong>Make every LIVE count</strong><span>You completed ${formatNumber(weeklyLiveStreams)} live streams in ${formatHours(weeklyHours)} hours. This means some streams were under one hour. It does not affect your health score directly, but longer, more focused sessions give viewers more time to find you, stay engaged and build momentum. Aim to make each LIVE at least one full hour.</span></div>`
+        : ""
+    }
     ${tips
       .slice(0, 5)
       .map((tip) => `<div class="tip"><strong>${tip.title}</strong><span>${tip.description}</span></div>`)
@@ -1802,7 +1806,39 @@ function CreatorListPanel({
   );
 }
 
-function downloadReport(creator: CreatorSummary, reportType: "creator" | "internal") {
+async function renderCreatorReportToPngBlob(html: string) {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:980px;height:1px;border:0;pointer-events:none;";
+  document.body.appendChild(iframe);
+
+  try {
+    const documentForReport = iframe.contentDocument;
+    if (!documentForReport) throw new Error("Could not create creator report renderer.");
+    documentForReport.open();
+    documentForReport.write(html);
+    documentForReport.close();
+    await waitForPosterAssets(documentForReport);
+
+    const report = documentForReport.querySelector("main") as HTMLElement | null;
+    if (!report) throw new Error("Could not find creator report content.");
+    const height = Math.ceil(report.scrollHeight);
+    iframe.style.height = `${height}px`;
+    const blob = await toBlob(report, {
+      cacheBust: true,
+      pixelRatio: 1.5,
+      width: 980,
+      height,
+      backgroundColor: "#020817",
+    });
+    if (!blob) throw new Error("Could not render creator report PNG.");
+    return blob;
+  } finally {
+    iframe.remove();
+  }
+}
+
+async function downloadReport(creator: CreatorSummary, reportType: "creator" | "internal") {
   const insights = buildInsights(creator);
   const agencyLogo =
     reportType === "creator" ? `${window.location.origin}/logo.png` : "";
@@ -1909,12 +1945,18 @@ function downloadReport(creator: CreatorSummary, reportType: "creator" | "intern
 </body>
 </html>`;
   const finalHtml = reportType === "creator" ? creatorHtml : html;
+  const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+  if (reportType === "creator") {
+    const png = await renderCreatorReportToPngBlob(finalHtml);
+    saveAs(png, `${creator.username}-weekly-creator-report-${timestamp}.png`);
+    return;
+  }
+
   const blob = new Blob([finalHtml], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   link.href = url;
-  link.download = `${creator.username}-${reportType === "creator" ? "weekly-creator-report" : "internal-data-report"}-${timestamp}.html`;
+  link.download = `${creator.username}-internal-data-report-${timestamp}.html`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -3013,7 +3055,7 @@ export default function CreatorIntelligencePage() {
             : selectedCreator.validDays,
         liveStreams:
           profileRange === "week"
-            ? selectedProfilePoints.filter((point) => point.liveHours > 0).length
+            ? selectedProfilePoints.reduce((sum, point) => sum + point.liveStreams, 0)
             : selectedCreator.liveStreams,
         matches:
           profileRange === "week"
@@ -3613,14 +3655,14 @@ export default function CreatorIntelligencePage() {
               </div>
               <button
                 type="button"
-                onClick={() => downloadReport(selectedCreator, "creator")}
+                onClick={() => void downloadReport(selectedCreator, "creator")}
                 className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
               >
-                Download Creator Report
+                Download Creator Report PNG
               </button>
               <button
                 type="button"
-                onClick={() => downloadReport(selectedCreator, "internal")}
+                onClick={() => void downloadReport(selectedCreator, "internal")}
                 className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 hover:bg-sky-100"
               >
                 Download Internal Data Report
@@ -4131,14 +4173,14 @@ export default function CreatorIntelligencePage() {
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => downloadReport(selectedCreator, "creator")}
+                    onClick={() => void downloadReport(selectedCreator, "creator")}
                     className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
                   >
-                    Download Creator Report
+                    Download Creator Report PNG
                   </button>
                   <button
                     type="button"
-                    onClick={() => downloadReport(selectedCreator, "internal")}
+                    onClick={() => void downloadReport(selectedCreator, "internal")}
                     className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 hover:bg-sky-100"
                   >
                     Download Internal Data Report
