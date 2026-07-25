@@ -5,9 +5,9 @@ import Link from "next/link";
 const SITE_URL = "https://firstclassagency.space";
 
 const events = [
-  { name: "World Cup 2026", status: "Live Event", logo: "/world-cup-2026/logo.png", leaderboardHref: "/live/world-cup-2026", adminHref: "/events/world-cup-2026/admin", creatorHref: "/live/world-cup-2026", tone: "emerald" },
-  { name: "Sunset Showdown", status: "Live Event", logo: "/sunset-showdown/logo.png", leaderboardHref: "/live/8f3k2j9m-sunset", adminHref: "/events/sunset-showdown/admin", creatorHref: "/live/8f3k2j9m-sunset", tone: "yellow" },
-  { name: "Crew Showdown", status: "Tournament Setup", logo: "/first-class/crew-showdown-logo.png", leaderboardHref: "/live/7xq9v2-first-class", downloadHref: "/generator?mode=glory", creatorHref: "/live/7xq9v2-first-class", tone: "yellow" },
+  { name: "World Cup 2026", status: "Live Event", logo: "/world-cup-2026/logo.png", leaderboardHref: "/live/world-cup-2026", creatorHref: "/live/world-cup-2026", tone: "emerald" },
+  { name: "Sunset Showdown", status: "Live Event", logo: "/sunset-showdown/logo.png", leaderboardHref: "/live/8f3k2j9m-sunset", creatorHref: "/live/8f3k2j9m-sunset", tone: "yellow" },
+  { name: "Crew Showdown", status: "Tournament Setup", logo: "/first-class/crew-showdown-logo.png", leaderboardHref: "/live/7xq9v2-first-class", creatorHref: "/live/7xq9v2-first-class", tone: "yellow" },
 ];
 
 export default function EventsPage() {
@@ -30,7 +30,7 @@ export default function EventsPage() {
             <h1 className="mt-4 font-[family-name:var(--font-norwester)] text-5xl uppercase leading-none sm:text-7xl">Event <span className="text-yellow-300">Space</span></h1>
             <p className="mt-5 text-base leading-relaxed text-white/60">Live tournaments, leaderboards and creator-ready links — all in one place.</p>
           </div>
-          <Link href="/generator" className="rounded-full border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-wider text-white/70 transition hover:border-yellow-300/50 hover:text-yellow-200">Poster Generator →</Link>
+          <p className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/45">Creator leaderboards</p>
         </div>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -48,8 +48,6 @@ export default function EventsPage() {
                 </div>
                 <div className="mt-6 grid gap-2">
                   <Link href={event.leaderboardHref} className="rounded-xl bg-white px-4 py-3 text-center text-xs font-black uppercase tracking-wide text-black transition hover:bg-yellow-300">View Leaderboard</Link>
-                  {event.adminHref && <Link href={event.adminHref} className="rounded-xl border border-white/15 px-4 py-3 text-center text-xs font-black uppercase tracking-wide text-white/75 transition hover:bg-white/10">Admin Scores</Link>}
-                  {event.downloadHref && <Link href={event.downloadHref} className="rounded-xl border border-yellow-300/30 bg-yellow-300/10 px-4 py-3 text-center text-xs font-black uppercase tracking-wide text-yellow-100">Download Leaderboard</Link>}
                   <button type="button" onClick={() => copyCreatorLink(event.creatorHref)} className="rounded-xl px-4 py-2 text-center text-[10px] font-black uppercase tracking-[0.18em] text-white/45 transition hover:text-yellow-200">Copy Creator Link</button>
                 </div>
               </article>

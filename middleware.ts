@@ -2,8 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
+  const isEventsSpace = process.env.SITE_MODE === "events";
 
-  const publicRoutes = ["/login", "/live/8f3k2j9m-sunset"];
+  if (isEventsSpace) {
+    const isCreatorRoute =
+      path === "/" ||
+      path.startsWith("/events") ||
+      path.startsWith("/live/") ||
+      path.startsWith("/api/events/") ||
+      path.startsWith("/api/tiktok-avatar");
+
+    if (!isCreatorRoute) {
+      return NextResponse.redirect(new URL("/events", req.url));
+    }
+
+    return NextResponse.next();
+  }
+
+  const publicRoutes = ["/login", "/api/login"];
 
   const isPublic = publicRoutes.some((route) => path.startsWith(route));
 
@@ -21,5 +37,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/generator/:path*", "/events/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2|otf)$).*)",
+  ],
 };

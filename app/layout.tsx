@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const isEventsSpace = process.env.SITE_MODE === "events";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://firstclassagency.space"),
-  title: "First Class Space",
-  description: "First Class events, leaderboards and creator intelligence.",
+  metadataBase: new URL(isEventsSpace ? "https://firstclassagency.space" : "https://firstclassagency.management"),
+  title: isEventsSpace ? "First Class Event Space" : "First Class Agency Hub",
+  description: isEventsSpace ? "First Class events and creator leaderboards." : "First Class Agency Hub for creator intelligence and management.",
   openGraph: {
-    title: "First Class Space",
-    description: "First Class events, leaderboards and creator intelligence.",
+    title: isEventsSpace ? "First Class Event Space" : "First Class Agency Hub",
+    description: isEventsSpace ? "First Class events and creator leaderboards." : "First Class Agency Hub for creator intelligence and management.",
   },
 };
 

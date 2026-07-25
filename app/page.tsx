@@ -1,15 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const spaces = [
-  {
-    eyebrow: "Live tournaments & leaderboards",
-    title: "Events",
-    copy: "Everything happening across First Class — live scores, event hubs, admin tools and creator links.",
-    href: "/events",
-    action: "Enter Event Space",
-    accent: "from-yellow-300/20 via-yellow-300/5 to-transparent",
-    marker: "01",
-  },
   {
     eyebrow: "Performance & reporting",
     title: "Data",
@@ -17,11 +9,24 @@ const spaces = [
     href: "/data",
     action: "Open Data Space",
     accent: "from-sky-300/20 via-sky-300/5 to-transparent",
+    marker: "01",
+  },
+  {
+    eyebrow: "Management tools",
+    title: "Agency Tools",
+    copy: "Create event assets, manage score administration and access the First Class operational workspace.",
+    href: "/generator",
+    action: "Open Agency Tools",
+    accent: "from-yellow-300/20 via-yellow-300/5 to-transparent",
     marker: "02",
   },
 ];
 
 export default function HomePage() {
+  if (process.env.SITE_MODE === "events") {
+    redirect("/events");
+  }
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8">
       <div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_75%_0%,rgba(250,204,21,0.16),transparent_28%),radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.05),transparent_25%)]" />
@@ -44,7 +49,7 @@ export default function HomePage() {
               <span className="text-yellow-300">in one space.</span>
             </h1>
             <p className="mt-7 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
-              The home for First Class events and creator performance. Choose a space to get started.
+              The private operational workspace for First Class performance, reporting and event management.
             </p>
           </div>
 
@@ -76,7 +81,7 @@ export default function HomePage() {
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
           <span>First Class Agency</span>
-          <span>Events · Data · Creator Intelligence</span>
+          <span>Data · Creator Intelligence · Agency tools</span>
         </footer>
       </div>
     </main>
