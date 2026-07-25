@@ -2,7 +2,7 @@ import Link from "next/link";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 const events = [
-  { name: "Crew Showdown", logo: "/first-class/crew-showdown-logo.png", detail: "Top 20 leaderboard, downloadable board and event setup.", leaderboard: "/live/7xq9v2-first-class", download: "/generator?mode=glory" },
+  { name: "Crew Showdown", logo: "/first-class/crew-showdown-logo.png", detail: "Top 20 leaderboard, downloadable board and event setup.", leaderboard: "/live/7xq9v2-first-class", download: "/crew-showdown-download" },
   { name: "World Cup 2026", logo: "/world-cup-2026/logo.png", detail: "Live leaderboard and score administration.", leaderboard: "/live/world-cup-2026", admin: "/events/world-cup-2026/admin" },
   { name: "Sunset Showdown", logo: "/sunset-showdown/logo.png", detail: "Live leaderboard and score administration.", leaderboard: "/live/8f3k2j9m-sunset", admin: "/events/sunset-showdown/admin" },
 ];

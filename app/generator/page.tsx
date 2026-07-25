@@ -851,14 +851,16 @@ export default function BattleGeneratorPage() {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
-  const isPostersWorkspace =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("workspace") === "posters";
+  const workspace = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("workspace")
+    : null;
+  const isPostersWorkspace = workspace === "posters";
+  const isCrewShowdownWorkspace = workspace === "crew-showdown";
 
   const [activeMode, setActiveMode] = useState<Mode>(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "team"
+    isPostersWorkspace
       ? "team"
-      : typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "glory"
+      : isCrewShowdownWorkspace || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "glory")
         ? "glory"
         : "single"
   );
@@ -3831,18 +3833,22 @@ function renderText(
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-yellow-300 text-3xl font-black tracking-[0.18em] uppercase">
-              {isPostersWorkspace ? "Posters" : BRAND.name}
+              {isPostersWorkspace ? "Posters" : isCrewShowdownWorkspace ? "Crew Showdown Downloads" : BRAND.name}
             </h1>
 
             <p className="text-white/45 text-sm mt-2">
-              {isPostersWorkspace ? "Create, save and maintain reusable team poster layouts." : "Create individual posters or build them in bulk."}
+              {isPostersWorkspace ? "Create, save and maintain reusable team poster layouts." : isCrewShowdownWorkspace ? "Load the live top 20, choose a layout and download the Crew Showdown leaderboard." : "Create individual posters or build them in bulk."}
             </p>
           </div>
 
-          <div className={`grid w-full max-w-2xl grid-cols-1 gap-3 ${isPostersWorkspace ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+          <div className={`grid w-full max-w-2xl grid-cols-1 gap-3 ${(isPostersWorkspace || isCrewShowdownWorkspace) ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
             {isPostersWorkspace ? (
               <button type="button" className="bg-yellow-300 px-5 py-4 font-black uppercase tracking-widest text-black">
                 Team Poster Builder
+              </button>
+            ) : isCrewShowdownWorkspace ? (
+              <button type="button" className="bg-sky-300 px-5 py-4 font-black uppercase tracking-widest text-slate-950">
+                Crew Showdown Top 20
               </button>
             ) : <>
             <button
