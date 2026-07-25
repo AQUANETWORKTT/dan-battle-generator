@@ -102,6 +102,8 @@ type TeamPosterElement = {
 type TeamPosterTemplate = {
   backgroundUrl: string;
   backgroundPath?: string;
+  /** Manager key used by the Team Diamonds Yesterday downloader. */
+  managerKey?: string;
   elements: TeamPosterElement[];
 };
 
@@ -707,6 +709,7 @@ function normalizeManagerLeaderboardTemplate(input?: Partial<TeamPosterTemplate>
   return {
     backgroundUrl: incoming.backgroundUrl || "",
     backgroundPath: incoming.backgroundPath || "",
+    managerKey: incoming.managerKey || "team-dan",
     elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
   };
 }
@@ -917,6 +920,7 @@ export default function BattleGeneratorPage() {
   );
   const [teamPosterTemplates, setTeamPosterTemplates] = useState<Array<{ name: string; template: TeamPosterTemplate }>>([]);
   const [teamPosterTemplateName, setTeamPosterTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
+  const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<string[]>(["team-dan", "vitali_aquaagency"]);
   const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
 
@@ -1788,6 +1792,25 @@ export default function BattleGeneratorPage() {
     }
 
     loadTeamPosterTemplate();
+  }, []);
+
+  useEffect(() => {
+    async function loadTeamPosterManagers() {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      try {
+        const response = await fetch(`/api/data-analysis/daily-stats?month=${month}`);
+        const json = await response.json();
+        const managers: string[] = Array.from(new Set<string>((json.rows || [])
+          .map((row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim())
+          .filter(Boolean)))
+          .sort((a, b) => a.localeCompare(b));
+        if (managers.length) setTeamPosterManagerOptions(["team-dan", ...managers]);
+      } catch {
+        // The editable field remains available if the latest data cannot load.
+      }
+    }
+    loadTeamPosterManagers();
   }, []);
 
   useEffect(() => {
@@ -3737,6 +3760,18 @@ function renderText(
                 ))}
               </div>
             </div>
+
+            <label className="block">
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Team Data Source / Manager</p>
+              <select
+                value={teamPosterTemplate.managerKey || "team-dan"}
+                onChange={(event) => setTeamPosterTemplate((current) => ({ ...current, managerKey: event.target.value }))}
+                className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
+              >
+                {teamPosterManagerOptions.map((manager) => <option key={manager} value={manager}>{manager === "team-dan" ? "Team Dan + James Aqua Agency" : manager}</option>)}
+              </select>
+              <p className="mt-2 text-xs text-white/45">Saved with this layout. Select any Creator Intelligence manager, then press Save Template.</p>
+            </label>
 
             <div className="grid grid-cols-2 gap-3">
               <label

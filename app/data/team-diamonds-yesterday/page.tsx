@@ -42,6 +42,7 @@ type TeamPosterElement = {
 type TeamPosterTemplate = {
   backgroundUrl: string;
   backgroundPath?: string;
+  managerKey?: string;
   elements: TeamPosterElement[];
 };
 
@@ -126,6 +127,18 @@ function isTeamDanRow(row: CreatorStat) {
   ].includes(managerEmail);
 }
 
+function getManagerKey(row: CreatorStat) {
+  return String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "")
+    .trim()
+    .toLowerCase();
+}
+
+function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate) {
+  const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
+  if (managerKey === "team-dan") return isTeamDanRow(row);
+  return getManagerKey(row) === managerKey;
+}
+
 function createDefaultTemplate(): TeamPosterTemplate {
   const elements: TeamPosterElement[] = [];
   const rowGap = 98;
@@ -153,6 +166,7 @@ function normalizeTemplate(input: Partial<TeamPosterTemplate> | null): TeamPoste
   return {
     backgroundUrl: input?.backgroundUrl || "",
     backgroundPath: input?.backgroundPath || "",
+    managerKey: input?.managerKey || "team-dan",
     elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
   };
 }
@@ -429,12 +443,12 @@ export default function TeamDiamondsYesterdayPage() {
 
       const rows = ((json.rows || []) as CreatorStat[])
         .filter((row) => row.stat_date === yesterday)
-        .filter(isTeamDanRow)
+        .filter((row) => matchesTemplateManager(row, activeTemplate))
         .filter((row) => getUsername(row))
         .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
 
       if (!rows.length) {
-        setMessage(`No Team Dan rows found for ${yesterday}.`);
+        setMessage(`No rows found for ${(activeTemplate.managerKey || "team-dan")} on ${yesterday}.`);
         return;
       }
 
@@ -487,7 +501,7 @@ export default function TeamDiamondsYesterdayPage() {
       };
 
       setTemplate(filledTemplate);
-      if (!quiet) setMessage(`Preview built from Team Dan top 5 diamonds and top 5 hours for ${yesterday}.`);
+      if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${yesterday}.`);
     } catch (error) {
       console.error(error);
       setMessage(error instanceof Error ? error.message : "Could not build Team Dan poster.");
