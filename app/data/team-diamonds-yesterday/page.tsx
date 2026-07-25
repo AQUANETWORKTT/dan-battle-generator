@@ -211,6 +211,50 @@ async function getPublicSavedTemplate() {
   return resolveTemplateBackground(template);
 }
 
+type SavedTemplateRow = { name: string; template: TeamPosterTemplate };
+
+function isTeamPosterTemplate(name: string) {
+  return name === TEAM_DAN_POSTER_TEMPLATE_NAME || name.startsWith("team-poster-");
+}
+
+function templateLabel(name: string) {
+  if (name === TEAM_DAN_POSTER_TEMPLATE_NAME) return "Team Dan";
+  return name
+    .replace(/^team-poster-/, "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function templateSlug(label: string) {
+  return `team-poster-${label.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-team"}`;
+}
+
+async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
+  const supabase = getPosterSupabaseClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("poster_templates")
+    .select("name,template_json,background_url")
+    .order("updated_at", { ascending: false });
+  if (error || !data) return [];
+
+  const templates = await Promise.all(
+    data
+      .filter((row) => isTeamPosterTemplate(String(row.name || "")) && row.template_json)
+      .map(async (row) => ({
+        name: String(row.name),
+        template: await resolveTemplateBackground(
+          normalizeTemplate({
+            ...(row.template_json as TeamPosterTemplate),
+            backgroundUrl: (row.template_json as TeamPosterTemplate).backgroundUrl || row.background_url || "",
+          })
+        ),
+      }))
+  );
+  return templates.sort((a, b) => (a.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? -1 : b.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? 1 : a.name.localeCompare(b.name)));
+}
+
 function getSavedTemplate() {
   if (typeof window === "undefined") return null;
   try {
@@ -301,23 +345,28 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
 export default function TeamDiamondsYesterdayPage() {
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
   const [savedTemplate, setSavedTemplate] = useState<TeamPosterTemplate | null>(null);
+  const [templates, setTemplates] = useState<SavedTemplateRow[]>([]);
+  const [selectedTemplateName, setSelectedTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [showNewTemplate, setShowNewTemplate] = useState(false);
+  const [bulkTemplates, setBulkTemplates] = useState<SavedTemplateRow[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
   // This lets every signed-in user build a poster even when no public custom template exists yet.
-  const visibleTemplate = useMemo(
-    () => template || savedTemplate || getSavedTemplate() || createDefaultTemplate(),
-    [template, savedTemplate]
-  );
+  const selectedSavedTemplate = templates.find((item) => item.name === selectedTemplateName)?.template || savedTemplate;
+  const visibleTemplate = useMemo(() => template || selectedSavedTemplate || getSavedTemplate() || createDefaultTemplate(), [template, selectedSavedTemplate]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadTemplate() {
-      const publicTemplate = await getPublicSavedTemplate();
-      if (!cancelled && publicTemplate) setSavedTemplate(publicTemplate);
+      const [publicTemplate, savedTemplates] = await Promise.all([getPublicSavedTemplate(), getTeamPosterTemplates()]);
+      if (cancelled) return;
+      if (publicTemplate) setSavedTemplate(publicTemplate);
+      setTemplates(savedTemplates);
     }
 
     loadTemplate();
@@ -326,14 +375,51 @@ export default function TeamDiamondsYesterdayPage() {
     };
   }, []);
 
+  async function saveTemplate(name: string, nextTemplate: TeamPosterTemplate) {
+    const supabase = getPosterSupabaseClient();
+    if (!supabase) throw new Error("Poster storage is not connected.");
+    const { error } = await supabase.from("poster_templates").upsert(
+      { name, template_json: nextTemplate, background_url: nextTemplate.backgroundUrl || null },
+      { onConflict: "name" }
+    );
+    if (error) throw error;
+  }
+
+  async function createOrDuplicateTemplate(duplicate: boolean) {
+    const label = newTemplateName.trim();
+    if (!label) {
+      setMessage("Give the new poster a name first.");
+      return;
+    }
+    const name = templateSlug(label);
+    if (templates.some((item) => item.name === name)) {
+      setMessage("A team poster with that name already exists.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const source = duplicate ? visibleTemplate : createDefaultTemplate();
+      await saveTemplate(name, source);
+      const next = { name, template: source };
+      setTemplates((current) => [...current, next]);
+      setSelectedTemplateName(name);
+      setTemplate(null);
+      setNewTemplateName("");
+      setShowNewTemplate(false);
+      setMessage(`${label} is ready. Use Poster Generator to customise its layout and background.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save the new poster.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function buildPreview() {
     setLoading(true);
     setMessage("");
 
     try {
-      const publicTemplate = await getPublicSavedTemplate();
-      const activeTemplate = publicTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
-      if (publicTemplate) setSavedTemplate(publicTemplate);
+      const activeTemplate = selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
 
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
@@ -426,7 +512,7 @@ export default function TeamDiamondsYesterdayPage() {
       backgroundColor: "#000000",
     });
     if (!blob) return;
-    saveAs(blob, `team-dan-diamonds-yesterday-${getYesterdayDateKey()}.png`);
+    saveAs(blob, `${selectedTemplateName}-${getYesterdayDateKey()}.png`);
   }
 
   return (
