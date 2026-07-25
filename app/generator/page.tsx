@@ -123,6 +123,7 @@ const MANAGER_LEADERBOARD_GROUPS = [
   "First Class",
 ] as const;
 const TEAM_DAN_MANAGER_KEYS = [
+  "jamesaquaagency",
   "cjtokens1237", "teamalf", "firstclassagencyalf", "firstclassagencyabbie",
   "firstclassagencyolivia", "sjm20101", "firstclassagencypaige", "jasminabidzane",
   "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7",

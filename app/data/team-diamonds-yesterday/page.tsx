@@ -119,7 +119,11 @@ function isTeamDanRow(row: CreatorStat) {
     .trim()
     .toLowerCase();
 
-  return managerEmail === "firstclassagency_dan@outlook.com";
+  return [
+    "firstclassagency_dan@outlook.com",
+    "james_aquaagency",
+    "james_aquaagency@outlook.com",
+  ].includes(managerEmail);
 }
 
 function createDefaultTemplate(): TeamPosterTemplate {
@@ -442,7 +446,7 @@ export default function TeamDiamondsYesterdayPage() {
             <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Dan</p>
             <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
             <p className="mt-3 max-w-3xl text-white/60">
-              Uses Daniel creator daily stats, filters firstclassagency_dan@outlook.com, fills the saved poster template with top 5 diamonds and top 5 live hours, and downloads the final PNG.
+              Uses First Class creator daily stats, combines Team Dan and James Aqua Agency, fills the saved poster template with top 5 diamonds and top 5 live hours, and downloads the final PNG.
             </p>
           </section>
 
@@ -450,7 +454,7 @@ export default function TeamDiamondsYesterdayPage() {
             <div className="space-y-4 rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div>
                 <p className="text-xs font-black uppercase text-white/45">Team</p>
-                <p className="mt-2 text-lg font-black text-yellow-200">firstclassagency_dan@outlook.com</p>
+                <p className="mt-2 text-lg font-black text-yellow-200">Team Dan + James Aqua Agency</p>
               </div>
               <button type="button" onClick={buildPreview} disabled={loading} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">
                 {loading ? "Building..." : "Preview"}

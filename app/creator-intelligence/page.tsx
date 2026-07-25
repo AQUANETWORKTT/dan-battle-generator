@@ -342,6 +342,7 @@ function getManagerLabel(value: string, groupValue = "") {
 
 const FIRST_CLASS_DEFAULT_GROUP = "Team Mike / Indi";
 const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }> = {
+  jamesaquaagency: { name: "James", group: "Team Dan" },
   cjtokens1237: { name: "CJ", group: "Team Dan" },
   teamalf: { name: "Alf", group: "Team Dan" },
   firstclassagencyalf: { name: "Alf", group: "Team Dan" },
@@ -394,7 +395,7 @@ function getFirstClassManagerDetails(managerRaw: string, managerLabel: string, u
   if (TEAM_DAN_CREATOR_KEYS.includes(normalizeManagerKey(username))) {
     return { managerLabel: "Team Dan (First Class — Team Dan)", managerGroup: "Exempt" };
   }
-  if (hasManagerKey(managerDetails, ["firstclassagencydan"])) {
+  if (hasManagerKey(managerDetails, ["firstclassagencydan", "jamesaquaagency"])) {
     return { managerLabel: "Team Dan (First Class — Team Dan)", managerGroup: "Exempt" };
   }
   if (hasManagerKey(managerDetails, ["firstclassagencymikeindi", "mikeindi"])) {
