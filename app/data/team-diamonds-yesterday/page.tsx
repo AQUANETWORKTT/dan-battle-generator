@@ -554,6 +554,25 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
+  async function downloadTemplate(item: SavedTemplateRow) {
+    setSelectedTemplateName(item.name);
+    setLoading(true);
+    try {
+      await buildPreview(item.template, true);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
+      if (!node) throw new Error("Could not prepare the poster.");
+      await waitForImages(node);
+      const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
+      if (blob) saveAs(blob, `${item.name}-${getYesterdayDateKey()}.png`);
+      setMessage(`${templateLabel(item.name)} downloaded.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not download this poster.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <DataAccessGuard>
       <main className="min-h-screen bg-[#080603] px-4 py-6 text-white">
@@ -573,54 +592,25 @@ export default function TeamDiamondsYesterdayPage() {
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Posters</p>
                 <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={downloadAllPosters} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All</button>
-                <button type="button" onClick={() => setShowNewTemplate((open) => !open)} className="rounded-xl bg-yellow-300 px-5 py-3 text-sm font-black uppercase text-black hover:bg-yellow-200">
-                  New Poster Template
-                </button>
-              </div>
+              <button type="button" onClick={downloadAllPosters} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
             </div>
             <p className="mt-3 max-w-3xl text-white/60">
-              Choose a named team poster, duplicate an existing layout, or create a fresh one. Each poster uses yesterday&apos;s Team Dan and James Aqua Agency data and can be downloaded as a PNG.
+              Your saved team presets, ready to download. Layouts and data sources are managed in Posters.
             </p>
-            {showNewTemplate ? (
-              <div className="mt-5 flex flex-wrap gap-3 rounded-2xl border border-yellow-300/25 bg-black/35 p-4">
-                <input value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value)} placeholder="e.g. Team Mint" className="min-w-[220px] flex-1 rounded-xl border border-white/15 bg-black px-4 py-3 font-bold text-white outline-none placeholder:text-white/35 focus:border-yellow-300" />
-                <button type="button" onClick={() => createOrDuplicateTemplate(false)} disabled={loading} className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-black uppercase hover:bg-white/20 disabled:opacity-50">Create Blank</button>
-                <button type="button" onClick={() => createOrDuplicateTemplate(true)} disabled={loading} className="rounded-xl bg-yellow-300 px-4 py-3 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">Duplicate Selected</button>
-              </div>
-            ) : null}
           </section>
 
-          <section className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
-            <div className="space-y-4 rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-black uppercase text-white/45">Your poster templates</p>
-                <span className="rounded-full bg-yellow-300/15 px-2 py-1 text-xs font-black text-yellow-200">{templates.length || 1}</span>
-              </div>
-              <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-                {(templates.length ? templates : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }]).map((item) => (
-                  <button key={item.name} type="button" onClick={() => { setSelectedTemplateName(item.name); setTemplate(null); }} className={`w-full rounded-xl border p-4 text-left transition ${selectedTemplateName === item.name ? "border-yellow-300 bg-yellow-300/15" : "border-white/10 bg-white/5 hover:border-yellow-300/40"}`}>
-                    <span className="block text-sm font-black uppercase text-white">{templateLabel(item.name)}</span>
-                    <span className="mt-1 block text-xs text-white/45">{item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Original Team Dan layout" : "Custom team poster"}</span>
-                  </button>
-                ))}
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase text-white/45">Data source</p>
-                <p className="mt-2 text-lg font-black text-yellow-200">Team Dan + James Aqua Agency</p>
-              </div>
-              <button type="button" onClick={() => buildPreview()} disabled={loading} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">
-                {loading ? "Building..." : "Preview"}
-              </button>
-              <button type="button" onClick={downloadPoster} disabled={loading} className="w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">
-                Download Poster
-              </button>
-              <Link href="/posters" className="block w-full rounded-xl border border-white/15 bg-white/5 px-5 py-4 text-center text-sm font-black uppercase hover:bg-white/10">Edit Layouts in Poster Builder</Link>
-              {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
+          <section className="mt-6 space-y-5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {(templates.length ? templates : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }]).map((item) => (
+                <article key={item.name} className="rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
+                  <p className="text-xs font-black uppercase tracking-widest text-white/45">Saved preset</p>
+                  <h2 className="mt-2 text-2xl font-black uppercase text-yellow-200">{templateLabel(item.name)}</h2>
+                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
+                </article>
+              ))}
             </div>
-
-            <div className="overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
+            {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
+            <div className="hidden overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
                 <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
                   <PosterPreview template={visibleTemplate} />
