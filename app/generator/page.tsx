@@ -3828,7 +3828,7 @@ function renderText(
           TemplateControls()
         ) : (
           <>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-yellow-300 text-3xl font-black tracking-[0.18em] uppercase">
               {isPostersWorkspace ? "Posters" : BRAND.name}
@@ -3839,7 +3839,7 @@ function renderText(
             </p>
           </div>
 
-          <div className={`grid grid-cols-1 gap-3 ${isPostersWorkspace ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+          <div className={`grid w-full max-w-2xl grid-cols-1 gap-3 ${isPostersWorkspace ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
             {isPostersWorkspace ? (
               <button type="button" className="bg-yellow-300 px-5 py-4 font-black uppercase tracking-widest text-black">
                 Team Poster Builder
