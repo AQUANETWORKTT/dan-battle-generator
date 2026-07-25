@@ -915,6 +915,8 @@ export default function BattleGeneratorPage() {
   const [teamPosterTemplate, setTeamPosterTemplate] = useState<TeamPosterTemplate>(() =>
     createTeamDanPosterTemplate()
   );
+  const [teamPosterTemplates, setTeamPosterTemplates] = useState<Array<{ name: string; template: TeamPosterTemplate }>>([]);
+  const [teamPosterTemplateName, setTeamPosterTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
   const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
 
@@ -1426,7 +1428,7 @@ export default function BattleGeneratorPage() {
       .from("poster_templates")
       .upsert(
         {
-          name: TEAM_DAN_POSTER_TEMPLATE_NAME,
+          name: teamPosterTemplateName,
           background_url: nextTemplate.backgroundUrl || null,
           template_json: nextTemplate,
           updated_at: new Date().toISOString(),
@@ -1441,7 +1443,11 @@ export default function BattleGeneratorPage() {
 
     setTeamPosterTemplate(nextTemplate);
     setSelectedTeamPosterElementId(nextTemplate.elements[0]?.id || "");
-    setTeamPosterStatus("Team Dan poster template saved publicly.");
+    setTeamPosterTemplates((current) => [
+      ...current.filter((item) => item.name !== teamPosterTemplateName),
+      { name: teamPosterTemplateName, template: nextTemplate },
+    ]);
+    setTeamPosterStatus("Team poster template saved publicly.");
   }
 
   function resetTeamPosterTemplate() {
@@ -1484,7 +1490,7 @@ export default function BattleGeneratorPage() {
       .replace(/-+/g, "-")
       .toLowerCase();
 
-    const filePath = `${TEAM_DAN_POSTER_TEMPLATE_NAME}/${Date.now()}-${safeName}.${extension}`;
+    const filePath = `${teamPosterTemplateName}/${Date.now()}-${safeName}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from("poster-backgrounds")
@@ -1754,21 +1760,28 @@ export default function BattleGeneratorPage() {
 
       const { data, error } = await supabase
         .from("poster_templates")
-        .select("template_json")
-        .eq("name", TEAM_DAN_POSTER_TEMPLATE_NAME)
-        .maybeSingle();
+        .select("name,template_json")
+        .order("updated_at", { ascending: false });
 
       if (error) {
         setTeamPosterStatus(`Team Dan template load failed: ${error.message}`);
         return;
       }
 
-      if (!data?.template_json) {
+      const library = (data || [])
+        .filter((item) => item.template_json && (item.name === TEAM_DAN_POSTER_TEMPLATE_NAME || String(item.name).startsWith("team-poster-")))
+        .map((item) => ({ name: String(item.name), template: normalizeTeamDanPosterTemplate(item.template_json as TeamPosterTemplate) }));
+
+      if (!library.length) {
         setTeamPosterStatus("No public Team Dan template saved yet. Press Save Template to create one.");
         return;
       }
 
-      const parsed = normalizeTeamDanPosterTemplate(data.template_json as TeamPosterTemplate);
+      library.sort((a, b) => (a.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? -1 : b.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? 1 : a.name.localeCompare(b.name)));
+      const first = library.find((item) => item.name === TEAM_DAN_POSTER_TEMPLATE_NAME) || library[0];
+      setTeamPosterTemplates(library);
+      setTeamPosterTemplateName(first.name);
+      const parsed = first.template;
       setTeamPosterTemplate(parsed);
       setSelectedTeamPosterElementId(parsed.elements[0]?.id || "");
       setTeamPosterStatus("Team Dan poster template loaded publicly.");
@@ -3700,8 +3713,29 @@ function renderText(
                 Team Poster Builder
               </h2>
               <p className="mt-2 text-sm text-white/45">
-                Create reusable manager-team templates, then use Team Diamonds Yesterday in Data to fill them from the selected team.
+                Select a saved layout, edit it, then save changes to that layout.
               </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Select Layout</p>
+              <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                {(teamPosterTemplates.length ? teamPosterTemplates : [{ name: teamPosterTemplateName, template: teamPosterTemplate }]).map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => {
+                      setTeamPosterTemplateName(item.name);
+                      setTeamPosterTemplate(item.template);
+                      setSelectedTeamPosterElementId(item.template.elements[0]?.id || "");
+                      setTeamPosterStatus(`${item.name.replace(/^team-poster-/, "").replace(/-/g, " ")} selected.`);
+                    }}
+                    className={`w-full rounded-lg border px-3 py-3 text-left text-xs font-black uppercase tracking-wider transition ${teamPosterTemplateName === item.name ? "border-yellow-300 bg-yellow-300/15 text-yellow-100" : "border-white/15 bg-black/30 text-white hover:border-yellow-300/50"}`}
+                  >
+                    {item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Team Dan (Original)" : item.name.replace(/^team-poster-/, "").replace(/-/g, " ")}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
