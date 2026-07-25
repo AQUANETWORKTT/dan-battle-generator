@@ -851,19 +851,19 @@ export default function BattleGeneratorPage() {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
-  const workspace = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("workspace")
-    : null;
+  const [workspace, setWorkspace] = useState<string | null>(null);
   const isPostersWorkspace = workspace === "posters";
   const isCrewShowdownWorkspace = workspace === "crew-showdown";
 
-  const [activeMode, setActiveMode] = useState<Mode>(() =>
-    isPostersWorkspace
-      ? "team"
-      : isCrewShowdownWorkspace || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "glory")
-        ? "glory"
-        : "single"
-  );
+  const [activeMode, setActiveMode] = useState<Mode>("single");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextWorkspace = params.get("workspace");
+    setWorkspace(nextWorkspace);
+    if (nextWorkspace === "posters") setActiveMode("team");
+    else if (nextWorkspace === "crew-showdown" || params.get("mode") === "glory") setActiveMode("glory");
+  }, []);
   const [raceToGloryRows, setRaceToGloryRows] = useState<RaceToGloryRow[]>(() =>
     Array.from({ length: 20 }, () => ({ teamName: "", diamonds: "" }))
   );
