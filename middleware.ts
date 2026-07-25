@@ -11,7 +11,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const authCookie = req.cookies.get("dan-space-auth")?.value;
+  const authCookie = req.cookies.get("first-class-space-auth")?.value;
 
   if (authCookie !== "true") {
     return NextResponse.redirect(new URL("/login", req.url));

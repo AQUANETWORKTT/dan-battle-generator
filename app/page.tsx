@@ -1,56 +1,83 @@
 import Link from "next/link";
 
+const spaces = [
+  {
+    eyebrow: "Live tournaments & leaderboards",
+    title: "Events",
+    copy: "Everything happening across First Class — live scores, event hubs, admin tools and creator links.",
+    href: "/events",
+    action: "Enter Event Space",
+    accent: "from-yellow-300/20 via-yellow-300/5 to-transparent",
+    marker: "01",
+  },
+  {
+    eyebrow: "Performance & reporting",
+    title: "Data",
+    copy: "Creator Intelligence, agency reporting, trackers and daily performance tools in one protected workspace.",
+    href: "/data",
+    action: "Open Data Space",
+    accent: "from-sky-300/20 via-sky-300/5 to-transparent",
+    marker: "02",
+  },
+];
+
 export default function HomePage() {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0a0a] px-6 py-10">
-      <div
-        className="fixed inset-0 scale-105 bg-cover bg-center blur-sm"
-        style={{ backgroundImage: "url('/branding/first-class-data-bg.jpg')" }}
-      />
-      <div className="fixed inset-0 bg-black/45" />
-      <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/75" />
+    <main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8">
+      <div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_75%_0%,rgba(250,204,21,0.16),transparent_28%),radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.05),transparent_25%)]" />
 
-      <div className="relative z-10 w-full max-w-6xl">
-        <div className="grid gap-6 md:grid-cols-3">
-          <Link
-            href="/generator"
-            className="group rounded-3xl border border-yellow-300/30 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
-          >
-            <h2 className="text-2xl font-black uppercase text-yellow-300">
-              Poster Generator
-            </h2>
-            <p className="mt-3 text-white/60">
-              Create single and bulk battle posters.
+      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col">
+        <header className="flex items-center justify-between border-b border-white/10 pb-5">
+          <div className="font-[family-name:var(--font-norwester)] text-xl uppercase tracking-wide sm:text-2xl">
+            First Class <span className="text-yellow-300">Space</span>
+          </div>
+          <span className="rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-200 sm:px-4">
+            Agency Portal
+          </span>
+        </header>
+
+        <section className="flex flex-1 flex-col justify-center py-14 sm:py-20">
+          <div className="max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.34em] text-yellow-300/80">First Class Agency</p>
+            <h1 className="mt-5 font-[family-name:var(--font-norwester)] text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl lg:text-8xl">
+              Your agency,<br />
+              <span className="text-yellow-300">in one space.</span>
+            </h1>
+            <p className="mt-7 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
+              The home for First Class events and creator performance. Choose a space to get started.
             </p>
-          </Link>
+          </div>
 
-          <Link
-            href="/events"
-            className="group rounded-3xl border border-orange-500/30 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-orange-400 hover:bg-black/55"
-          >
-            <h2 className="text-2xl font-black uppercase text-orange-400">
-              Events
-            </h2>
-            <p className="mt-3 text-white/60">
-              View tournaments, leaderboards and scores.
-            </p>
-          </Link>
+          <div className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-6">
+            {spaces.map((space) => (
+              <Link
+                key={space.href}
+                href={space.href}
+                className="group relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.035] p-6 transition duration-300 hover:-translate-y-1 hover:border-yellow-300/50 hover:bg-white/[0.06] sm:p-8"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${space.accent}`} />
+                <div className="relative flex min-h-56 flex-col justify-between">
+                  <div className="flex items-start justify-between gap-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">{space.eyebrow}</p>
+                    <span className="font-[family-name:var(--font-norwester)] text-2xl text-white/20">{space.marker}</span>
+                  </div>
+                  <div>
+                    <h2 className="font-[family-name:var(--font-norwester)] text-4xl uppercase tracking-tight sm:text-5xl">{space.title}</h2>
+                    <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60">{space.copy}</p>
+                    <span className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-yellow-200">
+                      {space.action} <span className="text-lg transition-transform group-hover:translate-x-1">→</span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-          <Link
-            href="/data"
-            className="group relative overflow-hidden rounded-3xl border border-yellow-400/40 bg-black/40 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl transition hover:border-yellow-300 hover:bg-black/55"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.12),transparent_40%)]" />
-            <div className="relative">
-              <h2 className="text-2xl font-black uppercase text-yellow-300">
-                Data
-              </h2>
-              <p className="mt-3 text-white/60">
-                AI analysis, graduation tracking and mature creator tracking.
-              </p>
-            </div>
-          </Link>
-        </div>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
+          <span>First Class Agency</span>
+          <span>Events · Data · Creator Intelligence</span>
+        </footer>
       </div>
     </main>
   );

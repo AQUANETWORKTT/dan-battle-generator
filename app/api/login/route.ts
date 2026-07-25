@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
   const response = NextResponse.json({ success: true });
 
-  response.cookies.set("dan-space-auth", "true", {
+  response.cookies.set("first-class-space-auth", "true", {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });

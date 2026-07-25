@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dan's Space",
-  description: "Creator events, leaderboards and analytics",
+  metadataBase: new URL("https://firstclassagency.space"),
+  title: "First Class Space",
+  description: "First Class events, leaderboards and creator intelligence.",
   openGraph: {
-    title: "Dan's Space",
-    description: "Creator events, leaderboards and analytics",
+    title: "First Class Space",
+    description: "First Class events, leaderboards and creator intelligence.",
   },
 };
 

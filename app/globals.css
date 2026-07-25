@@ -29,4 +29,8 @@ body {
   font-style: normal;
 }
 
+:root {
+  --font-norwester: "Norwester", Impact, sans-serif;
+}
+
 

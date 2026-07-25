@@ -48,8 +48,9 @@ function DataPasswordContent() {
 
         <section className="rounded-2xl border border-white/20 bg-black/35 p-5 shadow-2xl shadow-black/50 backdrop-blur-xl">
           <p className="text-center text-xs font-black uppercase tracking-[0.3em] text-yellow-100/70">
-            Protected Area
+            First Class Data
           </p>
+          <h1 className="mt-3 text-center font-[family-name:var(--font-norwester)] text-3xl uppercase text-white">Data Space</h1>
           <form onSubmit={handleSubmit} className="mt-4 grid gap-3">
             <label className="text-xs font-black uppercase text-white/45">
               Password

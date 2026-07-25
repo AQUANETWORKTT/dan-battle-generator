@@ -3204,7 +3204,7 @@ export default function CreatorIntelligencePage() {
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
-            This page uses the latest rolling 30 days from Dan creator daily stats. The trend chart uses the latest 14 uploaded days.
+            This page uses the latest rolling 30 days from First Class creator daily stats. The trend chart uses the latest 14 uploaded days.
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="text-xs font-bold uppercase text-slate-500">

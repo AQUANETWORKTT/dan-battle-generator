@@ -32,11 +32,15 @@ export default function LoginPage() {
       <div className="fixed inset-0 bg-black/45" />
       <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/70" />
 
-      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/20 bg-black/35 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-yellow-300/20 bg-black/45 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
+        <div className="mb-8 text-center">
+          <p className="font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-wide text-white">First Class <span className="text-yellow-300">Space</span></p>
+          <p className="mt-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-100/60">Agency access</p>
+        </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="password"
-            placeholder="Password"
+              placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-xl border border-yellow-200/25 bg-black/70 px-4 py-4 text-white outline-none focus:border-yellow-100"
@@ -46,7 +50,7 @@ export default function LoginPage() {
             type="submit"
             className="w-full rounded-xl bg-yellow-300 py-4 font-black uppercase text-black shadow-lg shadow-yellow-950/20 hover:bg-yellow-200"
           >
-            LOGIN
+            Enter Space
           </button>
         </form>
       </div>
