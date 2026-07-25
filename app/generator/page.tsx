@@ -3376,9 +3376,9 @@ function renderText(
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[440px_minmax(0,1fr)]">
         <section className="space-y-5 rounded-xl border border-sky-300/25 bg-black/35 p-5">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.25em] text-sky-200">Race to Glory</p>
-            <h2 className="mt-2 text-xl font-black uppercase tracking-widest text-white">Top 20 Leaderboard Poster</h2>
-            <p className="mt-2 text-sm text-white/45">Twenty tournament teams and their diamond totals, styled to match Rise to Glory. Choose a full 20-row board or a 10 + 10 split.</p>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-sky-200">Crew Showdown</p>
+            <h2 className="mt-2 text-xl font-black uppercase tracking-widest text-white">Crew Showdown Top 20</h2>
+            <p className="mt-2 text-sm text-white/45">Twenty tournament teams and their diamond totals. Choose a full 20-row board or a 10 + 10 split.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -3460,7 +3460,7 @@ function renderText(
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <section className="space-y-5 rounded-xl border border-yellow-300/25 bg-black/35 p-5">
           <div>
-            <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">Manager Leaderboard</h2>
+            <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">Management Leaderboard</h2>
             <p className="mt-2 text-sm text-white/45">
               Text-only overlay for your own 9:16 background. Drag the manager names and diamond fields into place. It includes up to 12 managers in the selected group.
             </p>
@@ -3690,10 +3690,10 @@ function renderText(
           <div className="space-y-4 rounded-xl border border-yellow-300/25 bg-black/35 p-5">
             <div>
               <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">
-                Team Dan Poster Builder
+                Team Poster Builder
               </h2>
               <p className="mt-2 text-sm text-white/45">
-                Save this template, then use Team Diamonds Yesterday in Data to fill it from Team Dan.
+                Create reusable manager-team templates, then use Team Diamonds Yesterday in Data to fill them from the selected team.
               </p>
             </div>
 
@@ -3868,7 +3868,7 @@ function renderText(
                   : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
               }`}
             >
-              Team Dan Poster Builder
+              Team Poster Builder
             </button>
 
             <button
@@ -3880,7 +3880,7 @@ function renderText(
                   : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
               }`}
             >
-              Manager Leaderboard
+              Management Leaderboard
             </button>
 
             <button

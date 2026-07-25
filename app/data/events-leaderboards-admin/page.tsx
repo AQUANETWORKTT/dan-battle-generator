@@ -1,0 +1,12 @@
+import Link from "next/link";
+import DataAccessGuard from "../../components/DataAccessGuard";
+
+const events = [
+  { name: "Crew Showdown", detail: "Top 20 leaderboard, downloadable board and event setup.", leaderboard: "/live/7xq9v2-first-class", download: "/generator?mode=glory" },
+  { name: "World Cup 2026", detail: "Live leaderboard and score administration.", leaderboard: "/live/world-cup-2026", admin: "/events/world-cup-2026/admin" },
+  { name: "Sunset Showdown", detail: "Live leaderboard and score administration.", leaderboard: "/live/8f3k2j9m-sunset", admin: "/events/sunset-showdown/admin" },
+];
+
+export default function EventsLeaderboardsAdminPage() {
+  return <DataAccessGuard><main className="min-h-screen bg-[#080806] px-5 py-8 text-white sm:px-8"><div className="mx-auto max-w-5xl"><Link href="/data/menu" className="text-xs font-black uppercase tracking-[0.18em] text-yellow-200">← Data Space</Link><p className="mt-12 text-xs font-black uppercase tracking-[0.3em] text-sky-200/75">Event operations</p><h1 className="mt-4 font-[family-name:var(--font-norwester)] text-5xl uppercase sm:text-6xl">Events <span className="text-yellow-300">Leaderboards Admin</span></h1><p className="mt-4 max-w-2xl text-white/60">Private access to event score controls and downloadable leaderboard assets.</p><section className="mt-10 grid gap-4 md:grid-cols-3">{events.map((event, index) => <article key={event.name} className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6"><span className="font-[family-name:var(--font-norwester)] text-3xl text-white/20">0{index + 1}</span><h2 className="mt-7 font-[family-name:var(--font-norwester)] text-3xl uppercase">{event.name}</h2><p className="mt-3 min-h-12 text-sm leading-relaxed text-white/60">{event.detail}</p><div className="mt-6 grid gap-2"><Link href={event.leaderboard} className="rounded-xl bg-white px-4 py-3 text-center text-xs font-black uppercase tracking-wide text-black">View leaderboard</Link>{event.download && <Link href={event.download} className="rounded-xl border border-yellow-300/35 bg-yellow-300/10 px-4 py-3 text-center text-xs font-black uppercase tracking-wide text-yellow-100">Download leaderboard</Link>}{event.admin && <Link href={event.admin} className="rounded-xl border border-white/15 px-4 py-3 text-center text-xs font-black uppercase tracking-wide text-white/80">Admin scores</Link>}</div></article>)}</section></div></main></DataAccessGuard>;
+}
