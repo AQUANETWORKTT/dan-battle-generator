@@ -8,7 +8,7 @@ const workspaces = [
   { href: "/data/mature-creators-tracker", number: "04", label: "Retention", title: "Mature Creators", description: "Keep 200,000+ diamond creators visible, supported and moving forward.", accent: "orange" },
   { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Diamonds Yesterday", description: "Build and download yesterday’s top diamonds and live-hours poster.", accent: "yellow" },
   { href: "/daily-rankings", number: "06", label: "Backstage", title: "Daily Rankings", description: "Pull yesterday’s Tikleap rankings for Backstage.", accent: "cyan", maintenance: true },
-  { href: "/posters", number: "07", label: "Daily assets", title: "Posters", description: "Create and maintain reusable yesterday-diamonds poster templates for Team Dan and future teams.", accent: "yellow" },
+  { href: "/data/team-posters", number: "07", label: "Daily assets", title: "Team Posters", description: "Create and maintain reusable yesterday-diamonds poster templates for Team Dan and future teams.", accent: "yellow" },
   { href: "/data/events-leaderboards-admin", number: "09", label: "Event operations", title: "Events Leaderboards Admin", description: "Event score controls, Crew Showdown downloads and private leaderboard tools.", accent: "emerald" },
 ];
 
