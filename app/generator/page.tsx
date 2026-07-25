@@ -1561,6 +1561,57 @@ export default function BattleGeneratorPage() {
     saveAs(blob, `team-dan-poster-template-${Date.now()}.png`);
   }
 
+  async function buildTeamPosterFromData() {
+    setTeamPosterStatus("Loading creator data for this layout...");
+    try {
+      const statusResponse = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
+      const status = await statusResponse.json();
+      const statDate = String(status.latestDate || "");
+      const month = statDate.slice(0, 7);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(statDate)) throw new Error("No Creator Daily Stats upload is available.");
+      const response = await fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Could not load Creator Daily Stats.");
+      const managerKey = String(teamPosterTemplate.managerKey || "team-dan").toLowerCase();
+      const managerFor = (row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim().toLowerCase();
+      const usernameFor = (row: Record<string, unknown>) => String(row.creator_username || row["Creator's username"] || "").replace("@", "").trim().toLowerCase();
+      const numeric = (value: unknown) => Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
+      const hoursFor = (row: Record<string, unknown>) => numeric(row.live_hours || row.live_duration || row["LIVE duration"]);
+      const rows = (json.rows || []).filter((row: Record<string, unknown>) => {
+        if (row.stat_date !== statDate || !usernameFor(row)) return false;
+        const manager = managerFor(row);
+        return managerKey === "team-dan"
+          ? ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager)
+          : manager === managerKey;
+      });
+      if (!rows.length) throw new Error("No creators were found for this data source on the latest upload.");
+      const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
+      const topHours = [...rows].sort((a, b) => hoursFor(b) - hoursFor(a)).slice(0, 5);
+      const avatars = new Map<string, string>();
+      await Promise.all(Array.from(new Set([...topDiamonds, ...topHours].map(usernameFor))).map(async (username) => avatars.set(username, await fetchTikTokAvatar(username))));
+      const compact = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 ? 1 : 0)}K` : String(value);
+      const filled = normalizeTeamDanPosterTemplate({
+        ...teamPosterTemplate,
+        elements: teamPosterTemplate.elements.map((element) => {
+          const diamond = element.id.match(/^(avatar|username|diamonds)-(\d+)$/);
+          const hour = element.id.match(/^(avatar|username)-hours-(\d+)$/) || element.id.match(/^hours-(\d+)$/);
+          const source = diamond ? topDiamonds[Number(diamond[2]) - 1] : hour ? topHours[Number(hour[2]) - 1] : null;
+          if (!source) return element;
+          const username = usernameFor(source);
+          if (element.kind === "avatar") return { ...element, imageUrl: avatars.get(username) || "" };
+          if (element.kind === "username") return { ...element, value: username.toUpperCase() };
+          if (element.kind === "diamonds") return { ...element, value: compact(numeric(source.diamonds)) };
+          if (element.kind === "hours") return { ...element, value: `${hoursFor(source).toFixed(hoursFor(source) % 1 ? 1 : 0)}H` };
+          return element;
+        }),
+      });
+      setTeamPosterTemplate(filled);
+      setTeamPosterStatus(`Preview built from ${rows.length} creators on ${statDate}.`);
+    } catch (error) {
+      setTeamPosterStatus(error instanceof Error ? error.message : "Could not build the poster preview.");
+    }
+  }
+
   async function loadManagerLeaderboard() {
     const supabase = getPosterSupabaseClient();
     if (!supabase) {
@@ -3781,6 +3832,9 @@ function renderText(
             </label>
 
             <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={buildTeamPosterFromData} className="rounded-lg bg-sky-300 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">
+                Build Data Preview
+              </button>
               <label
                 htmlFor={backgroundInputId}
                 className="cursor-pointer rounded-lg border border-white/20 bg-black/40 px-3 py-4 text-center text-xs font-black uppercase tracking-widest text-white transition hover:border-yellow-300"
