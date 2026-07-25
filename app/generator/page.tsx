@@ -920,7 +920,9 @@ export default function BattleGeneratorPage() {
   );
   const [teamPosterTemplates, setTeamPosterTemplates] = useState<Array<{ name: string; template: TeamPosterTemplate }>>([]);
   const [teamPosterTemplateName, setTeamPosterTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
-  const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<string[]>(["team-dan", "vitali_aquaagency"]);
+  const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: "team-dan", label: "Team Dan + James Aqua Agency" },
+  ]);
   const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
 
@@ -1796,16 +1798,24 @@ export default function BattleGeneratorPage() {
 
   useEffect(() => {
     async function loadTeamPosterManagers() {
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       try {
-        const response = await fetch(`/api/data-analysis/daily-stats?month=${month}`);
+        const statusResponse = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
+        const status = await statusResponse.json();
+        const month = String(status.latestMonth || "");
+        if (!/^\d{4}-\d{2}$/.test(month)) return;
+        const response = await fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" });
         const json = await response.json();
-        const managers: string[] = Array.from(new Set<string>((json.rows || [])
-          .map((row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim())
-          .filter(Boolean)))
-          .sort((a, b) => a.localeCompare(b));
-        if (managers.length) setTeamPosterManagerOptions(["team-dan", ...managers]);
+        const byManager = new Map<string, ManagerLeaderboardStat>();
+        for (const row of (json.rows || []) as ManagerLeaderboardStat[]) {
+          const value = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim();
+          if (value && !byManager.has(value.toLowerCase())) byManager.set(value.toLowerCase(), row);
+        }
+        const managers = Array.from(byManager.entries()).map(([value, row]) => {
+          const assignment = getCreatorIntelligenceManagerGroup(row);
+          const group = assignment.managerGroup === "Exempt" ? "Exempt" : assignment.agency || assignment.group;
+          return { value, label: `${getManagerLeaderboardName(row)}${group ? ` (${group})` : ""}` };
+        }).sort((a, b) => a.label.localeCompare(b.label));
+        if (managers.length) setTeamPosterManagerOptions([{ value: "team-dan", label: "Team Dan + James Aqua Agency" }, ...managers]);
       } catch {
         // The editable field remains available if the latest data cannot load.
       }
@@ -3768,7 +3778,7 @@ function renderText(
                 onChange={(event) => setTeamPosterTemplate((current) => ({ ...current, managerKey: event.target.value }))}
                 className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
               >
-                {teamPosterManagerOptions.map((manager) => <option key={manager} value={manager}>{manager === "team-dan" ? "Team Dan + James Aqua Agency" : manager}</option>)}
+                {teamPosterManagerOptions.map((manager) => <option key={manager.value} value={manager.value}>{manager.label}</option>)}
               </select>
               <p className="mt-2 text-xs text-white/45">Saved with this layout. Select any Creator Intelligence manager, then press Save Template.</p>
             </label>
