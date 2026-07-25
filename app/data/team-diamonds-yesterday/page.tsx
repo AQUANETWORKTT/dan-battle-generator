@@ -350,7 +350,6 @@ export default function TeamDiamondsYesterdayPage() {
   const [selectedTemplateName, setSelectedTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showNewTemplate, setShowNewTemplate] = useState(false);
-  const [bulkTemplates, setBulkTemplates] = useState<SavedTemplateRow[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -415,12 +414,12 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
-  async function buildPreview() {
+  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false) {
     setLoading(true);
     setMessage("");
 
     try {
-      const activeTemplate = selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
+      const activeTemplate = forTemplate || selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
 
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
@@ -488,7 +487,7 @@ export default function TeamDiamondsYesterdayPage() {
       };
 
       setTemplate(filledTemplate);
-      setMessage(`Preview built from Team Dan top 5 diamonds and top 5 hours for ${yesterday}.`);
+      if (!quiet) setMessage(`Preview built from Team Dan top 5 diamonds and top 5 hours for ${yesterday}.`);
     } catch (error) {
       console.error(error);
       setMessage(error instanceof Error ? error.message : "Could not build Team Dan poster.");
@@ -516,6 +515,31 @@ export default function TeamDiamondsYesterdayPage() {
     saveAs(blob, `${selectedTemplateName}-${getYesterdayDateKey()}.png`);
   }
 
+  async function downloadAllPosters() {
+    const items = templates.length
+      ? templates
+      : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+    setLoading(true);
+    setMessage("");
+    try {
+      for (const item of items) {
+        setSelectedTemplateName(item.name);
+        await buildPreview(item.template, true);
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
+        if (!node) throw new Error("Could not prepare the poster preview.");
+        await waitForImages(node);
+        const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
+        if (blob) saveAs(blob, `${item.name}-${getYesterdayDateKey()}.png`);
+      }
+      setMessage(`${items.length} poster${items.length === 1 ? "" : "s"} downloaded.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not download all posters.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <DataAccessGuard>
       <main className="min-h-screen bg-[#080603] px-4 py-6 text-white">
@@ -530,25 +554,55 @@ export default function TeamDiamondsYesterdayPage() {
           </div>
 
           <section className="rounded-3xl border border-yellow-300/25 bg-yellow-300/10 p-6">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Dan</p>
-            <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Posters</p>
+                <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={downloadAllPosters} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All</button>
+                <button type="button" onClick={() => setShowNewTemplate((open) => !open)} className="rounded-xl bg-yellow-300 px-5 py-3 text-sm font-black uppercase text-black hover:bg-yellow-200">
+                  New Poster Template
+                </button>
+              </div>
+            </div>
             <p className="mt-3 max-w-3xl text-white/60">
-              Uses First Class creator daily stats, combines Team Dan and James Aqua Agency, fills the saved poster template with top 5 diamonds and top 5 live hours, and downloads the final PNG.
+              Choose a named team poster, duplicate an existing layout, or create a fresh one. Each poster uses yesterday&apos;s Team Dan and James Aqua Agency data and can be downloaded as a PNG.
             </p>
+            {showNewTemplate ? (
+              <div className="mt-5 flex flex-wrap gap-3 rounded-2xl border border-yellow-300/25 bg-black/35 p-4">
+                <input value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value)} placeholder="e.g. Team Mint" className="min-w-[220px] flex-1 rounded-xl border border-white/15 bg-black px-4 py-3 font-bold text-white outline-none placeholder:text-white/35 focus:border-yellow-300" />
+                <button type="button" onClick={() => createOrDuplicateTemplate(false)} disabled={loading} className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-black uppercase hover:bg-white/20 disabled:opacity-50">Create Blank</button>
+                <button type="button" onClick={() => createOrDuplicateTemplate(true)} disabled={loading} className="rounded-xl bg-yellow-300 px-4 py-3 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">Duplicate Selected</button>
+              </div>
+            ) : null}
           </section>
 
           <section className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
             <div className="space-y-4 rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase text-white/45">Your poster templates</p>
+                <span className="rounded-full bg-yellow-300/15 px-2 py-1 text-xs font-black text-yellow-200">{templates.length || 1}</span>
+              </div>
+              <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                {(templates.length ? templates : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }]).map((item) => (
+                  <button key={item.name} type="button" onClick={() => { setSelectedTemplateName(item.name); setTemplate(null); }} className={`w-full rounded-xl border p-4 text-left transition ${selectedTemplateName === item.name ? "border-yellow-300 bg-yellow-300/15" : "border-white/10 bg-white/5 hover:border-yellow-300/40"}`}>
+                    <span className="block text-sm font-black uppercase text-white">{templateLabel(item.name)}</span>
+                    <span className="mt-1 block text-xs text-white/45">{item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Original Team Dan layout" : "Custom team poster"}</span>
+                  </button>
+                ))}
+              </div>
               <div>
-                <p className="text-xs font-black uppercase text-white/45">Team</p>
+                <p className="text-xs font-black uppercase text-white/45">Data source</p>
                 <p className="mt-2 text-lg font-black text-yellow-200">Team Dan + James Aqua Agency</p>
               </div>
-              <button type="button" onClick={buildPreview} disabled={loading} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">
+              <button type="button" onClick={() => buildPreview()} disabled={loading} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">
                 {loading ? "Building..." : "Preview"}
               </button>
               <button type="button" onClick={downloadPoster} disabled={loading} className="w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">
                 Download Poster
               </button>
+              <Link href="/posters" className="block w-full rounded-xl border border-white/15 bg-white/5 px-5 py-4 text-center text-sm font-black uppercase hover:bg-white/10">Edit Layouts in Poster Builder</Link>
               {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
             </div>
 
