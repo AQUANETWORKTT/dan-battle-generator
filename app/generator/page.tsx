@@ -851,11 +851,16 @@ export default function BattleGeneratorPage() {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
+  const isPostersWorkspace =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("workspace") === "posters";
 
   const [activeMode, setActiveMode] = useState<Mode>(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "glory"
-      ? "glory"
-      : "single"
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "team"
+      ? "team"
+      : typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "glory"
+        ? "glory"
+        : "single"
   );
   const [raceToGloryRows, setRaceToGloryRows] = useState<RaceToGloryRow[]>(() =>
     Array.from({ length: 20 }, () => ({ teamName: "", diamonds: "" }))
@@ -3826,15 +3831,20 @@ function renderText(
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h1 className="text-yellow-300 text-3xl font-black tracking-[0.18em] uppercase">
-              {BRAND.name}
+              {isPostersWorkspace ? "Posters" : BRAND.name}
             </h1>
 
             <p className="text-white/45 text-sm mt-2">
-              Single posters by default. Mass generator is kept in its own section.
+              {isPostersWorkspace ? "Create, save and maintain reusable team poster layouts." : "Create individual posters or build them in bulk."}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className={`grid grid-cols-1 gap-3 ${isPostersWorkspace ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+            {isPostersWorkspace ? (
+              <button type="button" className="bg-yellow-300 px-5 py-4 font-black uppercase tracking-widest text-black">
+                Team Poster Builder
+              </button>
+            ) : <>
             <button
               type="button"
               onClick={() => setActiveMode("single")}
@@ -3859,41 +3869,7 @@ function renderText(
               Mass Poster Generator
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveMode("team")}
-              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
-                activeMode === "team"
-                  ? "bg-yellow-300 text-black"
-                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
-              }`}
-            >
-              Team Poster Builder
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveMode("manager")}
-              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
-                activeMode === "manager"
-                  ? "bg-yellow-300 text-black"
-                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
-              }`}
-            >
-              Management Leaderboard
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveMode("glory")}
-              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
-                activeMode === "glory"
-                  ? "bg-sky-300 text-slate-950"
-                  : "bg-black/40 text-white border border-white/20 hover:border-sky-300"
-              }`}
-            >
-              Race to Glory Top 20
-            </button>
+            </>}
           </div>
         </div>
         {activeMode === "single" && (

@@ -8,8 +8,7 @@ const workspaces = [
   { href: "/data/mature-creators-tracker", number: "04", label: "Retention", title: "Mature Creators", description: "Keep 200,000+ diamond creators visible, supported and moving forward.", accent: "orange" },
   { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Diamonds Yesterday", description: "Build and download yesterday’s top diamonds and live-hours poster.", accent: "yellow" },
   { href: "/daily-rankings", number: "06", label: "Backstage", title: "Daily Rankings", description: "Pull yesterday’s Tikleap rankings for Backstage.", accent: "cyan", maintenance: true },
-  { href: "/generator?mode=team", number: "07", label: "Daily assets", title: "Team Poster Builder", description: "Create and maintain reusable yesterday-diamonds poster templates for manager teams.", accent: "yellow" },
-  { href: "/generator?mode=manager", number: "08", label: "Reporting", title: "Management Leaderboards", description: "Build manager-group leaderboards from Creator Intelligence data.", accent: "sky" },
+  { href: "/posters", number: "07", label: "Daily assets", title: "Posters", description: "Create and maintain reusable yesterday-diamonds poster templates for Team Dan and future teams.", accent: "yellow" },
   { href: "/data/events-leaderboards-admin", number: "09", label: "Event operations", title: "Events Leaderboards Admin", description: "Event score controls, Crew Showdown downloads and private leaderboard tools.", accent: "emerald" },
 ];
 
@@ -41,7 +40,7 @@ export default function DataMenuPage() {
               <h1 className="mt-4 font-[family-name:var(--font-norwester)] text-5xl uppercase leading-none sm:text-7xl">Data <span className="text-yellow-300">Space</span></h1>
               <p className="mt-5 text-base leading-relaxed text-white/60">Your secure workspace for performance, creator development and daily agency reporting.</p>
             </div>
-            <p className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/45">9 workspaces</p>
+            <p className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/45">8 workspaces</p>
           </section>
 
           <section className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
