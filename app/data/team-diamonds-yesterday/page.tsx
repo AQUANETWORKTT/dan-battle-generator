@@ -321,7 +321,8 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
             left: element.x,
             top: element.y,
             width: element.width,
-            height: element.height,
+            // Avatar slots always remain square, so profile photos can never be stretched.
+            height: element.kind === "avatar" ? element.width : element.height,
             borderRadius: element.kind === "avatar" ? 999 : 0,
             color: element.color || "#FACC15",
             fontFamily: element.fontFamily || "Luckiest Guy",
