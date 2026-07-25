@@ -1799,14 +1799,11 @@ export default function BattleGeneratorPage() {
   useEffect(() => {
     async function loadTeamPosterManagers() {
       try {
-        const statusResponse = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
-        const status = await statusResponse.json();
-        const month = String(status.latestMonth || "");
-        if (!/^\d{4}-\d{2}$/.test(month)) return;
-        const response = await fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" });
+        const response = await fetch("/api/data-analysis/manager-sources", { cache: "no-store" });
         const json = await response.json();
+        if (!response.ok) throw new Error(json.error || "Could not load manager sources.");
         const byManager = new Map<string, ManagerLeaderboardStat>();
-        for (const row of (json.rows || []) as ManagerLeaderboardStat[]) {
+        for (const row of (json.managers || []) as ManagerLeaderboardStat[]) {
           const value = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim();
           if (value && !byManager.has(value.toLowerCase())) byManager.set(value.toLowerCase(), row);
         }
