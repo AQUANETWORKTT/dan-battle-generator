@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
+import JSZip from "jszip";
 import { flushSync } from "react-dom";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
@@ -468,7 +469,7 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
-  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false) {
+  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false): Promise<string[]> {
     setLoading(true);
     setMessage("");
 
@@ -496,7 +497,7 @@ export default function TeamDiamondsYesterdayPage() {
 
       if (!rows.length) {
         setMessage(`No rows found for ${(activeTemplate.managerKey || "team-dan")} on ${yesterday}.`);
-        return;
+        return [];
       }
 
       const diamondRows = [...rows]
@@ -506,12 +507,15 @@ export default function TeamDiamondsYesterdayPage() {
         .sort((a, b) => getLiveHours(b) - getLiveHours(a))
         .slice(0, 5);
       const avatarByUsername = new Map<string, string>();
+      const failedAvatars: string[] = [];
 
       // Load one creator at a time: parallel TikTok scrapes can reuse a stale
       // response and put the same avatar into multiple slots.
       for (const username of new Set([...diamondRows, ...hourRows].map(getUsername))) {
         const avatarUrl = await fetchTikTokAvatar(username, fallbackAvatars);
-        avatarByUsername.set(username, await embedAvatarForPoster(avatarUrl));
+        const embeddedAvatar = await embedAvatarForPoster(avatarUrl);
+        avatarByUsername.set(username, embeddedAvatar);
+        if (!embeddedAvatar) failedAvatars.push(username);
       }
 
       const diamondCreators = diamondRows.map((row) => ({
@@ -552,9 +556,11 @@ export default function TeamDiamondsYesterdayPage() {
       // images from the preceding download cannot be reused by the next one.
       flushSync(() => setTemplate(filledTemplate));
       if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${yesterday}.`);
+      return failedAvatars;
     } catch (error) {
       console.error(error);
       setMessage(error instanceof Error ? error.message : "Could not build Team Dan poster.");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -591,20 +597,29 @@ export default function TeamDiamondsYesterdayPage() {
     setLoading(true);
     setMessage("");
     try {
+      const zip = new JSZip();
+      const failedAvatars = new Set<string>();
       for (const [index, item] of items.entries()) {
         setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
         setSelectedTemplateName(item.name);
-        await buildPreview(item.template, true);
+        const failedForPoster = await buildPreview(item.template, true);
+        failedForPoster.forEach((username) => failedAvatars.add(username));
         await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
         if (!node) throw new Error("Could not prepare the poster preview.");
         await waitForImages(node);
         const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
-        if (blob) saveAs(blob, `${item.name}-${getYesterdayDateKey()}.png`);
+        if (blob) zip.file(`${templateLabel(item.name)}.png`, blob);
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
       const sideLabel = side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : "All teams";
-      setMessage(`${sideLabel}: ${items.length} poster${items.length === 1 ? "" : "s"} downloaded.`);
+      setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
+      const archive = await zip.generateAsync({ type: "blob" });
+      saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${getYesterdayDateKey()}.zip`);
+      const failedText = failedAvatars.size
+        ? ` Picture not found for: ${[...failedAvatars].join(", ")}. Add any of these in Fallback Pictures if needed.`
+        : " All creator pictures loaded.";
+      setMessage(`${sideLabel}: ${items.length} poster${items.length === 1 ? "" : "s"} saved in one ZIP file.${failedText}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not download all posters.");
     } finally {
