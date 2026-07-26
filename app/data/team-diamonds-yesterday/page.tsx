@@ -43,6 +43,7 @@ type TeamPosterTemplate = {
   backgroundUrl: string;
   backgroundPath?: string;
   managerKey?: string;
+  teamSide?: "dan" | "mike-indi";
   elements: TeamPosterElement[];
 };
 
@@ -167,6 +168,7 @@ function normalizeTemplate(input: Partial<TeamPosterTemplate> | null): TeamPoste
     backgroundUrl: input?.backgroundUrl || "",
     backgroundPath: input?.backgroundPath || "",
     managerKey: input?.managerKey || "team-dan",
+    teamSide: input?.teamSide || "dan",
     elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
   };
 }
@@ -232,7 +234,7 @@ function isTeamPosterTemplate(name: string) {
 }
 
 function templateLabel(name: string) {
-  if (name === TEAM_DAN_POSTER_TEMPLATE_NAME) return "Team Dan";
+  if (name === TEAM_DAN_POSTER_TEMPLATE_NAME) return "Team Dan + James";
   return name
     .replace(/^team-poster-/, "")
     .replace(/-/g, " ")
@@ -372,6 +374,13 @@ export default function TeamDiamondsYesterdayPage() {
   // This lets every signed-in user build a poster even when no public custom template exists yet.
   const selectedSavedTemplate = templates.find((item) => item.name === selectedTemplateName)?.template || savedTemplate;
   const visibleTemplate = useMemo(() => template || selectedSavedTemplate || getSavedTemplate() || createDefaultTemplate(), [template, selectedSavedTemplate]);
+  const templateCards = templates.length
+    ? templates
+    : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+  const templatesBySide = {
+    dan: templateCards.filter((item) => (item.template.teamSide || "dan") === "dan"),
+    "mike-indi": templateCards.filter((item) => item.template.teamSide === "mike-indi"),
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -529,10 +538,15 @@ export default function TeamDiamondsYesterdayPage() {
     saveAs(blob, `${selectedTemplateName}-${getYesterdayDateKey()}.png`);
   }
 
-  async function downloadAllPosters() {
-    const items = templates.length
+  async function downloadAllPosters(side?: "dan" | "mike-indi") {
+    const allItems = templates.length
       ? templates
       : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+    const items = side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
+    if (!items.length) {
+      setMessage(`No saved presets on the ${side === "dan" ? "Team Dan + James" : "Team Mike + Indi"} side yet.`);
+      return;
+    }
     setLoading(true);
     setMessage("");
     try {
@@ -546,7 +560,8 @@ export default function TeamDiamondsYesterdayPage() {
         const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
         if (blob) saveAs(blob, `${item.name}-${getYesterdayDateKey()}.png`);
       }
-      setMessage(`${items.length} poster${items.length === 1 ? "" : "s"} downloaded.`);
+      const sideLabel = side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : "All teams";
+      setMessage(`${sideLabel}: ${items.length} poster${items.length === 1 ? "" : "s"} downloaded.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not download all posters.");
     } finally {
@@ -592,7 +607,7 @@ export default function TeamDiamondsYesterdayPage() {
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Posters</p>
                 <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
               </div>
-              <button type="button" onClick={downloadAllPosters} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
+              <button type="button" onClick={() => void downloadAllPosters()} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
             </div>
             <p className="mt-3 max-w-3xl text-white/60">
               Your saved team presets, ready to download. Layouts and data sources are managed in Posters.
@@ -600,13 +615,26 @@ export default function TeamDiamondsYesterdayPage() {
           </section>
 
           <section className="mt-6 space-y-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {(templates.length ? templates : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }]).map((item) => (
+            <div className="grid gap-6 xl:grid-cols-2">
+              {(["dan", "mike-indi"] as const).map((side) => (
+                <div key={side} className="rounded-3xl border border-yellow-300/20 bg-black/30 p-4">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-xl font-black uppercase tracking-widest text-yellow-200">{side === "dan" ? "Team Dan + James" : "Team Mike + Indi"}</h2>
+                    <button type="button" onClick={() => void downloadAllPosters(side)} disabled={loading || !templatesBySide[side].length} className="rounded-xl bg-yellow-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40">
+                      Download All {side === "dan" ? "Dan + James" : "Mike + Indi"}
+                    </button>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {templatesBySide[side].map((item) => (
                 <article key={item.name} className="rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
                   <p className="text-xs font-black uppercase tracking-widest text-white/45">Saved preset</p>
                   <h2 className="mt-2 text-2xl font-black uppercase text-yellow-200">{templateLabel(item.name)}</h2>
                   <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
                 </article>
+                    ))}
+                    {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
+                  </div>
+                </div>
               ))}
             </div>
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}

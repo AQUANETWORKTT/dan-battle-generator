@@ -45,6 +45,8 @@ type ManagerLeaderboardStat = {
   creator_network_manager?: string | null;
   "Creator Network manager"?: string | null;
   email?: string | null;
+  manager_key?: string | null;
+  manager_label?: string | null;
 };
 
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
@@ -104,6 +106,8 @@ type TeamPosterTemplate = {
   backgroundPath?: string;
   /** Manager key used by the Team Diamonds Yesterday downloader. */
   managerKey?: string;
+  /** Saved download grouping for Team Diamonds Yesterday. */
+  teamSide?: "dan" | "mike-indi";
   elements: TeamPosterElement[];
 };
 
@@ -694,6 +698,8 @@ function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | nu
   return {
     backgroundUrl: incoming.backgroundUrl || "",
     backgroundPath: incoming.backgroundPath || "",
+    managerKey: incoming.managerKey || "team-dan",
+    teamSide: incoming.teamSide || "dan",
     elements: base.elements.map((element) => ({
       ...element,
       ...(byId.get(element.id) || {}),
@@ -1594,8 +1600,10 @@ export default function BattleGeneratorPage() {
         ...teamPosterTemplate,
         elements: teamPosterTemplate.elements.map((element) => {
           const diamond = element.id.match(/^(avatar|username|diamonds)-(\d+)$/);
-          const hour = element.id.match(/^(avatar|username)-hours-(\d+)$/) || element.id.match(/^hours-(\d+)$/);
-          const source = diamond ? topDiamonds[Number(diamond[2]) - 1] : hour ? topHours[Number(hour[2]) - 1] : null;
+          const hourText = element.id.match(/^(avatar|username)-hours-(\d+)$/);
+          const hourValue = element.id.match(/^hours-(\d+)$/);
+          const hourIndex = Number(hourText?.[2] || hourValue?.[1] || "0") - 1;
+          const source = diamond ? topDiamonds[Number(diamond[2]) - 1] : hourText || hourValue ? topHours[hourIndex] : null;
           if (!source) return element;
           const username = usernameFor(source);
           if (element.kind === "avatar") return { ...element, imageUrl: avatars.get(username) || "" };
@@ -1855,14 +1863,15 @@ export default function BattleGeneratorPage() {
         if (!response.ok) throw new Error(json.error || "Could not load manager sources.");
         const byManager = new Map<string, ManagerLeaderboardStat>();
         for (const row of (json.managers || []) as ManagerLeaderboardStat[]) {
-          const value = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim();
+          const value = String(row.manager_key || row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim();
           if (value && !byManager.has(value.toLowerCase())) byManager.set(value.toLowerCase(), row);
         }
+        const managerNameCollator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
         const managers = Array.from(byManager.entries()).map(([value, row]) => {
           const assignment = getCreatorIntelligenceManagerGroup(row);
           const group = assignment.managerGroup === "Exempt" ? "Exempt" : assignment.agency || assignment.group;
-          return { value, label: `${getManagerLeaderboardName(row)}${group ? ` (${group})` : ""}` };
-        }).sort((a, b) => a.label.localeCompare(b.label));
+          return { value, label: row.manager_label || `${getManagerLeaderboardName(row)}${group ? ` (${group})` : ""}` };
+        }).sort((a, b) => managerNameCollator.compare(a.label, b.label));
         if (managers.length) setTeamPosterManagerOptions([{ value: "team-dan", label: "Team Dan + James Aqua Agency" }, ...managers]);
       } catch {
         // The editable field remains available if the latest data cannot load.
@@ -3813,7 +3822,7 @@ function renderText(
                     }}
                     className={`w-full rounded-lg border px-3 py-3 text-left text-xs font-black uppercase tracking-wider transition ${teamPosterTemplateName === item.name ? "border-yellow-300 bg-yellow-300/15 text-yellow-100" : "border-white/15 bg-black/30 text-white hover:border-yellow-300/50"}`}
                   >
-                    {item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Team Dan (Original)" : item.name.replace(/^team-poster-/, "").replace(/-/g, " ")}
+                    {item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Team Dan + James (Original)" : item.name.replace(/^team-poster-/, "").replace(/-/g, " ")}
                   </button>
                 ))}
               </div>
@@ -3829,6 +3838,19 @@ function renderText(
                 {teamPosterManagerOptions.map((manager) => <option key={manager.value} value={manager.value}>{manager.label}</option>)}
               </select>
               <p className="mt-2 text-xs text-white/45">Saved with this layout. Select any Creator Intelligence manager, then press Save Template.</p>
+            </label>
+
+            <label className="block">
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Team Side</p>
+              <select
+                value={teamPosterTemplate.teamSide || "dan"}
+                onChange={(event) => setTeamPosterTemplate((current) => ({ ...current, teamSide: event.target.value as "dan" | "mike-indi" }))}
+                className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
+              >
+                <option value="dan">Team Dan + James</option>
+                <option value="mike-indi">Team Mike + Indi</option>
+              </select>
+              <p className="mt-2 text-xs text-white/45">Saved with this layout. Team Diamonds Yesterday groups downloads by this side.</p>
             </label>
 
             <div className="grid grid-cols-2 gap-3">
