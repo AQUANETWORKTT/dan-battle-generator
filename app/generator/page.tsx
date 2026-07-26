@@ -926,6 +926,8 @@ export default function BattleGeneratorPage() {
   );
   const [teamPosterTemplates, setTeamPosterTemplates] = useState<Array<{ name: string; template: TeamPosterTemplate }>>([]);
   const [teamPosterTemplateName, setTeamPosterTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
+  const [newTeamPosterTemplateName, setNewTeamPosterTemplateName] = useState("");
+  const [newTeamPosterSourceName, setNewTeamPosterSourceName] = useState("blank");
   const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "team-dan", label: "Team Dan + James Aqua Agency" },
   ]);
@@ -1565,6 +1567,28 @@ export default function BattleGeneratorPage() {
 
     if (!blob) return;
     saveAs(blob, `team-dan-poster-template-${Date.now()}.png`);
+  }
+
+  function createTeamPosterLayout() {
+    const label = newTeamPosterTemplateName.trim();
+    if (!label) {
+      setTeamPosterStatus("Enter a name for the new layout first.");
+      return;
+    }
+    const name = `team-poster-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-team"}`;
+    if (teamPosterTemplates.some((item) => item.name === name)) {
+      setTeamPosterStatus("A layout with that name already exists. Select it from the list instead.");
+      return;
+    }
+    const source = newTeamPosterSourceName === "current"
+      ? teamPosterTemplate
+      : teamPosterTemplates.find((item) => item.name === newTeamPosterSourceName)?.template;
+    const nextTemplate = normalizeTeamDanPosterTemplate(source || createTeamDanPosterTemplate());
+    setTeamPosterTemplateName(name);
+    setTeamPosterTemplate(nextTemplate);
+    setSelectedTeamPosterElementId(nextTemplate.elements[0]?.id || "");
+    setNewTeamPosterTemplateName("");
+    setTeamPosterStatus(`${label} layout created. Choose its data source and side, then press Save Template.`);
   }
 
   async function buildTeamPosterFromData() {
@@ -3825,6 +3849,28 @@ function renderText(
                     {item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Team Dan + James (Original)" : item.name.replace(/^team-poster-/, "").replace(/-/g, " ")}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-dashed border-white/20 bg-white/[0.03] p-3">
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Create New Layout</p>
+              <label className="mb-2 block">
+                <span className="sr-only">Start new layout from</span>
+                <select value={newTeamPosterSourceName} onChange={(event) => setNewTeamPosterSourceName(event.target.value)} className="w-full rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm text-white outline-none focus:border-yellow-300">
+                  <option value="blank">Start fresh</option>
+                  <option value="current">Duplicate the current layout</option>
+                  {teamPosterTemplates.map((item) => <option key={item.name} value={item.name}>Duplicate {item.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? "Team Dan + James" : item.name.replace(/^team-poster-/, "").replace(/-/g, " ")}</option>)}
+                </select>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={newTeamPosterTemplateName}
+                  onChange={(event) => setNewTeamPosterTemplateName(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); createTeamPosterLayout(); } }}
+                  placeholder="e.g. Team Ellie"
+                  className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/45 px-3 py-2 text-sm text-white outline-none focus:border-yellow-300"
+                />
+                <button type="button" onClick={createTeamPosterLayout} className="rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200">Create</button>
               </div>
             </div>
 
