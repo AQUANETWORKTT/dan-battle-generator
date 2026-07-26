@@ -315,6 +315,23 @@ async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<strin
   }
 }
 
+async function embedAvatarForPoster(url: string) {
+  if (!url || url.startsWith("data:")) return url;
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) return url;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || url));
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
+  }
+}
+
 async function waitForImages(node: HTMLElement) {
   await Promise.all(
     Array.from(node.querySelectorAll("img")).map((image) => {
@@ -493,7 +510,8 @@ export default function TeamDiamondsYesterdayPage() {
       // Load one creator at a time: parallel TikTok scrapes can reuse a stale
       // response and put the same avatar into multiple slots.
       for (const username of new Set([...diamondRows, ...hourRows].map(getUsername))) {
-        avatarByUsername.set(username, await fetchTikTokAvatar(username, fallbackAvatars));
+        const avatarUrl = await fetchTikTokAvatar(username, fallbackAvatars);
+        avatarByUsername.set(username, await embedAvatarForPoster(avatarUrl));
       }
 
       const diamondCreators = diamondRows.map((row) => ({
