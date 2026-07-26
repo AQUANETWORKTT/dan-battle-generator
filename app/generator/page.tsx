@@ -2113,6 +2113,7 @@ export default function BattleGeneratorPage() {
 
       const json = await res.json();
       if (!json.avatar) return "";
+      if (String(json.avatar).startsWith("/")) return String(json.avatar);
 
       return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
     } catch {

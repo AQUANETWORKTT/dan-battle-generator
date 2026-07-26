@@ -296,6 +296,7 @@ async function fetchTikTokAvatar(username: string) {
     });
     const json = await res.json();
     if (!json.avatar) return "";
+    if (String(json.avatar).startsWith("/")) return String(json.avatar);
     return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
   } catch {
     return "";
@@ -368,6 +369,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
@@ -555,7 +557,8 @@ export default function TeamDiamondsYesterdayPage() {
     setLoading(true);
     setMessage("");
     try {
-      for (const item of items) {
+      for (const [index, item] of items.entries()) {
+        setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
         setSelectedTemplateName(item.name);
         await buildPreview(item.template, true);
         await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -564,6 +567,7 @@ export default function TeamDiamondsYesterdayPage() {
         await waitForImages(node);
         const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
         if (blob) saveAs(blob, `${item.name}-${getYesterdayDateKey()}.png`);
+        setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
       const sideLabel = side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : "All teams";
       setMessage(`${sideLabel}: ${items.length} poster${items.length === 1 ? "" : "s"} downloaded.`);
@@ -571,6 +575,7 @@ export default function TeamDiamondsYesterdayPage() {
       setMessage(error instanceof Error ? error.message : "Could not download all posters.");
     } finally {
       setLoading(false);
+      setDownloadProgress(null);
     }
   }
 
@@ -643,6 +648,7 @@ export default function TeamDiamondsYesterdayPage() {
               ))}
             </div>
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
+            {downloadProgress ? <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4"><div className="flex items-center justify-between gap-4 text-xs font-black uppercase tracking-widest text-sky-100"><span>Preparing {downloadProgress.label}</span><span>{downloadProgress.current} / {downloadProgress.total}</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%` }} /></div><p className="mt-2 text-xs text-sky-100/70">Loading creator photos and rendering the poster. Download time after this is controlled by your browser.</p></div> : null}
             <div className="hidden overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
                 <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>

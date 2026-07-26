@@ -4,6 +4,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
+const LOCAL_AVATARS: Record<string, string> = {
+  cerilaw83: "/avatars/cerilaw83.jpg",
+  tictock739: "/avatars/tictock739.jpg",
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -26,6 +31,14 @@ export async function POST(req: Request) {
             Expires: "0",
           },
         }
+      );
+    }
+
+    const localAvatar = LOCAL_AVATARS[cleanUsername];
+    if (localAvatar) {
+      return NextResponse.json(
+        { avatar: localAvatar, username: cleanUsername, source: "local-fallback" },
+        { headers: { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" } }
       );
     }
 
