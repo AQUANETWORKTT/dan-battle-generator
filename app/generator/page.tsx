@@ -1603,16 +1603,20 @@ export default function BattleGeneratorPage() {
       const statDate = String(status.latestDate || "");
       const month = statDate.slice(0, 7);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(statDate)) throw new Error("No Creator Daily Stats upload is available.");
-      const response = await fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" });
-      const json = await response.json();
+      const [response, exclusionsResponse] = await Promise.all([
+        fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
+        fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
+      ]);
+      const [json, exclusions] = await Promise.all([response.json(), exclusionsResponse.json()]);
       if (!response.ok) throw new Error(json.error || "Could not load Creator Daily Stats.");
+      const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
       const managerKey = String(teamPosterTemplate.managerKey || "team-dan").toLowerCase();
       const managerFor = (row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim().toLowerCase();
       const usernameFor = (row: Record<string, unknown>) => String(row.creator_username || row["Creator's username"] || "").replace("@", "").trim().toLowerCase();
       const numeric = (value: unknown) => Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
       const hoursFor = (row: Record<string, unknown>) => numeric(row.live_hours || row.live_duration || row["LIVE duration"]);
       const rows = (json.rows || []).filter((row: Record<string, unknown>) => {
-        if (row.stat_date !== statDate || !usernameFor(row)) return false;
+        if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
         return managerKey === "team-dan"
           ? ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager)
@@ -1622,7 +1626,11 @@ export default function BattleGeneratorPage() {
       const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
       const topHours = [...rows].sort((a, b) => hoursFor(b) - hoursFor(a)).slice(0, 5);
       const avatars = new Map<string, string>();
-      await Promise.all(Array.from(new Set([...topDiamonds, ...topHours].map(usernameFor))).map(async (username) => avatars.set(username, await fetchTikTokAvatar(username))));
+      // TikTok can return a stale avatar when several profile pages are scraped
+      // at once. Resolve each creator separately so every slot keeps its own image.
+      for (const username of new Set([...topDiamonds, ...topHours].map(usernameFor))) {
+        avatars.set(username, await fetchTikTokAvatar(username));
+      }
       const compact = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 ? 1 : 0)}K` : String(value);
       const filled = normalizeTeamDanPosterTemplate({
         ...teamPosterTemplate,
@@ -2085,7 +2093,7 @@ export default function BattleGeneratorPage() {
     const cleanUsername = username.replace("@", "").trim().toLowerCase();
     if (!cleanUsername) return "";
 
-    const refreshKey = Date.now();
+    const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
     try {
       const res = await fetch("/api/tiktok-avatar-v2", {
@@ -2106,9 +2114,7 @@ export default function BattleGeneratorPage() {
       const json = await res.json();
       if (!json.avatar) return "";
 
-      return `/api/tiktok-avatar-image?url=${encodeURIComponent(
-        json.avatar
-      )}&refresh=${refreshKey}`;
+      return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
     } catch {
       return "";
     }

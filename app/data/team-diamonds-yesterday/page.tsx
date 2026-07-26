@@ -285,7 +285,7 @@ function getSavedTemplate() {
 async function fetchTikTokAvatar(username: string) {
   const cleanUsername = username.replace("@", "").trim().toLowerCase();
   if (!cleanUsername) return "";
-  const refreshKey = Date.now();
+  const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   try {
     const res = await fetch("/api/tiktok-avatar-v2", {
@@ -296,7 +296,7 @@ async function fetchTikTokAvatar(username: string) {
     });
     const json = await res.json();
     if (!json.avatar) return "";
-    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&refresh=${refreshKey}`;
+    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
   } catch {
     return "";
   }
@@ -446,14 +446,19 @@ export default function TeamDiamondsYesterdayPage() {
 
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
-      const res = await fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" });
-      const json = await res.json();
+      const [res, exclusionsResponse] = await Promise.all([
+        fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
+        fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
+      ]);
+      const [json, exclusions] = await Promise.all([res.json(), exclusionsResponse.json()]);
       if (!res.ok) throw new Error(json.error || "Could not load Daniel daily stats.");
+      const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
 
       const rows = ((json.rows || []) as CreatorStat[])
         .filter((row) => row.stat_date === yesterday)
         .filter((row) => matchesTemplateManager(row, activeTemplate))
         .filter((row) => getUsername(row))
+        .filter((row) => !hiddenUsernames.has(getUsername(row)))
         .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
 
       if (!rows.length) {
@@ -469,11 +474,11 @@ export default function TeamDiamondsYesterdayPage() {
         .slice(0, 5);
       const avatarByUsername = new Map<string, string>();
 
-      await Promise.all(
-        Array.from(new Set([...diamondRows, ...hourRows].map(getUsername))).map(async (username) => {
-          avatarByUsername.set(username, await fetchTikTokAvatar(username));
-        })
-      );
+      // Load one creator at a time: parallel TikTok scrapes can reuse a stale
+      // response and put the same avatar into multiple slots.
+      for (const username of new Set([...diamondRows, ...hourRows].map(getUsername))) {
+        avatarByUsername.set(username, await fetchTikTokAvatar(username));
+      }
 
       const diamondCreators = diamondRows.map((row) => ({
         username: getUsername(row),

@@ -432,6 +432,10 @@ function isExcludedFromLeaderboards(creator: Pick<CreatorSummary, "username" | "
   );
 }
 
+function isConfiguredLeaderboardExcluded(creator: Pick<CreatorSummary, "username">, usernames: Set<string>) {
+  return usernames.has(normalizeManagerKey(creator.username));
+}
+
 function isExcludedFromDashboardData(creator: Pick<CreatorSummary, "managerRaw">) {
   return hasManagerKey(creator.managerRaw, EXCLUDED_DATA_MANAGER_KEYS);
 }
@@ -1998,9 +2002,9 @@ function getManagerLeaderboardTone(score: number) {
   return { border: "#eab308", bg: "rgba(101,77,13,.42)" };
 }
 
-async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSummary) {
+async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSummary, excludedUsernames: Set<string>) {
   const scoredCreators = [...managerSummary.creators]
-    .filter((creator) => !creator.isNewCreator && !isExcludedFromLeaderboards(creator))
+    .filter((creator) => !creator.isNewCreator && !isExcludedFromLeaderboards(creator) && !isConfiguredLeaderboardExcluded(creator, excludedUsernames))
     .sort((a, b) => b.healthScore - a.healthScore);
   const needsImprovementCount = managerSummary.lowPerformance + managerSummary.lowQuality;
   const lastSevenDiamonds = managerSummary.creators.reduce(
@@ -2551,6 +2555,7 @@ export default function CreatorIntelligencePage() {
   const [healthStatus, setHealthStatus] = useState("All Health");
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<CreatorStat[]>([]);
+  const [configuredLeaderboardExclusions, setConfiguredLeaderboardExclusions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [selectedCreatorKey, setSelectedCreatorKey] = useState("");
   const [expandedManager, setExpandedManager] = useState("");
@@ -2580,6 +2585,13 @@ export default function CreatorIntelligencePage() {
     }
 
     selectLatestDataDate();
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/data-analysis/excluded-creators", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => setConfiguredLeaderboardExclusions(new Set((data.creators || []).filter((creator: { excludeFromLeaderboards?: boolean }) => creator.excludeFromLeaderboards).map((creator: { username: string }) => normalizeManagerKey(creator.username)))))
+      .catch(() => setConfiguredLeaderboardExclusions(new Set()));
   }, []);
 
   useEffect(() => {
@@ -2738,7 +2750,7 @@ export default function CreatorIntelligencePage() {
 
     for (const creator of managerFilteredCreators) {
       const managerName = creator.managerLabel || "Unassigned";
-      if (!isLeaderboardManager(managerName, activeGroup === "Exempt") || isExcludedFromLeaderboards(creator)) continue;
+      if (!isLeaderboardManager(managerName, activeGroup === "Exempt") || isExcludedFromLeaderboards(creator) || isConfiguredLeaderboardExcluded(creator, configuredLeaderboardExclusions)) continue;
       grouped.set(managerName, [...(grouped.get(managerName) || []), creator]);
     }
 
@@ -3113,7 +3125,7 @@ export default function CreatorIntelligencePage() {
       return;
     }
 
-    const blob = await renderTeamHealthPosterToPngBlob(managerSummary);
+    const blob = await renderTeamHealthPosterToPngBlob(managerSummary, configuredLeaderboardExclusions);
     const teamName = managerSummary.manager.replace(/\s*\([^)]*\)\s*$/, "");
     saveAs(blob, `${teamName} Health Scores.png`);
   }

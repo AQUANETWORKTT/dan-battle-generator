@@ -9,6 +9,7 @@ const workspaces = [
   { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Diamonds Yesterday", description: "Build and download yesterday’s top diamonds and live-hours poster.", accent: "yellow" },
   { href: "/daily-rankings", number: "06", label: "Backstage", title: "Daily Rankings", description: "Pull yesterday’s Tikleap rankings for Backstage.", accent: "cyan", maintenance: true },
   { href: "/data/team-posters", number: "07", label: "Daily assets", title: "Team Posters", description: "Create and maintain reusable yesterday-diamonds poster templates for Team Dan and future teams.", accent: "yellow" },
+  { href: "/data/excluded-creators", number: "08", label: "Visibility", title: "Excluded Creators", description: "Keep selected creators out of leaderboards, public PNGs and downloads while retaining their intelligence data.", accent: "orange" },
   { href: "/data/events-leaderboards-admin", number: "09", label: "Event operations", title: "Events Leaderboards Admin", description: "Event score controls, Crew Showdown downloads and private leaderboard tools.", accent: "emerald" },
 ];
 
