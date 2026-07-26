@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF"; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string };
+const DATE_OPTIONS = Array.from({ length: 365 }, (_, index) => { const date = new Date(2026, 0, index + 1); return { value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`, label: date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) }; });
+const TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => { const hours = Math.floor(index / 4); const minutes = (index % 4) * 15; const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`; return { value, label: new Date(`2026-01-01T${value}:00`).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" }) }; });
 
 export default function TaskSpacePage() {
   const [tasks, setTasks] = useState<Task[]>([]); const [description, setDescription] = useState(""); const [assignee, setAssignee] = useState<Task["assignee"]>("JD / DF"); const [forWho, setForWho] = useState(""); const [dueDate, setDueDate] = useState(""); const [dueTime, setDueTime] = useState(""); const [highPriority, setHighPriority] = useState(false); const [message, setMessage] = useState("");
