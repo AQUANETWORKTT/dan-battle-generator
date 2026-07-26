@@ -1586,6 +1586,10 @@ export default function BattleGeneratorPage() {
     const nextTemplate = normalizeTeamDanPosterTemplate(source || createTeamDanPosterTemplate());
     setTeamPosterTemplateName(name);
     setTeamPosterTemplate(nextTemplate);
+    setTeamPosterTemplates((current) => [
+      ...current.filter((item) => item.name !== name),
+      { name, template: nextTemplate },
+    ].sort((a, b) => a.name.localeCompare(b.name)));
     setSelectedTeamPosterElementId(nextTemplate.elements[0]?.id || "");
     setNewTeamPosterTemplateName("");
     setTeamPosterStatus(`${label} layout created. Choose its data source and side, then press Save Template.`);
