@@ -868,6 +868,7 @@ export default function BattleGeneratorPage() {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
+  const fallbackAvatarUrlsRef = useRef<Record<string, string>>({});
   const [workspace, setWorkspace] = useState<string | null>(null);
   const isPostersWorkspace = workspace === "posters";
   const isCrewShowdownWorkspace = workspace === "crew-showdown";
@@ -1859,6 +1860,13 @@ export default function BattleGeneratorPage() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => { fallbackAvatarUrlsRef.current = Object.fromEntries((data.avatars || []).map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl])); })
+      .catch(() => { fallbackAvatarUrlsRef.current = {}; });
+  }, []);
+
+  useEffect(() => {
     async function loadTeamPosterTemplate() {
       const supabase = getPosterSupabaseClient();
 
@@ -2100,7 +2108,8 @@ export default function BattleGeneratorPage() {
   async function fetchTikTokAvatar(username: string) {
     const cleanUsername = username.replace("@", "").trim().toLowerCase();
     if (!cleanUsername) return "";
-    const localAvatar = LOCAL_AVATAR_PATHS[cleanUsername.replace(/[^a-z0-9]/g, "")];
+    const normalizedUsername = cleanUsername.replace(/[^a-z0-9]/g, "");
+    const localAvatar = fallbackAvatarUrlsRef.current[normalizedUsername] || LOCAL_AVATAR_PATHS[normalizedUsername];
     if (localAvatar) return localAvatar;
 
     const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;

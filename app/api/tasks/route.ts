@@ -1,0 +1,11 @@
+import { NextResponse } from "next/server";
+import { submissionsSupabase } from "@/lib/submissions-supabase";
+
+const SETTINGS_NAME = "agency-task-space";
+type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF"; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string };
+function normalize(input: unknown): Task[] {
+  if (!Array.isArray(input)) return [];
+  return input.flatMap((item) => { const row = item as Record<string, unknown>; const description = String(row?.description || "").trim(); if (!description) return []; const assignee = ["JD", "DF", "JD / DF"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF"; return [{ id: String(row.id || crypto.randomUUID()), description, assignee, creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: Boolean(row.highPriority), complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()) }]; }).sort((a, b) => Number(a.complete) - Number(b.complete) || Number(b.highPriority) - Number(a.highPriority) || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
+}
+export async function GET() { const { data, error } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle(); if (error) return NextResponse.json({ error: error.message }, { status: 500 }); return NextResponse.json({ tasks: normalize((data?.template_json as Record<string, unknown> | null)?.tasks) }); }
+export async function PUT(request: Request) { try { const body = await request.json(); const tasks = normalize(body?.tasks); const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { tasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" }); if (error) return NextResponse.json({ error: error.message }, { status: 500 }); return NextResponse.json({ tasks }); } catch { return NextResponse.json({ error: "Invalid task settings." }, { status: 400 }); } }

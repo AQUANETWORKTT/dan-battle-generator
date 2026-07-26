@@ -291,10 +291,11 @@ function getSavedTemplate() {
   }
 }
 
-async function fetchTikTokAvatar(username: string) {
+async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<string, string> = {}) {
   const cleanUsername = username.replace("@", "").trim().toLowerCase();
   if (!cleanUsername) return "";
-  const localAvatar = LOCAL_AVATAR_PATHS[cleanUsername.replace(/[^a-z0-9]/g, "")];
+  const normalizedUsername = cleanUsername.replace(/[^a-z0-9]/g, "");
+  const localAvatar = fallbackAvatars[normalizedUsername] || LOCAL_AVATAR_PATHS[normalizedUsername];
   if (localAvatar) return localAvatar;
   const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -459,13 +460,15 @@ export default function TeamDiamondsYesterdayPage() {
 
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
-      const [res, exclusionsResponse] = await Promise.all([
+      const [res, exclusionsResponse, fallbacksResponse] = await Promise.all([
         fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
+        fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
       ]);
-      const [json, exclusions] = await Promise.all([res.json(), exclusionsResponse.json()]);
+      const [json, exclusions, fallbacks] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json()]);
       if (!res.ok) throw new Error(json.error || "Could not load Daniel daily stats.");
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
+      const fallbackAvatars = Object.fromEntries((fallbacks.avatars || []).map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
 
       const rows = ((json.rows || []) as CreatorStat[])
         .filter((row) => row.stat_date === yesterday)
@@ -490,7 +493,7 @@ export default function TeamDiamondsYesterdayPage() {
       // Load one creator at a time: parallel TikTok scrapes can reuse a stale
       // response and put the same avatar into multiple slots.
       for (const username of new Set([...diamondRows, ...hourRows].map(getUsername))) {
-        avatarByUsername.set(username, await fetchTikTokAvatar(username));
+        avatarByUsername.set(username, await fetchTikTokAvatar(username, fallbackAvatars));
       }
 
       const diamondCreators = diamondRows.map((row) => ({
