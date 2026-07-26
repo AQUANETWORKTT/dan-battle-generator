@@ -6,6 +6,7 @@ export const fetchCache = "force-no-store";
 
 const LOCAL_AVATARS: Record<string, string> = {
   cerilaw83: "/avatars/cerilaw83.jpg",
+  serenitetiktok: "/avatars/cerilaw83.jpg",
   tictock739: "/avatars/tictock739.jpg",
 };
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const localAvatar = LOCAL_AVATARS[cleanUsername];
+    const localAvatar = LOCAL_AVATARS[cleanUsername.replace(/[^a-z0-9]/g, "")];
     if (localAvatar) {
       return NextResponse.json(
         { avatar: localAvatar, username: cleanUsername, source: "local-fallback" },

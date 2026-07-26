@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
+import { flushSync } from "react-dom";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 type CreatorStat = {
@@ -350,7 +351,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
           }}
         >
           {element.kind === "avatar" ? (
-            element.imageUrl ? <img src={element.imageUrl} alt="" className="h-full w-full object-cover" /> : null
+            element.imageUrl ? <img key={element.imageUrl} src={element.imageUrl} alt="" className="h-full w-full object-cover" /> : null
           ) : (
             element.value
           )}
@@ -516,7 +517,9 @@ export default function TeamDiamondsYesterdayPage() {
         }),
       };
 
-      setTemplate(filledTemplate);
+      // The poster may be captured immediately after this update. Flush it so
+      // images from the preceding download cannot be reused by the next one.
+      flushSync(() => setTemplate(filledTemplate));
       if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${yesterday}.`);
     } catch (error) {
       console.error(error);
