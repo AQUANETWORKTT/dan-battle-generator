@@ -187,6 +187,7 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
   tictock739: "/avatars/tictock739.jpg",
   kaylanortheast: "/avatars/kayla_northeast.jpg",
   lozza2706: "/avatars/lozza2706.jpg",
+  kieransmithmilner: "/avatars/kieransmithmilner.jpg",
 };
 const TEAM_DAN_MANAGER_FALLBACKS = [
   { key: "ashwalbridge", manager: "Team Ash" },
