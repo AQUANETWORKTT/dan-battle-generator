@@ -8,6 +8,8 @@ const LOCAL_AVATARS: Record<string, string> = {
   cerilaw83: "/avatars/cerilaw83.jpg",
   serenitetiktok: "/avatars/cerilaw83.jpg",
   tictock739: "/avatars/tictock739.jpg",
+  kaylanortheast: "/avatars/kayla_northeast.jpg",
+  lozza2706: "/avatars/lozza2706.jpg",
 };
 
 export async function POST(req: Request) {
