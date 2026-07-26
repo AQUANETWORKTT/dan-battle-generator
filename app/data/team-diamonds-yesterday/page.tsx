@@ -671,6 +671,18 @@ export default function TeamDiamondsYesterdayPage() {
         const avatar = await embedAvatarForPoster(await fetchTikTokAvatar(username, fallbackAvatars));
         if (!avatar) failed.push(username);
       }
+      if (failed.length) {
+        const existing = (fallbacks.avatars || []) as { username: string; imageUrl: string }[];
+        const existingNames = new Set(existing.map((avatar) => avatar.username));
+        const queuedCreators = failed.filter((username) => !existingNames.has(username)).map((username) => ({ username, imageUrl: "" }));
+        if (queuedCreators.length) {
+          await fetch("/api/data-analysis/fallback-avatars", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatars: [...existing, ...queuedCreators] }),
+          });
+        }
+      }
       setPictureCheck({ checked: candidateUsernames.length, failed });
       setMessage(failed.length ? `${failed.length} creator picture${failed.length === 1 ? " needs" : "s need"} a fallback before downloading.` : `All ${candidateUsernames.length} creator pictures are ready.`);
     } catch (error) {

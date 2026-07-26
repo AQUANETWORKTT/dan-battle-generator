@@ -10,7 +10,8 @@ function normalize(input: unknown): FallbackAvatar[] {
     const row = item as Record<string, unknown>;
     const username = String(row?.username || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
     const imageUrl = String(row?.imageUrl || "");
-    if (username && imageUrl.startsWith("data:image/")) values.set(username, { username, imageUrl });
+    // An empty image is intentional: it is a creator queued for a fallback photo.
+    if (username && (!imageUrl || imageUrl.startsWith("data:image/"))) values.set(username, { username, imageUrl });
   }
   return Array.from(values.values()).sort((a, b) => a.username.localeCompare(b.username));
 }
