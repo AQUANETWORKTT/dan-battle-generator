@@ -320,7 +320,9 @@ async function embedAvatarForPoster(url: string) {
   if (!url || url.startsWith("data:")) return url;
   try {
     const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) return url;
+    // A failed image request must remain a failure. Returning the original URL
+    // made Picture Check treat broken fallback images as usable.
+    if (!response.ok || !response.headers.get("content-type")?.startsWith("image/")) return "";
     const blob = await response.blob();
     return await new Promise<string>((resolve) => {
       const reader = new FileReader();
@@ -329,7 +331,7 @@ async function embedAvatarForPoster(url: string) {
       reader.readAsDataURL(blob);
     });
   } catch {
-    return url;
+    return "";
   }
 }
 
