@@ -181,6 +181,13 @@ const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
   "firstclassagencyjacob",
   "teamjacob",
 ];
+const LOCAL_AVATAR_PATHS: Record<string, string> = {
+  cerilaw83: "/avatars/cerilaw83.jpg",
+  serenitetiktok: "/avatars/cerilaw83.jpg",
+  tictock739: "/avatars/tictock739.jpg",
+  kaylanortheast: "/avatars/kayla_northeast.jpg",
+  lozza2706: "/avatars/lozza2706.jpg",
+};
 const TEAM_DAN_MANAGER_FALLBACKS = [
   { key: "ashwalbridge", manager: "Team Ash" },
 ];
@@ -2092,6 +2099,8 @@ export default function BattleGeneratorPage() {
   async function fetchTikTokAvatar(username: string) {
     const cleanUsername = username.replace("@", "").trim().toLowerCase();
     if (!cleanUsername) return "";
+    const localAvatar = LOCAL_AVATAR_PATHS[cleanUsername.replace(/[^a-z0-9]/g, "")];
+    if (localAvatar) return localAvatar;
 
     const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 

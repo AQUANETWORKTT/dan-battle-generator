@@ -53,6 +53,13 @@ const TEAM_DAN_POSTER_TEMPLATE_NAME = "team-dan-poster";
 const POSTER_WIDTH = 1024;
 const POSTER_HEIGHT = 1536;
 const EXCLUDED_USERNAME = "allannah.unknown444";
+const LOCAL_AVATAR_PATHS: Record<string, string> = {
+  cerilaw83: "/avatars/cerilaw83.jpg",
+  serenitetiktok: "/avatars/cerilaw83.jpg",
+  tictock739: "/avatars/tictock739.jpg",
+  kaylanortheast: "/avatars/kayla_northeast.jpg",
+  lozza2706: "/avatars/lozza2706.jpg",
+};
 
 function safeNumber(value: unknown) {
   return Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
@@ -286,6 +293,8 @@ function getSavedTemplate() {
 async function fetchTikTokAvatar(username: string) {
   const cleanUsername = username.replace("@", "").trim().toLowerCase();
   if (!cleanUsername) return "";
+  const localAvatar = LOCAL_AVATAR_PATHS[cleanUsername.replace(/[^a-z0-9]/g, "")];
+  if (localAvatar) return localAvatar;
   const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   try {
