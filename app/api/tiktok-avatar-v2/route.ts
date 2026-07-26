@@ -55,7 +55,11 @@ export async function POST(req: Request) {
     const match =
       html.match(/"avatarLarger":"(.*?)"/) ||
       html.match(/"avatarMedium":"(.*?)"/) ||
-      html.match(/"avatarThumb":"(.*?)"/);
+      html.match(/"avatarThumb":"(.*?)"/) ||
+      // TikTok sometimes withholds its profile JSON from automated requests
+      // but still provides the public social-preview image in the document.
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
 
     if (!match) {
       return NextResponse.json(
@@ -80,7 +84,8 @@ export async function POST(req: Request) {
 
     const avatar = match[1]
       .replace(/\\u002F/g, "/")
-      .replace(/\\u0026/g, "&");
+      .replace(/\\u0026/g, "&")
+      .replace(/&amp;/g, "&");
 
     return NextResponse.json(
       {
