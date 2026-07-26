@@ -1958,6 +1958,31 @@ export default function BattleGeneratorPage() {
   }, [editMode, selectedElement, templateJson]);
 
   useEffect(() => {
+    if (activeMode !== "team") return;
+
+    function onTeamPosterKeyDown(event: KeyboardEvent) {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes((event.target as HTMLElement)?.tagName)) return;
+      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+
+      event.preventDefault();
+      const step = event.shiftKey ? 10 : 1;
+      setTeamPosterTemplate((current) => ({
+        ...current,
+        elements: current.elements.map((element) => {
+          if (element.id !== selectedTeamPosterElementId) return element;
+          if (event.key === "ArrowUp") return { ...element, y: element.y - step };
+          if (event.key === "ArrowDown") return { ...element, y: element.y + step };
+          if (event.key === "ArrowLeft") return { ...element, x: element.x - step };
+          return { ...element, x: element.x + step };
+        }),
+      }));
+    }
+
+    window.addEventListener("keydown", onTeamPosterKeyDown);
+    return () => window.removeEventListener("keydown", onTeamPosterKeyDown);
+  }, [activeMode, selectedTeamPosterElementId]);
+
+  useEffect(() => {
     const username = singleBattle.name1.replace("@", "").trim();
     if (!username || singleBattle.image1) return;
 
@@ -3756,22 +3781,24 @@ function renderText(
                 key={element.id}
                 bounds="parent"
                 scale={scale}
-                size={{ width: element.width, height: element.height }}
+                size={{ width: element.width, height: element.kind === "avatar" ? element.width : element.height }}
                 position={{ x: element.x, y: element.y }}
+                lockAspectRatio={element.kind === "avatar" ? 1 : false}
                 onDragStop={(_, data) =>
                   updateTeamPosterElement(element.id, {
                     x: Math.round(data.x),
                     y: Math.round(data.y),
                   })
                 }
-                onResizeStop={(_, __, ref, ___, position) =>
+                onResizeStop={(_, __, ref, ___, position) => {
+                  const width = Math.round(ref.offsetWidth);
                   updateTeamPosterElement(element.id, {
                     x: Math.round(position.x),
                     y: Math.round(position.y),
-                    width: Math.round(ref.offsetWidth),
-                    height: Math.round(ref.offsetHeight),
-                  })
-                }
+                    width,
+                    height: element.kind === "avatar" ? width : Math.round(ref.offsetHeight),
+                  });
+                }}
                 onMouseDown={() => setSelectedTeamPosterElementId(element.id)}
               >
                 {element.kind === "avatar" ? (
