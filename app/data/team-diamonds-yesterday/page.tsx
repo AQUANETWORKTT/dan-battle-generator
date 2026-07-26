@@ -62,6 +62,7 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
   lozza2706: "/avatars/lozza2706.jpg",
   kieransmithmilner: "/avatars/kieransmithmilner.jpg",
 };
+const sessionAvatarCache = new Map<string, string>();
 
 function safeNumber(value: unknown) {
   return Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
@@ -335,6 +336,21 @@ async function embedAvatarForPoster(url: string) {
   }
 }
 
+async function resolveAvatarForPoster(username: string, fallbackAvatars: Record<string, string> = {}) {
+  const normalizedUsername = username.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  // A manual fallback should always take priority over a previously scraped image.
+  if (fallbackAvatars[normalizedUsername]) {
+    return embedAvatarForPoster(fallbackAvatars[normalizedUsername]);
+  }
+  const cachedAvatar = sessionAvatarCache.get(normalizedUsername);
+  if (cachedAvatar) return cachedAvatar;
+  const embeddedAvatar = await embedAvatarForPoster(await fetchTikTokAvatar(username, fallbackAvatars));
+  // TikTok can intermittently reject repeat requests. Keep only confirmed images
+  // so a successful Picture Check and the following download stay consistent.
+  if (embeddedAvatar) sessionAvatarCache.set(normalizedUsername, embeddedAvatar);
+  return embeddedAvatar;
+}
+
 async function waitForImages(node: HTMLElement) {
   await Promise.all(
     Array.from(node.querySelectorAll("img")).map((image) => {
@@ -482,7 +498,7 @@ export default function TeamDiamondsYesterdayPage() {
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
       const [res, exclusionsResponse, fallbacksResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
       ]);
@@ -515,8 +531,7 @@ export default function TeamDiamondsYesterdayPage() {
       // Load one creator at a time: parallel TikTok scrapes can reuse a stale
       // response and put the same avatar into multiple slots.
       for (const username of new Set([...diamondRows, ...hourRows].map(getUsername))) {
-        const avatarUrl = await fetchTikTokAvatar(username, fallbackAvatars);
-        const embeddedAvatar = await embedAvatarForPoster(avatarUrl);
+        const embeddedAvatar = await resolveAvatarForPoster(username, fallbackAvatars);
         avatarByUsername.set(username, embeddedAvatar);
         if (!embeddedAvatar) failedAvatars.push(username);
       }
@@ -670,7 +685,7 @@ export default function TeamDiamondsYesterdayPage() {
       const candidateUsernames = [...usernames];
       for (const [index, username] of candidateUsernames.entries()) {
         setDownloadProgress({ current: index, total: candidateUsernames.length, label: `Checking @${username}` });
-        const avatar = await embedAvatarForPoster(await fetchTikTokAvatar(username, fallbackAvatars));
+        const avatar = await resolveAvatarForPoster(username, fallbackAvatars);
         if (!avatar) failed.push(username);
       }
       if (failed.length) {
@@ -692,6 +707,16 @@ export default function TeamDiamondsYesterdayPage() {
     } finally {
       setLoading(false);
       setDownloadProgress(null);
+    }
+  }
+
+  async function copyMissingCreatorList() {
+    if (!pictureCheck?.failed.length) return;
+    try {
+      await navigator.clipboard.writeText(pictureCheck.failed.join("\n"));
+      setMessage("Missing creator list copied. Paste it into Fallback Pictures to queue everyone.");
+    } catch {
+      setMessage("Could not copy the list. Select the usernames below and copy them manually.");
     }
   }
 
@@ -767,7 +792,7 @@ export default function TeamDiamondsYesterdayPage() {
               ))}
             </div>
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
-            {pictureCheck ? <div className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-5"><p className="text-xs font-black uppercase tracking-widest text-sky-100">Picture check — {pictureCheck.checked} creators</p>{pictureCheck.failed.length ? <><p className="mt-2 text-sm text-white/80">Add fallback pictures for these usernames, then run the check again:</p><div className="mt-3 flex flex-wrap gap-2">{pictureCheck.failed.map((username) => <span key={username} className="rounded-lg border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-sm font-bold text-rose-100">@{username}</span>)}</div><Link href="/data/fallback-pictures" className="mt-4 inline-flex rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">Open Fallback Pictures</Link></> : <p className="mt-2 text-sm font-bold text-green-200">Every creator who will appear in the posters has a picture ready.</p>}</div> : null}
+            {pictureCheck ? <div className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-5"><p className="text-xs font-black uppercase tracking-widest text-sky-100">Picture check — {pictureCheck.checked} creators</p>{pictureCheck.failed.length ? <><p className="mt-2 text-sm text-white/80">Add fallback pictures for these usernames, then run the check again:</p><textarea readOnly value={pictureCheck.failed.join("\n")} rows={Math.min(Math.max(pictureCheck.failed.length, 3), 10)} aria-label="Missing creator usernames" className="mt-3 w-full rounded-xl border border-rose-300/30 bg-black/30 px-3 py-2 font-mono text-sm text-rose-100"/><div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={() => void copyMissingCreatorList()} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-100 hover:bg-sky-300/20">Copy list</button><Link href="/data/fallback-pictures" className="inline-flex rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">Open Fallback Pictures</Link></div></> : <p className="mt-2 text-sm font-bold text-green-200">Every creator who will appear in the posters has a picture ready.</p>}</div> : null}
             {downloadProgress ? <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4"><div className="flex items-center justify-between gap-4 text-xs font-black uppercase tracking-widest text-sky-100"><span>Preparing {downloadProgress.label}</span><span>{downloadProgress.current} / {downloadProgress.total}</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%` }} /></div><p className="mt-2 text-xs text-sky-100/70">Loading creator photos and rendering the poster. Download time after this is controlled by your browser.</p></div> : null}
             <div className="hidden overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
