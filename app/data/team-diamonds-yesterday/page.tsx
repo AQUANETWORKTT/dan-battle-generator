@@ -400,6 +400,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
+  const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
@@ -628,6 +629,58 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
+  async function checkPictures() {
+    const allItems = templates.length
+      ? templates
+      : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+    setLoading(true);
+    setMessage("");
+    setPictureCheck(null);
+    try {
+      const month = getCurrentMonth();
+      const yesterday = getYesterdayDateKey();
+      const [res, exclusionsResponse, fallbacksResponse] = await Promise.all([
+        fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
+        fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
+        fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
+      ]);
+      const [json, exclusions, fallbacks] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json()]);
+      if (!res.ok) throw new Error(json.error || "Could not load daily stats.");
+      const hiddenUsernames = new Set((exclusions.creators || [])
+        .filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads)
+        .map((creator: { username: string }) => creator.username.toLowerCase()));
+      const fallbackAvatars = Object.fromEntries((fallbacks.avatars || [])
+        .map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
+      const allRows = ((json.rows || []) as CreatorStat[])
+        .filter((row) => row.stat_date === yesterday)
+        .filter((row) => getUsername(row))
+        .filter((row) => !hiddenUsernames.has(getUsername(row)))
+        .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
+      const usernames = new Set<string>();
+
+      for (const item of allItems) {
+        const teamRows = allRows.filter((row) => matchesTemplateManager(row, item.template));
+        [...teamRows].sort((a, b) => safeNumber(b.diamonds) - safeNumber(a.diamonds)).slice(0, 5).forEach((row) => usernames.add(getUsername(row)));
+        [...teamRows].sort((a, b) => getLiveHours(b) - getLiveHours(a)).slice(0, 5).forEach((row) => usernames.add(getUsername(row)));
+      }
+
+      const failed: string[] = [];
+      const candidateUsernames = [...usernames];
+      for (const [index, username] of candidateUsernames.entries()) {
+        setDownloadProgress({ current: index, total: candidateUsernames.length, label: `Checking @${username}` });
+        const avatar = await embedAvatarForPoster(await fetchTikTokAvatar(username, fallbackAvatars));
+        if (!avatar) failed.push(username);
+      }
+      setPictureCheck({ checked: candidateUsernames.length, failed });
+      setMessage(failed.length ? `${failed.length} creator picture${failed.length === 1 ? " needs" : "s need"} a fallback before downloading.` : `All ${candidateUsernames.length} creator pictures are ready.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not check creator pictures.");
+    } finally {
+      setLoading(false);
+      setDownloadProgress(null);
+    }
+  }
+
   async function downloadTemplate(item: SavedTemplateRow) {
     setSelectedTemplateName(item.name);
     setLoading(true);
@@ -666,7 +719,10 @@ export default function TeamDiamondsYesterdayPage() {
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Posters</p>
                 <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
               </div>
-              <button type="button" onClick={() => void downloadAllPosters()} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={() => void checkPictures()} disabled={loading} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-300/20 disabled:opacity-50">Check Pictures</button>
+                <button type="button" onClick={() => void downloadAllPosters()} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
+              </div>
             </div>
             <p className="mt-3 max-w-3xl text-white/60">
               Your saved team presets, ready to download. Layouts and data sources are managed in Posters.
@@ -697,6 +753,7 @@ export default function TeamDiamondsYesterdayPage() {
               ))}
             </div>
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
+            {pictureCheck ? <div className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-5"><p className="text-xs font-black uppercase tracking-widest text-sky-100">Picture check — {pictureCheck.checked} creators</p>{pictureCheck.failed.length ? <><p className="mt-2 text-sm text-white/80">Add fallback pictures for these usernames, then run the check again:</p><div className="mt-3 flex flex-wrap gap-2">{pictureCheck.failed.map((username) => <span key={username} className="rounded-lg border border-rose-300/30 bg-rose-300/10 px-3 py-2 text-sm font-bold text-rose-100">@{username}</span>)}</div><Link href="/data/fallback-pictures" className="mt-4 inline-flex rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">Open Fallback Pictures</Link></> : <p className="mt-2 text-sm font-bold text-green-200">Every creator who will appear in the posters has a picture ready.</p>}</div> : null}
             {downloadProgress ? <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4"><div className="flex items-center justify-between gap-4 text-xs font-black uppercase tracking-widest text-sky-100"><span>Preparing {downloadProgress.label}</span><span>{downloadProgress.current} / {downloadProgress.total}</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%` }} /></div><p className="mt-2 text-xs text-sky-100/70">Loading creator photos and rendering the poster. Download time after this is controlled by your browser.</p></div> : null}
             <div className="hidden overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
