@@ -117,7 +117,7 @@ const TEAM_POSTER_WIDTH = 1024;
 const TEAM_POSTER_HEIGHT = 1536;
 const MANAGER_LEADERBOARD_WIDTH = 1080;
 const MANAGER_LEADERBOARD_HEIGHT = 1920;
-const MANAGER_LEADERBOARD_MAX_MANAGERS = 20;
+const DEFAULT_MANAGER_LEADERBOARD_ROWS = 20;
 const MANAGER_LEADERBOARD_TEMPLATE_NAME = "manager-leaderboard-overlay";
 
 function getManagerLeaderboardTemplateName(group: string) {
@@ -634,12 +634,12 @@ function belongsToSelectedManagerLeaderboardGroup(row: ManagerLeaderboardStat, g
   return isTeamDanManager || getManagerLeaderboardGroup(row) === "Aqua";
 }
 
-function createManagerLeaderboardTemplate(): TeamPosterTemplate {
+function createManagerLeaderboardTemplate(rowCount = DEFAULT_MANAGER_LEADERBOARD_ROWS): TeamPosterTemplate {
   const elements: TeamPosterElement[] = [];
   const startY = 145;
   const rowGap = 88;
 
-  for (let index = 0; index < MANAGER_LEADERBOARD_MAX_MANAGERS; index += 1) {
+  for (let index = 0; index < rowCount; index += 1) {
     elements.push({
       id: `manager-name-${index + 1}`,
       kind: "username",
@@ -750,7 +750,11 @@ function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | nu
 }
 
 function normalizeManagerLeaderboardTemplate(input?: Partial<TeamPosterTemplate> | null): TeamPosterTemplate {
-  const base = createManagerLeaderboardTemplate();
+  const savedRowCount = Math.max(
+    0,
+    ...(input?.elements || []).map((element) => Number(element.id.match(/-(\d+)$/)?.[1] || 0))
+  );
+  const base = createManagerLeaderboardTemplate(Math.max(DEFAULT_MANAGER_LEADERBOARD_ROWS, savedRowCount));
   const incoming = input || {};
   const byId = new Map((incoming.elements || []).map((element) => [element.id, element]));
 
@@ -759,6 +763,22 @@ function normalizeManagerLeaderboardTemplate(input?: Partial<TeamPosterTemplate>
     backgroundPath: incoming.backgroundPath || "",
     managerKey: incoming.managerKey || "team-dan",
     elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
+  };
+}
+
+function ensureManagerLeaderboardRows(template: TeamPosterTemplate, rowCount: number) {
+  const existingRowCount = Math.max(
+    0,
+    ...template.elements.map((element) => Number(element.id.match(/-(\d+)$/)?.[1] || 0))
+  );
+  if (existingRowCount >= rowCount) return template;
+  const existingElements = new Map(template.elements.map((element) => [element.id, element]));
+  return {
+    ...template,
+    elements: createManagerLeaderboardTemplate(rowCount).elements.map((element) => ({
+      ...element,
+      ...(existingElements.get(element.id) || {}),
+    })),
   };
 }
 
@@ -1796,9 +1816,9 @@ export default function BattleGeneratorPage() {
     }
 
     const ranked = [...totals.values()]
-      .sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager))
-      .slice(0, MANAGER_LEADERBOARD_MAX_MANAGERS);
+      .sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager));
     setManagerLeaderboardRows(ranked);
+    setManagerLeaderboardTemplate((current) => ensureManagerLeaderboardRows(current, ranked.length));
     setManagerLeaderboardStatus(
       `${activeGroup === "All Groups" ? "All groups" : activeGroup} · current calendar month through ${latestDate} · ${ranked.length} managers ranked.`
     );
@@ -3680,7 +3700,11 @@ function renderText(
   }
 
   function ManagerLeaderboardBuilder() {
-    const rows = Array.from({ length: MANAGER_LEADERBOARD_MAX_MANAGERS }, (_, index) => managerLeaderboardRows[index] || null);
+    const rows = managerLeaderboardRows;
+    const managerLeaderboardCanvasHeight = Math.max(
+      MANAGER_LEADERBOARD_HEIGHT,
+      145 + rows.length * 88 + 80
+    );
     const selectedElement = managerLeaderboardTemplate.elements.find((element) => element.id === selectedManagerLeaderboardElementId);
     const valueForElement = (element: TeamPosterElement) => {
       const match = element.id.match(/-(\d+)$/);
@@ -3695,7 +3719,7 @@ function renderText(
           <div>
             <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">Management Leaderboard</h2>
             <p className="mt-2 text-sm text-white/45">
-              Text-only overlay for your own 9:16 background. Drag the manager names and diamond fields into place. It includes up to 20 managers in the selected group.
+              Text-only overlay for your own background. Drag the manager names and diamond fields into place. Every eligible manager in the selected group is included.
             </p>
           </div>
 
@@ -3768,7 +3792,7 @@ function renderText(
           <div
             ref={managerLeaderboardPosterRef}
             className="relative mx-auto overflow-hidden bg-transparent"
-            style={{ width: MANAGER_LEADERBOARD_WIDTH, height: MANAGER_LEADERBOARD_HEIGHT, backgroundImage: managerLeaderboardTemplate.backgroundUrl ? `url(${managerLeaderboardTemplate.backgroundUrl})` : undefined, backgroundSize: "100% 100%", backgroundPosition: "center" }}
+            style={{ width: MANAGER_LEADERBOARD_WIDTH, height: managerLeaderboardCanvasHeight, backgroundImage: managerLeaderboardTemplate.backgroundUrl ? `url(${managerLeaderboardTemplate.backgroundUrl})` : undefined, backgroundSize: "100% 100%", backgroundPosition: "center" }}
           >
             <div className="hidden absolute inset-0 opacity-30" style={{ background: "radial-gradient(circle at 50% 0%, #b45309 0%, transparent 42%), linear-gradient(145deg, #020617 0%, #111827 52%, #09090b 100%)" }} />
             <div className="relative hidden">
