@@ -117,6 +117,7 @@ const TEAM_POSTER_WIDTH = 1024;
 const TEAM_POSTER_HEIGHT = 1536;
 const MANAGER_LEADERBOARD_WIDTH = 1080;
 const MANAGER_LEADERBOARD_HEIGHT = 1920;
+const MANAGER_LEADERBOARD_MAX_MANAGERS = 20;
 const MANAGER_LEADERBOARD_TEMPLATE_NAME = "manager-leaderboard-overlay";
 const MANAGER_LEADERBOARD_GROUPS = [
   "Aqua",
@@ -126,10 +127,10 @@ const MANAGER_LEADERBOARD_GROUPS = [
   "Exempt",
   "Team Mike / Indi",
   "Team Dan",
+  "Dan + Aqua",
   "First Class",
 ] as const;
 const TEAM_DAN_MANAGER_KEYS = [
-  "jamesaquaagency",
   "cjtokens1237", "teamalf", "firstclassagencyalf", "firstclassagencyabbie",
   "firstclassagencyolivia", "sjm20101", "firstclassagencypaige", "jasminabidzane",
   "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7",
@@ -174,6 +175,8 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   megan25121990: "Megan",
 };
 const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
+  "jamesaquaagency",
+  "teddie1",
   "teamalf",
   "firstclassagencyalf",
   "firstclassagencydan",
@@ -505,7 +508,7 @@ function getManagerLeaderboardGroup(row: ManagerLeaderboardStat) {
 
   if (/(hannakingismail92|stormlive)/.test(manager) || source.includes("storm")) return "Team Storm";
   if (/(firstclassagencydan|firstclassagencymikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
-  if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key))) return "Team Dan";
+  if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.replace(/[^a-z0-9]/g, "").includes("aquaagencycom")) return "Team Dan";
   if (TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => manager.includes(key))) return "Team Mike / Indi";
   if (source.includes("mike") || source.includes("indi")) return "Team Mike / Indi";
   if (source.includes("team dan")) return "Team Dan";
@@ -593,11 +596,14 @@ function isExcludedFromManagerLeaderboard(row: ManagerLeaderboardStat) {
 }
 
 function belongsToSelectedManagerLeaderboardGroup(row: ManagerLeaderboardStat, group: string) {
-  if (group !== "Team Dan") return matchesCreatorIntelligenceGroup(row, group);
+  if (group !== "Team Dan" && group !== "Dan + Aqua") return matchesCreatorIntelligenceGroup(row, group);
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
-  return TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key));
+  if (MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS.some((key) => manager.includes(key))) return false;
+  const isTeamDanManager = TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.includes("aquaagencycom");
+  if (group === "Team Dan") return isTeamDanManager;
+  return isTeamDanManager || getManagerLeaderboardGroup(row) === "Aqua";
 }
 
 function createManagerLeaderboardTemplate(): TeamPosterTemplate {
@@ -605,7 +611,7 @@ function createManagerLeaderboardTemplate(): TeamPosterTemplate {
   const startY = 145;
   const rowGap = 88;
 
-  for (let index = 0; index < 12; index += 1) {
+  for (let index = 0; index < MANAGER_LEADERBOARD_MAX_MANAGERS; index += 1) {
     elements.push({
       id: `manager-name-${index + 1}`,
       kind: "username",
@@ -881,6 +887,7 @@ export default function BattleGeneratorPage() {
     setWorkspace(nextWorkspace);
     if (nextWorkspace === "posters") setActiveMode("team");
     else if (nextWorkspace === "crew-showdown" || params.get("mode") === "glory") setActiveMode("glory");
+    else if (params.get("mode") === "manager") setActiveMode("manager");
   }, []);
   const [raceToGloryRows, setRaceToGloryRows] = useState<RaceToGloryRow[]>(() =>
     Array.from({ length: 20 }, () => ({ teamName: "", diamonds: "" }))
@@ -1761,7 +1768,7 @@ export default function BattleGeneratorPage() {
 
     const ranked = [...totals.values()]
       .sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager))
-      .slice(0, 12);
+      .slice(0, MANAGER_LEADERBOARD_MAX_MANAGERS);
     setManagerLeaderboardRows(ranked);
     setManagerLeaderboardStatus(
       `${activeGroup === "All Groups" ? "All groups" : activeGroup} · current calendar month through ${latestDate} · ${ranked.length} managers ranked.`
@@ -1845,8 +1852,6 @@ export default function BattleGeneratorPage() {
       const blob = await htmlToImage.toBlob(node, {
         cacheBust: true,
         pixelRatio: 1,
-        width: MANAGER_LEADERBOARD_WIDTH,
-        height: MANAGER_LEADERBOARD_HEIGHT,
         backgroundColor: managerLeaderboardTemplate.backgroundUrl ? undefined : "transparent",
       });
       if (blob) saveAs(blob, `manager-leaderboard-${cleanFileName(selectedManagerLeaderboardGroup || "all-groups")}.png`);
@@ -3636,7 +3641,7 @@ function renderText(
   }
 
   function ManagerLeaderboardBuilder() {
-    const rows = Array.from({ length: 12 }, (_, index) => managerLeaderboardRows[index] || null);
+    const rows = Array.from({ length: MANAGER_LEADERBOARD_MAX_MANAGERS }, (_, index) => managerLeaderboardRows[index] || null);
     const selectedElement = managerLeaderboardTemplate.elements.find((element) => element.id === selectedManagerLeaderboardElementId);
     const valueForElement = (element: TeamPosterElement) => {
       const match = element.id.match(/-(\d+)$/);
@@ -3651,7 +3656,7 @@ function renderText(
           <div>
             <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">Management Leaderboard</h2>
             <p className="mt-2 text-sm text-white/45">
-              Text-only overlay for your own 9:16 background. Drag the manager names and diamond fields into place. It includes up to 12 managers in the selected group.
+              Text-only overlay for your own 9:16 background. Drag the manager names and diamond fields into place. It includes up to 20 managers in the selected group.
             </p>
           </div>
 
@@ -3724,7 +3729,7 @@ function renderText(
           <div
             ref={managerLeaderboardPosterRef}
             className="relative mx-auto overflow-hidden bg-transparent"
-            style={{ width: MANAGER_LEADERBOARD_WIDTH, height: MANAGER_LEADERBOARD_HEIGHT, backgroundImage: managerLeaderboardTemplate.backgroundUrl ? `url(${managerLeaderboardTemplate.backgroundUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
+            style={{ width: MANAGER_LEADERBOARD_WIDTH, height: MANAGER_LEADERBOARD_HEIGHT, backgroundImage: managerLeaderboardTemplate.backgroundUrl ? `url(${managerLeaderboardTemplate.backgroundUrl})` : undefined, backgroundSize: "100% 100%", backgroundPosition: "center" }}
           >
             <div className="hidden absolute inset-0 opacity-30" style={{ background: "radial-gradient(circle at 50% 0%, #b45309 0%, transparent 42%), linear-gradient(145deg, #020617 0%, #111827 52%, #09090b 100%)" }} />
             <div className="relative hidden">

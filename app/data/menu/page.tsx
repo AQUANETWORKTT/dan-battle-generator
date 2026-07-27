@@ -29,6 +29,7 @@ const workspaceGroups: { title: string; description: string; workspaces: Workspa
   { title: "Diamond Information", description: "Daily diamond rankings and yesterday's team posters.", workspaces: [
     { href: "/daily-rankings", number: "06", label: "Backstage", title: "Daily Rankings", description: "Pull yesterday's Tikleap rankings for Backstage.", accent: "cyan", maintenance: true },
     { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Posters", description: "Build and download yesterday's top diamonds and live-hours posters.", accent: "yellow" },
+    { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Leaderboard", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
   ] },
 ];
 
