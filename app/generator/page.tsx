@@ -995,6 +995,7 @@ export default function BattleGeneratorPage() {
   const [newTeamPosterSourceName, setNewTeamPosterSourceName] = useState("blank");
   const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "team-dan", label: "Team Dan + James Aqua Agency" },
+    { value: "first-class-all", label: "First Class — All Creators" },
   ]);
   const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
@@ -1683,6 +1684,16 @@ export default function BattleGeneratorPage() {
       const rows = (json.rows || []).filter((row: Record<string, unknown>) => {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
+        const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
+        const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
+        if (managerKey === "first-class-all") {
+          return (
+            source.includes("first class") ||
+            ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager) ||
+            TEAM_DAN_MANAGER_KEYS.some((key) => managerKeyNormalized.includes(key)) ||
+            TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => managerKeyNormalized.includes(key))
+          );
+        }
         return managerKey === "team-dan"
           ? ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager)
           : manager === managerKey;
@@ -1978,7 +1989,11 @@ export default function BattleGeneratorPage() {
           const group = assignment.managerGroup === "Exempt" ? "Exempt" : assignment.agency || assignment.group;
           return { value, label: row.manager_label || `${getManagerLeaderboardName(row)}${group ? ` (${group})` : ""}` };
         }).sort((a, b) => managerNameCollator.compare(a.label, b.label));
-        if (managers.length) setTeamPosterManagerOptions([{ value: "team-dan", label: "Team Dan + James Aqua Agency" }, ...managers]);
+        if (managers.length) setTeamPosterManagerOptions([
+          { value: "team-dan", label: "Team Dan + James Aqua Agency" },
+          { value: "first-class-all", label: "First Class — All Creators" },
+          ...managers,
+        ]);
       } catch {
         // The editable field remains available if the latest data cannot load.
       }

@@ -148,6 +148,16 @@ function getManagerKey(row: CreatorStat) {
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
+  if (managerKey === "first-class-all") {
+    const manager = getManagerKey(row);
+    const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
+    const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
+    return (
+      source.includes("first class") ||
+      ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager) ||
+      /(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|firstclassagencykyran|bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(managerKeyNormalized)
+    );
+  }
   return getManagerKey(row) === managerKey;
 }
 
