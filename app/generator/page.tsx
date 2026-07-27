@@ -208,8 +208,9 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
   lozza2706: "/avatars/lozza2706.jpg",
   kieransmithmilner: "/avatars/kieransmithmilner.jpg",
 };
-const TEAM_DAN_MANAGER_FALLBACKS = [
-  { key: "ashwalbridge", manager: "Team Ash" },
+const MANAGER_LEADERBOARD_FALLBACKS = [
+  { key: "ashwalbridge", manager: "Team Ash", groups: ["Team Dan", "Dan + Aqua"] },
+  { key: "zaliheyoncu", manager: "Team Zalihe", groups: ["Team Mike / Indi"] },
 ];
 
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
@@ -1799,11 +1800,10 @@ export default function BattleGeneratorPage() {
       totals.set(manager, existing);
     }
 
-    // Some records use the correct Team Ash manager email but have a stale
-    // creator assignment on their latest row. Keep Ash visible in Team Dan by
-    // falling back to her own current-month manager records.
-    if (activeGroup === "Team Dan") {
-      for (const fallback of TEAM_DAN_MANAGER_FALLBACKS) {
+    // Some records have a stale creator assignment on their latest row. Keep
+    // these managers in their intended leaderboard using their own current-month records.
+    for (const fallback of MANAGER_LEADERBOARD_FALLBACKS) {
+      if (!fallback.groups.includes(activeGroup)) continue;
         if (totals.has(fallback.manager)) continue;
         const diamonds = rows
           .filter((row) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
@@ -1813,7 +1813,6 @@ export default function BattleGeneratorPage() {
           .reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
         if (diamonds > 0) totals.set(fallback.manager, { manager: fallback.manager, diamonds });
       }
-    }
 
     const ranked = [...totals.values()]
       .sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager));
