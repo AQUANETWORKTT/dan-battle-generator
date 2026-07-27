@@ -9,6 +9,7 @@ type CreatorStat = {
   stat_date: string;
   creator_username: string;
   email: string | null;
+  manager_email?: string | null;
   group_name: string | null;
   agency: string | null;
   team: string | null;
@@ -54,7 +55,7 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026" },
 ];
 
-const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm"];
+const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm", "Trident"];
 const GRADUATION_TARGET = 200000;
 const MINIMUM_TRACKER_DIAMONDS = 1000;
 const REPORT_MINIMUM_PROGRESS = 15;
@@ -208,7 +209,9 @@ export default function GraduationTrackerPage() {
         allData.map((row) => ({
           ...row,
           agency:
-            String(row.agency || "").trim().toLowerCase() === "strive" ||
+            String(row.manager_email || row.email || "").trim().toLowerCase() === "trident125@gmail.com"
+              ? "Trident"
+              : String(row.agency || "").trim().toLowerCase() === "strive" ||
             /(hanna.*ismail|stormlive)/i.test(String(row.team || row.group_name || ""))
               ? "Storm"
               : row.agency,

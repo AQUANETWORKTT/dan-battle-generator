@@ -8,6 +8,9 @@ type CreatorStat = {
   stat_date: string;
   creator_username: string;
   email: string | null;
+  manager_email?: string | null;
+  creator_network_manager?: string | null;
+  "Creator Network manager"?: string | null;
   group_name: string | null;
   agency: string | null;
   team: string | null;
@@ -80,14 +83,17 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026" },
 ];
 
-const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm"];
-const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Storm"];
+const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm", "Trident"];
+const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Storm", "Trident"];
 const GRADUATION_TARGET = 200000;
 const STORM_CREATOR_USERNAMES = new Set(["hannakingwoodward"]);
 
 function getAgencyForAnalysisRow(row: CreatorStat) {
   const username = String(row.creator_username || "").trim().toLowerCase();
   const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
+  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim().toLowerCase();
+
+  if (manager === "trident125@gmail.com") return "Trident";
 
   if (
     STORM_CREATOR_USERNAMES.has(username) ||

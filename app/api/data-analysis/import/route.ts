@@ -109,9 +109,11 @@ function durationToHours(value: unknown) {
   return toNumber(text);
 }
 
-function getAgency(group: string) {
+function getAgency(group: string, managerEmail = "") {
   const clean = group.trim().toLowerCase();
+  const manager = managerEmail.trim().toLowerCase();
 
+  if (manager === "trident125@gmail.com") return "Trident";
   if (clean.includes("aqua sub agency")) return "Aqua";
   if (clean.includes("respawn sub agency")) return "Respawn";
   if (clean.includes("paradise sub agency")) return "Paradise";
@@ -121,8 +123,9 @@ function getAgency(group: string) {
   return "First Class";
 }
 
-function getTeam(group: string) {
+function getTeam(group: string, managerEmail = "") {
   const clean = group.trim().toLowerCase();
+  if (managerEmail.trim().toLowerCase() === "trident125@gmail.com") return "Trident";
 
   if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Team Storm";
 
@@ -312,8 +315,8 @@ function parseWorkbook(
         creator_username: username.toLowerCase(),
         email: managerEmail,
         group_name: groupName || null,
-        agency: getAgency(groupName),
-        team: getTeam(groupName),
+        agency: getAgency(groupName, managerEmail),
+        team: getTeam(groupName, managerEmail),
         manager_email: managerEmail,
         join_time: joinTime,
         diamonds,

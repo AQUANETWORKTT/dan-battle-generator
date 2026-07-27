@@ -282,13 +282,15 @@ function getDurationHours(row: CreatorStat, keys: string[]) {
   return 0;
 }
 
-function getAgencyFromGroup(groupValue: string, fallback: string) {
+function getAgencyFromGroup(groupValue: string, fallback: string, managerRaw = "") {
   const clean = groupValue.toLowerCase();
+  const manager = normalizeManagerKey(managerRaw);
 
   if (clean.includes("aqua")) return "Aqua";
   if (clean.includes("respawn")) return "Respawn";
   if (clean.includes("paradise")) return "Paradise";
   if (clean.includes("storm") || clean.includes("strive")) return "Storm";
+  if (manager === "trident125gmailcom") return "Trident";
 
   return fallback === "Strive" ? "Storm" : fallback || "First Class";
 }
@@ -373,6 +375,7 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   stormlive: { name: "Denz", group: "Team Storm" },
 };
 const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
+const TRIDENT_MANAGER_KEY = "trident125gmailcom";
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
 const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
 const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
@@ -420,6 +423,7 @@ function getFirstClassManagerDetails(managerRaw: string, managerLabel: string, u
 
 function getCreatorIntelligenceGroup(groupValue: string, managerRaw: string, managerLabel: string) {
   if (hasManagerKey(`${managerRaw} ${managerLabel}`, STORM_MANAGER_KEYS)) return "Team Storm";
+  if (hasManagerKey(`${managerRaw} ${managerLabel}`, [TRIDENT_MANAGER_KEY])) return "Trident";
   return groupValue;
 }
 
@@ -674,13 +678,15 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       );
       const latest = sortedRows[sortedRows.length - 1] || creatorRows[0];
       const groupValue = getText(latest, ["team", "group_name", "Group"], "Unassigned");
-      const sourceAgencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"));
       const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) >= 1).length;
       const managerRaw = getManagerRaw(latest);
+      const sourceAgencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"), managerRaw);
       const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
       const agencyValue = hasManagerKey(`${managerRaw} ${baseManagerLabel}`, STORM_MANAGER_KEYS)
         ? "Storm"
-        : sourceAgencyValue;
+        : hasManagerKey(`${managerRaw} ${baseManagerLabel}`, [TRIDENT_MANAGER_KEY])
+          ? "Trident"
+          : sourceAgencyValue;
       const firstClassManager = getFirstClassManagerDetails(
         managerRaw,
         baseManagerLabel,
@@ -755,6 +761,8 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
         managerLabel:
           agencyValue === "First Class"
             ? firstClassManager.managerLabel
+            : agencyValue === "Trident"
+              ? "Trident (Trident)"
             : formatManagerWithGroup(baseManagerLabel, agencyValue),
         graduationStatus: getText(latest, ["graduation_status", "Graduation status"], "Unknown"),
         tierStatus: getText(latest, ["tier_status", "Tier status"], "Unknown"),
@@ -2669,7 +2677,7 @@ export default function CreatorIntelligencePage() {
   }, [aquaSummaries]);
 
   const groups = useMemo(() => {
-    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Storm", "Exempt"];
+    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Storm", "Trident", "Exempt"];
   }, []);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";

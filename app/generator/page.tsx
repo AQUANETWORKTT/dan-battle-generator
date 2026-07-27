@@ -124,6 +124,7 @@ const MANAGER_LEADERBOARD_GROUPS = [
   "Paradise",
   "Respawn",
   "Team Storm",
+  "Trident",
   "Exempt",
   "Team Mike / Indi",
   "Team Dan",
@@ -183,6 +184,14 @@ const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
   "teamdan",
   "firstclassagencyjacob",
   "teamjacob",
+];
+const TEAM_MIKE_INDI_MANAGER_LEADERBOARD_EXCLUDED_KEYS = [
+  "cscott1232005",
+  "trident125",
+  "firstclassindi",
+  "firstclassagencyindi",
+  "teritilcock1994",
+  "mikehalesjb",
 ];
 const LOCAL_AVATAR_PATHS: Record<string, string> = {
   cerilaw83: "/avatars/cerilaw83.jpg",
@@ -506,6 +515,7 @@ function getManagerLeaderboardGroup(row: ManagerLeaderboardStat) {
   const source = String(row.team || row.group_name || row.agency || "").trim().toLowerCase();
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").toLowerCase();
 
+  if (manager.replace(/[^a-z0-9]/g, "") === "trident125gmailcom") return "Trident";
   if (/(hannakingismail92|stormlive)/.test(manager) || source.includes("storm")) return "Team Storm";
   if (/(firstclassagencydan|firstclassagencymikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
   if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.replace(/[^a-z0-9]/g, "").includes("aquaagencycom")) return "Team Dan";
@@ -536,7 +546,7 @@ function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-  const agency = /(hannakingismail92|stormlive)/.test(manager) ? "Storm" : sourceAgency;
+  const agency = manager === "trident125gmailcom" ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Storm" : sourceAgency;
   let managerGroup = agency;
   if (agency === "First Class") {
     if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager)) managerGroup = "Exempt";
@@ -546,7 +556,7 @@ function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
   }
 
   return {
-    group: /(hannakingismail92|stormlive)/.test(manager) ? "Team Storm" : groupValue,
+    group: manager === "trident125gmailcom" ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Team Storm" : groupValue,
     agency,
     managerGroup,
   };
@@ -593,6 +603,17 @@ function isExcludedFromManagerLeaderboard(row: ManagerLeaderboardStat) {
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
   return MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS.some((key) => manager.includes(key));
+}
+
+function isExcludedFromTeamMikeIndiManagerLeaderboard(row: ManagerLeaderboardStat) {
+  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return (
+    !manager ||
+    manager === "unassigned" ||
+    TEAM_MIKE_INDI_MANAGER_LEADERBOARD_EXCLUDED_KEYS.some((key) => manager.includes(key))
+  );
 }
 
 function belongsToSelectedManagerLeaderboardGroup(row: ManagerLeaderboardStat, group: string) {
@@ -1741,6 +1762,7 @@ export default function BattleGeneratorPage() {
       const latestCreatorRow = [...creatorRows].sort((a, b) => String(a.stat_date || "").localeCompare(String(b.stat_date || ""))).at(-1);
       if (!latestCreatorRow) continue;
       if (isExcludedFromManagerLeaderboard(latestCreatorRow)) continue;
+      if (activeGroup === "Team Mike / Indi" && isExcludedFromTeamMikeIndiManagerLeaderboard(latestCreatorRow)) continue;
       const rowGroup = getManagerLeaderboardGroup(latestCreatorRow);
       if (!rowGroup || (activeGroup !== "All Groups" && !belongsToSelectedManagerLeaderboardGroup(latestCreatorRow, activeGroup))) continue;
       const manager = getManagerLeaderboardName(latestCreatorRow);
