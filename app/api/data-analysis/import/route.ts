@@ -109,9 +109,9 @@ function durationToHours(value: unknown) {
   return toNumber(text);
 }
 
-function getAgency(group: string, managerEmail = "") {
+function getAgency(group: string, managerEmail: string | null = "") {
   const clean = group.trim().toLowerCase();
-  const manager = managerEmail.trim().toLowerCase();
+  const manager = String(managerEmail || "").trim().toLowerCase();
 
   if (manager === "trident125@gmail.com") return "Trident";
   if (clean.includes("aqua sub agency")) return "Aqua";
@@ -123,9 +123,9 @@ function getAgency(group: string, managerEmail = "") {
   return "First Class";
 }
 
-function getTeam(group: string, managerEmail = "") {
+function getTeam(group: string, managerEmail: string | null = "") {
   const clean = group.trim().toLowerCase();
-  if (managerEmail.trim().toLowerCase() === "trident125@gmail.com") return "Trident";
+  if (String(managerEmail || "").trim().toLowerCase() === "trident125@gmail.com") return "Trident";
 
   if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Team Storm";
 
