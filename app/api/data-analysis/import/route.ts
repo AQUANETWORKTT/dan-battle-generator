@@ -113,7 +113,7 @@ function getAgency(group: string, managerEmail: string | null = "") {
   const clean = group.trim().toLowerCase();
   const manager = String(managerEmail || "").trim().toLowerCase();
 
-  if (manager === "trident125@gmail.com") return "Trident";
+  if (manager === "trident125@gmail.com" || manager === "trident125@mail.com" || clean.includes("trident sub-agency")) return "Trident";
   if (clean.includes("aqua sub agency")) return "Aqua";
   if (clean.includes("respawn sub agency")) return "Respawn";
   if (clean.includes("paradise sub agency")) return "Paradise";
@@ -125,7 +125,7 @@ function getAgency(group: string, managerEmail: string | null = "") {
 
 function getTeam(group: string, managerEmail: string | null = "") {
   const clean = group.trim().toLowerCase();
-  if (String(managerEmail || "").trim().toLowerCase() === "trident125@gmail.com") return "Trident";
+  if (String(managerEmail || "").trim().toLowerCase() === "trident125@gmail.com" || String(managerEmail || "").trim().toLowerCase() === "trident125@mail.com" || clean.includes("trident sub-agency")) return "Trident";
 
   if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Team Storm";
 

@@ -93,7 +93,7 @@ function getAgencyForAnalysisRow(row: CreatorStat) {
   const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim().toLowerCase();
 
-  if (manager === "trident125@gmail.com") return "Trident";
+  if (manager === "trident125@gmail.com" || manager === "trident125@mail.com" || source.includes("trident sub-agency")) return "Trident";
 
   if (
     STORM_CREATOR_USERNAMES.has(username) ||

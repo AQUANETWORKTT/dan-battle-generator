@@ -290,7 +290,7 @@ function getAgencyFromGroup(groupValue: string, fallback: string, managerRaw = "
   if (clean.includes("respawn")) return "Respawn";
   if (clean.includes("paradise")) return "Paradise";
   if (clean.includes("storm") || clean.includes("strive")) return "Storm";
-  if (manager === "trident125gmailcom") return "Trident";
+  if (clean.includes("trident") || manager === "trident125gmailcom" || manager === "trident125mailcom") return "Trident";
 
   return fallback === "Strive" ? "Storm" : fallback || "First Class";
 }
@@ -375,7 +375,7 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   stormlive: { name: "Denz", group: "Team Storm" },
 };
 const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
-const TRIDENT_MANAGER_KEY = "trident125gmailcom";
+const TRIDENT_MANAGER_KEYS = ["trident125gmailcom", "trident125mailcom"];
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
 const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
 const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
@@ -423,7 +423,7 @@ function getFirstClassManagerDetails(managerRaw: string, managerLabel: string, u
 
 function getCreatorIntelligenceGroup(groupValue: string, managerRaw: string, managerLabel: string) {
   if (hasManagerKey(`${managerRaw} ${managerLabel}`, STORM_MANAGER_KEYS)) return "Team Storm";
-  if (hasManagerKey(`${managerRaw} ${managerLabel}`, [TRIDENT_MANAGER_KEY])) return "Trident";
+  if (hasManagerKey(`${managerRaw} ${managerLabel}`, TRIDENT_MANAGER_KEYS)) return "Trident";
   return groupValue;
 }
 
@@ -684,7 +684,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
       const agencyValue = hasManagerKey(`${managerRaw} ${baseManagerLabel}`, STORM_MANAGER_KEYS)
         ? "Storm"
-        : hasManagerKey(`${managerRaw} ${baseManagerLabel}`, [TRIDENT_MANAGER_KEY])
+        : hasManagerKey(`${managerRaw} ${baseManagerLabel}`, TRIDENT_MANAGER_KEYS)
           ? "Trident"
           : sourceAgencyValue;
       const firstClassManager = getFirstClassManagerDetails(

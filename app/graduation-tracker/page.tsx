@@ -209,7 +209,8 @@ export default function GraduationTrackerPage() {
         allData.map((row) => ({
           ...row,
           agency:
-            String(row.manager_email || row.email || "").trim().toLowerCase() === "trident125@gmail.com"
+            ["trident125@gmail.com", "trident125@mail.com"].includes(String(row.manager_email || row.email || "").trim().toLowerCase()) ||
+            /trident sub-agency/i.test(String(row.team || row.group_name || ""))
               ? "Trident"
               : String(row.agency || "").trim().toLowerCase() === "strive" ||
             /(hanna.*ismail|stormlive)/i.test(String(row.team || row.group_name || ""))

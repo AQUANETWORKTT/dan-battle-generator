@@ -523,7 +523,7 @@ function getManagerLeaderboardGroup(row: ManagerLeaderboardStat) {
   const source = String(row.team || row.group_name || row.agency || "").trim().toLowerCase();
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").toLowerCase();
 
-  if (manager.replace(/[^a-z0-9]/g, "") === "trident125gmailcom") return "Trident";
+  if (["trident125gmailcom", "trident125mailcom"].includes(manager.replace(/[^a-z0-9]/g, "")) || source.includes("trident")) return "Trident";
   if (/(hannakingismail92|stormlive)/.test(manager) || source.includes("storm")) return "Team Storm";
   if (/(firstclassagencydan|firstclassagencymikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
   if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.replace(/[^a-z0-9]/g, "").includes("aquaagencycom")) return "Team Dan";
@@ -554,7 +554,7 @@ function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-  const agency = manager === "trident125gmailcom" ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Storm" : sourceAgency;
+  const agency = ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Storm" : sourceAgency;
   let managerGroup = agency;
   if (agency === "First Class") {
     if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager)) managerGroup = "Exempt";
@@ -564,7 +564,7 @@ function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
   }
 
   return {
-    group: manager === "trident125gmailcom" ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Team Storm" : groupValue,
+    group: ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Team Storm" : groupValue,
     agency,
     managerGroup,
   };
@@ -1528,6 +1528,37 @@ export default function BattleGeneratorPage() {
       { name: teamPosterTemplateName, template: nextTemplate },
     ]);
     setTeamPosterStatus("Team poster template saved publicly.");
+  }
+
+  async function deleteTeamPosterTemplate() {
+    if (teamPosterTemplateName === TEAM_DAN_POSTER_TEMPLATE_NAME) {
+      setTeamPosterStatus("The original Team Dan + James template is protected. Duplicate it first if you no longer need its layout.");
+      return;
+    }
+    if (!window.confirm(`Delete the ${teamPosterTemplateName.replace(/^team-poster-/, "").replace(/-/g, " ")} template? This cannot be undone.`)) return;
+
+    const supabase = getPosterSupabaseClient();
+    if (!supabase) {
+      setTeamPosterStatus("Supabase env missing. This template cannot be deleted publicly.");
+      return;
+    }
+
+    setTeamPosterStatus("Deleting team poster template...");
+    const { error } = await supabase.from("poster_templates").delete().eq("name", teamPosterTemplateName);
+    if (error) {
+      setTeamPosterStatus(`Template delete failed: ${error.message}`);
+      return;
+    }
+
+    const remaining = teamPosterTemplates.filter((item) => item.name !== teamPosterTemplateName);
+    const next = remaining.find((item) => item.name === TEAM_DAN_POSTER_TEMPLATE_NAME) || remaining[0];
+    const nextTemplate = next?.template || createTeamDanPosterTemplate();
+    const nextName = next?.name || TEAM_DAN_POSTER_TEMPLATE_NAME;
+    setTeamPosterTemplates(remaining);
+    setTeamPosterTemplateName(nextName);
+    setTeamPosterTemplate(nextTemplate);
+    setSelectedTeamPosterElementId(nextTemplate.elements[0]?.id || "");
+    setTeamPosterStatus("Team poster template deleted.");
   }
 
   function resetTeamPosterTemplate() {
@@ -4050,6 +4081,9 @@ function renderText(
               </label>
               <button type="button" onClick={saveTeamPosterTemplate} className="rounded-lg bg-yellow-300 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200">
                 Save Template
+              </button>
+              <button type="button" onClick={() => void deleteTeamPosterTemplate()} disabled={teamPosterTemplateName === TEAM_DAN_POSTER_TEMPLATE_NAME} className="rounded-lg bg-red-500 px-3 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-40">
+                Delete Template
               </button>
               <button type="button" onClick={downloadTeamPosterTemplatePreview} className="rounded-lg bg-green-400 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-green-300">
                 Download PNG
