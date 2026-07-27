@@ -119,6 +119,13 @@ const MANAGER_LEADERBOARD_WIDTH = 1080;
 const MANAGER_LEADERBOARD_HEIGHT = 1920;
 const MANAGER_LEADERBOARD_MAX_MANAGERS = 20;
 const MANAGER_LEADERBOARD_TEMPLATE_NAME = "manager-leaderboard-overlay";
+
+function getManagerLeaderboardTemplateName(group: string) {
+  if (group === "All Groups") return MANAGER_LEADERBOARD_TEMPLATE_NAME;
+  const slug = group.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return `${MANAGER_LEADERBOARD_TEMPLATE_NAME}-${slug || "default"}`;
+}
+
 const MANAGER_LEADERBOARD_GROUPS = [
   "Aqua",
   "Paradise",
@@ -1813,11 +1820,12 @@ export default function BattleGeneratorPage() {
     }
 
     const nextTemplate = normalizeManagerLeaderboardTemplate(managerLeaderboardTemplate);
-    setManagerLeaderboardStatus("Saving manager leaderboard template publicly...");
+    const templateName = getManagerLeaderboardTemplateName(selectedManagerLeaderboardGroup);
+    setManagerLeaderboardStatus(`Saving ${selectedManagerLeaderboardGroup} manager leaderboard profile publicly...`);
     const { error } = await supabase
       .from("poster_templates")
       .upsert({
-        name: MANAGER_LEADERBOARD_TEMPLATE_NAME,
+        name: templateName,
         background_url: nextTemplate.backgroundUrl || null,
         template_json: nextTemplate,
         updated_at: new Date().toISOString(),
@@ -1829,7 +1837,7 @@ export default function BattleGeneratorPage() {
     }
 
     setManagerLeaderboardTemplate(nextTemplate);
-    setManagerLeaderboardStatus("Manager leaderboard template saved publicly.");
+    setManagerLeaderboardStatus(`${selectedManagerLeaderboardGroup} manager leaderboard profile saved publicly.`);
   }
 
   async function handleManagerLeaderboardBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1852,7 +1860,7 @@ export default function BattleGeneratorPage() {
     setManagerLeaderboardStatus("Uploading manager leaderboard background...");
     const extension = file.name.split(".").pop()?.toLowerCase() || "png";
     const safeName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9-_]+/gi, "-").replace(/-+/g, "-").toLowerCase();
-    const filePath = `${MANAGER_LEADERBOARD_TEMPLATE_NAME}/${Date.now()}-${safeName}.${extension}`;
+    const filePath = `${getManagerLeaderboardTemplateName(selectedManagerLeaderboardGroup)}/${Date.now()}-${safeName}.${extension}`;
     const { error: uploadError } = await supabase.storage.from("poster-backgrounds").upload(filePath, file, { cacheControl: "3600", upsert: true });
     if (uploadError) {
       setManagerLeaderboardStatus(`Background upload failed: ${uploadError.message}`);
@@ -1962,23 +1970,32 @@ export default function BattleGeneratorPage() {
   useEffect(() => {
     async function loadManagerLeaderboardTemplate() {
       const supabase = getPosterSupabaseClient();
-      if (!supabase) return;
+      const templateName = getManagerLeaderboardTemplateName(selectedManagerLeaderboardGroup);
+      if (!supabase) {
+        setManagerLeaderboardTemplate(createManagerLeaderboardTemplate());
+        return;
+      }
 
       const { data, error } = await supabase
         .from("poster_templates")
         .select("template_json")
-        .eq("name", MANAGER_LEADERBOARD_TEMPLATE_NAME)
+        .eq("name", templateName)
         .maybeSingle();
 
-      if (error || !data?.template_json) return;
+      if (error || !data?.template_json) {
+        setManagerLeaderboardTemplate(createManagerLeaderboardTemplate());
+        setSelectedManagerLeaderboardElementId("manager-name-1");
+        setManagerLeaderboardStatus(`${selectedManagerLeaderboardGroup} has no saved profile yet.`);
+        return;
+      }
       const parsed = normalizeManagerLeaderboardTemplate(data.template_json as TeamPosterTemplate);
       setManagerLeaderboardTemplate(parsed);
       setSelectedManagerLeaderboardElementId(parsed.elements[0]?.id || "");
-      setManagerLeaderboardStatus("Manager leaderboard template loaded publicly.");
+      setManagerLeaderboardStatus(`${selectedManagerLeaderboardGroup} manager leaderboard profile loaded publicly.`);
     }
 
     loadManagerLeaderboardTemplate();
-  }, []);
+  }, [selectedManagerLeaderboardGroup]);
 
   useEffect(() => {
     if (!editMode) return;
