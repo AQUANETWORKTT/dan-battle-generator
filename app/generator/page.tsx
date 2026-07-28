@@ -424,7 +424,8 @@ function createBattle(id?: string): Battle {
 }
 
 function formatName(raw: string) {
-  return raw.replace("@", "").trim().toUpperCase();
+  // Keep the caret in place while editing the middle of a username.
+  return raw.replace("@", "").toUpperCase();
 }
 
 function getOrdinal(day: number) {
@@ -965,7 +966,7 @@ export default function BattleGeneratorPage() {
   const [singleMonth, setSingleMonth] = useState("5");
 
   const [massDay, setMassDay] = useState("");
-  const [massMonth, setMassMonth] = useState("5");
+  const [massMonth, setMassMonth] = useState(() => String(new Date().getMonth() + 1));
   const [massDate, setMassDate] = useState("");
 
   const [battles, setBattles] = useState<Battle[]>([]);
@@ -2210,7 +2211,7 @@ export default function BattleGeneratorPage() {
     setBattles([]);
     setSelectedId("");
     setMassDay("");
-    setMassMonth("5");
+    setMassMonth(String(new Date().getMonth() + 1));
     setMassDate("");
   }
 
