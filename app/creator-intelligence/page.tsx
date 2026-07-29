@@ -289,10 +289,10 @@ function getAgencyFromGroup(groupValue: string, fallback: string, managerRaw = "
   if (clean.includes("aqua")) return "Aqua";
   if (clean.includes("respawn")) return "Respawn";
   if (clean.includes("paradise")) return "Paradise";
-  if (clean.includes("storm") || clean.includes("strive")) return "Storm";
+  if (clean.includes("storm") || clean.includes("strive") || clean.includes("horizon")) return "Horizon";
   if (clean.includes("trident") || manager === "trident125gmailcom" || manager === "trident125mailcom") return "Trident";
 
-  return fallback === "Strive" ? "Storm" : fallback || "First Class";
+  return fallback === "Strive" || fallback === "Storm" ? "Horizon" : fallback || "First Class";
 }
 
 function isAquaRow(row?: CreatorStat) {
@@ -372,8 +372,8 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   kishaunnolan1: { name: "Kash", group: "Team Mike / Indi" },
   calliecrawford14: { name: "Callie", group: "Team Mike / Indi" },
   megan25121990: { name: "Megan", group: "Team Mike / Indi" },
-  hannakingismail92: { name: "Hanna", group: "Team Storm" },
-  stormlive: { name: "Denz", group: "Team Storm" },
+  hannakingismail92: { name: "Hanna", group: "Team Horizon" },
+  stormlive: { name: "Denz", group: "Team Horizon" },
 };
 const STORM_MANAGER_KEYS = ["hannakingismail92", "stormlive"];
 const TRIDENT_MANAGER_KEYS = ["trident125gmailcom", "trident125mailcom"];
@@ -423,7 +423,7 @@ function getFirstClassManagerDetails(managerRaw: string, managerLabel: string, u
 }
 
 function getCreatorIntelligenceGroup(groupValue: string, managerRaw: string, managerLabel: string) {
-  if (hasManagerKey(`${managerRaw} ${managerLabel}`, STORM_MANAGER_KEYS)) return "Team Storm";
+  if (hasManagerKey(`${managerRaw} ${managerLabel}`, STORM_MANAGER_KEYS)) return "Team Horizon";
   if (hasManagerKey(`${managerRaw} ${managerLabel}`, TRIDENT_MANAGER_KEYS)) return "Trident";
   return groupValue;
 }
@@ -684,7 +684,7 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       const sourceAgencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"), managerRaw);
       const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
       const agencyValue = hasManagerKey(`${managerRaw} ${baseManagerLabel}`, STORM_MANAGER_KEYS)
-        ? "Storm"
+        ? "Horizon"
         : hasManagerKey(`${managerRaw} ${baseManagerLabel}`, TRIDENT_MANAGER_KEYS)
           ? "Trident"
           : sourceAgencyValue;
@@ -2678,7 +2678,7 @@ export default function CreatorIntelligencePage() {
   }, [aquaSummaries]);
 
   const groups = useMemo(() => {
-    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Storm", "Trident", "Exempt"];
+    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Horizon", "Trident", "Exempt"];
   }, []);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";

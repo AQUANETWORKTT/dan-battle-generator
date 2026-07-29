@@ -117,8 +117,8 @@ function getAgency(group: string, managerEmail: string | null = "") {
   if (clean.includes("aqua sub agency")) return "Aqua";
   if (clean.includes("respawn sub agency")) return "Respawn";
   if (clean.includes("paradise sub agency")) return "Paradise";
-  if (clean.includes("storm sub agency") || clean.includes("strive sub agency")) return "Storm";
-  if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Storm";
+  if (clean.includes("storm sub agency") || clean.includes("strive sub agency")) return "Horizon";
+  if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Horizon";
 
   return "First Class";
 }
@@ -127,7 +127,7 @@ function getTeam(group: string, managerEmail: string | null = "") {
   const clean = group.trim().toLowerCase();
   if (String(managerEmail || "").trim().toLowerCase() === "trident125@gmail.com" || String(managerEmail || "").trim().toLowerCase() === "trident125@mail.com" || clean.includes("trident sub-agency")) return "Trident";
 
-  if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Team Storm";
+  if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Team Horizon";
 
   if (clean.includes("dan first class")) return "Team Dan";
   if (clean.includes("rach first class")) return "Team Rach";

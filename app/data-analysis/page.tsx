@@ -83,8 +83,8 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026" },
 ];
 
-const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm", "Trident"];
-const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Storm", "Trident"];
+const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Horizon", "Trident"];
+const AGENCY_NAMES = ["First Class", "Aqua", "Respawn", "Paradise", "Horizon", "Trident"];
 const GRADUATION_TARGET = 200000;
 const STORM_CREATOR_USERNAMES = new Set(["hannakingwoodward"]);
 
@@ -101,7 +101,7 @@ function getAgencyForAnalysisRow(row: CreatorStat) {
     source.includes("strive") ||
     /hanna.*ismail/.test(source)
   ) {
-    return "Storm";
+    return "Horizon";
   }
 
   return row.agency;

@@ -130,7 +130,7 @@ const MANAGER_LEADERBOARD_GROUPS = [
   "Aqua",
   "Paradise",
   "Respawn",
-  "Team Storm",
+  "Team Horizon",
   "Trident",
   "Exempt",
   "Team Mike / Indi",
@@ -528,7 +528,7 @@ function getManagerLeaderboardGroup(row: ManagerLeaderboardStat) {
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").toLowerCase();
 
   if (["trident125gmailcom", "trident125mailcom"].includes(manager.replace(/[^a-z0-9]/g, "")) || source.includes("trident")) return "Trident";
-  if (/(hannakingismail92|stormlive)/.test(manager) || source.includes("storm")) return "Team Storm";
+  if (/(hannakingismail92|stormlive)/.test(manager) || /(storm|horizon)/.test(source)) return "Team Horizon";
   if (/(firstclassagencydan|firstclassagencymikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
   if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.replace(/[^a-z0-9]/g, "").includes("aquaagencycom")) return "Team Dan";
   if (TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => manager.includes(key))) return "Team Mike / Indi";
@@ -551,14 +551,14 @@ function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
       ? "Respawn"
       : groupKey.includes("paradise")
         ? "Paradise"
-        : groupKey.includes("storm") || groupKey.includes("strive")
-          ? "Storm"
-          : rawAgency === "Strive" ? "Storm" : rawAgency;
+        : groupKey.includes("storm") || groupKey.includes("strive") || groupKey.includes("horizon")
+          ? "Horizon"
+          : rawAgency === "Strive" || rawAgency === "Storm" ? "Horizon" : rawAgency;
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-  const agency = ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Storm" : sourceAgency;
+  const agency = ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Horizon" : sourceAgency;
   let managerGroup = agency;
   if (agency === "First Class") {
     if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager)) managerGroup = "Exempt";
@@ -568,7 +568,7 @@ function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
   }
 
   return {
-    group: ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Team Storm" : groupValue,
+    group: ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Team Horizon" : groupValue,
     agency,
     managerGroup,
   };

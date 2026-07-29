@@ -55,7 +55,7 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026" },
 ];
 
-const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Storm", "Trident"];
+const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Horizon", "Trident"];
 const GRADUATION_TARGET = 200000;
 const MINIMUM_TRACKER_DIAMONDS = 1000;
 const REPORT_MINIMUM_PROGRESS = 15;
@@ -214,7 +214,7 @@ export default function GraduationTrackerPage() {
               ? "Trident"
               : String(row.agency || "").trim().toLowerCase() === "strive" ||
             /(hanna.*ismail|stormlive)/i.test(String(row.team || row.group_name || ""))
-              ? "Storm"
+              ? "Horizon"
               : row.agency,
         }))
       );

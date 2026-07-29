@@ -27,8 +27,8 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   rachellouise18: { name: "Rach", group: "Team Mike / Indi" }, firstclassagencylauren: { name: "Lauren", group: "Team Mike / Indi" },
   liamproctor04: { name: "Liam", group: "Team Mike / Indi" }, abbidl: { name: "Abbi", group: "Team Mike / Indi" },
   kishaunnolan1: { name: "Kash", group: "Team Mike / Indi" }, calliecrawford14: { name: "Callie", group: "Team Mike / Indi" },
-  megan25121990: { name: "Megan", group: "Team Mike / Indi" }, hannakingismail92: { name: "Hanna", group: "Team Storm" },
-  stormlive: { name: "Denz", group: "Team Storm" },
+  megan25121990: { name: "Megan", group: "Team Mike / Indi" }, hannakingismail92: { name: "Hanna", group: "Team Horizon" },
+  stormlive: { name: "Denz", group: "Team Horizon" },
 };
 
 function cleanText(value: unknown) { return String(value || "").trim(); }
@@ -57,7 +57,7 @@ function getCreatorIntelligenceManagerLabel(row: CreatorStat) {
   const configKey = Object.keys(FIRST_CLASS_MANAGER_CONFIG).find((key) => hasKey(details, [key]));
   const config = configKey ? FIRST_CLASS_MANAGER_CONFIG[configKey] : undefined;
   if (config) return `Team ${config.name} (First Class — ${config.group})`;
-  if (hasKey(details, ["hannakingismail92", "stormlive"])) return `${base} (Storm)`;
+  if (hasKey(details, ["hannakingismail92", "stormlive"])) return `${base} (Horizon)`;
   return base;
 }
 
