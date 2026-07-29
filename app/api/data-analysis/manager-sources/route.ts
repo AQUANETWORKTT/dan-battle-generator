@@ -21,7 +21,7 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   jasminabidzane: { name: "Jasmina", group: "Team Dan" }, connorfirstclass: { name: "Connor", group: "Team Dan" },
   brandyfalconer35: { name: "Brandy", group: "Team Dan" }, fearnegurry1: { name: "Fearne", group: "Team Dan" },
   demileawebster7: { name: "Demi", group: "Team Dan" }, louisesquelch: { name: "Louise", group: "Team Dan" },
-  ashwalbridge: { name: "Ash", group: "Team Dan" }, firstclassagencykyran: { name: "Kyran", group: "Team Dan" },
+  ashwalbridge: { name: "Ash", group: "Team Dan" }, candiceaquaagency: { name: "Candice", group: "Team Dan" }, firstclassagencykyran: { name: "Kyran", group: "Team Dan" },
   bmwe46320d: { name: "Madz", group: "Team Mike / Indi" }, zaliheyoncu: { name: "Zalihe", group: "Team Mike / Indi" },
   firstclassagencykayden: { name: "Kayden", group: "Team Mike / Indi" }, xaramills17: { name: "Xara", group: "Team Mike / Indi" },
   rachellouise18: { name: "Rach", group: "Team Mike / Indi" }, firstclassagencylauren: { name: "Lauren", group: "Team Mike / Indi" },

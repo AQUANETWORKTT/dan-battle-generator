@@ -359,6 +359,7 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   demileawebster7: { name: "Demi", group: "Team Dan" },
   louisesquelch: { name: "Louise", group: "Team Dan" },
   ashwalbridge: { name: "Ash", group: "Team Dan" },
+  candiceaquaagency: { name: "Candice", group: "Team Dan" },
   firstclassagencykyran: { name: "Kyran", group: "Team Dan" },
   bmwe46320d: { name: "Madz", group: "Team Mike / Indi" },
   zaliheyoncu: { name: "Zalihe", group: "Team Mike / Indi" },

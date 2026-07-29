@@ -142,7 +142,7 @@ const TEAM_DAN_MANAGER_KEYS = [
   "cjtokens1237", "teamalf", "firstclassagencyalf", "firstclassagencyabbie",
   "firstclassagencyolivia", "sjm20101", "firstclassagencypaige", "jasminabidzane",
   "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7",
-  "louisesquelch", "ashwalbridge", "firstclassagencykyran", "kyran", "kieran", "kaybon03", "kbon03",
+  "louisesquelch", "ashwalbridge", "candiceaquaagency", "firstclassagencykyran", "kyran", "kieran", "kaybon03", "kbon03",
 ];
 const TEAM_MIKE_INDI_MANAGER_KEYS = [
   "bmwe46320d", "zaliheyoncu", "firstclassagencykayden", "xaramills17",
@@ -165,6 +165,7 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   louisesquelch: "Louise",
   ashwalbridge: "Ash",
   ashwalbridgeaolcom: "Ash",
+  candiceaquaagency: "Candice",
   firstclassagencykyran: "Kyran",
   kyran: "Kyran",
   kieran: "Kyran",
