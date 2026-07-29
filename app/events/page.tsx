@@ -8,7 +8,7 @@ const events = [
   { name: "World Cup 2026", status: "Live Event", logo: "/world-cup-2026/logo.png", leaderboardHref: "/live/world-cup-2026", creatorHref: "/live/world-cup-2026", tone: "emerald" },
   { name: "Sunset Showdown", status: "Live Event", logo: "/sunset-showdown/logo.png", leaderboardHref: "/live/8f3k2j9m-sunset", creatorHref: "/live/8f3k2j9m-sunset", tone: "yellow" },
   { name: "Crew Showdown", status: "Tournament Setup", logo: "/first-class/crew-showdown-logo.png", leaderboardHref: "/live/7xq9v2-first-class", creatorHref: "/live/7xq9v2-first-class", tone: "yellow" },
-  { name: "Race to the Top", status: "August Tier Race", logo: "", leaderboardHref: "/live/race-to-the-top", creatorHref: "/live/race-to-the-top", tone: "pink" },
+  { name: "Race to the Top", status: "August Tier Race", logo: "/race-to-the-top-logo-transparent.png", leaderboardHref: "/live/race-to-the-top", creatorHref: "/live/race-to-the-top", tone: "pink" },
 ];
 
 export default function EventsPage() {
