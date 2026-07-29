@@ -212,6 +212,7 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
 };
 const MANAGER_LEADERBOARD_FALLBACKS = [
   { key: "ashwalbridge", manager: "Team Ash", groups: ["Team Dan", "Dan + Aqua"] },
+  { key: "candiceaquaagency", manager: "Team Candice", groups: ["Team Dan", "Dan + Aqua"] },
   { key: "zaliheyoncu", manager: "Team Zalihe", groups: ["Team Mike / Indi"] },
 ];
 
