@@ -11,7 +11,7 @@ const tracks: Track[] = [
   { id: "bronze", name: "Bronze", prize: "Sports Car", tone: "#fb923c", glow: "rgba(251,146,60,.32)", count: 300, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "11" }, { label: "Live hours", value: "30H" }, { label: "Followers", value: "100" }, { label: "Rank goal", value: "Maintain" }] },
   { id: "silver", name: "Silver", prize: "Interstellar", tone: "#cbd5e1", glow: "rgba(203,213,225,.28)", count: 200, targets: [{ label: "Diamonds", value: "200K" }, { label: "Valid days", value: "15" }, { label: "Live hours", value: "40H" }, { label: "Followers", value: "150" }, { label: "Rank goal", value: "Maintain" }] },
   { id: "gold", name: "Gold", prize: "Leopard", tone: "#facc15", glow: "rgba(250,204,21,.3)", count: 100, targets: [{ label: "Diamonds", value: "300K" }, { label: "Valid days", value: "18" }, { label: "Live hours", value: "60H" }, { label: "Followers", value: "200" }, { label: "Rank goal", value: "Maintain" }] },
-  { id: "platinum", name: "Platinum", prize: "Thunder Falcon", tone: "#f0abfc", glow: "rgba(240,171,252,.35)", count: 18, targets: [{ label: "Diamonds", value: "500K" }, { label: "Valid days", value: "22" }, { label: "Live hours", value: "80H" }, { label: "Followers", value: "250" }, { label: "Rank goal", value: "Maintain" }] },
+  { id: "platinum", name: "Platinum", prize: "Thunder Falcon", tone: "#f0abfc", glow: "rgba(240,171,252,.35)", count: 18, targets: [{ label: "Diamonds", value: "Individual Maintain Target" }, { label: "Valid days", value: "22" }, { label: "Live hours", value: "80H" }, { label: "Followers", value: "250" }, { label: "Rank goal", value: "Maintain" }] },
 ];
 
 function buildCreators(track: Track): Creator[] {
