@@ -20,7 +20,7 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
     { href: "/data/fallback-pictures", number: "10", label: "Assets", title: "Fallback Pictures", description: "Upload a reliable profile picture for any creator whose TikTok avatar cannot be retrieved.", accent: "sky" },
     { href: "/data/team-posters", number: "07", label: "Daily assets", title: "Team Poster Builder", description: "Create and maintain reusable yesterday-diamonds poster templates for Team Dan and future teams.", accent: "yellow" },
     { href: "/data/events-leaderboards-admin", number: "09", label: "Event operations", title: "Events Leaderboards Admin", description: "Event score controls, Crew Showdown downloads and private leaderboard tools.", accent: "emerald" },
-    { href: "/data/manager-assignments", number: "12", label: "Team setup", title: "Manager Assignments", description: "Drag managers into their correct group and move creators between manager teams.", accent: "cyan" },
+    { href: "/data/manager-assignments", number: "12", label: "Team setup", title: "Manager Assignments", description: "Drag managers into their correct group. New managers begin unassigned.", accent: "cyan" },
   ] },
   { title: "Creator Targets", description: "Track creator progress, graduation and mature-creator retention.", accent: "emerald", workspaces: [
     { href: "/graduation-tracker", number: "03", label: "Progress", title: "Graduation Tracker", description: "Track creator progress towards 200,000 diamonds and graduation milestones.", accent: "emerald" },
