@@ -213,4 +213,245 @@ body {
 .race-page:has(.track-tabs button:nth-child(4).active) .prize strong { background-image: url("/prize-leopard.webp"); }
 .race-page:has(.track-tabs button:nth-child(5).active) .prize strong { background-image: url("/prize-thunder-falcon.webp"); }
 
+/* Race to the Top creator lookup: a full-size progress board, not a plain text list. */
+.race-page .lookup-result {
+  position: relative;
+  overflow: hidden;
+  max-width: 960px;
+  border: 1px solid var(--lookup-track) !important;
+  border-radius: 26px;
+  background: linear-gradient(130deg, color-mix(in srgb, var(--lookup-track) 17%, #090b12), rgba(5, 7, 13, .92)) !important;
+  box-shadow: 0 0 34px var(--lookup-glow), inset 0 0 34px rgba(255, 255, 255, .045) !important;
+}
+
+.race-page .lookup-result::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 18%, color-mix(in srgb, var(--lookup-track) 22%, transparent) 50%, transparent 78%);
+  opacity: .45;
+}
+
+.race-page .lookup-result > * { position: relative; }
+
+.race-page .lookup-result header {
+  padding: 5px 2px 19px;
+  border-bottom: 1px solid color-mix(in srgb, var(--lookup-track) 38%, transparent);
+}
+
+.race-page .lookup-result header h2 {
+  margin-top: 9px;
+  font-size: clamp(30px, 5.2vw, 52px) !important;
+  letter-spacing: .035em;
+  text-shadow: 0 0 16px var(--lookup-glow);
+}
+
+.race-page .lookup-result header > strong {
+  padding: 12px 15px;
+  border: 1px solid var(--lookup-track);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  box-shadow: 0 0 18px var(--lookup-glow);
+}
+
+.race-page .lookup-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin: 18px 0 !important;
+}
+
+.race-page .lookup-summary > div {
+  min-height: 92px;
+  padding: 15px !important;
+  border-color: color-mix(in srgb, var(--lookup-track) 48%, transparent) !important;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--lookup-track) 15%, rgba(0,0,0,.6)), rgba(0, 0, 0, .48)) !important;
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, .04);
+}
+
+.race-page .lookup-summary b {
+  margin-top: 10px !important;
+  font-size: clamp(16px, 2.3vw, 25px) !important;
+  text-shadow: 0 0 12px var(--lookup-glow);
+}
+
+.race-page .lookup-progress {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.race-page .lookup-metric {
+  display: grid !important;
+  min-height: 156px;
+  padding: 17px !important;
+  border: 1px solid color-mix(in srgb, var(--lookup-track) 52%, transparent) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--lookup-track) 19%, #0a0c13), rgba(0, 0, 0, .62)) !important;
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, .035), 0 0 15px color-mix(in srgb, var(--lookup-glow) 40%, transparent);
+}
+
+.race-page .lookup-metric .metric-top {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.race-page .lookup-metric .metric-top span {
+  max-width: 58%;
+  color: rgba(239, 252, 255, .74) !important;
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+.race-page .lookup-metric .metric-top b {
+  color: var(--lookup-track) !important;
+  font-size: clamp(18px, 2.7vw, 30px) !important;
+  line-height: 1;
+  text-align: right;
+  text-shadow: 0 0 14px var(--lookup-glow);
+}
+
+.race-page .lookup-metric > i {
+  align-self: center;
+  height: 12px !important;
+  margin: 12px 0 !important;
+  border: 1px solid color-mix(in srgb, var(--lookup-track) 30%, transparent);
+  background: rgba(0, 0, 0, .6) !important;
+}
+
+.race-page .lookup-metric > i > em {
+  background: linear-gradient(90deg, var(--lookup-track), #fff) !important;
+  box-shadow: 0 0 16px var(--lookup-glow);
+}
+
+.race-page .lookup-metric > small {
+  display: flex !important;
+  align-items: baseline;
+  gap: 8px;
+  color: #fff !important;
+  font-size: 11px !important;
+  letter-spacing: .045em !important;
+}
+
+.race-page .lookup-metric > small em {
+  color: var(--lookup-track);
+  font-style: normal;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .race-page .lookup-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .race-page .lookup-progress { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .race-page .lookup-metric:last-child { grid-column: span 2; }
+}
+
+@media (max-width: 480px) {
+  .race-page .lookup-result { padding: 14px !important; border-radius: 20px; }
+  .race-page .lookup-summary { gap: 8px !important; }
+  .race-page .lookup-summary > div { min-height: 76px; padding: 11px !important; }
+  .race-page .lookup-progress { grid-template-columns: 1fr !important; gap: 9px !important; }
+  .race-page .lookup-metric, .race-page .lookup-metric:last-child { grid-column: auto; min-height: 128px; }
+  .race-page .lookup-metric .metric-top b { font-size: 23px !important; }
+}
+
+.race-page .metric-target {
+  display: block;
+  min-width: 0;
+  min-width: 0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .025em;
+  overflow-wrap: anywhere;
+}
+
+.race-page .race-row {
+  width: 100%;
+  grid-template-columns: 48px 54px minmax(0, 1fr) 62px 25px !important;
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s ease, transform .2s ease, background .2s ease;
+}
+
+.race-page .race-row:hover,
+.race-page .race-row.expanded {
+  border-color: var(--track);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--track) 17%, #06070b), rgba(0,0,0,.65));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--glow) 62%, transparent);
+}
+
+.race-page .race-row:hover { transform: translateY(-1px); }
+
+.race-page .expand-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--track);
+  border-radius: 50%;
+  color: var(--track);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.race-page .creator-dropdown {
+  margin: 0 8px 10px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--track) 62%, transparent);
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--track) 15%, #080a10), rgba(0,0,0,.82));
+  box-shadow: inset 0 0 24px rgba(255,255,255,.035), 0 14px 22px rgba(0,0,0,.24);
+}
+
+.race-page .creator-dropdown header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.race-page .creator-dropdown header span {
+  color: rgba(239,252,255,.7);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .11em;
+}
+
+.race-page .creator-dropdown h3 {
+  margin: 7px 0 0;
+  color: var(--track);
+  font-size: 23px;
+  text-shadow: 0 0 13px var(--glow);
+}
+
+.race-page .creator-dropdown header > strong {
+  color: var(--track);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.race-page .creator-dropdown .lookup-progress {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 760px) {
+  .race-page .creator-dropdown .lookup-progress { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 680px) {
+  .race-page .race-row { grid-template-columns: 50px minmax(0, 1fr) 48px 25px !important; }
+  .race-page .creator-dropdown { margin: 0 3px 9px; padding: 14px; }
+  .race-page .creator-dropdown header { align-items: flex-start; flex-direction: column; gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .race-page .creator-dropdown .lookup-progress { grid-template-columns: 1fr !important; }
+}
+
 
