@@ -8,6 +8,7 @@ const events = [
   { name: "World Cup 2026", status: "Live Event", logo: "/world-cup-2026/logo.png", leaderboardHref: "/live/world-cup-2026", creatorHref: "/live/world-cup-2026", tone: "emerald" },
   { name: "Sunset Showdown", status: "Live Event", logo: "/sunset-showdown/logo.png", leaderboardHref: "/live/8f3k2j9m-sunset", creatorHref: "/live/8f3k2j9m-sunset", tone: "yellow" },
   { name: "Crew Showdown", status: "Tournament Setup", logo: "/first-class/crew-showdown-logo.png", leaderboardHref: "/live/7xq9v2-first-class", creatorHref: "/live/7xq9v2-first-class", tone: "yellow" },
+  { name: "Race to the Top", status: "August Tier Race", logo: "", leaderboardHref: "/live/race-to-the-top", creatorHref: "/live/race-to-the-top", tone: "pink" },
 ];
 
 export default function EventsPage() {
@@ -36,14 +37,15 @@ export default function EventsPage() {
         <div className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {events.map((event, index) => {
             const green = event.tone === "emerald";
+            const pink = event.tone === "pink";
             return (
               <article key={event.name} className="group overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] p-5 transition hover:-translate-y-1 hover:border-yellow-300/45">
-                <div className={`relative flex h-52 items-center justify-center overflow-hidden rounded-2xl border border-white/5 p-7 ${green ? "bg-emerald-900/20" : "bg-yellow-300/10"}`}>
+                <div className={`relative flex h-52 items-center justify-center overflow-hidden rounded-2xl border border-white/5 p-7 ${green ? "bg-emerald-900/20" : pink ? "bg-pink-500/20" : "bg-yellow-300/10"}`}>
                   <span className="absolute right-4 top-3 font-[family-name:var(--font-norwester)] text-3xl text-white/10">0{index + 1}</span>
-                  <img src={event.logo} alt={event.name} className="relative max-h-full max-w-full object-contain drop-shadow-2xl" />
+                  {event.logo ? <img src={event.logo} alt={event.name} className="relative max-h-full max-w-full object-contain drop-shadow-2xl" /> : <span className="flex h-24 w-24 items-center justify-center rounded-xl border-4 border-red-300 bg-red-600 text-center text-[10px] font-black uppercase tracking-[.14em] text-red-50">Logo<br/>placeholder</span>}
                 </div>
                 <div className="mt-5">
-                  <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${green ? "text-emerald-300" : "text-yellow-300"}`}>{event.status}</p>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${green ? "text-emerald-300" : pink ? "text-pink-300" : "text-yellow-300"}`}>{event.status}</p>
                   <h2 className="mt-2 font-[family-name:var(--font-norwester)] text-3xl uppercase leading-none">{event.name}</h2>
                 </div>
                 <div className="mt-6 grid gap-2">

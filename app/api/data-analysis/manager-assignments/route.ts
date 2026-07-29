@@ -4,7 +4,8 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 export const dynamic = "force-dynamic";
 
 const SETTINGS_NAME = "manager-assignment-settings";
-const GROUPS = ["Team Dan", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Unassigned"] as const;
+const GROUPS = ["Team Dan", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Unassigned", "Excluded"] as const;
+const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "firstclassagencyalf", "firstclassagencydan", "teamdan", "firstclassagencyjenson", "firstclassagencyjacob", "teamjacob", "cscott1232005", "trident125", "firstclassindi", "firstclassagencyindi", "teritilcock1994", "mikehalesjb"];
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
 type SavedAssignments = { managerGroups: Record<string, Group> };
@@ -54,7 +55,7 @@ export async function GET() {
   const managers = new Map<string, { key: string; name: string; group: Group }>();
   for (const row of rows) {
     const manager = key(managerRaw(row));
-    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: managerName(managerRaw(row)), group: assignments.managerGroups[manager] || defaultGroup(row) });
+    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
   }
   for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!managers.has(manager)) managers.set(manager, { key: manager, name: `Team ${manager}`, group });
   return NextResponse.json({ statDate, groups: GROUPS, managers: [...managers.values()].sort((a, b) => a.name.localeCompare(b.name)), assignments });

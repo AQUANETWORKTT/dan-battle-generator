@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
-type Group = "Team Dan" | "Team Mike / Indi" | "Exempt" | "Trident" | "Horizon" | "Paradise" | "Aqua" | "Respawn" | "Unassigned";
+type Group = "Team Dan" | "Team Mike / Indi" | "Exempt" | "Trident" | "Horizon" | "Paradise" | "Aqua" | "Respawn" | "Unassigned" | "Excluded";
 type Manager = { key: string; name: string; group: Group };
 type Assignments = { managerGroups: Record<string, Group> };
 
