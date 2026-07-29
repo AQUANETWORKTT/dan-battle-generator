@@ -190,6 +190,7 @@ const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
   "firstclassagencyalf",
   "firstclassagencydan",
   "teamdan",
+  "firstclassagencyjenson",
   "firstclassagencyjacob",
   "teamjacob",
 ];
