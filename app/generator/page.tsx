@@ -1000,6 +1000,10 @@ export default function BattleGeneratorPage() {
   const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "team-dan", label: "Team Dan + James Aqua Agency" },
     { value: "first-class-all", label: "First Class — All Creators" },
+    { value: "group:respawn", label: "Team Respawn - All Managers" },
+    { value: "group:paradise", label: "Team Paradise - All Managers" },
+    { value: "group:horizon", label: "Team Horizon - All Managers" },
+    { value: "group:trident", label: "Team Trident - All Managers" },
   ]);
   const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
@@ -1723,6 +1727,13 @@ export default function BattleGeneratorPage() {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
         const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
+        const selectedGroup = ({
+          "group:respawn": "Respawn",
+          "group:paradise": "Paradise",
+          "group:horizon": "Horizon",
+          "group:trident": "Trident",
+        } as Record<string, string>)[managerKey];
+        if (selectedGroup) return managerGroups[managerKeyNormalized] === selectedGroup;
         if (managerKey === "first-class-all") {
           const group = managerGroups[managerKeyNormalized];
           return group === "Team Dan" || group === "Team Mike / Indi";
@@ -2025,6 +2036,10 @@ export default function BattleGeneratorPage() {
         if (managers.length) setTeamPosterManagerOptions([
           { value: "team-dan", label: "Team Dan + James Aqua Agency" },
           { value: "first-class-all", label: "First Class — All Creators" },
+          { value: "group:respawn", label: "Team Respawn - All Managers" },
+          { value: "group:paradise", label: "Team Paradise - All Managers" },
+          { value: "group:horizon", label: "Team Horizon - All Managers" },
+          { value: "group:trident", label: "Team Trident - All Managers" },
           ...managers,
         ]);
       } catch {
@@ -4464,4 +4479,3 @@ function renderText(
     </div>
   );
 }
-
