@@ -1738,7 +1738,10 @@ export default function BattleGeneratorPage() {
       // TikTok can return a stale avatar when several profile pages are scraped
       // at once. Resolve each creator separately so every slot keeps its own image.
       for (const username of new Set([...topDiamonds, ...topHours].map(usernameFor))) {
-        avatars.set(username, await fetchTikTokAvatar(username));
+        const avatar = await fetchTikTokAvatar(username);
+        // The scraper has already found the image. Embed it now so the preview
+        // does not ask TikTok to serve every image slot at the same instant.
+        avatars.set(username, await imageToDataUrl(avatar));
       }
       const compact = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 ? 1 : 0)}K` : String(value);
       const filled = normalizeTeamDanPosterTemplate({
