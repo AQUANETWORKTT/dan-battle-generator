@@ -7,7 +7,7 @@ type Track = { id: string; name: string; prize: string; tone: string; glow: stri
 type Creator = { name: string; pct: number; done: number; track: Track; rank: number };
 
 const tracks: Track[] = [
-  { id: "blue", name: "Blue", prize: "Flying Jets", tone: "#38bdf8", glow: "rgba(56,189,248,.32)", count: 682, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "8" }, { label: "Live hours", value: "20H" }, { label: "Followers", value: "75" }, { label: "Rank goal", value: "Maintain" }] },
+  { id: "blue", name: "Blue", prize: "Flying Jets", tone: "#38bdf8", glow: "rgba(56,189,248,.32)", count: 682, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "8" }, { label: "Live hours", value: "20H" }, { label: "Followers", value: "75" }] },
   { id: "bronze", name: "Bronze", prize: "Sports Car", tone: "#fb923c", glow: "rgba(251,146,60,.32)", count: 300, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "11" }, { label: "Live hours", value: "30H" }, { label: "Followers", value: "100" }, { label: "Rank goal", value: "Maintain" }] },
   { id: "silver", name: "Silver", prize: "Interstellar", tone: "#cbd5e1", glow: "rgba(203,213,225,.28)", count: 200, targets: [{ label: "Diamonds", value: "200K" }, { label: "Valid days", value: "15" }, { label: "Live hours", value: "40H" }, { label: "Followers", value: "150" }, { label: "Rank goal", value: "Maintain" }] },
   { id: "gold", name: "Gold", prize: "Leopard", tone: "#facc15", glow: "rgba(250,204,21,.3)", count: 100, targets: [{ label: "Diamonds", value: "300K" }, { label: "Valid days", value: "18" }, { label: "Live hours", value: "60H" }, { label: "Followers", value: "200" }, { label: "Rank goal", value: "Maintain" }] },

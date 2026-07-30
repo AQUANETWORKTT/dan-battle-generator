@@ -133,11 +133,10 @@ function isTeamDanRow(row: CreatorStat) {
     .trim()
     .toLowerCase();
 
-  return [
-    "firstclassagency_dan@outlook.com",
-    "james_aquaagency",
-    "james_aquaagency@outlook.com",
-  ].includes(managerEmail);
+  const directTeamKey = managerEmail
+    .replace(/[^a-z0-9]/g, "")
+    .replace(/(outlook|gmail|mail)com$/, "");
+  return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);
 }
 
 function getManagerKey(row: CreatorStat) {

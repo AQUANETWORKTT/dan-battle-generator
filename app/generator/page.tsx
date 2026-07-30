@@ -998,7 +998,7 @@ export default function BattleGeneratorPage() {
   const [newTeamPosterTemplateName, setNewTeamPosterTemplateName] = useState("");
   const [newTeamPosterSourceName, setNewTeamPosterSourceName] = useState("blank");
   const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
-    { value: "team-dan", label: "Team Dan + James Aqua Agency" },
+    { value: "team-dan", label: "Team Dan + James - Direct Teams" },
     { value: "first-class-all", label: "First Class — All Creators" },
     { value: "group:respawn", label: "Team Respawn — All Managers" },
     { value: "group:paradise", label: "Team Paradise — All Managers" },
@@ -1727,6 +1727,10 @@ export default function BattleGeneratorPage() {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
         const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
+        if (managerKey === "team-dan") {
+          const directTeamKey = managerKeyNormalized.replace(/(outlook|gmail|mail)com$/, "");
+          return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);
+        }
         const selectedGroup = ({
           "group:respawn": "Respawn",
           "group:paradise": "Paradise",
@@ -1738,9 +1742,7 @@ export default function BattleGeneratorPage() {
           const group = managerGroups[managerKeyNormalized];
           return group === "Team Dan" || group === "Team Mike / Indi";
         }
-        return managerKey === "team-dan"
-          ? ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager)
-          : manager === managerKey;
+        return manager === managerKey;
       });
       if (!rows.length) throw new Error("No creators were found for this data source on the latest upload.");
       const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
@@ -2034,7 +2036,7 @@ export default function BattleGeneratorPage() {
           return { value, label: row.manager_label || `${getManagerLeaderboardName(row)}${group ? ` (${group})` : ""}` };
         }).sort((a, b) => managerNameCollator.compare(a.label, b.label));
         if (managers.length) setTeamPosterManagerOptions([
-          { value: "team-dan", label: "Team Dan + James Aqua Agency" },
+          { value: "team-dan", label: "Team Dan + James - Direct Teams" },
           { value: "first-class-all", label: "First Class — All Creators" },
           { value: "group:respawn", label: "Team Respawn — All Managers" },
           { value: "group:paradise", label: "Team Paradise — All Managers" },
