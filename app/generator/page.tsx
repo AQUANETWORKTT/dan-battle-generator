@@ -1000,10 +1000,10 @@ export default function BattleGeneratorPage() {
   const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "team-dan", label: "Team Dan + James Aqua Agency" },
     { value: "first-class-all", label: "First Class — All Creators" },
-    { value: "group:respawn", label: "Team Respawn - All Managers" },
-    { value: "group:paradise", label: "Team Paradise - All Managers" },
-    { value: "group:horizon", label: "Team Horizon - All Managers" },
-    { value: "group:trident", label: "Team Trident - All Managers" },
+    { value: "group:respawn", label: "Team Respawn — All Managers" },
+    { value: "group:paradise", label: "Team Paradise — All Managers" },
+    { value: "group:horizon", label: "Team Horizon — All Managers" },
+    { value: "group:trident", label: "Team Trident — All Managers" },
   ]);
   const [selectedTeamPosterElementId, setSelectedTeamPosterElementId] = useState("avatar-1");
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
@@ -2036,10 +2036,10 @@ export default function BattleGeneratorPage() {
         if (managers.length) setTeamPosterManagerOptions([
           { value: "team-dan", label: "Team Dan + James Aqua Agency" },
           { value: "first-class-all", label: "First Class — All Creators" },
-          { value: "group:respawn", label: "Team Respawn - All Managers" },
-          { value: "group:paradise", label: "Team Paradise - All Managers" },
-          { value: "group:horizon", label: "Team Horizon - All Managers" },
-          { value: "group:trident", label: "Team Trident - All Managers" },
+          { value: "group:respawn", label: "Team Respawn — All Managers" },
+          { value: "group:paradise", label: "Team Paradise — All Managers" },
+          { value: "group:horizon", label: "Team Horizon — All Managers" },
+          { value: "group:trident", label: "Team Trident — All Managers" },
           ...managers,
         ]);
       } catch {
@@ -4479,3 +4479,4 @@ function renderText(
     </div>
   );
 }
+
