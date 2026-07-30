@@ -162,18 +162,12 @@ function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
   return Boolean(rowIdentity && templateIdentity && rowIdentity === templateIdentity);
 }
 
-function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate) {
+function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
   if (managerKey === "first-class-all") {
-    const manager = getManagerKey(row);
-    const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
-    const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
-    return (
-      source.includes("first class") ||
-      ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager) ||
-      /(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|firstclassagencykyran|bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(managerKeyNormalized)
-    );
+    const group = managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")];
+    return group === "Team Dan" || group === "Team Mike / Indi";
   }
   return managerKeysMatch(getManagerKey(row), managerKey);
 }
@@ -524,19 +518,22 @@ export default function TeamDiamondsYesterdayPage() {
 
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
-      const [res, exclusionsResponse, fallbacksResponse] = await Promise.all([
+      const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
         fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
+        fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
       ]);
-      const [json, exclusions, fallbacks] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json()]);
+      const [json, exclusions, fallbacks, assignmentsData] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json(), assignmentsResponse.json()]);
       if (!res.ok) throw new Error(json.error || "Could not load Daniel daily stats.");
+      if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
+      const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
       const fallbackAvatars = Object.fromEntries((fallbacks.avatars || []).map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
 
       const rows = ((json.rows || []) as CreatorStat[])
         .filter((row) => row.stat_date === yesterday)
-        .filter((row) => matchesTemplateManager(row, activeTemplate))
+        .filter((row) => matchesTemplateManager(row, activeTemplate, managerGroups))
         .filter((row) => getUsername(row))
         .filter((row) => !hiddenUsernames.has(getUsername(row)))
         .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
@@ -684,13 +681,16 @@ export default function TeamDiamondsYesterdayPage() {
     try {
       const month = getCurrentMonth();
       const yesterday = getYesterdayDateKey();
-      const [res, exclusionsResponse, fallbacksResponse] = await Promise.all([
+      const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
         fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
+        fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
       ]);
-      const [json, exclusions, fallbacks] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json()]);
+      const [json, exclusions, fallbacks, assignmentsData] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json(), assignmentsResponse.json()]);
       if (!res.ok) throw new Error(json.error || "Could not load daily stats.");
+      if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
+      const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
       const hiddenUsernames = new Set((exclusions.creators || [])
         .filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads)
         .map((creator: { username: string }) => creator.username.toLowerCase()));
@@ -704,7 +704,7 @@ export default function TeamDiamondsYesterdayPage() {
       const usernames = new Set<string>();
 
       for (const item of allItems) {
-        const teamRows = allRows.filter((row) => matchesTemplateManager(row, item.template));
+        const teamRows = allRows.filter((row) => matchesTemplateManager(row, item.template, managerGroups));
         [...teamRows].sort((a, b) => safeNumber(b.diamonds) - safeNumber(a.diamonds)).slice(0, 5).forEach((row) => usernames.add(getUsername(row)));
         [...teamRows].sort((a, b) => getLiveHours(b) - getLiveHours(a)).slice(0, 5).forEach((row) => usernames.add(getUsername(row)));
       }
