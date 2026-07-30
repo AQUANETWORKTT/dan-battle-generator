@@ -1738,10 +1738,7 @@ export default function BattleGeneratorPage() {
       // TikTok can return a stale avatar when several profile pages are scraped
       // at once. Resolve each creator separately so every slot keeps its own image.
       for (const username of new Set([...topDiamonds, ...topHours].map(usernameFor))) {
-        const avatar = await fetchTikTokAvatar(username);
-        // The scraper has already found the image. Embed it now so the preview
-        // does not ask TikTok to serve every image slot at the same instant.
-        avatars.set(username, await imageToDataUrl(avatar));
+        avatars.set(username, await fetchTikTokAvatar(username));
       }
       const compact = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 ? 1 : 0)}K` : String(value);
       const filled = normalizeTeamDanPosterTemplate({
@@ -2226,29 +2223,18 @@ export default function BattleGeneratorPage() {
     const localAvatar = fallbackAvatarUrlsRef.current[normalizedUsername] || LOCAL_AVATAR_PATHS[normalizedUsername];
     if (localAvatar) return localAvatar;
 
-    const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
     try {
-      const res = await fetch("/api/tiktok-avatar-v2", {
+      // Matches the proven Aqua Dashboard lookup: return TikTok's image URL directly.
+      const res = await fetch("/api/tiktok-avatar", {
         method: "POST",
-        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
         },
-        body: JSON.stringify({
-          username: cleanUsername,
-          forceRefresh: true,
-          refresh: refreshKey,
-        }),
+        body: JSON.stringify({ username: cleanUsername }),
       });
 
       const json = await res.json();
-      if (!json.avatar) return "";
-      if (String(json.avatar).startsWith("/")) return String(json.avatar);
-
-      return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
+      return json.avatar || "";
     } catch {
       return "";
     }
