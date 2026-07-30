@@ -163,9 +163,20 @@ function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
   return Boolean(rowIdentity && templateIdentity && rowIdentity === templateIdentity);
 }
 
+const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
+  "group:respawn": "Respawn",
+  "group:paradise": "Paradise",
+  "group:horizon": "Horizon",
+  "group:trident": "Trident",
+};
+
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
+  const selectedGroup = TEAM_POSTER_GROUP_SOURCES[managerKey];
+  if (selectedGroup) {
+    return managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")] === selectedGroup;
+  }
   if (managerKey === "first-class-all") {
     const group = managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")];
     return group === "Team Dan" || group === "Team Mike / Indi";
