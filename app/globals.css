@@ -210,6 +210,28 @@ body {
   background-size: contain;
 }
 
+.race-page .prize strong {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+  color: var(--track) !important;
+  text-shadow: 0 0 4px color-mix(in srgb, var(--track) 55%, transparent) !important;
+  background-image: none !important;
+}
+
+.race-page .prize strong img {
+  display: block;
+  width: 62px;
+  height: 54px;
+  flex: 0 0 62px;
+  margin-inline: auto;
+  object-fit: contain;
+}
+
 .race-page .track-tabs button:nth-child(1) b { background-image: url("/prize-flying-jets.webp"); }
 .race-page .track-tabs button:nth-child(2) b { background-image: url("/prize-sports-car.webp"); }
 .race-page .track-tabs button:nth-child(3) b { background-image: url("/prize-interstellar.webp"); }
