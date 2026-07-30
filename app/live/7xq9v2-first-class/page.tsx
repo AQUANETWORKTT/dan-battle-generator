@@ -86,7 +86,7 @@ function Avatar({ username, className = "" }: { username: string; className?: st
 
   return (
     <img
-      src={avatarUrl.startsWith("/") ? avatarUrl : `/api/tiktok-avatar-image?url=${encodeURIComponent(avatarUrl)}`}
+      src={avatarUrl}
       alt={username}
       className={`object-cover ${className}`}
       onError={() => {
