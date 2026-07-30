@@ -58,7 +58,9 @@ export async function GET() {
     if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
   }
   for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!managers.has(manager)) managers.set(manager, { key: manager, name: `Team ${manager}`, group });
-  return NextResponse.json({ statDate, groups: GROUPS, managers: [...managers.values()].sort((a, b) => a.name.localeCompare(b.name)), assignments });
+  const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const managerGroups = Object.fromEntries(managerList.map((manager) => [manager.key, manager.group]));
+  return NextResponse.json({ statDate, groups: GROUPS, managers: managerList, managerGroups, assignments });
 }
 
 export async function PUT(request: Request) {

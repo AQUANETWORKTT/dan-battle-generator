@@ -1704,13 +1704,16 @@ export default function BattleGeneratorPage() {
       const statDate = String(status.latestDate || "");
       const month = statDate.slice(0, 7);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(statDate)) throw new Error("No Creator Daily Stats upload is available.");
-      const [response, exclusionsResponse] = await Promise.all([
+      const [response, exclusionsResponse, assignmentsResponse] = await Promise.all([
         fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
+        fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
       ]);
-      const [json, exclusions] = await Promise.all([response.json(), exclusionsResponse.json()]);
+      const [json, exclusions, assignmentsData] = await Promise.all([response.json(), exclusionsResponse.json(), assignmentsResponse.json()]);
       if (!response.ok) throw new Error(json.error || "Could not load Creator Daily Stats.");
+      if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
+      const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
       const managerKey = String(teamPosterTemplate.managerKey || "team-dan").toLowerCase();
       const managerFor = (row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim().toLowerCase();
       const usernameFor = (row: Record<string, unknown>) => String(row.creator_username || row["Creator's username"] || "").replace("@", "").trim().toLowerCase();
@@ -1720,14 +1723,9 @@ export default function BattleGeneratorPage() {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
         const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
-        const source = `${row.agency || ""} ${row.team || ""} ${row.group_name || ""}`.toLowerCase();
         if (managerKey === "first-class-all") {
-          return (
-            source.includes("first class") ||
-            ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager) ||
-            TEAM_DAN_MANAGER_KEYS.some((key) => managerKeyNormalized.includes(key)) ||
-            TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => managerKeyNormalized.includes(key))
-          );
+          const group = managerGroups[managerKeyNormalized];
+          return group === "Team Dan" || group === "Team Mike / Indi";
         }
         return managerKey === "team-dan"
           ? ["firstclassagency_dan@outlook.com", "james_aquaagency", "james_aquaagency@outlook.com"].includes(manager)

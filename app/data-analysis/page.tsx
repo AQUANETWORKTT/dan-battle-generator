@@ -6,6 +6,7 @@ import DataAccessGuard from "../components/DataAccessGuard";
 
 type CreatorStat = {
   stat_date: string;
+  creator_id?: string | null;
   creator_username: string;
   email: string | null;
   manager_email?: string | null;
@@ -137,8 +138,9 @@ function getDayNumber(dateValue: string) {
   return Number(String(dateValue).split("-")[2]);
 }
 
-function getCreatorKey(username: string | null | undefined) {
-  return String(username || "").trim().toLowerCase();
+function getCreatorKey(row: Pick<CreatorStat, "creator_id" | "creator_username">) {
+  const creatorId = String(row.creator_id || "").trim();
+  return /^\d{10,}$/.test(creatorId) ? creatorId : String(row.creator_username || "").trim().toLowerCase();
 }
 
 function isWeekend(dateValue: string) {
@@ -182,7 +184,7 @@ function buildDailyStats(rows: CreatorStat[]): DailyStat[] {
     existing.rowCount += 1;
 
     if (safeNumber(row.live_hours) > 0 || safeNumber(row.diamonds) > 0) {
-      existing.activeCreators.add(row.creator_username);
+      existing.activeCreators.add(getCreatorKey(row));
     }
 
     map.set(row.stat_date, existing);
@@ -401,7 +403,7 @@ export default function DataAnalysisPage() {
     return new Set(
       rows
         .filter((row) => row.stat_date === latestUploadDate)
-        .map((row) => getCreatorKey(row.creator_username))
+        .map(getCreatorKey)
         .filter(Boolean)
     );
   }, [latestUploadDate, rows]);
@@ -411,7 +413,7 @@ export default function DataAnalysisPage() {
       const dayNumber = getDayNumber(row.stat_date);
       const isInRange = dayNumber >= startDay && dayNumber <= endDay;
       const isCurrentCreator =
-        activeCreatorKeys.size === 0 || activeCreatorKeys.has(getCreatorKey(row.creator_username));
+        activeCreatorKeys.size === 0 || activeCreatorKeys.has(getCreatorKey(row));
       return isInRange && isCurrentCreator;
     });
   }, [rows, startDay, endDay, activeCreatorKeys]);
@@ -454,11 +456,11 @@ export default function DataAnalysisPage() {
     const map = new Map<string, CreatorStat & { days_live: number }>();
 
     for (const row of filteredRows) {
-      const username = row.creator_username;
-      const existing = map.get(username);
+      const creatorKey = getCreatorKey(row);
+      const existing = map.get(creatorKey);
 
       if (!existing) {
-        map.set(username, {
+        map.set(creatorKey, {
           ...row,
           diamonds: safeNumber(row.diamonds),
           live_hours: safeNumber(row.live_hours),
@@ -468,6 +470,13 @@ export default function DataAnalysisPage() {
           days_live: safeNumber(row.live_hours) > 0 ? 1 : 0,
         });
       } else {
+        if (row.stat_date >= existing.stat_date) {
+          existing.stat_date = row.stat_date;
+          existing.creator_username = row.creator_username;
+          existing.creator_id = row.creator_id;
+          existing.agency = row.agency;
+          existing.team = row.team;
+        }
         existing.diamonds = safeNumber(existing.diamonds) + safeNumber(row.diamonds);
         existing.live_hours = safeNumber(existing.live_hours) + safeNumber(row.live_hours);
         existing.matches = safeNumber(existing.matches) + safeNumber(row.matches);
@@ -506,7 +515,7 @@ export default function DataAnalysisPage() {
     const activeCreators = new Set(
       filteredRows
         .filter((row) => safeNumber(row.live_hours) > 0 || safeNumber(row.diamonds) > 0)
-        .map((row) => row.creator_username)
+        .map(getCreatorKey)
     ).size;
 
     const bestDay = [...dailyStats].sort((a, b) => b.diamonds - a.diamonds)[0];
@@ -541,7 +550,7 @@ export default function DataAnalysisPage() {
       const active = new Set(
         agencyRows
           .filter((row) => safeNumber(row.live_hours) > 0 || safeNumber(row.diamonds) > 0)
-          .map((row) => row.creator_username)
+          .map(getCreatorKey)
       ).size;
 
       return {
@@ -600,7 +609,8 @@ export default function DataAnalysisPage() {
     >();
 
     for (const row of filteredRows) {
-      const existing = byCreator.get(row.creator_username) || {
+      const creatorKey = getCreatorKey(row);
+      const existing = byCreator.get(creatorKey) || {
         username: row.creator_username,
         agency: row.agency || "—",
         team: row.team || "—",
@@ -624,7 +634,10 @@ export default function DataAnalysisPage() {
       day.diamonds += safeNumber(row.diamonds);
 
       existing.dayStats.set(row.stat_date, day);
-      byCreator.set(row.creator_username, existing);
+      existing.username = row.creator_username;
+      existing.agency = row.agency || "—";
+      existing.team = row.team || "—";
+      byCreator.set(creatorKey, existing);
     }
 
     return Array.from(byCreator.values())

@@ -167,6 +167,8 @@ type ManagerHealthTrendPoint = {
   score: number;
 };
 
+type ManagerAssignments = Record<string, string>;
+
 
 const CREATOR_REPORT_LIVE_DAY_TARGET = 5;
 
@@ -394,8 +396,20 @@ function hasManagerKey(value: string, keys: string[]) {
   return keys.some((key) => normalized.includes(key));
 }
 
-function getFirstClassManagerDetails(managerRaw: string, managerLabel: string, username = "") {
+function getFirstClassManagerDetails(
+  managerRaw: string,
+  managerLabel: string,
+  username = "",
+  managerAssignments: ManagerAssignments = {}
+) {
   const managerDetails = `${managerRaw} ${managerLabel}`;
+  const assignedGroup = managerAssignments[normalizeManagerKey(managerRaw)];
+  if (assignedGroup === "Team Dan" || assignedGroup === "Team Mike / Indi") {
+    return {
+      managerLabel: `${managerLabel} (First Class — ${assignedGroup})`,
+      managerGroup: assignedGroup,
+    };
+  }
   if (TEAM_DAN_CREATOR_KEYS.includes(normalizeManagerKey(username))) {
     return { managerLabel: "Team Dan (First Class — Team Dan)", managerGroup: "Exempt" };
   }
@@ -504,6 +518,13 @@ function getReportAgencyName(creators: Pick<CreatorSummary, "agency">[], fallbac
 
 function getUsername(row: CreatorStat) {
   return getText(row, ["creator_username", "Creator's username", "creator_id", "Creator ID"], "Unknown");
+}
+
+// A TikTok username can change; Creator ID is the stable identity shared by every upload.
+function getCreatorIdentity(row: CreatorStat) {
+  const creatorId = getText(row, ["creator_id", "Creator ID"]);
+  if (/^\d{10,}$/.test(creatorId)) return creatorId;
+  return getUsername(row).toLowerCase();
 }
 
 function capScore(value: number, max: number) {
@@ -652,7 +673,11 @@ function getCreatorTags(creator: {
   return tags;
 }
 
-function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] = rows) {
+function buildCreatorSummaries(
+  rows: CreatorStat[],
+  rollingRows: CreatorStat[] = rows,
+  managerAssignments: ManagerAssignments = {}
+) {
   const byCreator = new Map<string, CreatorStat[]>();
   const rollingByCreator = new Map<string, CreatorStat[]>();
   const windowDates = Array.from(new Set(rows.map((row) => row.stat_date)))
@@ -660,15 +685,15 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
     .slice(-7);
 
   for (const row of rows) {
-    const username = getUsername(row).toLowerCase();
-    if (!byCreator.has(username)) byCreator.set(username, []);
-    byCreator.get(username)?.push(row);
+    const creatorIdentity = getCreatorIdentity(row);
+    if (!byCreator.has(creatorIdentity)) byCreator.set(creatorIdentity, []);
+    byCreator.get(creatorIdentity)?.push(row);
   }
 
   for (const row of rollingRows) {
-    const username = getUsername(row).toLowerCase();
-    if (!rollingByCreator.has(username)) rollingByCreator.set(username, []);
-    rollingByCreator.get(username)?.push(row);
+    const creatorIdentity = getCreatorIdentity(row);
+    if (!rollingByCreator.has(creatorIdentity)) rollingByCreator.set(creatorIdentity, []);
+    rollingByCreator.get(creatorIdentity)?.push(row);
   }
 
   return Array.from(byCreator.entries())
@@ -683,15 +708,19 @@ function buildCreatorSummaries(rows: CreatorStat[], rollingRows: CreatorStat[] =
       const managerRaw = getManagerRaw(latest);
       const sourceAgencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"), managerRaw);
       const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
+      const assignedGroup = managerAssignments[normalizeManagerKey(managerRaw)];
       const agencyValue = hasManagerKey(`${managerRaw} ${baseManagerLabel}`, STORM_MANAGER_KEYS)
         ? "Horizon"
         : hasManagerKey(`${managerRaw} ${baseManagerLabel}`, TRIDENT_MANAGER_KEYS)
           ? "Trident"
+          : assignedGroup === "Team Dan" || assignedGroup === "Team Mike / Indi"
+            ? "First Class"
           : sourceAgencyValue;
       const firstClassManager = getFirstClassManagerDetails(
         managerRaw,
         baseManagerLabel,
-        getUsername(latest)
+        getUsername(latest),
+        managerAssignments
       );
       const diamonds = creatorRows.reduce((sum, row) => sum + getNumber(row, ["diamonds", "Diamonds"]), 0);
       const liveHours = creatorRows.reduce(
@@ -1228,7 +1257,8 @@ function getScoreMovementReason(creator: CreatorSummary, previousScore: number |
 
 function buildManagerHealthTrend(
   allRows: CreatorStat[],
-  managerSummary: ManagerHealthSummary
+  managerSummary: ManagerHealthSummary,
+  managerAssignments: ManagerAssignments = {}
 ): ManagerHealthTrendPoint[] {
   const creatorKeys = new Set(managerSummary.creators.map((creator) => creator.key));
   const dates = Array.from(new Set(allRows.filter(isAquaRow).map((row) => row.stat_date)))
@@ -1237,9 +1267,9 @@ function buildManagerHealthTrend(
 
   return dates.map((date) => {
     const rowsUpToDate = allRows.filter(
-      (row) => isAquaRow(row) && row.stat_date <= date && creatorKeys.has(getUsername(row).toLowerCase())
+      (row) => isAquaRow(row) && row.stat_date <= date && creatorKeys.has(getCreatorIdentity(row))
     );
-    const summaries = buildCreatorSummaries(rowsUpToDate).filter(
+    const summaries = buildCreatorSummaries(rowsUpToDate, rowsUpToDate, managerAssignments).filter(
       (creator) => creatorKeys.has(creator.key) && !creator.isNewCreator
     );
     const score =
@@ -2564,6 +2594,7 @@ export default function CreatorIntelligencePage() {
   const [healthStatus, setHealthStatus] = useState("All Health");
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<CreatorStat[]>([]);
+  const [managerAssignments, setManagerAssignments] = useState<ManagerAssignments>({});
   const [configuredLeaderboardExclusions, setConfiguredLeaderboardExclusions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [selectedCreatorKey, setSelectedCreatorKey] = useState("");
@@ -2601,6 +2632,13 @@ export default function CreatorIntelligencePage() {
       .then((response) => response.json())
       .then((data) => setConfiguredLeaderboardExclusions(new Set((data.creators || []).filter((creator: { excludeFromLeaderboards?: boolean }) => creator.excludeFromLeaderboards).map((creator: { username: string }) => normalizeManagerKey(creator.username)))))
       .catch(() => setConfiguredLeaderboardExclusions(new Set()));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/data-analysis/manager-assignments", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => setManagerAssignments(data.managerGroups || data.assignments?.managerGroups || {}))
+      .catch(() => setManagerAssignments({}));
   }, []);
 
   useEffect(() => {
@@ -2651,7 +2689,10 @@ export default function CreatorIntelligencePage() {
     return rows.filter((row) => row.stat_date >= startDate && row.stat_date <= rollingEndDate);
   }, [rows, rollingEndDate]);
 
-  const allSummaries = useMemo(() => buildCreatorSummaries(dateRangeRows, rows), [dateRangeRows, rows]);
+  const allSummaries = useMemo(
+    () => buildCreatorSummaries(dateRangeRows, rows, managerAssignments),
+    [dateRangeRows, managerAssignments, rows]
+  );
   const aquaRows = useMemo(() => dateRangeRows.filter(isAquaRow), [dateRangeRows]);
   const latestAquaDate = useMemo(() => {
     const dates = aquaRows.map((row) => row.stat_date).sort((a, b) => a.localeCompare(b));
@@ -2662,7 +2703,7 @@ export default function CreatorIntelligencePage() {
       ? aquaRows.filter((row) => row.stat_date === latestAquaDate)
       : aquaRows;
 
-    return new Set(latestRows.map((row) => getUsername(row).toLowerCase()));
+    return new Set(latestRows.map(getCreatorIdentity));
   }, [aquaRows, latestAquaDate]);
   const aquaSummaries = useMemo(
     () =>
@@ -2798,7 +2839,7 @@ export default function CreatorIntelligencePage() {
     () =>
       managerHealthSummaries
         .map((managerSummary) => {
-          const trend = buildManagerHealthTrend(rows, managerSummary);
+          const trend = buildManagerHealthTrend(rows, managerSummary, managerAssignments);
           const first = trend[0]?.score ?? 0;
           const latest = trend[trend.length - 1]?.score ?? 0;
           const change = trend.length > 1 ? latest - first : 0;
@@ -2838,7 +2879,7 @@ export default function CreatorIntelligencePage() {
           };
         })
         .sort((a, b) => b.weekPercentChange - a.weekPercentChange),
-    [managerHealthSummaries, rows]
+    [managerAssignments, managerHealthSummaries, rows]
   );
 
   const newCreators = useMemo(
@@ -2909,7 +2950,7 @@ export default function CreatorIntelligencePage() {
         (row) =>
           row.stat_date >= monthStart &&
           row.stat_date <= rollingEndDate &&
-          creatorKeys.has(getUsername(row).toLowerCase())
+          creatorKeys.has(getCreatorIdentity(row))
       )
       .reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
   }, [filteredCreators, rollingEndDate, rows]);
@@ -2944,9 +2985,9 @@ export default function CreatorIntelligencePage() {
 
     return dates.map((date) => {
       const rowsUpToDate = aquaRows.filter(
-        (row) => row.stat_date <= date && activeAquaCreatorKeys.has(getUsername(row).toLowerCase())
+        (row) => row.stat_date <= date && activeAquaCreatorKeys.has(getCreatorIdentity(row))
       );
-      const matureCreators = buildCreatorSummaries(rowsUpToDate).filter(
+      const matureCreators = buildCreatorSummaries(rowsUpToDate, rowsUpToDate, managerAssignments).filter(
         (creator) =>
           !creator.isNewCreator &&
           (activeManager === "All Managers" || creator.managerLabel === activeManager)
@@ -2963,7 +3004,7 @@ export default function CreatorIntelligencePage() {
         creators: matureCreators.length,
       };
     });
-  }, [activeAquaCreatorKeys, activeManager, aquaRows]);
+  }, [activeAquaCreatorKeys, activeManager, aquaRows, managerAssignments]);
 
   const weeklyHealthComparison = useMemo<WeeklyHealthComparison[]>(() => {
     if (!latestAquaDate) return [];
@@ -2976,9 +3017,9 @@ export default function CreatorIntelligencePage() {
     const previousRows = aquaRows.filter(
       (row) =>
         previousUploadedDateSet.has(row.stat_date) &&
-        activeAquaCreatorKeys.has(getUsername(row).toLowerCase())
+        activeAquaCreatorKeys.has(getCreatorIdentity(row))
     );
-    const previousSummaries = buildCreatorSummaries(previousRows).filter(
+    const previousSummaries = buildCreatorSummaries(previousRows, previousRows, managerAssignments).filter(
       (creator) => !creator.isNewCreator
     );
     const previousByCreator = new Map(
@@ -3000,7 +3041,7 @@ export default function CreatorIntelligencePage() {
         const bChange = b.change ?? -999;
         return aChange - bChange;
       });
-  }, [activeAquaCreatorKeys, aquaRows, latestAquaDate, matureFilteredCreators]);
+  }, [activeAquaCreatorKeys, aquaRows, latestAquaDate, managerAssignments, matureFilteredCreators]);
 
   const improvingCreators = useMemo(
     () =>
@@ -3536,7 +3577,7 @@ export default function CreatorIntelligencePage() {
                             : 0,
                           managerGrowthSummaries.find(
                             (item) => item.managerSummary.manager === managerSummary.manager
-                          )?.trend || buildManagerHealthTrend(rows, managerSummary)
+                          )?.trend || buildManagerHealthTrend(rows, managerSummary, managerAssignments)
                         )
                       }
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
