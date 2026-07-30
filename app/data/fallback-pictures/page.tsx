@@ -64,6 +64,12 @@ export default function FallbackPicturesPage() {
     readImage(file, (nextImage) => void save(avatars.map((item) => item.username === creator ? { ...item, imageUrl: nextImage } : item)));
   }
 
+  function removeAllFallbackPictures() {
+    if (!avatars.length) return setMessage("There are no fallback pictures to remove.");
+    if (!window.confirm("Remove every queued and saved fallback picture? Picture Check can add new missing creators again later.")) return;
+    void save([]);
+  }
+
   const needsPicture = avatars.filter((avatar) => !avatar.imageUrl);
   const readyPictures = avatars.filter((avatar) => avatar.imageUrl);
 
@@ -72,6 +78,7 @@ export default function FallbackPicturesPage() {
     <p className="mt-12 text-xs font-black uppercase tracking-[0.3em] text-sky-200/75">Creator assets</p>
     <h1 className="mt-4 font-[family-name:var(--font-norwester)] text-5xl uppercase sm:text-6xl">Fallback <span className="text-yellow-300">Pictures</span></h1>
     <p className="mt-4 text-white/60">Add a creator now and their photo later. Picture Check automatically puts any missing creators in the queue below.</p>
+    <button type="button" onClick={removeAllFallbackPictures} disabled={!avatars.length} className="mt-5 rounded-xl border border-red-300/45 bg-red-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-100 hover:bg-red-300/20 disabled:cursor-not-allowed disabled:opacity-40">Remove all fallback pictures</button>
     <section className="mt-10 rounded-3xl border border-sky-300/20 bg-white/[0.04] p-5">
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"><input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Creator username" className="rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-white"/><label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) readImage(file, setImageUrl); }} className="cursor-pointer rounded-xl border border-dashed border-sky-300/40 bg-black/40 px-4 py-3 text-center text-sm text-sky-100">{imageUrl ? "Picture selected — click or drop to replace" : "Choose or drop picture (optional)"}<input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) readImage(file, setImageUrl); }}/></label><button type="button" onClick={addCreator} className="rounded-xl bg-yellow-300 px-5 py-3 text-xs font-black uppercase text-black">Submit creator</button></div>
       <div className="mt-5 rounded-2xl border border-dashed border-sky-300/30 bg-sky-300/5 p-4"><label className="block text-xs font-black uppercase tracking-widest text-sky-100">Paste creator list</label><p className="mt-1 text-sm text-white/55">Paste usernames separated by commas, spaces, or new lines to add everyone to the queue.</p><textarea value={creatorList} onChange={(e) => setCreatorList(e.target.value)} placeholder={"emily17mc\\nsoulbeliever5"} rows={4} className="mt-3 w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-white"/><button type="button" onClick={addCreatorList} className="mt-3 rounded-xl bg-sky-300 px-5 py-3 text-xs font-black uppercase text-black">Add pasted creators</button></div>
