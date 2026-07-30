@@ -1735,11 +1735,10 @@ export default function BattleGeneratorPage() {
       const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
       const topHours = [...rows].sort((a, b) => hoursFor(b) - hoursFor(a)).slice(0, 5);
       const avatars = new Map<string, string>();
-      // Resolve and embed each image serially. Loading the TikTok image URLs together
-      // can cause TikTok to serve only the first image and reject the remaining slots.
+      // TikTok can return a stale avatar when several profile pages are scraped
+      // at once. Resolve each creator separately so every slot keeps its own image.
       for (const username of new Set([...topDiamonds, ...topHours].map(usernameFor))) {
-        const avatar = await fetchTikTokAvatar(username);
-        avatars.set(username, await imageToDataUrl(avatar));
+        avatars.set(username, await fetchTikTokAvatar(username));
       }
       const compact = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 ? 1 : 0)}K` : String(value);
       const filled = normalizeTeamDanPosterTemplate({
@@ -2226,34 +2225,30 @@ export default function BattleGeneratorPage() {
 
     const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const res = await fetch("/api/tiktok-avatar-v2", {
-          method: "POST",
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-          body: JSON.stringify({
-            username: cleanUsername,
-            forceRefresh: true,
-            refresh: `${refreshKey}-${attempt}`,
-          }),
-        });
+    try {
+      const res = await fetch("/api/tiktok-avatar-v2", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+        body: JSON.stringify({
+          username: cleanUsername,
+          forceRefresh: true,
+          refresh: refreshKey,
+        }),
+      });
 
-        const json = await res.json();
-        if (json.avatar) {
-          if (String(json.avatar).startsWith("/")) return String(json.avatar);
-          return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
-        }
-      } catch {
-        // TikTok can reject individual requests temporarily; retry before leaving a slot empty.
-      }
-      if (attempt < 2) await new Promise<void>((resolve) => window.setTimeout(resolve, 750 * (attempt + 1)));
+      const json = await res.json();
+      if (!json.avatar) return "";
+      if (String(json.avatar).startsWith("/")) return String(json.avatar);
+
+      return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
+    } catch {
+      return "";
     }
-    return "";
   }
 
   async function autoFillSingleAvatar(

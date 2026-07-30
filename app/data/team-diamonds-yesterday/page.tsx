@@ -322,25 +322,20 @@ async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<strin
   if (localAvatar) return localAvatar;
   const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const res = await fetch("/api/tiktok-avatar-v2", {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", Pragma: "no-cache" },
-        body: JSON.stringify({ username: cleanUsername, forceRefresh: true, refresh: refreshKey }),
-      });
-      const json = await res.json();
-      if (json.avatar) {
-        if (String(json.avatar).startsWith("/")) return String(json.avatar);
-        return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
-      }
-    } catch {
-      // Retry transient TikTok blocks before treating a picture as unavailable.
-    }
-    if (attempt < 2) await new Promise<void>((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
+  try {
+    const res = await fetch("/api/tiktok-avatar-v2", {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", Pragma: "no-cache" },
+      body: JSON.stringify({ username: cleanUsername, forceRefresh: true, refresh: refreshKey }),
+    });
+    const json = await res.json();
+    if (!json.avatar) return "";
+    if (String(json.avatar).startsWith("/")) return String(json.avatar);
+    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
+  } catch {
+    return "";
   }
-  return "";
 }
 
 async function embedAvatarForPoster(url: string) {
@@ -720,8 +715,6 @@ export default function TeamDiamondsYesterdayPage() {
         setDownloadProgress({ current: index, total: candidateUsernames.length, label: `Checking @${username}` });
         const avatar = await resolveAvatarForPoster(username, fallbackAvatars);
         if (!avatar) failed.push(username);
-        // Keep the profile requests below TikTok's burst threshold.
-        if (index < candidateUsernames.length - 1) await new Promise<void>((resolve) => window.setTimeout(resolve, 650));
       }
       if (failed.length) {
         const existing = (fallbacks.avatars || []) as { username: string; imageUrl: string }[];
