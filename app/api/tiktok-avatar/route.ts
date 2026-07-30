@@ -1,52 +1,20 @@
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
-
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const username = body.username;
+    const username = String(body.username || "").replace("@", "").trim().toLowerCase();
 
-    const cleanUsername = String(username || "")
-      .replace("@", "")
-      .trim()
-      .toLowerCase();
-
-    if (!cleanUsername) {
-      return NextResponse.json(
-        { error: "Username missing" },
-        {
-          status: 400,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        }
-      );
-    }
-
-    const refreshKey = Date.now();
-    const randomKey = Math.random();
+    if (!username) return NextResponse.json({ error: "Username missing" }, { status: 400 });
 
     const response = await fetch(
-      `https://www.tiktok.com/@${cleanUsername}?_t=${refreshKey}&_r=${randomKey}`,
+      `https://www.tiktok.com/@${username}`,
       {
-        method: "GET",
-        cache: "no-store",
-        next: { revalidate: 0 },
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-GB,en;q=0.9",
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
         },
+        cache: "no-store",
       }
     );
 
@@ -61,20 +29,9 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: "Profile picture not found",
-          username: cleanUsername,
-          sourceStatus: response.status,
-          sourceUrl: response.url,
-          htmlLength: html.length,
+          username,
         },
-        {
-          status: 404,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        }
+        { status: 404 }
       );
     }
 
@@ -85,39 +42,9 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         avatar,
-        username: cleanUsername,
-        refreshed: true,
-        timestamp: refreshKey,
-        randomKey,
-        sourceStatus: response.status,
-        sourceUrl: response.url,
-        htmlLength: html.length,
-        avatarId: avatar.split("/").pop()?.split("?")[0],
-        scrapeMode: "mobile-iphone",
-      },
-      {
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
       }
     );
   } catch (err) {
-    console.log("TikTok avatar error:", err);
-
-    return NextResponse.json(
-      { error: "Failed to fetch TikTok profile" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      }
-    );
+    return NextResponse.json({ error: "Failed to fetch TikTok profile" }, { status: 500 });
   }
 }
