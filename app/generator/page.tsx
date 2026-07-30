@@ -107,7 +107,7 @@ type TeamPosterTemplate = {
   /** Manager key used by the Team Diamonds Yesterday downloader. */
   managerKey?: string;
   /** Saved download grouping for Team Diamonds Yesterday. */
-  teamSide?: "dan" | "mike-indi";
+  teamSide?: "dan" | "mike-indi" | "sub-agencies";
   elements: TeamPosterElement[];
 };
 
@@ -4051,13 +4051,14 @@ function renderText(
               <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Team Side</p>
               <select
                 value={teamPosterTemplate.teamSide || "dan"}
-                onChange={(event) => setTeamPosterTemplate((current) => ({ ...current, teamSide: event.target.value as "dan" | "mike-indi" }))}
+                onChange={(event) => setTeamPosterTemplate((current) => ({ ...current, teamSide: event.target.value as "dan" | "mike-indi" | "sub-agencies" }))}
                 className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-yellow-300"
               >
                 <option value="dan">Team Dan + James</option>
                 <option value="mike-indi">Team Mike + Indi</option>
+                <option value="sub-agencies">Sub-agencies</option>
               </select>
-              <p className="mt-2 text-xs text-white/45">Saved with this layout. Team Diamonds Yesterday groups downloads by this side.</p>
+              <p className="mt-2 text-xs text-white/45">Saved with this layout. Team Diamonds Yesterday groups downloads by this category.</p>
             </label>
 
             <div className="grid grid-cols-2 gap-3">

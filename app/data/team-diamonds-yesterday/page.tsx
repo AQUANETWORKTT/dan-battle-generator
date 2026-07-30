@@ -45,7 +45,8 @@ type TeamPosterTemplate = {
   backgroundUrl: string;
   backgroundPath?: string;
   managerKey?: string;
-  teamSide?: "dan" | "mike-indi";
+  /** Saved download category, chosen in the Team Poster Builder. */
+  teamSide?: "dan" | "mike-indi" | "sub-agencies";
   elements: TeamPosterElement[];
 };
 
@@ -452,6 +453,7 @@ export default function TeamDiamondsYesterdayPage() {
   const templatesBySide = {
     dan: templateCards.filter((item) => (item.template.teamSide || "dan") === "dan"),
     "mike-indi": templateCards.filter((item) => item.template.teamSide === "mike-indi"),
+    "sub-agencies": templateCards.filter((item) => item.template.teamSide === "sub-agencies"),
   };
 
   useEffect(() => {
@@ -627,13 +629,14 @@ export default function TeamDiamondsYesterdayPage() {
     saveAs(blob, `${selectedTemplateName}-${getYesterdayDateKey()}.png`);
   }
 
-  async function downloadAllPosters(side?: "dan" | "mike-indi") {
+  async function downloadAllPosters(side?: "dan" | "mike-indi" | "sub-agencies") {
     const allItems = templates.length
       ? templates
       : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
     const items = side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
     if (!items.length) {
-      setMessage(`No saved presets on the ${side === "dan" ? "Team Dan + James" : "Team Mike + Indi"} side yet.`);
+      const categoryLabel = side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : "Sub-agencies";
+      setMessage(`No saved presets in ${categoryLabel} yet.`);
       return;
     }
     setLoading(true);
@@ -655,7 +658,7 @@ export default function TeamDiamondsYesterdayPage() {
         if (blob) zip.file(`${templateLabel(item.name)}.png`, blob);
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
-      const sideLabel = side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : "All teams";
+      const sideLabel = side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : side === "sub-agencies" ? "Sub-agencies" : "All teams";
       setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
       const archive = await zip.generateAsync({ type: "blob" });
       saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${getYesterdayDateKey()}.zip`);
@@ -799,12 +802,12 @@ export default function TeamDiamondsYesterdayPage() {
 
           <section className="mt-6 space-y-5">
             <div className="grid gap-6 xl:grid-cols-2">
-              {(["dan", "mike-indi"] as const).map((side) => (
+              {(["dan", "mike-indi", "sub-agencies"] as const).map((side) => (
                 <div key={side} className="rounded-3xl border border-yellow-300/20 bg-black/30 p-4">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-xl font-black uppercase tracking-widest text-yellow-200">{side === "dan" ? "Team Dan + James" : "Team Mike + Indi"}</h2>
+                    <h2 className="text-xl font-black uppercase tracking-widest text-yellow-200">{side === "dan" ? "Team Dan + James" : side === "mike-indi" ? "Team Mike + Indi" : "Sub-agencies"}</h2>
                     <button type="button" onClick={() => void downloadAllPosters(side)} disabled={loading || !templatesBySide[side].length} className="rounded-xl bg-yellow-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-40">
-                      Download All {side === "dan" ? "Dan + James" : "Mike + Indi"}
+                      Download All {side === "dan" ? "Dan + James" : side === "mike-indi" ? "Mike + Indi" : "Subs"}
                     </button>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
