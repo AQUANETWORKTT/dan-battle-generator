@@ -145,6 +145,23 @@ function getManagerKey(row: CreatorStat) {
     .toLowerCase();
 }
 
+// Managers can move between agency mail domains while remaining the same team.
+// Compare their stable local-name identity as well as the exact source address.
+function getManagerIdentity(value: string) {
+  const localPart = value.trim().toLowerCase().split("@")[0] || "";
+  return localPart
+    .replace(/^firstclassagency[_.-]?/, "")
+    .replace(/[_.-]?(aquaagency|respawnagency|paradiseagency)$/i, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
+  if (rowManagerKey === templateManagerKey) return true;
+  const rowIdentity = getManagerIdentity(rowManagerKey);
+  const templateIdentity = getManagerIdentity(templateManagerKey);
+  return Boolean(rowIdentity && templateIdentity && rowIdentity === templateIdentity);
+}
+
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
@@ -158,7 +175,7 @@ function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate) 
       /(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|firstclassagencykyran|bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(managerKeyNormalized)
     );
   }
-  return getManagerKey(row) === managerKey;
+  return managerKeysMatch(getManagerKey(row), managerKey);
 }
 
 function createDefaultTemplate(): TeamPosterTemplate {
@@ -498,7 +515,7 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
-  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false): Promise<string[]> {
+  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false): Promise<string[] | null> {
     setLoading(true);
     setMessage("");
 
@@ -526,7 +543,7 @@ export default function TeamDiamondsYesterdayPage() {
 
       if (!rows.length) {
         setMessage(`No rows found for ${(activeTemplate.managerKey || "team-dan")} on ${yesterday}.`);
-        return [];
+        return null;
       }
 
       const diamondRows = [...rows]
@@ -588,7 +605,7 @@ export default function TeamDiamondsYesterdayPage() {
     } catch (error) {
       console.error(error);
       setMessage(error instanceof Error ? error.message : "Could not build Team Dan poster.");
-      return [];
+      return null;
     } finally {
       setLoading(false);
     }
@@ -631,6 +648,7 @@ export default function TeamDiamondsYesterdayPage() {
         setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
         setSelectedTemplateName(item.name);
         const failedForPoster = await buildPreview(item.template, true);
+        if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
         failedForPoster.forEach((username) => failedAvatars.add(username));
         await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
@@ -734,7 +752,8 @@ export default function TeamDiamondsYesterdayPage() {
     setSelectedTemplateName(item.name);
     setLoading(true);
     try {
-      await buildPreview(item.template, true);
+      const failedForPoster = await buildPreview(item.template, true);
+      if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
