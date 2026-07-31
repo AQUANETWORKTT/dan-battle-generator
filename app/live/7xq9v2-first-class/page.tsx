@@ -104,11 +104,15 @@ function Avatar({ username, className = "" }: { username: string; className?: st
 export default function FirstClassLeaderboard() {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
+  const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch(`/api/events/first-class/stats?from=${FIRST_CLASS_EVENT_FROM}&to=${FIRST_CLASS_EVENT_TO}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((data) => setScores(data.scores || {}))
+      .then((data) => {
+        setScores(data.scores || {});
+        setDisplayNames(data.displayNames || {});
+      })
       .catch(() => undefined)
   }, []);
 
@@ -117,11 +121,18 @@ export default function FirstClassLeaderboard() {
       const number = index + 1;
       const creators: LeaderboardCreator[] = FIRST_CLASS_CREATORS
         .filter((creator) => creator.teamNumber === number)
-        .map((creator) => ({ ...creator, diamonds: Number(scores[creator.username.toLowerCase()] || 0) }))
+        .map((creator) => {
+          const canonicalUsername = creator.username.toLowerCase();
+          return {
+            ...creator,
+            username: displayNames[canonicalUsername] || creator.username,
+            diamonds: Number(scores[canonicalUsername] || 0),
+          };
+        })
         .sort((a, b) => b.diamonds - a.diamonds || a.slot - b.slot);
       return { number, creators, total: creators.reduce((sum, creator) => sum + creator.diamonds, 0) };
     }).sort((a, b) => b.total - a.total || a.number - b.number);
-  }, [scores]);
+  }, [displayNames, scores]);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#061927] text-white">

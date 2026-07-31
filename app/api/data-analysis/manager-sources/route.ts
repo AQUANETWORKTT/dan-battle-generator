@@ -13,6 +13,10 @@ const MANAGER_LABELS: Record<string, string> = {
   "firstclassagency_dylan@outlook.com": "Dylan",
   "firstclassagency_luke@outlook.com": "Luke",
   "firstclassagency_ellie@outlook.com": "Ellie",
+  georgialilyglow: "G",
+  teamgeorgialilyglow: "G",
+  lisaruss1988: "Lisa",
+  teamlisaruss1988: "Lisa",
 };
 
 const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }> = {
@@ -46,7 +50,8 @@ function getCreatorKey(row: CreatorStat) {
 
 function getManagerLabel(raw: string, group = "") {
   const clean = raw.replace(/\[|\]/g, "").replace(/\(mailto:|\)/g, "").trim().toLowerCase();
-  if (MANAGER_LABELS[clean]) return `Team ${MANAGER_LABELS[clean]}`;
+  const configuredName = MANAGER_LABELS[clean] || MANAGER_LABELS[normalize(clean.split("@")[0])];
+  if (configuredName) return `Team ${configuredName}`;
   if (clean.includes("@")) return `Team ${titleCase(clean.split("@")[0].replace(/_?(aqua|respawn|paradise|storm|strive)?agency$/i, "").replace(/respawn\d*$/i, "").replace(/jb$/i, ""))}`;
   if (clean) return `Team ${titleCase(clean)}`;
   return group.toLowerCase().startsWith("team ") ? group : "Unassigned";

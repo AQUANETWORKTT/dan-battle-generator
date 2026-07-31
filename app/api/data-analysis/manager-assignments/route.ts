@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const SETTINGS_NAME = "manager-assignment-settings";
 const GROUPS = ["Team Dan", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Unassigned", "Excluded"] as const;
 const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "firstclassagencyalf", "firstclassagencydan", "teamdan", "firstclassagencyjenson", "firstclassagencyjacob", "teamjacob", "cscott1232005", "trident125", "firstclassindi", "firstclassagencyindi", "teritilcock1994", "mikehalesjb"];
+const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
 type SavedAssignments = { managerGroups: Record<string, Group> };
@@ -14,6 +15,8 @@ function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) { return clean(value).toLowerCase().replace(/[^a-z0-9]/g, ""); }
 function managerRaw(row: CreatorStat) { return clean(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email); }
 function managerName(raw: string) {
+  const configuredName = MANAGER_DISPLAY_NAMES[key(raw).replace(/(outlook|gmail|mail)com$/, "")];
+  if (configuredName) return `Team ${configuredName}`;
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]?(aquaagency|respawnagency|paradiseagency)$/i, "").replace(/[_.-]+/g, " ").trim();
   return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : "Unassigned";
 }

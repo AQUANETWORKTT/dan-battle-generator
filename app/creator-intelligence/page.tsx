@@ -193,6 +193,10 @@ const MANAGER_LABELS: Record<string, string> = {
   "firstclassagency_dylan@outlook.com": "Dylan",
   "firstclassagency_luke@outlook.com": "Luke",
   "firstclassagency_ellie@outlook.com": "Ellie",
+  georgialilyglow: "G",
+  teamgeorgialilyglow: "G",
+  lisaruss1988: "Lisa",
+  teamlisaruss1988: "Lisa",
 };
 
 function safeNumber(value: unknown) {
@@ -326,8 +330,9 @@ function getManagerLabel(value: string, groupValue = "") {
     .trim()
     .toLowerCase();
 
-  if (MANAGER_LABELS[clean] || MANAGER_LABELS[value.toLowerCase()]) {
-    return `Team ${MANAGER_LABELS[clean] || MANAGER_LABELS[value.toLowerCase()]}`;
+  const configuredName = MANAGER_LABELS[clean] || MANAGER_LABELS[value.toLowerCase()] || MANAGER_LABELS[normalizeManagerKey(clean.split("@")[0])];
+  if (configuredName) {
+    return `Team ${configuredName}`;
   }
 
   if (clean.includes("@")) {

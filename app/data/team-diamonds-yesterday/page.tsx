@@ -168,10 +168,15 @@ const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
   "group:horizon": "Horizon",
   "group:trident": "Trident",
 };
+const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "lisaruss1988"];
 
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
+  if (managerKey === "combined:lisa-g") {
+    const rowManagerKey = getManagerKey(row).replace(/[^a-z0-9]/g, "");
+    return TEAM_LISA_G_MANAGER_KEYS.some((key) => rowManagerKey.includes(key));
+  }
   const selectedGroup = TEAM_POSTER_GROUP_SOURCES[managerKey];
   if (selectedGroup) {
     return managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")] === selectedGroup;

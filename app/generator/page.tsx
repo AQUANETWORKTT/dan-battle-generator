@@ -149,6 +149,7 @@ const TEAM_MIKE_INDI_MANAGER_KEYS = [
   "rachellouise18", "firstclassagencylauren", "liamproctor04", "abbidl",
   "kishaunnolan1", "calliecrawford14", "megan25121990",
 ];
+const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "lisaruss1988"];
 const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   cjtokens1237: "CJ",
   teamalf: "Alf",
@@ -182,6 +183,8 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   kishaunnolan1: "Kash",
   calliecrawford14: "Callie",
   megan25121990: "Megan",
+  georgialilyglow: "G",
+  lisaruss1988: "Lisa",
 };
 const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
   "jamesaquaagency",
@@ -1006,6 +1009,7 @@ export default function BattleGeneratorPage() {
   const [newTeamPosterSourceName, setNewTeamPosterSourceName] = useState("blank");
   const [teamPosterManagerOptions, setTeamPosterManagerOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "team-dan", label: "Team Dan + James - Direct Teams" },
+    { value: "combined:lisa-g", label: "Team Lisa / G - Combined" },
     { value: "first-class-all", label: "First Class — All Creators" },
     { value: "group:respawn", label: "Team Respawn — All Managers" },
     { value: "group:paradise", label: "Team Paradise — All Managers" },
@@ -1738,6 +1742,9 @@ export default function BattleGeneratorPage() {
           const directTeamKey = managerKeyNormalized.replace(/(outlook|gmail|mail)com$/, "");
           return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);
         }
+        if (managerKey === "combined:lisa-g") {
+          return TEAM_LISA_G_MANAGER_KEYS.some((key) => managerKeyNormalized.includes(key));
+        }
         const selectedGroup = ({
           "group:respawn": "Respawn",
           "group:paradise": "Paradise",
@@ -2042,6 +2049,7 @@ export default function BattleGeneratorPage() {
           { value: "group:paradise", label: "Team Paradise — All Managers" },
           { value: "group:horizon", label: "Team Horizon — All Managers" },
           { value: "group:trident", label: "Team Trident — All Managers" },
+          { value: "combined:lisa-g", label: "Team Lisa / G - Combined" },
           ...managers,
         ]);
       } catch {
