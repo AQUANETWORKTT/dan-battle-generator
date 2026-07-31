@@ -140,17 +140,6 @@ const MANAGER_LEADERBOARD_GROUPS = [
   "Dan + Aqua",
   "First Class",
 ] as const;
-const TEAM_DAN_MANAGER_KEYS = [
-  "cjtokens1237", "teamalf", "firstclassagencyalf", "firstclassagencyabbie",
-  "firstclassagencyolivia", "sjm20101", "firstclassagencypaige", "jasminabidzane",
-  "connorfirstclass", "brandyfalconer35", "fearnegurry1", "demileawebster7",
-  "louisesquelch", "ashwalbridge", "candiceaquaagency", "firstclassagencykyran", "kyran", "kieran", "kaybon03", "kbon03",
-];
-const TEAM_MIKE_INDI_MANAGER_KEYS = [
-  "bmwe46320d", "zaliheyoncu", "firstclassagencykayden", "xaramills17",
-  "rachellouise18", "firstclassagencylauren", "liamproctor04", "abbidl",
-  "kishaunnolan1", "calliecrawford14", "megan25121990",
-];
 const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "lisaruss1988"];
 const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   cjtokens1237: "CJ",
@@ -188,25 +177,6 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   georgialilyglow: "G",
   lisaruss1988: "Lisa",
 };
-const MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS = [
-  "jamesaquaagency",
-  "teddie1",
-  "teamalf",
-  "firstclassagencyalf",
-  "firstclassagencydan",
-  "teamdan",
-  "firstclassagencyjenson",
-  "firstclassagencyjacob",
-  "teamjacob",
-];
-const TEAM_MIKE_INDI_MANAGER_LEADERBOARD_EXCLUDED_KEYS = [
-  "cscott1232005",
-  "trident125",
-  "firstclassindi",
-  "firstclassagencyindi",
-  "teritilcock1994",
-  "mikehalesjb",
-];
 const LOCAL_AVATAR_PATHS: Record<string, string> = {
   cerilaw83: "/avatars/cerilaw83.jpg",
   serenitetiktok: "/avatars/cerilaw83.jpg",
@@ -522,64 +492,6 @@ function safeNumber(value: unknown) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function getManagerLeaderboardGroup(row: ManagerLeaderboardStat) {
-  const source = String(row.team || row.group_name || row.agency || "").trim().toLowerCase();
-  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").toLowerCase();
-
-  if (["trident125gmailcom", "trident125mailcom"].includes(manager.replace(/[^a-z0-9]/g, "")) || source.includes("trident")) return "Trident";
-  if (/(hannakingismail92|stormlive)/.test(manager) || /(storm|horizon)/.test(source)) return "Team Horizon";
-  if (/(firstclassagencydan|firstclassagencymikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
-  if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.replace(/[^a-z0-9]/g, "").includes("aquaagencycom")) return "Team Dan";
-  if (TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => manager.includes(key))) return "Team Mike / Indi";
-  if (source.includes("mike") || source.includes("indi")) return "Team Mike / Indi";
-  if (source.includes("team dan")) return "Team Dan";
-  if (source.includes("paradise")) return "Paradise";
-  if (source.includes("respawn")) return "Respawn";
-  if (source.includes("aqua")) return "Aqua";
-  if (source.includes("first class") || manager.includes("firstclassagency")) return "First Class";
-  return "";
-}
-
-function getCreatorIntelligenceManagerGroup(row: ManagerLeaderboardStat) {
-  const groupValue = String(row.team || row.group_name || "Unassigned").trim() || "Unassigned";
-  const groupKey = groupValue.toLowerCase();
-  const rawAgency = String(row.agency || "First Class").trim() || "First Class";
-  const sourceAgency = groupKey.includes("aqua")
-    ? "Aqua"
-    : groupKey.includes("respawn")
-      ? "Respawn"
-      : groupKey.includes("paradise")
-        ? "Paradise"
-        : groupKey.includes("storm") || groupKey.includes("strive") || groupKey.includes("horizon")
-          ? "Horizon"
-          : rawAgency === "Strive" || rawAgency === "Storm" ? "Horizon" : rawAgency;
-  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-
-  const agency = ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Horizon" : sourceAgency;
-  let managerGroup = agency;
-  if (agency === "First Class") {
-    if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager)) managerGroup = "Exempt";
-    else if (TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key))) managerGroup = "Team Dan";
-    else if (TEAM_MIKE_INDI_MANAGER_KEYS.some((key) => manager.includes(key))) managerGroup = "Team Mike / Indi";
-    else managerGroup = "Team Mike / Indi";
-  }
-
-  return {
-    group: ["trident125gmailcom", "trident125mailcom"].includes(manager) ? "Trident" : /(hannakingismail92|stormlive)/.test(manager) ? "Team Horizon" : groupValue,
-    agency,
-    managerGroup,
-  };
-}
-
-function matchesCreatorIntelligenceGroup(row: ManagerLeaderboardStat, activeGroup: string) {
-  if (activeGroup === "All Groups") return true;
-  const assignment = getCreatorIntelligenceManagerGroup(row);
-  if (assignment.managerGroup === "Exempt") return activeGroup === "Exempt";
-  return assignment.agency === activeGroup || assignment.managerGroup === activeGroup || assignment.group === activeGroup;
-}
-
 function getManagerLeaderboardName(row: ManagerLeaderboardStat) {
   const raw = String(
     row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "Unassigned"
@@ -616,39 +528,16 @@ function getManagerLeaderboardManagerKey(row: ManagerLeaderboardStat) {
     .replace(/[^a-z0-9]/g, "");
 }
 
-function isExcludedFromManagerLeaderboard(row: ManagerLeaderboardStat) {
-  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  return MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS.some((key) => manager.includes(key));
-}
-
-function isExcludedFromTeamMikeIndiManagerLeaderboard(row: ManagerLeaderboardStat) {
-  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  return (
-    !manager ||
-    manager === "unassigned" ||
-    TEAM_MIKE_INDI_MANAGER_LEADERBOARD_EXCLUDED_KEYS.some((key) => manager.includes(key))
-  );
-}
-
 function belongsToSelectedManagerLeaderboardGroup(
   row: ManagerLeaderboardStat,
   group: string,
   managerGroups: Record<string, string> = {}
 ) {
   const assignedGroup = managerGroups[getManagerLeaderboardManagerKey(row)];
-  if (assignedGroup) return assignedGroup === (group === "Team Horizon" ? "Horizon" : group);
-  if (group !== "Team Dan" && group !== "Dan + Aqua") return matchesCreatorIntelligenceGroup(row, group);
-  const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  if (MANAGER_LEADERBOARD_EXCLUDED_MANAGER_KEYS.some((key) => manager.includes(key))) return false;
-  const isTeamDanManager = TEAM_DAN_MANAGER_KEYS.some((key) => manager.includes(key)) || manager.includes("aquaagencycom");
-  if (group === "Team Dan") return isTeamDanManager;
-  return isTeamDanManager || getManagerLeaderboardGroup(row) === "Aqua";
+  // Manager Assignments is the single source of truth for this builder. A
+  // manager moved on that board must appear in their newly selected group.
+  if (!assignedGroup) return false;
+  return assignedGroup === (group === "Team Horizon" ? "Horizon" : group);
 }
 
 function createManagerLeaderboardTemplate(rowCount = DEFAULT_MANAGER_LEADERBOARD_ROWS): TeamPosterTemplate {
@@ -965,7 +854,7 @@ export default function BattleGeneratorPage() {
   const [selectedManagerLeaderboardGroup, setSelectedManagerLeaderboardGroup] = useState("All Groups");
   const [managerLeaderboardRows, setManagerLeaderboardRows] = useState<ManagerLeaderboardRow[]>([]);
   const [managerLeaderboardStatus, setManagerLeaderboardStatus] = useState(
-    "Choose a group to build the current calendar-month manager leaderboard."
+    "Choose a Manager Assignments group, then load its current calendar-month manager leaderboard."
   );
   const [managerLeaderboardLoading, setManagerLeaderboardLoading] = useState(false);
   const [managerLeaderboardTemplate, setManagerLeaderboardTemplate] = useState<TeamPosterTemplate>(createManagerLeaderboardTemplate);
@@ -1802,7 +1691,7 @@ export default function BattleGeneratorPage() {
     }
 
     setManagerLeaderboardLoading(true);
-    setManagerLeaderboardStatus("Loading Creator Intelligence manager totals...");
+    setManagerLeaderboardStatus("Loading Creator Intelligence data and the current Manager Assignments...");
 
     const { data: latestRows, error: latestError } = await supabase
       .from("creator_daily_stats")
@@ -1870,8 +1759,10 @@ export default function BattleGeneratorPage() {
     for (const creatorRows of rowsByCreator.values()) {
       const latestCreatorRow = [...creatorRows].sort((a, b) => String(a.stat_date || "").localeCompare(String(b.stat_date || ""))).at(-1);
       if (!latestCreatorRow) continue;
-      if (isExcludedFromManagerLeaderboard(latestCreatorRow)) continue;
-      if (activeGroup === "Team Mike / Indi" && isExcludedFromTeamMikeIndiManagerLeaderboard(latestCreatorRow)) continue;
+      const assignedGroup = managerGroups[getManagerLeaderboardManagerKey(latestCreatorRow)];
+      // A manager only disappears when they are intentionally placed in the
+      // Excluded column on Manager Assignments. This applies to every group.
+      if (assignedGroup === "Excluded") continue;
       if (activeGroup !== "All Groups" && !belongsToSelectedManagerLeaderboardGroup(latestCreatorRow, activeGroup, managerGroups)) continue;
       const manager = getManagerLeaderboardName(latestCreatorRow);
       if (manager === "Unassigned") continue;
@@ -3782,12 +3673,12 @@ function renderText(
           <div>
             <h2 className="text-xl font-black uppercase tracking-widest text-yellow-300">Management Leaderboard</h2>
             <p className="mt-2 text-sm text-white/45">
-              Text-only overlay for your own background. Drag the manager names and diamond fields into place. Every eligible manager in the selected group is included.
+              Text-only overlay for your own background. Drag the manager names and diamond fields into place. Group membership always comes from Manager Assignments.
             </p>
           </div>
 
           <label className="block">
-            <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Creator Intelligence Group</p>
+            <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Manager Assignments Group</p>
             <select
               value={selectedManagerLeaderboardGroup}
               onChange={(event) => setSelectedManagerLeaderboardGroup(event.target.value)}
@@ -3811,7 +3702,7 @@ function renderText(
             disabled={managerLeaderboardLoading}
             className="w-full rounded-lg bg-yellow-300 px-4 py-4 text-sm font-black uppercase tracking-widest text-black transition hover:bg-yellow-200 disabled:opacity-50"
           >
-            {managerLeaderboardLoading ? "Loading Intelligence..." : "Load Manager Leaderboard"}
+            {managerLeaderboardLoading ? "Loading Assignments..." : "Load Manager Assignments Leaderboard"}
           </button>
 
           <button
