@@ -44,9 +44,15 @@ export async function GET() {
   const { data: latestRows, error: latestError } = await submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1);
   const statDate = clean(latestRows?.[0]?.stat_date);
   if (latestError || !statDate) return NextResponse.json({ error: latestError?.message || "No uploaded Creator Intelligence data." }, { status: 500 });
+  const monthStartDate = `${statDate.slice(0, 7)}-01`;
   const rows: CreatorStat[] = [];
   for (let from = 0, hasMore = true; hasMore; from += 1000) {
-    const { data, error } = await submissionsSupabase.from("creator_daily_stats").select("*").eq("stat_date", statDate).range(from, from + 999);
+    const { data, error } = await submissionsSupabase
+      .from("creator_daily_stats")
+      .select("*")
+      .gte("stat_date", monthStartDate)
+      .lte("stat_date", statDate)
+      .range(from, from + 999);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const page = (data || []) as CreatorStat[];
     rows.push(...page);

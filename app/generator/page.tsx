@@ -210,12 +210,6 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
   lozza2706: "/avatars/lozza2706.jpg",
   kieransmithmilner: "/avatars/kieransmithmilner.jpg",
 };
-const MANAGER_LEADERBOARD_FALLBACKS = [
-  { key: "ashwalbridge", manager: "Team Ash", groups: ["Team Dan", "Dan + Aqua"] },
-  { key: "candiceaquaagency", manager: "Team Candice", groups: ["Team Dan", "Dan + Aqua"] },
-  { key: "zaliheyoncu", manager: "Team Zalihe", groups: ["Team Mike / Indi"] },
-];
-
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
   avatar2: "Avatar 2",
@@ -610,6 +604,13 @@ function getManagerLeaderboardCreatorKey(row: ManagerLeaderboardStat) {
   return String(row.creator_username || row["Creator's username"] || row.creator_id || row["Creator ID"] || "").trim().toLowerCase();
 }
 
+function getManagerLeaderboardManagerKey(row: ManagerLeaderboardStat) {
+  return String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function isExcludedFromManagerLeaderboard(row: ManagerLeaderboardStat) {
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
     .toLowerCase()
@@ -628,7 +629,13 @@ function isExcludedFromTeamMikeIndiManagerLeaderboard(row: ManagerLeaderboardSta
   );
 }
 
-function belongsToSelectedManagerLeaderboardGroup(row: ManagerLeaderboardStat, group: string) {
+function belongsToSelectedManagerLeaderboardGroup(
+  row: ManagerLeaderboardStat,
+  group: string,
+  managerGroups: Record<string, string> = {}
+) {
+  const assignedGroup = managerGroups[getManagerLeaderboardManagerKey(row)];
+  if (assignedGroup) return assignedGroup === (group === "Team Horizon" ? "Horizon" : group);
   if (group !== "Team Dan" && group !== "Dan + Aqua") return matchesCreatorIntelligenceGroup(row, group);
   const manager = String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
     .toLowerCase()
@@ -1830,6 +1837,14 @@ export default function BattleGeneratorPage() {
       offset += pageSize;
     }
     const activeGroup = selectedManagerLeaderboardGroup;
+    const assignmentsResponse = await fetch("/api/data-analysis/manager-assignments", { cache: "no-store" });
+    const assignmentsData = await assignmentsResponse.json();
+    if (!assignmentsResponse.ok) {
+      setManagerLeaderboardStatus(assignmentsData.error || "Could not load Manager Assignments.");
+      setManagerLeaderboardLoading(false);
+      return;
+    }
+    const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
 
     // Match Creator Intelligence: assign every month-to-date row for a creator to
     // that creator's latest manager, rather than splitting totals by old daily assignments.
@@ -1848,28 +1863,13 @@ export default function BattleGeneratorPage() {
       if (!latestCreatorRow) continue;
       if (isExcludedFromManagerLeaderboard(latestCreatorRow)) continue;
       if (activeGroup === "Team Mike / Indi" && isExcludedFromTeamMikeIndiManagerLeaderboard(latestCreatorRow)) continue;
-      const rowGroup = getManagerLeaderboardGroup(latestCreatorRow);
-      if (!rowGroup || (activeGroup !== "All Groups" && !belongsToSelectedManagerLeaderboardGroup(latestCreatorRow, activeGroup))) continue;
+      if (activeGroup !== "All Groups" && !belongsToSelectedManagerLeaderboardGroup(latestCreatorRow, activeGroup, managerGroups)) continue;
       const manager = getManagerLeaderboardName(latestCreatorRow);
       if (manager === "Unassigned") continue;
       const existing = totals.get(manager) || { manager, diamonds: 0 };
       existing.diamonds += creatorRows.reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
       totals.set(manager, existing);
     }
-
-    // Some records have a stale creator assignment on their latest row. Keep
-    // these managers in their intended leaderboard using their own current-month records.
-    for (const fallback of MANAGER_LEADERBOARD_FALLBACKS) {
-      if (!fallback.groups.includes(activeGroup)) continue;
-        if (totals.has(fallback.manager)) continue;
-        const diamonds = rows
-          .filter((row) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "")
-            .includes(fallback.key))
-          .reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
-        if (diamonds > 0) totals.set(fallback.manager, { manager: fallback.manager, diamonds });
-      }
 
     const ranked = [...totals.values()]
       .sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager));
