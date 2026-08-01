@@ -869,7 +869,7 @@ export default function BattleGeneratorPage() {
     createBattle(`single-${stableId}`)
   );
   const [singleDay, setSingleDay] = useState("");
-  const [singleMonth, setSingleMonth] = useState("5");
+  const [singleMonth, setSingleMonth] = useState("7");
 
   const [massDay, setMassDay] = useState("");
   const [massMonth, setMassMonth] = useState(() => String(new Date().getMonth() + 1));
@@ -1745,6 +1745,7 @@ export default function BattleGeneratorPage() {
       return;
     }
     const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
+    const managerNames = assignmentsData.assignments?.managerNames || {};
 
     // Match Creator Intelligence: assign every month-to-date row for a creator to
     // that creator's latest manager, rather than splitting totals by old daily assignments.
@@ -1766,7 +1767,7 @@ export default function BattleGeneratorPage() {
       // Excluded column on Manager Assignments. This applies to every group.
       if (assignedGroup === "Excluded") continue;
       if (activeGroup !== "All Groups" && !belongsToSelectedManagerLeaderboardGroup(latestCreatorRow, activeGroup, managerGroups)) continue;
-      const manager = getManagerLeaderboardName(latestCreatorRow);
+      const manager = managerNames[getManagerLeaderboardManagerKey(latestCreatorRow)] || getManagerLeaderboardName(latestCreatorRow);
       if (manager === "Unassigned") continue;
       const existing = totals.get(manager) || { manager, diamonds: 0 };
       existing.diamonds += creatorRows.reduce((sum, row) => sum + safeNumber(row.diamonds), 0);
@@ -2123,7 +2124,7 @@ export default function BattleGeneratorPage() {
     setSingleBattle(createBattle(`single-${stableId}`));
     setSinglePaste("");
     setSingleDay("");
-    setSingleMonth("5");
+    setSingleMonth("7");
     setSelectedId("");
   }
 

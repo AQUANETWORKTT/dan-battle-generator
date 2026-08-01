@@ -57,8 +57,10 @@ function getManagerLabel(raw: string, group = "") {
   return group.toLowerCase().startsWith("team ") ? group : "Unassigned";
 }
 
-function getCreatorIntelligenceManagerLabel(row: CreatorStat, managerAssignments: ManagerAssignments = {}) {
+function getCreatorIntelligenceManagerLabel(row: CreatorStat, managerAssignments: ManagerAssignments = {}, managerNames: Record<string, string> = {}) {
   const raw = getManagerRaw(row);
+  const override = managerNames[normalize(raw)];
+  if (override) return override;
   const group = getText(row, ["team", "group_name", "Group"]) || "Unassigned";
   const base = getManagerLabel(raw, group);
   const details = `${raw} ${base}`;
@@ -85,10 +87,13 @@ export async function GET() {
       .eq("name", SETTINGS_NAME)
       .maybeSingle();
     if (settingsError) return NextResponse.json({ error: settingsError.message }, { status: 500 });
-    const savedAssignments = (settings?.template_json as { assignments?: { managerGroups?: ManagerAssignments } } | null)?.assignments?.managerGroups || {};
+    const savedSettings = (settings?.template_json as { assignments?: { managerGroups?: ManagerAssignments; managerNames?: Record<string, string> } } | null)?.assignments;
+    const savedAssignments = savedSettings?.managerGroups || {};
+    const savedNames = savedSettings?.managerNames || {};
     const managerAssignments = Object.fromEntries(
       Object.entries(savedAssignments).map(([manager, group]) => [normalize(manager), group])
     );
+    const managerNames = Object.fromEntries(Object.entries(savedNames).map(([manager, name]) => [normalize(manager), cleanText(name)]));
     const { data: newest, error: newestError } = await submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle();
     const latestDate = cleanText(newest?.stat_date);
     if (newestError) return NextResponse.json({ error: newestError.message }, { status: 500 });
@@ -107,7 +112,7 @@ export async function GET() {
 
     const latestByCreator = new Map<string, CreatorStat>();
     for (const row of rows) { const key = getCreatorKey(row); if (key) latestByCreator.set(key, row); }
-    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments) })).filter((manager) => manager.manager_key && manager.manager_label !== "Unassigned");
+    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames) })).filter((manager) => manager.manager_key && manager.manager_label !== "Unassigned");
 
     return NextResponse.json({ statDate: latestDate, managers });
   } catch (error) {

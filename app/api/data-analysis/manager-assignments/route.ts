@@ -9,7 +9,7 @@ const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
-type SavedAssignments = { managerGroups: Record<string, Group> };
+type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string> };
 
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) { return clean(value).toLowerCase().replace(/[^a-z0-9]/g, ""); }
@@ -36,8 +36,13 @@ function defaultGroup(row: CreatorStat): Group {
 function normalize(input: unknown): SavedAssignments {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const managerGroups: Record<string, Group> = {};
+  const managerNames: Record<string, string> = {};
   for (const [manager, group] of Object.entries(value.managerGroups as Record<string, unknown> || {})) if (GROUPS.includes(group as Group)) managerGroups[key(manager)] = group as Group;
-  return { managerGroups };
+  for (const [manager, name] of Object.entries(value.managerNames as Record<string, unknown> || {})) {
+    const displayName = clean(name);
+    if (displayName) managerNames[key(manager)] = displayName;
+  }
+  return { managerGroups, managerNames };
 }
 
 export async function GET() {
@@ -64,9 +69,9 @@ export async function GET() {
   const managers = new Map<string, { key: string; name: string; group: Group }>();
   for (const row of rows) {
     const manager = key(managerRaw(row));
-    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
+    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
   }
-  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!managers.has(manager)) managers.set(manager, { key: manager, name: `Team ${manager}`, group });
+  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group });
   const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
   const managerGroups = Object.fromEntries(managerList.map((manager) => [manager.key, manager.group]));
   return NextResponse.json({ statDate, groups: GROUPS, managers: managerList, managerGroups, assignments });
