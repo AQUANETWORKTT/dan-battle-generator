@@ -103,13 +103,36 @@ export async function GET() {
       }
     }
     const progressByCreator = new Map(progressRows.map((row) => [creatorIdentity(row.creator_id, row.creator_username), row]));
+    const rosterCreatorKeys = new Set(visibleSavedRoster.map((creator) => creatorIdentity(creator.creatorId, creator.username)));
+    const newBlueCreators = hasRaceProgress
+      ? progressRows.flatMap((row) => {
+          const username = text(row.creator_username).replace(/^@/, "");
+          const creatorId = text(row.creator_id);
+          const identity = creatorIdentity(creatorId, username);
+          if (!username || rosterCreatorKeys.has(identity) || excluded.has(username.toLowerCase())) return [];
+          return [{
+            creatorId,
+            username,
+            lastMonthDiamonds: 0,
+            track: "blue" as const,
+            target: 0,
+            diamonds: number(row.diamonds),
+            validLiveDays: number(row.valid_live_days),
+            liveHours: number(row.live_hours),
+            followers: number(row.new_followers),
+          }];
+        })
+      : [];
     return NextResponse.json({
       statDate,
       hasRaceProgress,
-      creators: visibleSavedRoster.map((creator) => {
-        const progress = progressByCreator.get(creatorIdentity(creator.creatorId, creator.username));
-        return { ...creator, ...creatorOverride(creator.username), diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
-      }),
+      creators: [
+        ...visibleSavedRoster.map((creator) => {
+          const progress = progressByCreator.get(creatorIdentity(creator.creatorId, creator.username));
+          return { ...creator, ...creatorOverride(creator.username), diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
+        }),
+        ...newBlueCreators,
+      ],
     });
   }
 
@@ -179,5 +202,18 @@ export async function GET() {
       ...tierFor(startingCreator.diamonds),
     }];
   });
-  return NextResponse.json({ statDate, startingDate, hasRaceProgress, creators: roster.filter((creator) => !excluded.has(creator.username.replace(/^@/, "").toLowerCase())) });
+  const rosterCreatorKeys = new Set(roster.map((creator) => creatorIdentity(creator.creatorId, creator.username)));
+  const newBlueCreators = hasRaceProgress
+    ? progressRows.flatMap((row) => {
+        const creator = toCreator(row);
+        if (!creator || rosterCreatorKeys.has(creatorIdentity(creator.creatorId, creator.username)) || excluded.has(creator.username.toLowerCase())) return [];
+        return [{ ...creator, lastMonthDiamonds: 0, track: "blue" as const, target: 0 }];
+      })
+    : [];
+  return NextResponse.json({
+    statDate,
+    startingDate,
+    hasRaceProgress,
+    creators: [...roster, ...newBlueCreators].filter((creator) => !excluded.has(creator.username.replace(/^@/, "").toLowerCase())),
+  });
 }
