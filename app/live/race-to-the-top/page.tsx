@@ -6,7 +6,7 @@ type Target = { label: string; value: string };
 type Track = { id: string; name: string; prize: string; tone: string; glow: string; count: number; targets: Target[] };
 type TrackId = "blue" | "bronze" | "silver" | "gold" | "platinum";
 type RaceCreator = { creatorId: string; username: string; diamonds: number; lastMonthDiamonds: number; validLiveDays: number; liveHours: number; followers: number; track: TrackId; target: number };
-type Creator = RaceCreator & { name: string; pct: number; done: number; track: Track; rank: number };
+type Creator = Omit<RaceCreator, "track"> & { name: string; pct: number; done: number; track: Track; rank: number };
 
 const tracks: Track[] = [
   { id: "blue", name: "Blue", prize: "Flying Jets", tone: "#38bdf8", glow: "rgba(56,189,248,.32)", count: 682, targets: [{ label: "Diamonds", value: "0" }, { label: "Valid days", value: "8" }, { label: "Live hours", value: "20H" }, { label: "Followers", value: "75" }] },

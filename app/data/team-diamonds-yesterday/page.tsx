@@ -472,6 +472,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [loading, setLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
+  const [latestStatDate, setLatestStatDate] = useState("");
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
@@ -546,6 +547,17 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
+  async function getLatestUploadedDate() {
+    const response = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
+    const status = await response.json();
+    const statDate = String(status.latestDate || "");
+    if (!response.ok || !/^\d{4}-\d{2}-\d{2}$/.test(statDate)) {
+      throw new Error(status.error || "No Creator Daily Stats upload is available.");
+    }
+    setLatestStatDate(statDate);
+    return statDate;
+  }
+
   async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false): Promise<string[] | null> {
     setLoading(true);
     setMessage("");
@@ -553,8 +565,8 @@ export default function TeamDiamondsYesterdayPage() {
     try {
       const activeTemplate = forTemplate || selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
 
-      const month = getCurrentMonth();
-      const yesterday = getYesterdayDateKey();
+      const statDate = await getLatestUploadedDate();
+      const month = statDate.slice(0, 7);
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
         fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
@@ -569,14 +581,14 @@ export default function TeamDiamondsYesterdayPage() {
       const fallbackAvatars = Object.fromEntries((fallbacks.avatars || []).map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
 
       const rows = ((json.rows || []) as CreatorStat[])
-        .filter((row) => row.stat_date === yesterday)
+        .filter((row) => row.stat_date === statDate)
         .filter((row) => matchesTemplateManager(row, activeTemplate, managerGroups))
         .filter((row) => getUsername(row))
         .filter((row) => !hiddenUsernames.has(getUsername(row)))
         .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
 
       if (!rows.length) {
-        setMessage(`No rows found for ${(activeTemplate.managerKey || "team-dan")} on ${yesterday}.`);
+        setMessage(`No rows found for ${(activeTemplate.managerKey || "team-dan")} on ${statDate}.`);
         return null;
       }
 
@@ -634,7 +646,7 @@ export default function TeamDiamondsYesterdayPage() {
       // The poster may be captured immediately after this update. Flush it so
       // images from the preceding download cannot be reused by the next one.
       flushSync(() => setTemplate(filledTemplate));
-      if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${yesterday}.`);
+      if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${statDate}.`);
       return failedAvatars;
     } catch (error) {
       console.error(error);
@@ -661,7 +673,7 @@ export default function TeamDiamondsYesterdayPage() {
       backgroundColor: "#000000",
     });
     if (!blob) return;
-    saveAs(blob, `${selectedTemplateName}-${getYesterdayDateKey()}.png`);
+    saveAs(blob, `${selectedTemplateName}-${latestStatDate || getYesterdayDateKey()}.png`);
   }
 
   async function downloadAllPosters(side?: TeamPosterCategory) {
@@ -696,7 +708,7 @@ export default function TeamDiamondsYesterdayPage() {
       const sideLabel = side ? teamPosterCategoryLabel(side) : "All teams";
       setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
       const archive = await zip.generateAsync({ type: "blob" });
-      saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${getYesterdayDateKey()}.zip`);
+      saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${latestStatDate || getYesterdayDateKey()}.zip`);
       const failedText = failedAvatars.size
         ? ` Picture not found for: ${[...failedAvatars].join(", ")}. Add any of these in Fallback Pictures if needed.`
         : " All creator pictures loaded.";
@@ -717,8 +729,8 @@ export default function TeamDiamondsYesterdayPage() {
     setMessage("");
     setPictureCheck(null);
     try {
-      const month = getCurrentMonth();
-      const yesterday = getYesterdayDateKey();
+      const statDate = await getLatestUploadedDate();
+      const month = statDate.slice(0, 7);
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
         fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
@@ -735,7 +747,7 @@ export default function TeamDiamondsYesterdayPage() {
       const fallbackAvatars = Object.fromEntries((fallbacks.avatars || [])
         .map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
       const allRows = ((json.rows || []) as CreatorStat[])
-        .filter((row) => row.stat_date === yesterday)
+        .filter((row) => row.stat_date === statDate)
         .filter((row) => getUsername(row))
         .filter((row) => !hiddenUsernames.has(getUsername(row)))
         .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);
@@ -797,7 +809,7 @@ export default function TeamDiamondsYesterdayPage() {
       if (!node) throw new Error("Could not prepare the poster.");
       await waitForImages(node);
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
-      if (blob) saveAs(blob, `${item.name}-${getYesterdayDateKey()}.png`);
+      if (blob) saveAs(blob, `${item.name}-${latestStatDate || getYesterdayDateKey()}.png`);
       setMessage(`${templateLabel(item.name)} downloaded.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not download this poster.");

@@ -1931,9 +1931,9 @@ export default function BattleGeneratorPage() {
         }
         const managerNameCollator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
         const managers = Array.from(byManager.entries()).map(([value, row]) => {
-          const assignment = getCreatorIntelligenceManagerGroup(row);
-          const group = assignment.managerGroup === "Exempt" ? "Exempt" : assignment.agency || assignment.group;
-          return { value, label: row.manager_label || `${getManagerLeaderboardName(row)}${group ? ` (${group})` : ""}` };
+          // manager-sources already returns the Creator Intelligence display
+          // label, including its assigned group, for the latest upload.
+          return { value, label: row.manager_label || getManagerLeaderboardName(row) };
         }).sort((a, b) => managerNameCollator.compare(a.label, b.label));
         if (managers.length) setTeamPosterManagerOptions([
           { value: "team-dan", label: "Team Dan + James - Direct Teams" },
