@@ -170,7 +170,9 @@ const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
   "group:horizon": "Horizon",
   "group:trident": "Trident",
 };
-const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "lisaruss1988"];
+// The upload currently identifies Georgia as georgialilly.glow@gmail.com
+// (with a double "l"), so retain both known spellings for Team Gee.
+const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "georgialillyglow", "lisaruss1988"];
 
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();

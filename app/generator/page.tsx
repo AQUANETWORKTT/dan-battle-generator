@@ -140,7 +140,9 @@ const MANAGER_LEADERBOARD_GROUPS = [
   "Dan + Aqua",
   "First Class",
 ] as const;
-const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "lisaruss1988"];
+// The upload currently identifies Georgia as georgialilly.glow@gmail.com
+// (with a double "l"), so retain both known spellings for Team Gee.
+const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "georgialillyglow", "lisaruss1988"];
 const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   cjtokens1237: "CJ",
   teamalf: "Alf",
