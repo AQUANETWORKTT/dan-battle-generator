@@ -11,6 +11,7 @@ const RACE_ROSTER_SETTINGS_NAME = "race-to-the-top-2026-08-roster";
 const EXCLUDED_CREATORS_SETTINGS_NAME = "excluded-creators-settings";
 const CREATOR_OVERRIDES: Record<string, Partial<Pick<SavedRosterCreator, "track" | "target">>> = {
   lucylou449: { target: 700_000 },
+  dylanjinks: { target: 700_000 },
   arabellama_y: { track: "gold", target: 300_000 },
 };
 type SavedRosterCreator = { creatorId: string; username: string; lastMonthDiamonds: number; track: TrackId; target: number };
@@ -133,7 +134,10 @@ export async function GET() {
           // back to the stable username from the same daily upload.
           const progress = progressByCreator.get(creatorIdentity(creator.creatorId, creator.username))
             || progressByUsername.get(creator.username.replace(/^@/, "").toLowerCase());
-          return { ...creator, ...creatorOverride(creator.username), target: creator.track === "blue" ? 100_000 : creator.target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
+          const override = creatorOverride(creator.username);
+          const track = override.track || creator.track;
+          const target = override.target ?? (track === "blue" ? 100_000 : creator.target);
+          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
         }),
         ...newBlueCreators,
       ],
