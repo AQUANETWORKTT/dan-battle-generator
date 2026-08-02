@@ -98,13 +98,13 @@ function ProgressTargets({ creator }: { creator: Creator }) {
           : target.label === "Followers" ? Math.min(100, Math.round((creator.followers / Number(target.value)) * 100))
             : creator.done >= 4 ? 100 : 0;
     const targetValue = target.label === "Diamonds"
-      ? `${formatDiamonds(creator.diamonds)} / ${formatDiamonds(creator.target)}`
+      ? `${formatDiamonds(Math.min(creator.diamonds, creator.target))} / ${formatDiamonds(creator.target)}`
       : target.label === "Valid days"
-        ? `${creator.validLiveDays} / ${target.value}`
+        ? `${Math.min(creator.validLiveDays, Number(target.value))} / ${target.value}`
       : target.label === "Live hours"
-        ? `${creator.liveHours % 1 === 0 ? creator.liveHours.toFixed(0) : creator.liveHours.toFixed(1)}H / ${target.value}`
+        ? `${Math.min(creator.liveHours, Number(target.value.replace("H", ""))) % 1 === 0 ? Math.min(creator.liveHours, Number(target.value.replace("H", ""))).toFixed(0) : Math.min(creator.liveHours, Number(target.value.replace("H", ""))).toFixed(1)}H / ${target.value}`
         : target.label === "Followers"
-          ? `${creator.followers} / ${target.value}`
+          ? `${Math.min(creator.followers, Number(target.value))} / ${target.value}`
         : target.value;
     return <div key={target.label} className="lookup-metric" style={{ display: "grid", minHeight: 156, padding: 17, border: `1px solid ${creator.track.tone}`, borderRadius: 18, background: "rgba(4, 6, 13, .7)" }}><div className="metric-top" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}><span>{target.label}</span><b>{index === 4 ? (achieved ? "MET" : "IN PROGRESS") : `${Math.round(achieved)}%`}</b></div><div className="metric-rail" style={{ alignSelf: "center", height: 12, margin: "12px 0", overflow: "hidden", borderRadius: 999, background: "rgba(255,255,255,.12)" }}><div className="metric-fill" style={{ display: "block", height: "100%", width: `${achieved}%`, borderRadius: 999, background: `linear-gradient(90deg, ${creator.track.tone}, #ffffff)`, boxShadow: `0 0 16px ${creator.track.glow}` }} /></div><strong className="metric-target"><span>Target</span><b>{targetValue}</b></strong></div>;
   })}</div>;
