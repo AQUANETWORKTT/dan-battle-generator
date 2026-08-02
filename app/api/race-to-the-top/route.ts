@@ -45,7 +45,7 @@ function excludedUsernames(value: unknown) {
 }
 
 function tierFor(lastMonthDiamonds: number): { track: TrackId; target: number } {
-  if (lastMonthDiamonds < 100_000) return { track: "blue", target: 0 };
+  if (lastMonthDiamonds < 100_000) return { track: "blue", target: 100_000 };
   if (lastMonthDiamonds < 200_000) return { track: "bronze", target: 100_000 };
   if (lastMonthDiamonds < 300_000) return { track: "silver", target: 200_000 };
   if (lastMonthDiamonds < 500_000) return { track: "gold", target: 300_000 };
@@ -103,6 +103,7 @@ export async function GET() {
       }
     }
     const progressByCreator = new Map(progressRows.map((row) => [creatorIdentity(row.creator_id, row.creator_username), row]));
+    const progressByUsername = new Map(progressRows.map((row) => [text(row.creator_username).replace(/^@/, "").toLowerCase(), row]));
     const rosterCreatorKeys = new Set(visibleSavedRoster.map((creator) => creatorIdentity(creator.creatorId, creator.username)));
     const newBlueCreators = hasRaceProgress
       ? progressRows.flatMap((row) => {
@@ -115,7 +116,7 @@ export async function GET() {
             username,
             lastMonthDiamonds: 0,
             track: "blue" as const,
-            target: 0,
+            target: 100_000,
             diamonds: number(row.diamonds),
             validLiveDays: number(row.valid_live_days),
             liveHours: number(row.live_hours),
@@ -128,8 +129,11 @@ export async function GET() {
       hasRaceProgress,
       creators: [
         ...visibleSavedRoster.map((creator) => {
-          const progress = progressByCreator.get(creatorIdentity(creator.creatorId, creator.username));
-          return { ...creator, ...creatorOverride(creator.username), diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
+          // A roster can retain an older TikTok ID after a migration, so fall
+          // back to the stable username from the same daily upload.
+          const progress = progressByCreator.get(creatorIdentity(creator.creatorId, creator.username))
+            || progressByUsername.get(creator.username.replace(/^@/, "").toLowerCase());
+          return { ...creator, ...creatorOverride(creator.username), target: creator.track === "blue" ? 100_000 : creator.target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
         }),
         ...newBlueCreators,
       ],
@@ -207,7 +211,7 @@ export async function GET() {
     ? progressRows.flatMap((row) => {
         const creator = toCreator(row);
         if (!creator || rosterCreatorKeys.has(creatorIdentity(creator.creatorId, creator.username)) || excluded.has(creator.username.toLowerCase())) return [];
-        return [{ ...creator, lastMonthDiamonds: 0, track: "blue" as const, target: 0 }];
+        return [{ ...creator, lastMonthDiamonds: 0, track: "blue" as const, target: 100_000 }];
       })
     : [];
   return NextResponse.json({

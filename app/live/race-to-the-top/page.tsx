@@ -6,10 +6,10 @@ type Target = { label: string; value: string };
 type Track = { id: string; name: string; prize: string; tone: string; glow: string; count: number; targets: Target[] };
 type TrackId = "blue" | "bronze" | "silver" | "gold" | "platinum";
 type RaceCreator = { creatorId: string; username: string; diamonds: number; lastMonthDiamonds: number; validLiveDays: number; liveHours: number; followers: number; track: TrackId; target: number };
-type Creator = Omit<RaceCreator, "track"> & { name: string; pct: number; done: number; track: Track; rank: number };
+type Creator = Omit<RaceCreator, "track"> & { name: string; pct: number; diamondPct: number; done: number; track: Track; rank: number };
 
 const tracks: Track[] = [
-  { id: "blue", name: "Blue", prize: "Flying Jets", tone: "#38bdf8", glow: "rgba(56,189,248,.32)", count: 682, targets: [{ label: "Diamonds", value: "0" }, { label: "Valid days", value: "8" }, { label: "Live hours", value: "20H" }, { label: "Followers", value: "75" }] },
+  { id: "blue", name: "Blue", prize: "Flying Jets", tone: "#38bdf8", glow: "rgba(56,189,248,.32)", count: 682, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "8" }, { label: "Live hours", value: "20H" }, { label: "Followers", value: "75" }] },
   { id: "bronze", name: "Bronze", prize: "Sports Car", tone: "#fb923c", glow: "rgba(251,146,60,.32)", count: 300, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "11" }, { label: "Live hours", value: "30H" }, { label: "Followers", value: "100" }, { label: "Rank goal", value: "Maintain" }] },
   { id: "silver", name: "Silver", prize: "Interstellar", tone: "#cbd5e1", glow: "rgba(203,213,225,.28)", count: 200, targets: [{ label: "Diamonds", value: "200K" }, { label: "Valid days", value: "15" }, { label: "Live hours", value: "40H" }, { label: "Followers", value: "150" }, { label: "Rank goal", value: "Maintain" }] },
   { id: "gold", name: "Gold", prize: "Leopard", tone: "#facc15", glow: "rgba(250,204,21,.3)", count: 100, targets: [{ label: "Diamonds", value: "300K" }, { label: "Valid days", value: "18" }, { label: "Live hours", value: "60H" }, { label: "Followers", value: "200" }, { label: "Rank goal", value: "Maintain" }] },
@@ -73,14 +73,18 @@ function buildCreators(track: Track, roster: RaceCreator[]): Creator[] {
   return roster
     .filter((creator) => creator.track === track.id)
     .map((creator) => {
-      const pct = creator.target > 0 ? Math.min(100, Math.round((creator.diamonds / creator.target) * 100)) : 0;
-      const done = [
-        pct,
+      const diamondPct = creator.target > 0 ? Math.min(100, (creator.diamonds / creator.target) * 100) : 0;
+      const targetProgress = [
+        diamondPct,
         Math.min(100, (creator.validLiveDays / Number(track.targets.find((target) => target.label === "Valid days")?.value || 1)) * 100),
         Math.min(100, (creator.liveHours / Number(track.targets.find((target) => target.label === "Live hours")?.value.replace("H", "") || 1)) * 100),
         Math.min(100, (creator.followers / Number(track.targets.find((target) => target.label === "Followers")?.value || 1)) * 100),
-      ].filter((value) => value >= 100).length;
-      return { ...creator, name: creator.username, pct, done, track, rank: 0 };
+      ];
+      // Overall progress is the average of the four measurable targets. The
+      // maintain-rank goal is shown separately because it is pass/fail.
+      const pct = Math.round(targetProgress.reduce((total, value) => total + value, 0) / targetProgress.length);
+      const done = targetProgress.filter((value) => value >= 100).length;
+      return { ...creator, name: creator.username, pct, diamondPct, done, track, rank: 0 };
     })
     .sort((a, b) => b.pct - a.pct || b.diamonds - a.diamonds || a.name.localeCompare(b.name))
     .map((creator, index) => ({ ...creator, rank: index + 1 }));
@@ -88,12 +92,16 @@ function buildCreators(track: Track, roster: RaceCreator[]): Creator[] {
 
 function ProgressTargets({ creator }: { creator: Creator }) {
   return <div className="lookup-progress" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px", width: "100%" }}>{creator.track.targets.map((target, index) => {
-    const achieved = target.label === "Diamonds" ? creator.pct
+    const achieved = target.label === "Diamonds" ? creator.diamondPct
       : target.label === "Valid days" ? Math.min(100, Math.round((creator.validLiveDays / Number(target.value)) * 100))
         : target.label === "Live hours" ? Math.min(100, Math.round((creator.liveHours / Number(target.value.replace("H", ""))) * 100))
           : target.label === "Followers" ? Math.min(100, Math.round((creator.followers / Number(target.value)) * 100))
             : creator.done >= 4 ? 100 : 0;
-    const targetValue = target.label === "Diamonds" ? formatDiamonds(creator.target) : target.value;
+    const targetValue = target.label === "Diamonds"
+      ? formatDiamonds(creator.target)
+      : target.label === "Live hours"
+        ? `${creator.liveHours % 1 === 0 ? creator.liveHours.toFixed(0) : creator.liveHours.toFixed(1)}H / ${target.value}`
+        : target.value;
     return <div key={target.label} className="lookup-metric" style={{ display: "grid", minHeight: 156, padding: 17, border: `1px solid ${creator.track.tone}`, borderRadius: 18, background: "rgba(4, 6, 13, .7)" }}><div className="metric-top" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}><span>{target.label}</span><b>{index === 4 ? (achieved ? "MET" : "IN PROGRESS") : `${Math.round(achieved)}%`}</b></div><div className="metric-rail" style={{ alignSelf: "center", height: 12, margin: "12px 0", overflow: "hidden", borderRadius: 999, background: "rgba(255,255,255,.12)" }}><div className="metric-fill" style={{ display: "block", height: "100%", width: `${achieved}%`, borderRadius: 999, background: `linear-gradient(90deg, ${creator.track.tone}, #ffffff)`, boxShadow: `0 0 16px ${creator.track.glow}` }} /></div><strong className="metric-target"><span>Target</span><b>{targetValue}</b></strong></div>;
   })}</div>;
 }
