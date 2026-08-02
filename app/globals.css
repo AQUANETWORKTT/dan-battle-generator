@@ -73,7 +73,7 @@ body {
   font-size: clamp(16px, 2.2vw, 27px) !important;
 }
 
-.race-page .targets > div:last-child strong {
+.race-page .targets > div.long-target strong {
   font-size: clamp(12px, 1.35vw, 19px) !important;
   letter-spacing: 0.02em;
 }
@@ -98,7 +98,7 @@ body {
   }
   .race-page .targets > div { min-height: 108px; }
   .race-page .targets strong { font-size: clamp(15px, 6vw, 21px) !important; }
-  .race-page .targets > div:last-child strong { font-size: clamp(12px, 4.4vw, 17px) !important; }
+  .race-page .targets > div.long-target strong { font-size: clamp(12px, 4.4vw, 17px) !important; }
   .race-page .targets small { font-size: 9px !important; }
 }
 
