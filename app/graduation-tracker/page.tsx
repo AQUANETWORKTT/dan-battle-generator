@@ -146,8 +146,8 @@ function getProgressBarClasses(status: GraduationStatus) {
 }
 
 export default function GraduationTrackerPage() {
-  const [month, setMonth] = useState("2026-07");
-  const [endDay, setEndDay] = useState(getLastDayForMonth("2026-05"));
+  const [month, setMonth] = useState("2026-08");
+  const [endDay, setEndDay] = useState(getLastDayForMonth("2026-08"));
   const [agency, setAgency] = useState("All");
   const [team, setTeam] = useState("All Teams");
   const [search, setSearch] = useState("");
@@ -157,7 +157,7 @@ export default function GraduationTrackerPage() {
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
 
-  const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[4];
+  const selectedMonth = MONTHS.find((item) => item.value === month) || MONTHS[7];
   const lastDay = getLastDayForMonth(month);
   const dayOptions = useMemo(
     () => Array.from({ length: lastDay }, (_, index) => index + 1),
