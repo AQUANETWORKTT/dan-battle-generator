@@ -125,7 +125,10 @@ function getAgency(group: string, managerEmail: string | null = "") {
 
 function getTeam(group: string, managerEmail: string | null = "") {
   const clean = group.trim().toLowerCase();
+  const manager = String(managerEmail || "").trim().toLowerCase();
   if (String(managerEmail || "").trim().toLowerCase() === "trident125@gmail.com" || String(managerEmail || "").trim().toLowerCase() === "trident125@mail.com" || clean.includes("trident sub-agency")) return "Trident";
+
+  if (manager.includes("mikehalesjb")) return "Team Mike / Indi";
 
   if (clean.includes("hanna king ismail") || clean.includes("stormlive")) return "Team Horizon";
 
