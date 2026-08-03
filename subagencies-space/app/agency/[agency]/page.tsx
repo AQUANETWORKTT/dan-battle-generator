@@ -8,7 +8,7 @@ const themes: Record<string, { structure: string; accent: string; background: st
   horizon: { structure: "#f97316", accent: "#f97316", background: "/agency-page-backgrounds/horizon.png" },
   trident: { structure: "#38bdf8", accent: "#38bdf8", background: "/agency-page-backgrounds/trident.png" },
   paradise: { structure: "#d6a65e", accent: "#d6a65e", background: "/agency-page-backgrounds/paradise.png" },
-  respawn: { structure: "#facc15", accent: "#28d7c3", background: "" },
+  respawn: { structure: "#28d7c3", accent: "#28d7c3", background: "" },
 };
 
 export default function AgencySpace() {
@@ -19,8 +19,22 @@ export default function AgencySpace() {
   return <main className="space-shell" style={{ "--agency": theme.structure, "--accent": theme.accent, "--page-background": theme.background ? `url(${theme.background})` : "none" } as React.CSSProperties}>
     <nav><Link href="/">← LOG OUT</Link></nav>
     <div className="agency-space-logo"><Image src={`/agency-logos/${params.agency}.png`} alt={`${agency} agency`} width={700} height={400} priority /></div>
-    <section className="agency-workspace">
-      <Link className="poster-generator-link" href={`/agency/${params.agency}/generator`}>POSTER GENERATOR</Link>
-    </section>
+    <div className="agency-workspace">
+      <Link className="poster-generator-link" href={`/agency/${params.agency}/generator`}>
+        <span className="poster-generator-kicker">POSTER TOOL</span>
+        <strong>BATTLE POSTER<br />GENERATOR</strong>
+        <span className="poster-generator-cta">OPEN WORKSPACE&nbsp; →</span>
+      </Link>
+      <div className="coming-soon-card diamond-hours-card" aria-disabled="true">
+        <span>POSTER TOOL</span>
+        <strong>DIAMOND / HOURS<br />POSTERS</strong>
+        <em>COMING SOON</em>
+      </div>
+      <div className="coming-soon-card health-score-card" aria-disabled="true">
+        <span>AGENCY TOOL</span>
+        <strong>HEALTH SCORE<br />SYSTEM</strong>
+        <em>COMING SOON</em>
+      </div>
+    </div>
   </main>;
 }
