@@ -1646,8 +1646,12 @@ export default function BattleGeneratorPage() {
         } as Record<string, string>)[managerKey];
         if (selectedGroup) return managerGroups[managerKeyNormalized] === selectedGroup;
         if (managerKey === "first-class-all") {
-          const group = managerGroups[managerKeyNormalized];
-          return group === "Team Dan" || group === "Team Mike / Indi";
+          // The shared poster is for every direct First Class creator. Manager
+          // assignments are optional metadata, so do not use them as the gate:
+          // creators in "Not in a group" (such as Mike/Indi direct creators)
+          // are still First Class, while sub-agencies have another agency value.
+          const agency = String(row.agency || "").trim().toLowerCase();
+          return agency === "first class";
         }
         return manager === managerKey;
       });

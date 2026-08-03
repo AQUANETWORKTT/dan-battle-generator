@@ -30,6 +30,11 @@ function creatorIdentity(creatorId: unknown, username: unknown) {
   return /^\d+$/.test(id) ? id : text(username).replace(/^@/, "").toLowerCase();
 }
 
+function stableCreatorId(value: unknown) {
+  const id = text(value);
+  return /^\d+$/.test(id) ? id : "";
+}
+
 function creatorOverride(username: string) {
   return CREATOR_OVERRIDES[username.replace(/^@/, "").toLowerCase()] || {};
 }
@@ -94,8 +99,9 @@ export async function GET() {
       for (let from = 0, hasMore = true; hasMore; from += 1000) {
         const { data, error } = await submissionsSupabase
           .from("creator_daily_stats")
-          .select("creator_id, creator_username, diamonds, valid_live_days, live_hours, new_followers")
-          .eq("stat_date", statDate)
+          .select("creator_id, creator_username, diamonds, valid_live_days, live_hours, new_followers, stat_date")
+          .gte("stat_date", RACE_MONTH_START)
+          .lte("stat_date", statDate)
           .range(from, from + 999);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         const page = (data || []) as CreatorStat[];
@@ -103,44 +109,54 @@ export async function GET() {
         hasMore = page.length === 1000;
       }
     }
-    const progressByCreator = new Map(progressRows.map((row) => [creatorIdentity(row.creator_id, row.creator_username), row]));
-    const progressByUsername = new Map(progressRows.map((row) => [text(row.creator_username).replace(/^@/, "").toLowerCase(), row]));
-    const rosterCreatorKeys = new Set(visibleSavedRoster.map((creator) => creatorIdentity(creator.creatorId, creator.username)));
-    const newBlueCreators = hasRaceProgress
-      ? progressRows.flatMap((row) => {
-          const username = text(row.creator_username).replace(/^@/, "");
-          const creatorId = text(row.creator_id);
-          const identity = creatorIdentity(creatorId, username);
-          if (!username || rosterCreatorKeys.has(identity) || excluded.has(username.toLowerCase())) return [];
-          return [{
-            creatorId,
-            username,
-            lastMonthDiamonds: 0,
-            track: "blue" as const,
-            target: 100_000,
-            diamonds: number(row.diamonds),
-            validLiveDays: number(row.valid_live_days),
-            liveHours: number(row.live_hours),
-            followers: number(row.new_followers),
-          }];
-        })
-      : [];
+    type Progress = { creatorId: string; username: string; diamonds: number; validLiveDays: number; liveHours: number; followers: number };
+    const creatorIdByUsername = new Map<string, string>();
+    for (const row of progressRows) {
+      const username = text(row.creator_username).replace(/^@/, "").toLowerCase();
+      const creatorId = stableCreatorId(row.creator_id);
+      if (username && creatorId) creatorIdByUsername.set(username, creatorId);
+    }
+    // A daily import replaces a whole source-day. Recalculate from those daily
+    // snapshots, making reruns safe and avoiding mutation-based double counts.
+    const dailyProgress = new Map<string, CreatorStat>();
+    for (const row of progressRows) {
+      const username = text(row.creator_username).replace(/^@/, "").toLowerCase();
+      if (!username) continue;
+      const identity = stableCreatorId(row.creator_id) || creatorIdByUsername.get(username) || username;
+      const key = `${text(row.stat_date)}:${identity}`;
+      const existing = dailyProgress.get(key);
+      const isBetterRow = !existing
+        || (Boolean(stableCreatorId(row.creator_id)) && !stableCreatorId(existing.creator_id))
+        || number(row.diamonds) > number(existing.diamonds);
+      if (isBetterRow) dailyProgress.set(key, row);
+    }
+    const progressByCreator = new Map<string, Progress>();
+    const progressByUsername = new Map<string, Progress>();
+    for (const row of dailyProgress.values()) {
+      const username = text(row.creator_username).replace(/^@/, "");
+      const normalizedUsername = username.toLowerCase();
+      const creatorId = stableCreatorId(row.creator_id) || creatorIdByUsername.get(normalizedUsername) || "";
+      const identity = creatorId || normalizedUsername;
+      const previous = progressByCreator.get(identity);
+      const progress: Progress = { creatorId, username, diamonds: (previous?.diamonds || 0) + number(row.diamonds), validLiveDays: (previous?.validLiveDays || 0) + number(row.valid_live_days), liveHours: (previous?.liveHours || 0) + number(row.live_hours), followers: (previous?.followers || 0) + number(row.new_followers) };
+      progressByCreator.set(identity, progress);
+      progressByUsername.set(normalizedUsername, progress);
+    }
     return NextResponse.json({
       statDate,
       hasRaceProgress,
-      creators: [
-        ...visibleSavedRoster.map((creator) => {
+      // This event is roster-only. Uploads update progress for rostered
+      // creators; they must never create a new Race to the Top card.
+      creators: visibleSavedRoster.map((creator) => {
           // A roster can retain an older TikTok ID after a migration, so fall
           // back to the stable username from the same daily upload.
-          const progress = progressByCreator.get(creatorIdentity(creator.creatorId, creator.username))
+          const progress = progressByCreator.get(stableCreatorId(creator.creatorId))
             || progressByUsername.get(creator.username.replace(/^@/, "").toLowerCase());
           const override = creatorOverride(creator.username);
           const track = override.track || creator.track;
           const target = override.target ?? (track === "blue" ? 100_000 : creator.target);
-          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.valid_live_days), liveHours: number(progress?.live_hours), followers: number(progress?.new_followers) };
+          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays), liveHours: number(progress?.liveHours), followers: number(progress?.followers) };
         }),
-        ...newBlueCreators,
-      ],
     });
   }
 
