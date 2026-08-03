@@ -34,11 +34,13 @@ button, input { font: inherit; }
 .inline-access input { min-width: 0; border: 1px solid color-mix(in srgb, var(--agency) 55%, transparent); border-radius: 8px; padding: 10px; background: #000; color: #fff; outline: 0; font: 800 10px Arial, sans-serif; letter-spacing: .08em; }
 .inline-access button { border: 0; border-radius: 8px; padding: 0 12px; background: var(--agency); color: #080808; cursor: pointer; font: 900 10px Arial, sans-serif; }
 .inline-access small { grid-column: span 2; color: #fb7185; font: 900 10px Arial, sans-serif; letter-spacing: .08em; }
-.space-shell { min-height: 100vh; padding: 50px 24px; background: #050505; text-align: center; }
-.space-shell > p { margin: 0; color: var(--agency, #facc15); font: 800 11px Arial, sans-serif; letter-spacing: .22em; }
-.space-shell > h1 { margin: 14px 0 44px; color: #fff; font-size: clamp(42px, 8vw, 90px); }
-.space-shell section { display: grid; max-width: 700px; min-height: 390px; margin: auto; place-content: center; gap: 18px; border: 1px solid color-mix(in srgb, var(--agency, #facc15) 65%, transparent); border-radius: 26px; padding: 34px; background: rgba(0,0,0,.48); box-shadow: 0 0 35px color-mix(in srgb, var(--agency, #facc15) 18%, transparent); }
-.space-shell section > span { color: var(--agency, #facc15); font: 800 12px Arial, sans-serif; letter-spacing: .18em; }
+.space-shell { position: relative; isolation: isolate; min-height: 100vh; overflow: hidden; padding: 50px 24px; background: #050505; text-align: center; }
+.space-shell::before { position: absolute; z-index: -2; inset: -4%; content: ""; background: var(--page-background) center / cover no-repeat; filter: blur(9px) brightness(.42) saturate(.86); transform: scale(1.06); }
+.space-shell::after { position: absolute; z-index: -1; inset: 0; content: ""; background: linear-gradient(120deg, rgba(0,0,0,.7), rgba(0,0,0,.52)); }
+.space-shell > p { margin: 0; color: var(--accent, var(--agency, #facc15)); font: 800 11px Arial, sans-serif; letter-spacing: .22em; }
+.space-shell > h1 { margin: 14px 0 44px; color: var(--accent, #fff); font-size: clamp(42px, 8vw, 90px); }
+.space-shell section { display: grid; max-width: 700px; min-height: 390px; margin: auto; place-content: center; gap: 18px; border: 1px solid color-mix(in srgb, var(--agency, #facc15) 65%, transparent); border-radius: 26px; padding: 34px; background: rgba(0,0,0,.65); box-shadow: 0 0 35px color-mix(in srgb, var(--agency, #facc15) 18%, transparent); }
+.space-shell section > span { color: var(--accent, var(--agency, #facc15)); font: 800 12px Arial, sans-serif; letter-spacing: .18em; }
 .space-shell h2 { margin: 0; font-size: clamp(26px, 5vw, 48px); }
 .space-shell a, .space-shell button { display: inline-block; border: 1px solid var(--agency, #facc15); border-radius: 12px; padding: 14px 20px; background: var(--agency, #facc15); color: #090909; font: 900 13px Arial, sans-serif; letter-spacing: .1em; text-decoration: none; }
 .space-shell small { display: block; max-width: 380px; color: #c7c7c7; font: 13px Arial, sans-serif; line-height: 1.5; }
@@ -50,6 +52,6 @@ button, input { font: inherit; }
 .agency-space-logo.compact img { max-height: 130px; }
 .tool-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 .tool-dashboard > div { display: grid; gap: 18px; padding: 18px; border: 1px solid color-mix(in srgb, var(--agency) 30%, transparent); border-radius: 16px; text-align: left; }
-.tool-dashboard span { color: var(--agency); font: 900 12px Arial, sans-serif; letter-spacing: .18em; }
+.tool-dashboard span { color: var(--accent, var(--agency)); font: 900 12px Arial, sans-serif; letter-spacing: .18em; }
 .tool-dashboard em { color: #777; font: 12px Arial, sans-serif; font-style: normal; }
 @media (max-width: 760px) { .agency-grid { grid-template-columns: repeat(2, 1fr); margin-top: 34px; } .agency-card-logo { min-height: 115px; } .agency-card strong { font-size: 13px; } }
