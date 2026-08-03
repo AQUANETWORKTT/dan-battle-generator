@@ -39,7 +39,7 @@ export default function Home() {
       <i className="portal-scene trident" />
     </div>
     <div className="gold-glow" aria-hidden />
-    <header className="hero"><Image src="/first-class-agency-logo.png" alt="First Class Agency" width={360} height={245} priority /><p>SUB-AGENCY OPERATIONS</p><h1>SUB-AGENCY <span>PORTAL</span></h1><small>SELECT YOUR AGENCY TO ENTER ITS WORKSPACE</small></header>
+    <header className="hero"><Image src="/first-class-agency-logo.png" alt="First Class Agency" width={360} height={245} priority /><h1>SUB-AGENCY <span>PORTAL</span></h1><small>SELECT YOUR AGENCY TO ENTER ITS WORKSPACE</small></header>
     <section className="agency-grid" aria-label="Sub-agency access">{agencies.map((agency) => {
       const isOpen = selectedId === agency.id;
       return <article key={agency.id} className={`agency-entry ${agency.id}`} style={{ "--agency": agency.color, "--card-background": agency.background ? `url(${agency.background})` : "none" } as React.CSSProperties}>

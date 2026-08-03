@@ -2,7 +2,7 @@
   "name": "subagencies-space",
   "version": "0.1.0",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start", "lint": "eslint" },
-  "dependencies": { "next": "16.2.6", "react": "19.2.4", "react-dom": "19.2.4" },
-  "devDependencies": { "@types/node": "^20", "@types/react": "^19", "@types/react-dom": "^19", "eslint": "^9", "eslint-config-next": "16.2.6", "typescript": "^5" }
+  "scripts": { "dev": "next dev --webpack", "build": "next build", "start": "next start", "lint": "eslint" },
+  "dependencies": { "@supabase/supabase-js": "^2.108.2", "file-saver": "^2.0.5", "html-to-image": "^1.11.13", "jszip": "^3.10.1", "next": "16.2.6", "react": "19.2.4", "react-dom": "19.2.4", "react-rnd": "^10.5.3" },
+  "devDependencies": { "@tailwindcss/postcss": "^4", "@types/file-saver": "^2.0.7", "@types/node": "^20", "@types/react": "^19", "@types/react-dom": "^19", "eslint": "^9", "eslint-config-next": "16.2.6", "tailwindcss": "^4", "typescript": "^5" }
 }

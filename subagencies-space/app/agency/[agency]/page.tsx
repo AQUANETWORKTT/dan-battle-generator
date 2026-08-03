@@ -18,11 +18,9 @@ export default function AgencySpace() {
 
   return <main className="space-shell" style={{ "--agency": theme.structure, "--accent": theme.accent, "--page-background": theme.background ? `url(${theme.background})` : "none" } as React.CSSProperties}>
     <nav><Link href="/">← LOG OUT</Link></nav>
-    <p>FIRST CLASS · SUB-AGENCY PORTAL</p>
     <div className="agency-space-logo"><Image src={`/agency-logos/${params.agency}.png`} alt={`${agency} agency`} width={700} height={400} priority /></div>
-    <section className="tool-dashboard">
-      <div><span>TOOLS</span><Link href={`/agency/${params.agency}/generator`}>POSTER GENERATOR</Link></div>
-      <div><span>OTHER</span><em>MORE TOOLS COMING SOON</em></div>
+    <section className="agency-workspace">
+      <Link className="poster-generator-link" href={`/agency/${params.agency}/generator`}>POSTER GENERATOR</Link>
     </section>
   </main>;
 }
