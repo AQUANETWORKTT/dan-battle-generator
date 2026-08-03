@@ -186,8 +186,11 @@ function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, 
     return managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")] === selectedGroup;
   }
   if (managerKey === "first-class-all") {
-    const group = managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")];
-    return group === "Team Dan" || group === "Team Mike / Indi";
+    // This shared poster is all direct First Class creators. Do not use the
+    // manager assignment here: Dan and Mike/Indi direct managers can be
+    // intentionally excluded from manager views while their creators still
+    // belong on the First Class poster.
+    return String(row.agency || "").trim().toLowerCase() === "first class";
   }
   return managerKeysMatch(getManagerKey(row), managerKey);
 }
