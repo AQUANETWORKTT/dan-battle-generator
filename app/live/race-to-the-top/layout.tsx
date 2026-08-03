@@ -9,13 +9,13 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    images: [{ url: "/race-to-the-top-logo-transparent.png", alt: "Race to the Top" }],
+    images: [{ url: "/race-to-the-top-logo.png", alt: "Race to the Top" }],
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
-    images: ["/race-to-the-top-logo-transparent.png"],
+    images: ["/race-to-the-top-logo.png"],
   },
 };
 
