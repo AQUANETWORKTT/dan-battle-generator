@@ -2717,8 +2717,9 @@ export default function BattleGeneratorPage() {
           key={key}
           scale={scale}
           bounds="parent"
+          lockAspectRatio={1}
           position={{ x: element.x, y: element.y }}
-          size={{ width: element.width, height: element.height }}
+          size={{ width: Math.min(element.width, element.height), height: Math.min(element.width, element.height) }}
           onMouseDown={() => setSelectedElement(key)}
           onDragStop={(_, data) => {
             setSelectedElement(key);
@@ -2726,11 +2727,12 @@ export default function BattleGeneratorPage() {
           }}
           onResizeStop={(_, __, ref, ___, position) => {
             setSelectedElement(key);
+            const size = Math.min(ref.offsetWidth, ref.offsetHeight);
             updateTemplateElement(key, {
               x: Math.round(position.x),
               y: Math.round(position.y),
-              width: Math.round(ref.offsetWidth),
-              height: Math.round(ref.offsetHeight),
+              width: Math.round(size),
+              height: Math.round(size),
             });
           }}
           className={`rounded-full ${isSelected ? "ring-[10px] ring-yellow-300" : "ring-[6px] ring-cyan-300/45"}`}
