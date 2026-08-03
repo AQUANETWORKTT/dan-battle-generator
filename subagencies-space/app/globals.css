@@ -7,6 +7,7 @@
 @font-face { font-family: "Norwester"; src: url("/fonts/Norwester.otf") format("opentype"); font-weight: normal; font-style: normal; }
 * { box-sizing: border-box; }
 body { margin: 0; background: #030303; color: #fff; font-family: Impact, "Arial Black", Arial, sans-serif; }
+body, body * { text-transform: uppercase !important; }
 button, input { font: inherit; }
 .home-shell { position: relative; min-height: 100vh; overflow: hidden; padding: 28px 20px 60px; background: #050505; }
 .portal-background { position: absolute; inset: -8%; overflow: hidden; pointer-events: none; background: #050505; }
