@@ -87,9 +87,10 @@ export async function GET() {
       .eq("name", SETTINGS_NAME)
       .maybeSingle();
     if (settingsError) return NextResponse.json({ error: settingsError.message }, { status: 500 });
-    const savedSettings = (settings?.template_json as { assignments?: { managerGroups?: ManagerAssignments; managerNames?: Record<string, string> } } | null)?.assignments;
+    const savedSettings = (settings?.template_json as { assignments?: { managerGroups?: ManagerAssignments; managerNames?: Record<string, string>; deletedManagers?: string[] } } | null)?.assignments;
     const savedAssignments = savedSettings?.managerGroups || {};
     const savedNames = savedSettings?.managerNames || {};
+    const deletedManagers = new Set((savedSettings?.deletedManagers || []).map(normalize));
     const managerAssignments = Object.fromEntries(
       Object.entries(savedAssignments).map(([manager, group]) => [normalize(manager), group])
     );
@@ -112,7 +113,7 @@ export async function GET() {
 
     const latestByCreator = new Map<string, CreatorStat>();
     for (const row of rows) { const key = getCreatorKey(row); if (key) latestByCreator.set(key, row); }
-    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames) })).filter((manager) => manager.manager_key && manager.manager_label !== "Unassigned");
+    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames) })).filter((manager) => manager.manager_key && !deletedManagers.has(normalize(manager.manager_key)) && manager.manager_label !== "Unassigned");
 
     return NextResponse.json({ statDate: latestDate, managers });
   } catch (error) {

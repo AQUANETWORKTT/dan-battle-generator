@@ -4,12 +4,12 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 export const dynamic = "force-dynamic";
 
 const SETTINGS_NAME = "manager-assignment-settings";
-const GROUPS = ["Team Dan", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Unassigned", "Excluded"] as const;
+const GROUPS = ["Team Dan", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Recruitment", "New Managers", "Excluded"] as const;
 const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "firstclassagencyalf", "firstclassagencydan", "teamdan", "firstclassagencyjenson", "firstclassagencyjacob", "teamjacob", "cscott1232005", "trident125", "firstclassindi", "firstclassagencyindi", "teritilcock1994"];
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
-type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string> };
+type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[] };
 
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) { return clean(value).toLowerCase().replace(/[^a-z0-9]/g, ""); }
@@ -31,7 +31,7 @@ function defaultGroup(row: CreatorStat): Group {
   if (source.includes("paradise")) return "Paradise";
   if (source.includes("respawn")) return "Respawn";
   if (source.includes("aqua")) return "Aqua";
-  return "Unassigned";
+  return "New Managers";
 }
 function normalize(input: unknown): SavedAssignments {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
@@ -42,13 +42,16 @@ function normalize(input: unknown): SavedAssignments {
     const displayName = clean(name);
     if (displayName) managerNames[key(manager)] = displayName;
   }
-  return { managerGroups, managerNames };
+  const deletedManagers = Array.isArray(value.deletedManagers) ? value.deletedManagers.map(key).filter(Boolean) : [];
+  const ownerManagers = Array.isArray(value.ownerManagers) ? value.ownerManagers.map(key).filter(Boolean) : [];
+  return { managerGroups, managerNames, deletedManagers, ownerManagers };
 }
 
 export async function GET() {
   const { data: settings, error: settingsError } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle();
   if (settingsError) return NextResponse.json({ error: settingsError.message }, { status: 500 });
   const assignments = normalize((settings?.template_json as Record<string, unknown> | null)?.assignments);
+  const deleted = new Set(assignments.deletedManagers);
   const { data: latestRows, error: latestError } = await submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1);
   const statDate = clean(latestRows?.[0]?.stat_date);
   if (latestError || !statDate) return NextResponse.json({ error: latestError?.message || "No uploaded Creator Intelligence data." }, { status: 500 });
@@ -69,9 +72,9 @@ export async function GET() {
   const managers = new Map<string, { key: string; name: string; group: Group }>();
   for (const row of rows) {
     const manager = key(managerRaw(row));
-    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
+    if (manager && !deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
   }
-  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group });
+  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group });
   const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
   const managerGroups = Object.fromEntries(managerList.map((manager) => [manager.key, manager.group]));
   return NextResponse.json({ statDate, groups: GROUPS, managers: managerList, managerGroups, assignments });

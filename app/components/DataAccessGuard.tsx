@@ -10,16 +10,19 @@ export const DATA_ACCESS_STORAGE_KEY = "first-class-data-access";
 export default function DataAccessGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [allowed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.sessionStorage.getItem(DATA_ACCESS_STORAGE_KEY) === DATA_ACCESS_PASSWORD;
-  });
+  const [allowed, setAllowed] = useState(false);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (!allowed) router.replace(`/data?next=${encodeURIComponent(pathname)}`);
-  }, [allowed, pathname, router]);
+    setAllowed(window.sessionStorage.getItem(DATA_ACCESS_STORAGE_KEY) === DATA_ACCESS_PASSWORD);
+    setChecked(true);
+  }, []);
 
-  if (!allowed) {
+  useEffect(() => {
+    if (checked && !allowed) router.replace(`/data?next=${encodeURIComponent(pathname)}`);
+  }, [allowed, checked, pathname, router]);
+
+  if (!checked || !allowed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
         <div className="rounded-3xl border border-yellow-300/20 bg-black/70 p-6 text-center">

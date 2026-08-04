@@ -1768,7 +1768,7 @@ export default function BattleGeneratorPage() {
       const assignedGroup = managerGroups[getManagerLeaderboardManagerKey(latestCreatorRow)];
       // A manager only disappears when they are intentionally placed in the
       // Excluded column on Manager Assignments. This applies to every group.
-      if (assignedGroup === "Excluded") continue;
+      if (assignedGroup === "Excluded" || assignedGroup === "Owner") continue;
       if (activeGroup !== "All Groups" && !belongsToSelectedManagerLeaderboardGroup(latestCreatorRow, activeGroup, managerGroups)) continue;
       const manager = managerNames[getManagerLeaderboardManagerKey(latestCreatorRow)] || getManagerLeaderboardName(latestCreatorRow);
       if (manager === "Unassigned") continue;
