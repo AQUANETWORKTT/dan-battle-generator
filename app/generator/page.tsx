@@ -611,7 +611,7 @@ function createTeamDanPosterTemplate(): TeamPosterTemplate {
       height: 58,
       value: `${valueLabel} CREATOR ${index + 1}`,
       fontFamily: "Luckiest Guy",
-      fontSize: 42,
+      fontSize: 37,
       color: "#FFFFFF",
       fontWeight: 900,
     });
@@ -625,7 +625,7 @@ function createTeamDanPosterTemplate(): TeamPosterTemplate {
       height: 58,
       value: `${valueLabel} ${index + 1}`,
       fontFamily: "Luckiest Guy",
-      fontSize: 42,
+      fontSize: 37,
       color: valueColor,
       fontWeight: 900,
     });

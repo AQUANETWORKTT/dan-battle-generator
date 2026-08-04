@@ -204,8 +204,8 @@ function createDefaultTemplate(): TeamPosterTemplate {
     const valueId = group === "diamonds" ? `diamonds-${index + 1}` : `hours-${index + 1}`;
     const valueColor = group === "diamonds" ? "#FACC15" : "#38BDF8";
     elements.push({ id: `avatar-${suffix}`, kind: "avatar", x: 145, y: rowY, width: 92, height: 92, value: "" });
-    elements.push({ id: `username-${suffix}`, kind: "username", x: 275, y: rowY + 15, width: 430, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 42, color: "#FFFFFF", fontWeight: 900 });
-    elements.push({ id: valueId, kind: group, x: 725, y: rowY + 15, width: 210, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 42, color: valueColor, fontWeight: 900 });
+    elements.push({ id: `username-${suffix}`, kind: "username", x: 275, y: rowY + 15, width: 430, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 37, color: "#FFFFFF", fontWeight: 900 });
+    elements.push({ id: valueId, kind: group, x: 725, y: rowY + 15, width: 210, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 37, color: valueColor, fontWeight: 900 });
   };
 
   for (let index = 0; index < 5; index += 1) {
@@ -449,7 +449,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
             borderRadius: element.kind === "avatar" ? 999 : 0,
             color: element.color || "#FACC15",
             fontFamily: element.fontFamily || "Luckiest Guy",
-            fontSize: element.fontSize || 42,
+            fontSize: element.fontSize || 37,
             fontWeight: element.fontWeight || 900,
             textShadow: element.kind === "avatar" ? undefined : "3px 3px 0 #000",
             whiteSpace: "nowrap",
