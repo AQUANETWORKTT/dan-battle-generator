@@ -183,7 +183,9 @@ export async function GET() {
           if (previousCreatorKeys.has(identity) || savedRosterKeys.has(identity) || excluded.has(username.toLowerCase()) || newCreatorKeys.has(identity)) return [];
           newCreatorKeys.add(identity);
           const progress = progressByCreator.get(stableCreatorId(row.creator_id) || username.toLowerCase()) || progressByUsername.get(username.toLowerCase());
-          return [{ creatorId: stableCreatorId(row.creator_id), username, lastMonthDiamonds: 0, track: "blue" as const, target: 100_000, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays), liveHours: number(progress?.liveHours), followers: number(progress?.followers) }];
+          const override = creatorOverride(username);
+          const track = override.track || "blue";
+          return [{ creatorId: stableCreatorId(row.creator_id), username, lastMonthDiamonds: 0, track, target: override.target ?? 100_000, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers) }];
         })
       : [];
     return NextResponse.json({
