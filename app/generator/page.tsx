@@ -346,7 +346,6 @@ function getPosterSupabaseClient() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!url || !anonKey) {
-      alert(`URL=${url ? "YES" : "NO"} | KEY=${anonKey ? "YES" : "NO"}`);
       return null;
     }
 

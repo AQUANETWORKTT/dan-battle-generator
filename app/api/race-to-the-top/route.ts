@@ -142,12 +142,53 @@ export async function GET() {
       progressByCreator.set(identity, progress);
       progressByUsername.set(normalizedUsername, progress);
     }
+
+    // Daily exports are full snapshots. Anyone who appears in today's export
+    // but not the immediately preceding export is a new creator and begins
+    // in the Blue track automatically.
+    const { data: previousExportRows } = await submissionsSupabase
+      .from("creator_daily_stats")
+      .select("stat_date")
+      .lt("stat_date", statDate)
+      .order("stat_date", { ascending: false })
+      .limit(1);
+    const previousExportDate = text(previousExportRows?.[0]?.stat_date);
+    const previousCreatorKeys = new Set<string>();
+    if (previousExportDate) {
+      for (let from = 0, hasMore = true; hasMore; from += 1000) {
+        const { data, error } = await submissionsSupabase
+          .from("creator_daily_stats")
+          .select("creator_id, creator_username")
+          .eq("stat_date", previousExportDate)
+          .range(from, from + 999);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        const page = (data || []) as CreatorStat[];
+        for (const row of page) {
+          const username = text(row.creator_username).replace(/^@/, "");
+          if (username) previousCreatorKeys.add(creatorIdentity(row.creator_id, username));
+        }
+        hasMore = page.length === 1000;
+      }
+    }
+    const savedRosterKeys = new Set(visibleSavedRoster.map((creator) => creatorIdentity(creator.creatorId, creator.username)));
+    const newCreatorKeys = new Set<string>();
+    const newBlueCreators = previousExportDate
+      ? progressRows.flatMap((row) => {
+          if (text(row.stat_date) !== statDate) return [];
+          const username = text(row.creator_username).replace(/^@/, "");
+          if (!username) return [];
+          const identity = creatorIdentity(row.creator_id, username);
+          if (previousCreatorKeys.has(identity) || savedRosterKeys.has(identity) || excluded.has(username.toLowerCase()) || newCreatorKeys.has(identity)) return [];
+          newCreatorKeys.add(identity);
+          const progress = progressByCreator.get(stableCreatorId(row.creator_id) || username.toLowerCase()) || progressByUsername.get(username.toLowerCase());
+          return [{ creatorId: stableCreatorId(row.creator_id), username, lastMonthDiamonds: 0, track: "blue" as const, target: 100_000, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays), liveHours: number(progress?.liveHours), followers: number(progress?.followers) }];
+        })
+      : [];
     return NextResponse.json({
       statDate,
       hasRaceProgress,
-      // This event is roster-only. Uploads update progress for rostered
-      // creators; they must never create a new Race to the Top card.
-      creators: visibleSavedRoster.map((creator) => {
+      creators: [
+        ...visibleSavedRoster.map((creator) => {
           // A roster can retain an older TikTok ID after a migration, so fall
           // back to the stable username from the same daily upload.
           const progress = progressByCreator.get(stableCreatorId(creator.creatorId))
@@ -157,6 +198,8 @@ export async function GET() {
           const target = override.target ?? (track === "blue" ? 100_000 : creator.target);
           return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays), liveHours: number(progress?.liveHours), followers: number(progress?.followers) };
         }),
+        ...newBlueCreators,
+      ],
     });
   }
 
