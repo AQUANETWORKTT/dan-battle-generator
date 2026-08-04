@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 const agencies = [
@@ -12,7 +11,6 @@ const agencies = [
 ] as const;
 
 export default function Home() {
-  const router = useRouter();
   const [selectedId, setSelectedId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,8 +26,12 @@ export default function Home() {
       window.setTimeout(() => { setSelectedId(""); setPassword(""); setError(""); }, 900);
       return;
     }
-    window.sessionStorage.setItem(`subagency-access-${selected.id}`, "granted");
-    router.push(`/agency/${selected.id}`);
+    try {
+      window.sessionStorage.setItem(`subagency-access-${selected.id}`, "granted");
+    } catch {
+      // Storage can be unavailable in some mobile and private browsing modes.
+    }
+    window.location.assign(`/agency/${selected.id}`);
   }
 
   return <main className="home-shell">
