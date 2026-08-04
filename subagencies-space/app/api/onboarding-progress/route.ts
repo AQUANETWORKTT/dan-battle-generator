@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       if (!entries[body.id]) return NextResponse.json({ error: "Onboarding entry not found." }, { status: 404 });
       entries[body.id] = { ...entries[body.id], confirmed: true };
     } else if (body.entry) {
-      entries[body.id] = { ...entries[body.id], ...body.entry, confirmed: false };
+      entries[body.id] = { ...entries[body.id], ...body.entry, confirmed: body.entry.confirmed === true };
     } else return NextResponse.json({ error: "Missing onboarding update." }, { status: 400 });
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: RECORD_NAME, template_json: { entries }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) throw new Error(error.message);
