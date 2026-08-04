@@ -98,5 +98,6 @@ button, input { font: inherit; }
 .agency-diamond-hours [class*="bg-yellow-"] { background-color: color-mix(in srgb, var(--agency-poster-accent) 16%, transparent); }
 .agency-diamond-hours [class*="border-yellow-"] { border-color: color-mix(in srgb, var(--agency-poster-accent) 42%, transparent); }
 .agency-diamond-hours [class*="hover:bg-yellow-"]:hover { background-color: color-mix(in srgb, var(--agency-poster-accent) 26%, transparent); }
+.agency-diamond-hours button[class*="bg-yellow-"] { background-color: var(--agency-poster-accent) !important; color: #050505 !important; }
 .agency-diamond-hours button[class*="bg-green-"] { background-color: var(--agency-poster-accent); }
 @media (max-width: 760px) { .agency-grid { grid-template-columns: repeat(2, 1fr); margin-top: 34px; } .agency-card-logo { min-height: 115px; } .agency-card strong { font-size: 13px; } }

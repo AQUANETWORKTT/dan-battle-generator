@@ -689,9 +689,10 @@ export default function TeamDiamondsYesterdayPage() {
     const allItems = templates.length
       ? templates
       : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
-    const items = side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
+    const activeSide = side || agencySide;
+    const items = allItems.filter((item) => (item.template.teamSide || "dan") === activeSide);
     if (!items.length) {
-      const categoryLabel = side ? teamPosterCategoryLabel(side) : "All Teams";
+      const categoryLabel = teamPosterCategoryLabel(activeSide);
       setMessage(`No saved presets in ${categoryLabel} yet.`);
       return;
     }
@@ -714,7 +715,7 @@ export default function TeamDiamondsYesterdayPage() {
         if (blob) zip.file(`${templateLabel(item.name)}.png`, blob);
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
-      const sideLabel = side ? teamPosterCategoryLabel(side) : "All teams";
+      const sideLabel = teamPosterCategoryLabel(activeSide);
       setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
       const archive = await zip.generateAsync({ type: "blob" });
       saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${latestStatDate || getYesterdayDateKey()}.zip`);
@@ -843,8 +844,7 @@ export default function TeamDiamondsYesterdayPage() {
                 <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">{agencySide} Diamond / Hours Posters</h1>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => void checkPictures()} disabled={loading} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-300/20 disabled:opacity-50">Check Pictures</button>
-                <button type="button" onClick={() => void downloadAllPosters()} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
+                <button type="button" onClick={() => void downloadAllPosters(agencySide)} disabled={loading} className="rounded-xl bg-yellow-300 px-5 py-3 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:opacity-50">Download All Managers</button>
               </div>
             </div>
             <p className="mt-3 max-w-3xl text-white/60">
@@ -862,12 +862,12 @@ export default function TeamDiamondsYesterdayPage() {
                       Download All {teamPosterCategoryLabel(side)}
                     </button>
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {templatesBySide[side].map((item) => (
                 <article key={item.name} className="rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
                   <p className="text-xs font-black uppercase tracking-widest text-white/45">Saved preset</p>
-                  <h2 className="mt-2 text-2xl font-black uppercase text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
+                  <h2 className="mt-2 text-2xl font-black uppercase tracking-wide text-yellow-200">{templateLabel(item.name)}</h2>
+                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
