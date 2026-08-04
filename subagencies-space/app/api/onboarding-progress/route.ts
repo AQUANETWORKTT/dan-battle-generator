@@ -38,8 +38,18 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { action?: "update" | "confirm"; id?: string; entry?: Progress };
+    const body = await request.json() as { action?: "update" | "confirm" | "confirm-many"; id?: string; ids?: string[]; entries?: Record<string, Progress>; entry?: Progress };
     const entries = await loadEntries();
+    if (body.action === "confirm-many") {
+      const ids = body.ids || [];
+      for (const id of ids) {
+        const entry = entries[id] || body.entries?.[id];
+        if (entry) entries[id] = { ...entry, confirmed: true };
+      }
+      const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: RECORD_NAME, template_json: { entries }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ confirmed: ids.length });
+    }
     if (!body.id || !body.action) return NextResponse.json({ error: "Missing onboarding entry." }, { status: 400 });
     if (body.action === "confirm") {
       if (!entries[body.id]) return NextResponse.json({ error: "Onboarding entry not found." }, { status: 404 });
