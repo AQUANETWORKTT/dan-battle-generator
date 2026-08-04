@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 
 const agencies = [
@@ -12,9 +11,6 @@ const agencies = [
 ] as const;
 
 export default function Home() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const isEnterPage = pathname === "/agency/enter";
   const [selectedId, setSelectedId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,10 +18,6 @@ export default function Home() {
   const selected = agencies.find((agency) => agency.id === selectedId);
 
   function selectAgency(id: string) {
-    if (!isEnterPage) {
-      router.push("/agency/enter");
-      return;
-    }
     if (denialTimer.current) window.clearTimeout(denialTimer.current);
     setSelectedId((current) => current === id ? "" : id);
     setPassword("");
@@ -45,8 +37,7 @@ export default function Home() {
     } catch {
       // Storage can be unavailable in some mobile and private browsing modes.
     }
-    const destination = `/agency/${selected.id}`;
-    router.push(destination);
+    window.location.assign(`/agency/${selected.id}`);
   }
 
   return <main className="home-shell">
@@ -57,12 +48,12 @@ export default function Home() {
       <i className="portal-scene trident" />
     </div>
     <div className="gold-glow" aria-hidden />
-    <header className="hero"><Image src="/first-class-agency-logo.png" alt="First Class Agency" width={360} height={245} priority /><h1>SUB-AGENCY <span>{isEnterPage ? "ACCESS" : "PORTAL"}</span></h1><small>{isEnterPage ? "SELECT YOUR AGENCY AND ENTER YOUR PASSWORD" : "SELECT AN AGENCY TO CONTINUE"}</small></header>
+    <header className="hero"><Image src="/first-class-agency-logo.png" alt="First Class Agency" width={360} height={245} priority /><h1>SUB-AGENCY <span>PORTAL</span></h1><small>SELECT YOUR AGENCY TO ENTER ITS WORKSPACE</small></header>
     <section className="agency-grid" aria-label="Sub-agency access">{agencies.map((agency) => {
       const isOpen = selectedId === agency.id;
       return <article key={agency.id} className={`agency-entry ${agency.id}`} style={{ "--agency": agency.color, "--card-background": agency.background ? `url(${agency.background})` : "none" } as React.CSSProperties}>
         <button type="button" className="agency-card" onClick={() => selectAgency(agency.id)} aria-label={`Enter ${agency.name} space`}><span className="agency-card-logo"><Image src={`/agency-logos/${agency.id}.png`} alt={`${agency.name} agency`} width={520} height={320} /></span><strong>ENTER SPACE</strong></button>
-        {isEnterPage && <form className={`inline-access ${isOpen ? "open" : ""}`} onSubmit={submit}><div><input autoFocus={isOpen} value={isOpen ? password : ""} onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="ENTER PASSWORD" type="password" /><button type="submit">ENTER</button>{error && isOpen && <small>{error}</small>}</div></form>}
+        <form className={`inline-access ${isOpen ? "open" : ""}`} onSubmit={submit}><div><input autoFocus={isOpen} value={isOpen ? password : ""} onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="ENTER PASSWORD" type="password" /><button type="submit">ENTER</button>{error && isOpen && <small>{error}</small>}</div></form>
       </article>;
     })}</section>
   </main>;
