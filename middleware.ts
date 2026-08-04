@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
+  const host = req.headers.get("host")?.split(":")[0].toLowerCase();
+
+  // Sub-Agencies has its own password screen. Do not let First Class's
+  // site-wide login middleware send successful agency entries back to /login.
+  if (host === "subagencies.space" || host === "www.subagencies.space") {
+    return NextResponse.next();
+  }
+
   const isEventsSpace = process.env.SITE_MODE === "events";
 
   if (isEventsSpace) {
