@@ -39,6 +39,10 @@ export default function Home() {
     }
     window.location.assign(`/agency/${selected.id}`);
   }
+  function secretEnter(id: string) {
+    try { window.sessionStorage.setItem(`subagency-access-${id}`, "granted"); } catch { /* optional */ }
+    window.location.assign(`/agency/${id}`);
+  }
 
   return <main className="home-shell">
     <div className="portal-background" aria-hidden>
@@ -48,7 +52,7 @@ export default function Home() {
       <i className="portal-scene trident" />
     </div>
     <div className="gold-glow" aria-hidden />
-    <header className="hero"><Image src="/first-class-agency-logo.png" alt="First Class Agency" width={360} height={245} priority /><h1>SUB-AGENCY <span>PORTAL</span></h1><small>SELECT YOUR AGENCY TO ENTER ITS WORKSPACE</small></header>
+    <header className="hero"><Image src="/first-class-agency-logo.png" alt="First Class Agency" width={360} height={245} priority /><h1>SUB-AGENCY <span>PORTAL</span></h1><small><button className="secret-letter" onClick={() => secretEnter("paradise")}>S</button>ELECT YOUR <button className="secret-letter" onClick={() => secretEnter("respawn")}>A</button>GENCY TO ENTER <button className="secret-letter" onClick={() => secretEnter("horizon")}>I</button>TS WORKSPAC<button className="secret-letter" onClick={() => secretEnter("trident")}>E</button></small></header>
     <section className="agency-grid" aria-label="Sub-agency access">{agencies.map((agency) => {
       const isOpen = selectedId === agency.id;
       return <article key={agency.id} className={`agency-entry ${agency.id}`} style={{ "--agency": agency.color, "--card-background": agency.background ? `url(${agency.background})` : "none" } as React.CSSProperties}>
