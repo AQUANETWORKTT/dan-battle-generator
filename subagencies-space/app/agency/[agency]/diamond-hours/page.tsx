@@ -853,7 +853,7 @@ export default function TeamDiamondsYesterdayPage() {
           </section>
 
           <section className="mt-6 space-y-5">
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid gap-6">
               {[agencySide].map((side) => (
                 <div key={side} className="rounded-3xl border border-yellow-300/20 bg-black/30 p-4">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -866,8 +866,8 @@ export default function TeamDiamondsYesterdayPage() {
                     {templatesBySide[side].map((item) => (
                 <article key={item.name} className="rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
                   <p className="text-xs font-black uppercase tracking-widest text-white/45">Saved preset</p>
-                  <h2 className="mt-2 text-2xl font-black uppercase tracking-wide text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase tracking-[0.08em] text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
+                  <h2 className="mt-2 text-2xl font-black uppercase tracking-[0.06em] text-yellow-200">{templateLabel(item.name)}</h2>
+                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase tracking-[0.12em] text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
