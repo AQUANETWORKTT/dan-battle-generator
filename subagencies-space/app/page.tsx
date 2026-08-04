@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 const agencies = [
   { id: "paradise", name: "PARADISE", password: "GEE56", color: "#d6a65e", background: "/agency-backgrounds/paradise.png" },
@@ -16,16 +16,22 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const denialTimer = useRef<number | null>(null);
   const selected = agencies.find((agency) => agency.id === selectedId);
 
-  function selectAgency(id: string) { setSelectedId((current) => current === id ? "" : id); setPassword(""); setError(""); }
+  function selectAgency(id: string) {
+    if (denialTimer.current) window.clearTimeout(denialTimer.current);
+    setSelectedId((current) => current === id ? "" : id);
+    setPassword("");
+    setError("");
+  }
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!selected) return;
     const enteredPassword = password.trim().toUpperCase();
     if (enteredPassword !== selected.password && enteredPassword !== "DAN44") {
       setError("ACCESS DENIED");
-      window.setTimeout(() => { setSelectedId(""); setPassword(""); setError(""); }, 900);
+      denialTimer.current = window.setTimeout(() => { setSelectedId(""); setPassword(""); setError(""); }, 900);
       return;
     }
     try {
@@ -33,7 +39,16 @@ export default function Home() {
     } catch {
       // Storage can be unavailable in some mobile and private browsing modes.
     }
-    router.push(`/agency/${selected.id}`);
+    const destination = `/agency/${selected.id}`;
+    router.push(destination);
+
+    // Some mobile browsers occasionally ignore a client-side route change after
+    // submitting a password form. Fall back to a normal same-site navigation.
+    window.setTimeout(() => {
+      if (window.location.pathname !== destination) {
+        window.location.replace(destination);
+      }
+    }, 250);
   }
 
   return <main className="home-shell">
