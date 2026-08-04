@@ -23,14 +23,21 @@ function expectedBackstageDate() {
 export default function AgencySpace() {
   const params = useParams<{ agency: string }>();
   const [backstage, setBackstage] = useState<{ updatedToday: boolean; latestDate: string } | null>(null);
+  const [checkingBackstage, setCheckingBackstage] = useState(false);
   const agency = params.agency?.toUpperCase() || "AGENCY";
   const theme = themes[params.agency] || { structure: "#facc15", accent: "#facc15", background: "" };
 
+  async function checkBackstage() {
+    setCheckingBackstage(true);
+    try {
+      const response = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
+      const status = response.ok ? await response.json() : null;
+      setBackstage(status ? { latestDate: String(status.latestDate || ""), updatedToday: String(status.latestDate || "") === expectedBackstageDate() } : { latestDate: "", updatedToday: false });
+    } catch { setBackstage({ latestDate: "", updatedToday: false }); }
+    finally { setCheckingBackstage(false); }
+  }
   useEffect(() => {
-    fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((status) => setBackstage(status ? { latestDate: String(status.latestDate || ""), updatedToday: String(status.latestDate || "") === expectedBackstageDate() } : { latestDate: "", updatedToday: false }))
-      .catch(() => setBackstage({ latestDate: "", updatedToday: false }));
+    void checkBackstage();
   }, []);
 
   const updatedToday = backstage?.updatedToday === true;
@@ -41,7 +48,7 @@ export default function AgencySpace() {
     <div className="agency-workspace">
       <div className={`backstage-status ${updatedToday ? "updated" : "pending"}`}>
         <span>{updatedToday ? "BACKSTAGE UPDATED TODAY" : "BACKSTAGE NOT UPDATED"}</span>
-        <small>{backstage?.latestDate ? `LATEST DATA: ${backstage.latestDate}` : "CHECKING BACKSTAGE"}</small>
+        <button type="button" onClick={() => void checkBackstage()} disabled={checkingBackstage}>{checkingBackstage ? "CHECKING BACKSTAGE" : backstage?.latestDate ? `LATEST DATA: ${backstage.latestDate} · REFRESH` : "CHECK BACKSTAGE"}</button>
       </div>
       <Link className="poster-generator-link" href={`/agency/${params.agency}/generator`}>
         <span className="poster-generator-kicker">POSTER TOOL</span>
@@ -62,6 +69,9 @@ export default function AgencySpace() {
         <strong>HEALTH SCORE<br />SYSTEM</strong>
         <em>COMING SOON</em>
       </div>
+      {params.agency === "paradise" ? <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/onboarding-progress`}>
+        <span>AGENCY VIEW</span><strong>MANAGER ONBOARDING<br />PROGRESS</strong><span className="poster-generator-cta">REVIEW COMPLETIONS&nbsp;&rarr;</span>
+      </Link> : null}
     </div>
   </main>;
 }

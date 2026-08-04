@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
@@ -468,6 +468,9 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
 
 export default function TeamDiamondsYesterdayPage() {
   const params = useParams<{ agency: string }>();
+  const searchParams = useSearchParams();
+  const requestedManager = searchParams.get("manager") || "";
+  const autoDownload = searchParams.get("download") === "true";
   const agencySide = (["paradise", "horizon", "trident", "respawn"].includes(params.agency || "") ? params.agency : "paradise") as TeamPosterCategory;
   const agencyColours: Record<TeamPosterCategory, string> = { dan: "#facc15", "mike-indi": "#facc15", "sub-agencies": "#facc15", paradise: "#d6a65e", horizon: "#f97316", trident: "#38bdf8", respawn: "#28d7c3" };
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
@@ -481,6 +484,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
   const [latestStatDate, setLatestStatDate] = useState("");
+  const [autoDownloadStarted, setAutoDownloadStarted] = useState(false);
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
@@ -490,7 +494,12 @@ export default function TeamDiamondsYesterdayPage() {
   const templateCards = (templates.length
     ? templates
     : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }])
-    .filter((item) => item.template.teamSide === agencySide);
+    .filter((item) => item.template.teamSide === agencySide)
+    .filter((item) => {
+      if (!requestedManager) return true;
+      const requestedName = requestedManager.replace(/\s*\(.*/, "").replace(/^team\s+/i, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+      return templateLabel(item.name).replace(/^team\s+/i, "").replace(/[^a-z0-9]/gi, "").toLowerCase().includes(requestedName);
+    });
   const templatesBySide = {
     dan: templateCards.filter((item) => (item.template.teamSide || "dan") === "dan"),
     "mike-indi": templateCards.filter((item) => item.template.teamSide === "mike-indi"),
@@ -827,6 +836,12 @@ export default function TeamDiamondsYesterdayPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!autoDownload || autoDownloadStarted || !templateCards.length) return;
+    setAutoDownloadStarted(true);
+    void downloadTemplate(templateCards[0]);
+  }, [autoDownload, autoDownloadStarted, templateCards]);
 
   return (
       <main className="agency-diamond-hours min-h-screen bg-[#080603] px-4 py-6 text-white" style={{ "--agency-poster-accent": agencyColours[agencySide] } as React.CSSProperties}>

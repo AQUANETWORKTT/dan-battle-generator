@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
 
 const agencies = [
@@ -56,8 +57,9 @@ export default function Home() {
     <section className="agency-grid" aria-label="Sub-agency access">{agencies.map((agency) => {
       const isOpen = selectedId === agency.id;
       return <article key={agency.id} className={`agency-entry ${agency.id}`} style={{ "--agency": agency.color, "--card-background": agency.background ? `url(${agency.background})` : "none" } as React.CSSProperties}>
-        <button type="button" className="agency-card" onClick={() => selectAgency(agency.id)} aria-label={`Enter ${agency.name} space`}><span className="agency-card-logo"><Image src={`/agency-logos/${agency.id}.png`} alt={`${agency.name} agency`} width={520} height={320} /></span><strong>ENTER SPACE</strong></button>
+        <button type="button" className="agency-card" onClick={() => selectAgency(agency.id)} aria-label={`Enter ${agency.name} owner space`}><span className="agency-card-logo"><Image src={`/agency-logos/${agency.id}.png`} alt={`${agency.name} agency`} width={520} height={320} /></span><strong>OWNER SPACE</strong></button>
         <form className={`inline-access ${isOpen ? "open" : ""}`} onSubmit={submit}><div><input autoFocus={isOpen} value={isOpen ? password : ""} onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="ENTER PASSWORD" type="password" /><button type="submit">ENTER</button>{error && isOpen && <small>{error}</small>}</div></form>
+        {agency.id === "paradise" ? <Link href={`/agency/${agency.id}/managers`} className="portal-managers" style={{ "--agency": agency.color, "--card-background": agency.background ? `url(${agency.background})` : "none" } as React.CSSProperties}><Image src={`/agency-logos/${agency.id}.png`} alt="" width={220} height={100}/><strong>MANAGERS</strong></Link> : null}
       </article>;
     })}</section>
   </main>;
