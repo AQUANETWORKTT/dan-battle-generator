@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const clean = (value: unknown) => String(value || "").trim();
 const managerKey = (row: Record<string, unknown>) => clean(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email).toLowerCase().replace(/[^a-z0-9]/g, "");
 const username = (row: Record<string, unknown>) => clean(row.creator_username || row["Creator's username"]).replace(/^@/, "").toLowerCase();
+const creatorId = (row: Record<string, unknown>) => clean(row.creator_id || row["Creator ID"] || row.creatorId || username(row));
 const inferredAgency = (row: Record<string, unknown>) => {
   const source = clean(row.group_name || row.team || row.agency).toLowerCase();
   return ["paradise", "respawn", "horizon", "trident"].find((name) => source.includes(name)) || "";
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
   }
   const latestByCreator = new Map<string, Record<string, unknown>>();
   const diamondsByCreator = new Map<string, number>();
+  const presentInLatestExport = new Set<string>();
   for (const row of data) {
     const key = managerKey(row);
     if (manager && key !== manager) continue;
@@ -45,13 +47,15 @@ export async function GET(request: Request) {
     // in a manager or owner onboarding list themselves.
     if ((names[key] || "").includes(" - ")) continue;
     const name = username(row); if (!name) continue;
-    diamondsByCreator.set(name, (diamondsByCreator.get(name) || 0) + Number(row.diamonds || 0));
+    const stableId = creatorId(row);
+    if (clean(row.stat_date) === latestDate) presentInLatestExport.add(stableId);
+    diamondsByCreator.set(stableId, (diamondsByCreator.get(stableId) || 0) + Number(row.diamonds || 0));
     const days = Number(row.days_since_joining || row["Days since joining"] || 0);
     // The export uses day 0 for a creator who joined today, so include it.
     // Keep unconfirmed creators visible beyond the original two-week window.
     if (days < 0 || days > 30) continue;
-    const previous = latestByCreator.get(name);
-    if (!previous || clean(row.stat_date) > clean(previous.stat_date)) latestByCreator.set(name, row);
+    const previous = latestByCreator.get(stableId);
+    if (!previous || clean(row.stat_date) > clean(previous.stat_date)) latestByCreator.set(stableId, row);
   }
-  return NextResponse.json({ latestDate, creators: [...latestByCreator.values()].map((row) => ({ username: username(row), daysSinceJoining: Number(row.days_since_joining || row["Days since joining"] || 0), diamonds: diamondsByCreator.get(username(row)) || 0, managerKey: managerKey(row), manager: names[managerKey(row)] || managerKey(row) })) });
+  return NextResponse.json({ latestDate, creators: [...latestByCreator.values()].filter((row) => presentInLatestExport.has(creatorId(row))).map((row) => ({ creatorId: creatorId(row), username: username(row), daysSinceJoining: Number(row.days_since_joining || row["Days since joining"] || 0), diamonds: diamondsByCreator.get(creatorId(row)) || 0, managerKey: managerKey(row), manager: names[managerKey(row)] || managerKey(row) })) });
 }
