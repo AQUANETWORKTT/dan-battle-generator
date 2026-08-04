@@ -1472,6 +1472,22 @@ export default function BattleGeneratorPage() {
     setTeamPosterStatus("Team poster template deleted.");
   }
 
+  async function renameTeamPosterTemplate() {
+    if (teamPosterTemplateName === TEAM_DAN_POSTER_TEMPLATE_NAME) { setTeamPosterStatus("Duplicate the original template before renaming it."); return; }
+    const label = window.prompt("New template name", teamPosterTemplateName.replace(/^team-poster-/, "").replace(/-/g, " "));
+    if (!label?.trim()) return;
+    const nextName = `team-poster-${label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+    if (nextName === teamPosterTemplateName) return;
+    const supabase = getPosterSupabaseClient();
+    if (!supabase) return;
+    const template = normalizeTeamDanPosterTemplate(teamPosterTemplate);
+    const { error } = await supabase.from("poster_templates").upsert({ name: nextName, background_url: template.backgroundUrl || null, template_json: template, updated_at: new Date().toISOString() }, { onConflict: "name" });
+    if (error) { setTeamPosterStatus(`Template rename failed: ${error.message}`); return; }
+    await supabase.from("poster_templates").delete().eq("name", teamPosterTemplateName);
+    setTeamPosterTemplates((current) => current.map((item) => item.name === teamPosterTemplateName ? { name: nextName, template } : item));
+    setTeamPosterTemplateName(nextName); setTeamPosterStatus("Template renamed.");
+  }
+
   function resetTeamPosterTemplate() {
     const nextTemplate = createTeamDanPosterTemplate();
     setTeamPosterTemplate(nextTemplate);
@@ -4002,6 +4018,7 @@ function renderText(
               <button type="button" onClick={saveTeamPosterTemplate} className="rounded-lg bg-yellow-300 px-3 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-yellow-200">
                 Save Template
               </button>
+              <button type="button" onClick={() => void renameTeamPosterTemplate()} disabled={teamPosterTemplateName === TEAM_DAN_POSTER_TEMPLATE_NAME} className="rounded-lg border border-yellow-300/35 bg-yellow-300/10 px-3 py-4 text-xs font-black uppercase tracking-widest text-yellow-100 disabled:cursor-not-allowed disabled:opacity-40">Rename Template</button>
               <button type="button" onClick={() => void deleteTeamPosterTemplate()} disabled={teamPosterTemplateName === TEAM_DAN_POSTER_TEMPLATE_NAME} className="rounded-lg bg-red-500 px-3 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-40">
                 Delete Template
               </button>
