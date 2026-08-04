@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
 import JSZip from "jszip";
 import { flushSync } from "react-dom";
-import DataAccessGuard from "../../components/DataAccessGuard";
 
 type CreatorStat = {
   [key: string]: unknown;
@@ -467,6 +467,9 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
 }
 
 export default function TeamDiamondsYesterdayPage() {
+  const params = useParams<{ agency: string }>();
+  const agencySide = (["paradise", "horizon", "trident", "respawn"].includes(params.agency || "") ? params.agency : "paradise") as TeamPosterCategory;
+  const agencyColours: Record<TeamPosterCategory, string> = { dan: "#facc15", "mike-indi": "#facc15", "sub-agencies": "#facc15", paradise: "#d6a65e", horizon: "#f97316", trident: "#38bdf8", respawn: "#28d7c3" };
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
   const [savedTemplate, setSavedTemplate] = useState<TeamPosterTemplate | null>(null);
   const [templates, setTemplates] = useState<SavedTemplateRow[]>([]);
@@ -478,16 +481,16 @@ export default function TeamDiamondsYesterdayPage() {
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
   const [latestStatDate, setLatestStatDate] = useState("");
-  const [showSubAgencies, setShowSubAgencies] = useState(false);
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
   // This lets every signed-in user build a poster even when no public custom template exists yet.
   const selectedSavedTemplate = templates.find((item) => item.name === selectedTemplateName)?.template || savedTemplate;
   const visibleTemplate = useMemo(() => template || selectedSavedTemplate || getSavedTemplate() || createDefaultTemplate(), [template, selectedSavedTemplate]);
-  const templateCards = templates.length
+  const templateCards = (templates.length
     ? templates
-    : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+    : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }])
+    .filter((item) => item.template.teamSide === agencySide);
   const templatesBySide = {
     dan: templateCards.filter((item) => (item.template.teamSide || "dan") === "dan"),
     "mike-indi": templateCards.filter((item) => item.template.teamSide === "mike-indi"),
@@ -497,9 +500,6 @@ export default function TeamDiamondsYesterdayPage() {
     trident: templateCards.filter((item) => item.template.teamSide === "trident"),
     respawn: templateCards.filter((item) => item.template.teamSide === "respawn"),
   };
-  const visibleSides: TeamPosterCategory[] = showSubAgencies
-    ? ["dan", "mike-indi", "sub-agencies", "paradise", "horizon", "trident", "respawn"]
-    : ["dan", "mike-indi", "sub-agencies"];
 
   useEffect(() => {
     let cancelled = false;
@@ -828,15 +828,11 @@ export default function TeamDiamondsYesterdayPage() {
   }
 
   return (
-    <DataAccessGuard>
-      <main className="min-h-screen bg-[#080603] px-4 py-6 text-white">
+      <main className="agency-diamond-hours min-h-screen bg-[#080603] px-4 py-6 text-white" style={{ "--agency-poster-accent": agencyColours[agencySide] } as React.CSSProperties}>
         <div className="mx-auto max-w-6xl">
           <div className="mb-5 flex flex-wrap gap-3">
-            <Link href="/data/menu" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black uppercase hover:bg-white/10">
-              Back to Data
-            </Link>
-            <Link href="/generator" className="rounded-xl border border-yellow-300/30 bg-yellow-300/10 px-5 py-3 text-sm font-black uppercase text-yellow-200 hover:bg-yellow-300/20">
-              Poster Generator
+            <Link href={`/agency/${agencySide}`} className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black uppercase hover:bg-white/10">
+              Back
             </Link>
           </div>
 
@@ -844,7 +840,7 @@ export default function TeamDiamondsYesterdayPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Posters</p>
-                <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">Team Diamonds Yesterday</h1>
+                <h1 className="mt-3 text-4xl font-black uppercase text-yellow-300 md:text-6xl">{agencySide} Diamond / Hours Posters</h1>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" onClick={() => void checkPictures()} disabled={loading} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-300/20 disabled:opacity-50">Check Pictures</button>
@@ -858,7 +854,7 @@ export default function TeamDiamondsYesterdayPage() {
 
           <section className="mt-6 space-y-5">
             <div className="grid gap-6 xl:grid-cols-2">
-              {visibleSides.map((side) => (
+              {[agencySide].map((side) => (
                 <div key={side} className="rounded-3xl border border-yellow-300/20 bg-black/30 p-4">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-xl font-black uppercase tracking-widest text-yellow-200">{teamPosterCategoryLabel(side)}</h2>
@@ -879,11 +875,6 @@ export default function TeamDiamondsYesterdayPage() {
                 </div>
               ))}
             </div>
-            <div className="flex justify-center">
-              <button type="button" onClick={() => setShowSubAgencies((current) => !current)} className="rounded-xl border border-yellow-300/35 bg-yellow-300/10 px-5 py-3 text-xs font-black uppercase tracking-widest text-yellow-100 hover:bg-yellow-300/20">
-                {showSubAgencies ? "Hide Sub-Agencies" : "Show Sub-Agencies"}
-              </button>
-            </div>
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
             {pictureCheck ? <div className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-5"><p className="text-xs font-black uppercase tracking-widest text-sky-100">Picture check — {pictureCheck.checked} creators</p>{pictureCheck.failed.length ? <><p className="mt-2 text-sm text-white/80">Add fallback pictures for these usernames, then run the check again:</p><textarea readOnly value={pictureCheck.failed.join("\n")} rows={Math.min(Math.max(pictureCheck.failed.length, 3), 10)} aria-label="Missing creator usernames" className="mt-3 w-full rounded-xl border border-rose-300/30 bg-black/30 px-3 py-2 font-mono text-sm text-rose-100"/><div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={() => void copyMissingCreatorList()} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-100 hover:bg-sky-300/20">Copy list</button><Link href="/data/fallback-pictures" className="inline-flex rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">Open Fallback Pictures</Link></div></> : <p className="mt-2 text-sm font-bold text-green-200">Every creator who will appear in the posters has a picture ready.</p>}</div> : null}
             {downloadProgress ? <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4"><div className="flex items-center justify-between gap-4 text-xs font-black uppercase tracking-widest text-sky-100"><span>Preparing {downloadProgress.label}</span><span>{downloadProgress.current} / {downloadProgress.total}</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%` }} /></div><p className="mt-2 text-xs text-sky-100/70">Loading creator photos and rendering the poster. Download time after this is controlled by your browser.</p></div> : null}
@@ -897,6 +888,5 @@ export default function TeamDiamondsYesterdayPage() {
           </section>
         </div>
       </main>
-    </DataAccessGuard>
   );
 }

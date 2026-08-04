@@ -58,6 +58,11 @@ button, input { font: inherit; }
 .agency-space-logo.compact { width: min(310px, 72vw); min-height: 100px; margin-bottom: 10px; }
 .agency-space-logo.compact img { max-height: 130px; }
 .agency-workspace { display: grid; width: min(900px, 100%); margin: 4px auto 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.backstage-status { grid-column: 1 / -1; display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; padding: 10px 14px; background: rgba(0,0,0,.62); color: #a1a1aa; }
+.backstage-status.updated { border-color: color-mix(in srgb, var(--agency) 56%, transparent); color: var(--agency); }
+.backstage-status > span, .backstage-status > small { font: 900 10px "Norwester", Impact, sans-serif; letter-spacing: .14em; }
+.backstage-status > small { color: #a1a1aa; font-size: 8px; }
+.space-shell .diamond-hours-card.ready { border-color: color-mix(in srgb, var(--agency) 58%, transparent); color: #fff; opacity: 1; cursor: pointer; }
 .space-shell .poster-generator-link { display: flex; min-height: 210px; flex-direction: column; align-items: flex-start; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--agency) 48%, transparent); border-radius: 22px; padding: 22px; background: linear-gradient(145deg, color-mix(in srgb, var(--agency) 10%, #101010), #080808 72%); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 16px 35px rgba(0,0,0,.28); font: inherit; text-decoration: none; }
 .poster-generator-kicker, .poster-generator-cta { color: var(--agency); font: 900 10px "Norwester", Impact, sans-serif; letter-spacing: .16em; }
 .poster-generator-link strong { color: #fff; font: 900 clamp(26px, 4.3vw, 34px)/.96 "Norwester", Impact, sans-serif; letter-spacing: -.02em; }
@@ -89,4 +94,9 @@ button, input { font: inherit; }
 .agency-generator-shell [class*="border-yellow-"] { border-color: var(--generator-accent); }
 .agency-generator-shell [class*="ring-yellow-"] { --tw-ring-color: var(--generator-accent); }
 .agency-generator-shell [class~="focus:border-yellow-300"]:focus { border-color: var(--generator-accent); }
+.agency-diamond-hours [class*="text-yellow-"] { color: var(--agency-poster-accent); }
+.agency-diamond-hours [class*="bg-yellow-"] { background-color: color-mix(in srgb, var(--agency-poster-accent) 16%, transparent); }
+.agency-diamond-hours [class*="border-yellow-"] { border-color: color-mix(in srgb, var(--agency-poster-accent) 42%, transparent); }
+.agency-diamond-hours [class*="hover:bg-yellow-"]:hover { background-color: color-mix(in srgb, var(--agency-poster-accent) 26%, transparent); }
+.agency-diamond-hours button[class*="bg-green-"] { background-color: var(--agency-poster-accent); }
 @media (max-width: 760px) { .agency-grid { grid-template-columns: repeat(2, 1fr); margin-top: 34px; } .agency-card-logo { min-height: 115px; } .agency-card strong { font-size: 13px; } }
