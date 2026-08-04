@@ -9,10 +9,12 @@ type TrackId = "blue" | "bronze" | "silver" | "gold" | "platinum";
 const RACE_MONTH_START = "2026-08-01";
 const RACE_ROSTER_SETTINGS_NAME = "race-to-the-top-2026-08-roster";
 const EXCLUDED_CREATORS_SETTINGS_NAME = "excluded-creators-settings";
-const CREATOR_OVERRIDES: Record<string, Partial<Pick<SavedRosterCreator, "track" | "target">>> = {
+type CreatorOverride = Partial<Pick<SavedRosterCreator, "track" | "target">> & { validLiveDaysBonus?: number; liveHoursBonus?: number };
+const CREATOR_OVERRIDES: Record<string, CreatorOverride> = {
   lucylou449: { target: 700_000 },
   dylanjinks: { target: 700_000 },
   arabellama_y: { track: "gold", target: 300_000 },
+  doryelizabeth09: { track: "gold", target: 300_000, validLiveDaysBonus: 2, liveHoursBonus: 5 },
 };
 type SavedRosterCreator = { creatorId: string; username: string; lastMonthDiamonds: number; track: TrackId; target: number };
 
@@ -196,7 +198,7 @@ export async function GET() {
           const override = creatorOverride(creator.username);
           const track = override.track || creator.track;
           const target = override.target ?? (track === "blue" ? 100_000 : creator.target);
-          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays), liveHours: number(progress?.liveHours), followers: number(progress?.followers) };
+          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers) };
         }),
         ...newBlueCreators,
       ],
