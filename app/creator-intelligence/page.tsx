@@ -412,7 +412,7 @@ function getFirstClassManagerDetails(
 ) {
   const managerDetails = `${managerRaw} ${managerLabel}`;
   const assignedGroup = managerAssignments[normalizeManagerKey(managerRaw)];
-  if (assignedGroup === "Team Dan" || assignedGroup === "Team Mike / Indi") {
+  if (assignedGroup === "Team Dan / James" || assignedGroup === "Team Mike / Indi") {
     return {
       managerLabel: `${managerLabel} (First Class — ${assignedGroup})`,
       managerGroup: assignedGroup,
@@ -722,7 +722,7 @@ function buildCreatorSummaries(
         ? "Horizon"
         : hasManagerKey(`${managerRaw} ${baseManagerLabel}`, TRIDENT_MANAGER_KEYS)
           ? "Trident"
-          : assignedGroup === "Team Dan" || assignedGroup === "Team Mike / Indi"
+          : assignedGroup === "Team Dan / James" || assignedGroup === "Team Mike / Indi"
             ? "First Class"
           : sourceAgencyValue;
       const firstClassManager = getFirstClassManagerDetails(
@@ -2964,11 +2964,11 @@ export default function CreatorIntelligencePage() {
   }, [assignedManagers, managerNames, recruitmentCreators]);
 
   const recruitmentAgencyQuality = useMemo(() => {
-    const agencyOrder = ["Team Dan", "Team Mike / Indi", "Paradise", "Respawn", "Horizon", "Trident"];
+    const agencyOrder = ["Team Dan / James", "Team Mike / Indi", "Paradise", "Respawn", "Horizon", "Trident"];
     const grouped = new Map<string, CreatorSummary[]>();
     for (const creator of recruitmentCreators) {
-      const agency = creator.managerGroup === "Team Dan"
-        ? "Team Dan"
+      const agency = creator.managerGroup === "Team Dan / James"
+        ? "Team Dan / James"
         : creator.managerGroup === "Team Mike / Indi"
           ? "Team Mike / Indi"
           : creator.agency;

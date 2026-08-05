@@ -37,7 +37,10 @@ function normalize(input: unknown): SavedAssignments {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const managerGroups: Record<string, Group> = {};
   const managerNames: Record<string, string> = {};
-  for (const [manager, group] of Object.entries(value.managerGroups as Record<string, unknown> || {})) if (GROUPS.includes(group as Group)) managerGroups[key(manager)] = group as Group;
+  for (const [manager, group] of Object.entries(value.managerGroups as Record<string, unknown> || {})) {
+    const renamedGroup = group === "Team Dan" ? "Team Dan / James" : group;
+    if (GROUPS.includes(renamedGroup as Group)) managerGroups[key(manager)] = renamedGroup as Group;
+  }
   for (const [manager, name] of Object.entries(value.managerNames as Record<string, unknown> || {})) {
     const displayName = clean(name);
     if (displayName) managerNames[key(manager)] = displayName;
