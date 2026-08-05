@@ -241,24 +241,20 @@ function getPosterSupabaseClient() {
 }
 
 function getBackgroundPathFromUrl(url: string) {
-  const marker = "/storage/v1/object/public/poster-backgrounds/";
-  const markerIndex = url.indexOf(marker);
-  if (markerIndex === -1) return "";
-  return decodeURIComponent(url.slice(markerIndex + marker.length).split("?")[0] || "");
+  const markers = ["/storage/v1/object/public/poster-backgrounds/", "/storage/v1/object/sign/poster-backgrounds/"];
+  const marker = markers.find((value) => url.includes(value));
+  if (!marker) return "";
+  return decodeURIComponent(url.slice(url.indexOf(marker) + marker.length).split("?")[0] || "");
 }
 
 async function resolveTemplateBackground(template: TeamPosterTemplate) {
-  const supabase = getPosterSupabaseClient();
   const backgroundPath = template.backgroundPath || getBackgroundPathFromUrl(template.backgroundUrl);
 
-  if (!supabase || !backgroundPath) return template;
+  if (!backgroundPath) return template;
 
-  const { data, error } = await supabase.storage
-    .from("poster-backgrounds")
-    .createSignedUrl(backgroundPath, 60 * 60 * 24 * 7);
-
-  if (error || !data?.signedUrl) return { ...template, backgroundPath };
-  return { ...template, backgroundPath, backgroundUrl: data.signedUrl };
+  // Download from our own app route. This avoids device-specific CORS and
+  // expired signed-url problems when html-to-image captures the poster.
+  return { ...template, backgroundPath, backgroundUrl: `/api/poster-background?path=${encodeURIComponent(backgroundPath)}` };
 }
 
 async function getPublicSavedTemplate() {
