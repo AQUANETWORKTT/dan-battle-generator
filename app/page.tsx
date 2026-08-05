@@ -29,15 +29,6 @@ const spaces = [
     accent: "from-emerald-300/20 via-emerald-300/5 to-transparent",
     marker: "03",
   },
-  {
-    eyebrow: "DF / JD Operations",
-    title: "Battle Calendar",
-    copy: "Import battle sheets, plan the DF/JD schedule and send Telegram reminders to the battle group.",
-    href: "/battle-calendar",
-    action: "Open Battle Calendar",
-    accent: "from-sky-300/20 via-violet-300/5 to-transparent",
-    marker: "04",
-  },
 ];
 
 export default function HomePage() {
