@@ -12,6 +12,8 @@ const LOCAL_AVATARS: Record<string, string> = {
   lozza2706: "/avatars/lozza2706.jpg",
   kieransmithmilner: "/avatars/kieransmithmilner.jpg",
 };
+const AVATAR_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const avatarCache = new Map<string, { avatar: string; savedAt: number }>();
 
 export async function POST(req: Request) {
   try {
@@ -44,6 +46,11 @@ export async function POST(req: Request) {
         { avatar: localAvatar, username: cleanUsername, source: "local-fallback" },
         { headers: { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" } }
       );
+    }
+
+    const cached = avatarCache.get(cleanUsername);
+    if (cached && Date.now() - cached.savedAt < AVATAR_CACHE_TTL_MS) {
+      return NextResponse.json({ avatar: cached.avatar, username: cleanUsername, source: "shared-cache" }, { headers: { "Cache-Control": "no-store" } });
     }
 
     const refreshKey = Date.now();
@@ -103,6 +110,7 @@ export async function POST(req: Request) {
       .replace(/\\u002F/g, "/")
       .replace(/\\u0026/g, "&")
       .replace(/&amp;/g, "&");
+    avatarCache.set(cleanUsername, { avatar, savedAt: Date.now() });
 
     return NextResponse.json(
       {

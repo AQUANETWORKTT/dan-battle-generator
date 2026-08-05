@@ -357,19 +357,17 @@ async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<strin
   const normalizedUsername = cleanUsername.replace(/[^a-z0-9]/g, "");
   const localAvatar = fallbackAvatars[normalizedUsername] || LOCAL_AVATAR_PATHS[normalizedUsername];
   if (localAvatar) return localAvatar;
-  const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
   try {
     const res = await fetch("/api/tiktok-avatar-v2", {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", Pragma: "no-cache" },
-      body: JSON.stringify({ username: cleanUsername, forceRefresh: true, refresh: refreshKey }),
+      body: JSON.stringify({ username: cleanUsername }),
     });
     const json = await res.json();
     if (!json.avatar) return "";
     if (String(json.avatar).startsWith("/")) return String(json.avatar);
-    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
+    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}`;
   } catch {
     return "";
   }
