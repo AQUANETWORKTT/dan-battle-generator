@@ -723,9 +723,10 @@ export default function TeamDiamondsYesterdayPage() {
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
       const sideLabel = teamPosterCategoryLabel(activeSide);
+      const agencyArchiveLabel = teamPosterCategoryLabel(agencySide);
       setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
       const archive = await zip.generateAsync({ type: "blob" });
-      saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${latestStatDate || getYesterdayDateKey()}.zip`);
+      saveAs(archive, `${agencyArchiveLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-posters-${latestStatDate || getYesterdayDateKey()}.zip`);
       const failedText = failedAvatars.size
         ? ` Picture not found for: ${[...failedAvatars].join(", ")}. Add any of these in Fallback Pictures if needed.`
         : " All creator pictures loaded.";

@@ -9,7 +9,7 @@ const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
-type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[] };
+type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string> };
 
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) { return clean(value).toLowerCase().replace(/[^a-z0-9]/g, ""); }
@@ -44,7 +44,12 @@ function normalize(input: unknown): SavedAssignments {
   }
   const deletedManagers = Array.isArray(value.deletedManagers) ? value.deletedManagers.map(key).filter(Boolean) : [];
   const ownerManagers = Array.isArray(value.ownerManagers) ? value.ownerManagers.map(key).filter(Boolean) : [];
-  return { managerGroups, managerNames, deletedManagers, ownerManagers };
+  const assignedAt: Record<string, string> = {};
+  for (const [manager, timestamp] of Object.entries(value.assignedAt as Record<string, unknown> || {})) {
+    const savedTimestamp = clean(timestamp);
+    if (savedTimestamp) assignedAt[key(manager)] = savedTimestamp;
+  }
+  return { managerGroups, managerNames, deletedManagers, ownerManagers, assignedAt };
 }
 
 export async function GET() {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
 import { jsPDF } from "jspdf";
+import * as XLSX from "xlsx";
 import { useEffect, useMemo, useState } from "react";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -168,6 +169,7 @@ type ManagerHealthTrendPoint = {
 };
 
 type ManagerAssignments = Record<string, string>;
+type AssignedManager = { key: string; name: string; group: string };
 
 
 const CREATOR_REPORT_LIVE_DAY_TARGET = 5;
@@ -379,6 +381,7 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   kishaunnolan1: { name: "Kash", group: "Team Mike / Indi" },
   calliecrawford14: { name: "Callie", group: "Team Mike / Indi" },
   megan25121990: { name: "Megan", group: "Team Mike / Indi" },
+  mikehalesjb: { name: "Mike Hales", group: "Team Mike / Indi" },
   hannakingismail92: { name: "Hanna", group: "Team Horizon" },
   stormlive: { name: "Denz", group: "Team Horizon" },
 };
@@ -681,7 +684,8 @@ function getCreatorTags(creator: {
 function buildCreatorSummaries(
   rows: CreatorStat[],
   rollingRows: CreatorStat[] = rows,
-  managerAssignments: ManagerAssignments = {}
+  managerAssignments: ManagerAssignments = {},
+  managerNames: Record<string, string> = {}
 ) {
   const byCreator = new Map<string, CreatorStat[]>();
   const rollingByCreator = new Map<string, CreatorStat[]>();
@@ -712,7 +716,7 @@ function buildCreatorSummaries(
       const validDaysFromRows = creatorRows.filter((row) => getDurationHours(row, ["live_hours", "LIVE duration"]) >= 1).length;
       const managerRaw = getManagerRaw(latest);
       const sourceAgencyValue = getAgencyFromGroup(groupValue, getText(latest, ["agency"], "First Class"), managerRaw);
-      const baseManagerLabel = getManagerLabel(managerRaw, groupValue);
+      const baseManagerLabel = managerNames[normalizeManagerKey(managerRaw)] || getManagerLabel(managerRaw, groupValue);
       const assignedGroup = managerAssignments[normalizeManagerKey(managerRaw)];
       const agencyValue = hasManagerKey(`${managerRaw} ${baseManagerLabel}`, STORM_MANAGER_KEYS)
         ? "Horizon"
@@ -789,16 +793,16 @@ function buildCreatorSummaries(
         id: getText(latest, ["creator_id", "Creator ID"], key),
         username: getUsername(latest),
         email: getText(latest, ["creator_email", "Creator email"], "No email"),
-        group: getCreatorIntelligenceGroup(groupValue, managerRaw, baseManagerLabel),
+        group: assignedGroup || getCreatorIntelligenceGroup(groupValue, managerRaw, baseManagerLabel),
         agency: agencyValue,
         managerRaw,
-        managerGroup: agencyValue === "First Class" ? firstClassManager.managerGroup : agencyValue,
-        managerLabel:
-          agencyValue === "First Class"
+        managerGroup: assignedGroup || (agencyValue === "First Class" ? firstClassManager.managerGroup : agencyValue),
+        managerLabel: managerNames[normalizeManagerKey(managerRaw)] ||
+          (agencyValue === "First Class"
             ? firstClassManager.managerLabel
             : agencyValue === "Trident"
               ? "Trident (Trident)"
-            : formatManagerWithGroup(baseManagerLabel, agencyValue),
+              : formatManagerWithGroup(baseManagerLabel, agencyValue)),
         graduationStatus: getText(latest, ["graduation_status", "Graduation status"], "Unknown"),
         tierStatus: getText(latest, ["tier_status", "Tier status"], "Unknown"),
         sourceStatus: getText(latest, ["status", "Status"], ""),
@@ -1263,7 +1267,8 @@ function getScoreMovementReason(creator: CreatorSummary, previousScore: number |
 function buildManagerHealthTrend(
   allRows: CreatorStat[],
   managerSummary: ManagerHealthSummary,
-  managerAssignments: ManagerAssignments = {}
+  managerAssignments: ManagerAssignments = {},
+  managerNames: Record<string, string> = {}
 ): ManagerHealthTrendPoint[] {
   const creatorKeys = new Set(managerSummary.creators.map((creator) => creator.key));
   const dates = Array.from(new Set(allRows.filter(isAquaRow).map((row) => row.stat_date)))
@@ -1274,7 +1279,7 @@ function buildManagerHealthTrend(
     const rowsUpToDate = allRows.filter(
       (row) => isAquaRow(row) && row.stat_date <= date && creatorKeys.has(getCreatorIdentity(row))
     );
-    const summaries = buildCreatorSummaries(rowsUpToDate, rowsUpToDate, managerAssignments).filter(
+    const summaries = buildCreatorSummaries(rowsUpToDate, rowsUpToDate, managerAssignments, managerNames).filter(
       (creator) => creatorKeys.has(creator.key) && !creator.isNewCreator
     );
     const score =
@@ -1844,9 +1849,12 @@ function CreatorListPanel({
       </div>
       <div className="mt-3 space-y-2">
         {creators.slice(0, 8).map((creator) => (
-          <div key={`${title}-${creator.key}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 text-sm">
+          <div key={`${title}-${creator.key}`} className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-3 rounded-xl bg-white/70 px-3 py-2 text-sm">
             <span className="truncate font-bold">{creator.username}</span>
+            <span className="shrink-0 font-black text-sky-700">DAY {creator.daysSinceJoining}</span>
             <span className="shrink-0 text-slate-500">{creator.healthScore}/100</span>
+            <span className="shrink-0 font-black text-slate-700">{formatNumber(creator.diamonds)} 💎</span>
+            <span className="shrink-0 font-black text-emerald-700">{formatNumber(creator.dph)} DPH</span>
           </div>
         ))}
         {!creators.length ? <p className="text-sm text-slate-400">None found.</p> : null}
@@ -2600,6 +2608,10 @@ export default function CreatorIntelligencePage() {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<CreatorStat[]>([]);
   const [managerAssignments, setManagerAssignments] = useState<ManagerAssignments>({});
+  const [managerNames, setManagerNames] = useState<Record<string, string>>({});
+  const [assignedManagers, setAssignedManagers] = useState<AssignedManager[]>([]);
+  const [selectedRecruitmentAgencies, setSelectedRecruitmentAgencies] = useState<string[]>([]);
+  const [managerAssignmentsLoaded, setManagerAssignmentsLoaded] = useState(false);
   const [configuredLeaderboardExclusions, setConfiguredLeaderboardExclusions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [selectedCreatorKey, setSelectedCreatorKey] = useState("");
@@ -2642,8 +2654,22 @@ export default function CreatorIntelligencePage() {
   useEffect(() => {
     fetch("/api/data-analysis/manager-assignments", { cache: "no-store" })
       .then((response) => response.json())
-      .then((data) => setManagerAssignments(data.managerGroups || data.assignments?.managerGroups || {}))
-      .catch(() => setManagerAssignments({}));
+      .then((data) => {
+        setManagerNames(data.managerNames || data.assignments?.managerNames || {});
+        // `managerGroups` is the live set of cards shown on Manager
+        // Assignments, including managers whose group comes from the latest
+        // export. Do not use only saved drag/drop changes here: that would
+        // wrongly remove live Respawn, Paradise, Horizon, and Trident teams.
+        setManagerAssignments(data.managerGroups || {});
+        setAssignedManagers(data.managers || []);
+        setManagerAssignmentsLoaded(true);
+      })
+      .catch(() => {
+        setManagerNames({});
+        setManagerAssignments({});
+        setAssignedManagers([]);
+        setManagerAssignmentsLoaded(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -2695,8 +2721,8 @@ export default function CreatorIntelligencePage() {
   }, [rows, rollingEndDate]);
 
   const allSummaries = useMemo(
-    () => buildCreatorSummaries(dateRangeRows, rows, managerAssignments),
-    [dateRangeRows, managerAssignments, rows]
+    () => buildCreatorSummaries(dateRangeRows, rows, managerAssignments, managerNames),
+    [dateRangeRows, managerAssignments, managerNames, rows]
   );
   const aquaRows = useMemo(() => dateRangeRows.filter(isAquaRow), [dateRangeRows]);
   const latestAquaDate = useMemo(() => {
@@ -2713,9 +2739,18 @@ export default function CreatorIntelligencePage() {
   const aquaSummaries = useMemo(
     () =>
       allSummaries.filter(
-        (creator) => activeAquaCreatorKeys.has(creator.key)
+        (creator) => {
+          const assignedGroup = managerAssignments[normalizeManagerKey(creator.managerRaw)];
+          return (
+            managerAssignmentsLoaded &&
+            activeAquaCreatorKeys.has(creator.key) &&
+            Boolean(assignedGroup) &&
+            assignedGroup !== "Excluded" &&
+            assignedGroup !== "Recruitment"
+          );
+        }
       ),
-    [activeAquaCreatorKeys, allSummaries]
+    [activeAquaCreatorKeys, allSummaries, managerAssignments, managerAssignmentsLoaded]
   );
 
   const managers = useMemo(() => {
@@ -2723,9 +2758,7 @@ export default function CreatorIntelligencePage() {
     return ["All Managers", ...Array.from(values).sort()];
   }, [aquaSummaries]);
 
-  const groups = useMemo(() => {
-    return ["All Groups", "First Class", "Team Dan", "Team Mike / Indi", "Aqua", "Paradise", "Respawn", "Team Horizon", "Trident", "Exempt"];
-  }, []);
+  const groups = useMemo(() => ["All Groups", ...Array.from(new Set(Object.values(managerAssignments).filter((group) => group && group !== "Excluded" && group !== "Recruitment"))).sort()], [managerAssignments]);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";
   const activeGroup = groups.includes(groupFilter) ? groupFilter : "All Groups";
@@ -2844,7 +2877,7 @@ export default function CreatorIntelligencePage() {
     () =>
       managerHealthSummaries
         .map((managerSummary) => {
-          const trend = buildManagerHealthTrend(rows, managerSummary, managerAssignments);
+          const trend = buildManagerHealthTrend(rows, managerSummary, managerAssignments, managerNames);
           const first = trend[0]?.score ?? 0;
           const latest = trend[trend.length - 1]?.score ?? 0;
           const change = trend.length > 1 ? latest - first : 0;
@@ -2884,16 +2917,81 @@ export default function CreatorIntelligencePage() {
           };
         })
         .sort((a, b) => b.weekPercentChange - a.weekPercentChange),
-    [managerAssignments, managerHealthSummaries, rows]
+    [managerAssignments, managerHealthSummaries, managerNames, rows]
   );
 
   const newCreators = useMemo(
     () =>
-      filteredCreators
+      aquaSummaries
         .filter((creator) => creator.isNewCreator)
-        .sort((a, b) => b.dailyAverageDiamonds - a.dailyAverageDiamonds),
-    [filteredCreators]
+        .sort((a, b) => b.diamonds - a.diamonds),
+    [aquaSummaries]
   );
+
+  const recruitmentCreators = useMemo(
+    () =>
+      aquaSummaries
+        .filter((creator) => creator.daysSinceJoining > 0 && creator.daysSinceJoining <= 14)
+        .sort((a, b) => b.diamonds - a.diamonds),
+    [aquaSummaries]
+  );
+
+  const recruitmentQuality = useMemo(() => {
+    const grouped = new Map<string, CreatorSummary[]>();
+    for (const creator of recruitmentCreators) {
+      const key = normalizeManagerKey(creator.managerRaw);
+      grouped.set(key, [...(grouped.get(key) || []), creator]);
+    }
+    const excludedGroups = new Set(["Excluded", "Recruitment", "New Managers"]);
+    return assignedManagers
+      .filter((manager) => !excludedGroups.has(manager.group))
+      .map((manager) => {
+        const creators = grouped.get(manager.key) || [];
+        const diamonds = creators.reduce((total, creator) => total + creator.diamonds, 0);
+        const hours = creators.reduce((total, creator) => total + creator.liveHours, 0);
+        return {
+          manager: managerNames[manager.key] || manager.name,
+          group: manager.group,
+          recruits: creators.length,
+          diamonds,
+          averageDph: hours > 0 ? diamonds / hours : 0,
+        };
+      })
+      .sort((a, b) => b.averageDph - a.averageDph || b.recruits - a.recruits);
+  }, [assignedManagers, managerNames, recruitmentCreators]);
+
+  const recruitmentAgencyQuality = useMemo(() => {
+    const agencyOrder = ["Team Dan", "Team Mike / Indi", "Paradise", "Respawn", "Horizon", "Trident"];
+    const grouped = new Map<string, CreatorSummary[]>();
+    for (const creator of recruitmentCreators) {
+      const agency = creator.managerGroup === "Team Dan"
+        ? "Team Dan"
+        : creator.managerGroup === "Team Mike / Indi"
+          ? "Team Mike / Indi"
+          : creator.agency;
+      grouped.set(agency, [...(grouped.get(agency) || []), creator]);
+    }
+    return agencyOrder.map((agency) => {
+      const creators = grouped.get(agency) || [];
+      const diamonds = creators.reduce((total, creator) => total + creator.diamonds, 0);
+      const hours = creators.reduce((total, creator) => total + creator.liveHours, 0);
+      return { agency, recruits: creators.length, diamonds, averageDph: hours > 0 ? diamonds / hours : 0 };
+    });
+  }, [recruitmentCreators]);
+
+  const visibleRecruitmentQuality = useMemo(
+    () =>
+      selectedRecruitmentAgencies.length
+        ? recruitmentQuality.filter((item) => selectedRecruitmentAgencies.includes(item.group))
+        : recruitmentQuality,
+    [recruitmentQuality, selectedRecruitmentAgencies]
+  );
+
+  function toggleRecruitmentAgency(agency: string) {
+    setSelectedRecruitmentAgencies((current) =>
+      current.includes(agency) ? current.filter((item) => item !== agency) : [...current, agency]
+    );
+  }
 
   const hiddenPotentialCreators = useMemo(
     () => newCreators,
@@ -2992,7 +3090,7 @@ export default function CreatorIntelligencePage() {
       const rowsUpToDate = aquaRows.filter(
         (row) => row.stat_date <= date && activeAquaCreatorKeys.has(getCreatorIdentity(row))
       );
-      const matureCreators = buildCreatorSummaries(rowsUpToDate, rowsUpToDate, managerAssignments).filter(
+        const matureCreators = buildCreatorSummaries(rowsUpToDate, rowsUpToDate, managerAssignments, managerNames).filter(
         (creator) =>
           !creator.isNewCreator &&
           (activeManager === "All Managers" || creator.managerLabel === activeManager)
@@ -3009,7 +3107,7 @@ export default function CreatorIntelligencePage() {
         creators: matureCreators.length,
       };
     });
-  }, [activeAquaCreatorKeys, activeManager, aquaRows, managerAssignments]);
+  }, [activeAquaCreatorKeys, activeManager, aquaRows, managerAssignments, managerNames]);
 
   const weeklyHealthComparison = useMemo<WeeklyHealthComparison[]>(() => {
     if (!latestAquaDate) return [];
@@ -3024,7 +3122,7 @@ export default function CreatorIntelligencePage() {
         previousUploadedDateSet.has(row.stat_date) &&
         activeAquaCreatorKeys.has(getCreatorIdentity(row))
     );
-    const previousSummaries = buildCreatorSummaries(previousRows, previousRows, managerAssignments).filter(
+    const previousSummaries = buildCreatorSummaries(previousRows, previousRows, managerAssignments, managerNames).filter(
       (creator) => !creator.isNewCreator
     );
     const previousByCreator = new Map(
@@ -3215,6 +3313,61 @@ export default function CreatorIntelligencePage() {
     );
   }
 
+  function downloadNewCreatorsExcel() {
+    const rows = recruitmentCreators.map((creator) => ({
+      "CREATOR": creator.username,
+      "MANAGER": creator.managerLabel,
+      "MANAGER GROUP": creator.managerGroup,
+      "DAYS SINCE JOINING": creator.daysSinceJoining,
+      "DIAMONDS": creator.diamonds,
+      "LIVE HOURS": Number(creator.liveHours.toFixed(2)),
+      "DIAMONDS PER HOUR": Number(creator.dph.toFixed(2)),
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const groupColours: Record<string, string> = {
+      Respawn: "DDEBF7",
+      Horizon: "FCE4D6",
+      Trident: "D9EAF7",
+      Paradise: "FFF2CC",
+      "Team Dan": "F4CCCC",
+      "Team Mike / Indi": "E7E6E6",
+      Exempt: "E2F0D9",
+      Aqua: "DDEBF7",
+    };
+    const dphColour = (dph: number) => dph >= 2500 ? "C6EFCE" : dph >= 2000 ? "FCE4D6" : dph >= 1000 ? "FFF2CC" : "F4CCCC";
+    const bodyStyle = (colour: string) => ({ fill: { patternType: "solid", fgColor: { rgb: colour } } });
+    const headerStyle = { fill: { patternType: "solid", fgColor: { rgb: "1F4E78" } }, font: { bold: true, color: { rgb: "FFFFFF" } } };
+    const headers = ["CREATOR", "MANAGER", "MANAGER GROUP", "DAYS SINCE JOINING", "DIAMONDS", "LIVE HOURS", "DIAMONDS PER HOUR"];
+    headers.forEach((_, index) => {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: index })];
+      if (cell) cell.s = headerStyle;
+    });
+    rows.forEach((row, index) => {
+      const fill = groupColours[row["MANAGER GROUP"]] || "FFFFFF";
+      for (let column = 0; column < headers.length; column += 1) {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: index + 1, c: column })];
+        if (cell) cell.s = bodyStyle(column === 6 ? dphColour(row["DIAMONDS PER HOUR"]) : fill);
+      }
+    });
+    const managerStartRow = 1;
+    worksheet["I1"] = { t: "s", v: "MANAGER" , s: headerStyle };
+    worksheet["J1"] = { t: "s", v: "RECRUITS (LAST 14 DAYS)", s: headerStyle };
+    recruitmentQuality
+      .sort((a, b) => a.manager.localeCompare(b.manager))
+      .forEach((manager, index) => {
+        const row = managerStartRow + index + 1;
+        worksheet[`I${row}`] = { t: "s", v: manager.manager, s: bodyStyle(groupColours[manager.group] || "FFFFFF") };
+        worksheet[`J${row}`] = { t: "n", v: manager.recruits, s: bodyStyle(groupColours[manager.group] || "FFFFFF") };
+      });
+    worksheet["!cols"] = [
+      { wch: 28 }, { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 22 }, { wch: 4 }, { wch: 32 }, { wch: 26 },
+    ];
+    worksheet["!autofilter"] = { ref: `A1:G${Math.max(rows.length + 1, 2)}` };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "RECRUITMENT - 14 DAYS");
+    XLSX.writeFile(workbook, `recruitment-quality-${rollingEndDate || "export"}.xlsx`);
+  }
+
   function copyHiddenPotentialText() {
     copyWhatsAppText(
       "High Potential First Class Creators",
@@ -3338,24 +3491,17 @@ export default function CreatorIntelligencePage() {
                 : "0/100"
             }
           />
-          <MetricCard label="Needs improvement creators" value={formatNumber(totals.lowPerformance + totals.lowQuality)} />
-          <MetricCard label="Average creators" value={formatNumber(totals.needsAttention)} />
-          <MetricCard label="Above average creators" value={formatNumber(totals.healthy)} />
-          <MetricCard label="Elite creators" value={formatNumber(totals.elite)} />
+          <MetricCard label="Average creators" value={totals.totalCreators ? formatPercent((totals.needsAttention / totals.totalCreators) * 100) : "0%"} />
+          <MetricCard label="Above average creators" value={totals.totalCreators ? formatPercent((totals.healthy / totals.totalCreators) * 100) : "0%"} />
+          <MetricCard label="Elite creators" value={totals.totalCreators ? formatPercent((totals.elite / totals.totalCreators) * 100) : "0%"} />
           <MetricCard label="New creators" value={formatNumber(totals.newCreators)} />
-          <MetricCard label="Average DPH (diamonds per hour)" value={formatNumber(totals.averageDph)} />
-          <MetricCard label="Total diamonds last 30 days" value={formatNumber(totals.totalDiamonds)} />
-          <MetricCard label="Total diamonds calendar month" value={formatNumber(totals.calendarMonthDiamonds)} />
-          <MetricCard label="Total live hours" value={formatHours(totals.totalHours)} />
-          <MetricCard label="Total battles" value={formatNumber(totals.totalMatches)} />
-          <MetricCard label="Total new followers" value={formatNumber(totals.totalFollowers)} />
         </section>
 
         <section className="mb-6">
           <AgencyHealthTrendChart points={agencyHealthTrend} />
         </section>
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Growth Leaderboard</h2>
@@ -3427,7 +3573,7 @@ export default function CreatorIntelligencePage() {
               </p>
             ) : null}
           </div>
-        </section>
+        </section>}
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -3550,13 +3696,6 @@ export default function CreatorIntelligencePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setManager(managerSummary.manager)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"
-                    >
-                      Filter Page
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => copyManagerTeamHealthText(managerSummary)}
                       className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 hover:bg-cyan-100"
                     >
@@ -3582,7 +3721,7 @@ export default function CreatorIntelligencePage() {
                             : 0,
                           managerGrowthSummaries.find(
                             (item) => item.managerSummary.manager === managerSummary.manager
-                          )?.trend || buildManagerHealthTrend(rows, managerSummary, managerAssignments)
+                          )?.trend || buildManagerHealthTrend(rows, managerSummary, managerAssignments, managerNames)
                         )
                       }
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
@@ -3626,7 +3765,7 @@ export default function CreatorIntelligencePage() {
           ) : null}
         </section>
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-3xl font-black uppercase text-sky-900">Manager Focus Queue</h2>
@@ -3672,7 +3811,7 @@ export default function CreatorIntelligencePage() {
                 </p>
               ) : null}
             </div>
-        </section>
+        </section>}
 
         {selectedCreator ? (
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -3801,17 +3940,6 @@ export default function CreatorIntelligencePage() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="text-xl font-black uppercase text-sky-900">Creator Charts</h3>
-              <div className="mt-4">
-                <ComparisonChart
-                  points={selectedProfilePoints}
-                  selectedMetrics={selectedChartMetrics}
-                  onToggleMetric={toggleChartMetric}
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <h3 className="text-xl font-black uppercase text-sky-900">Creator Insights</h3>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {selectedInsights.map((insight) => (
@@ -3825,7 +3953,7 @@ export default function CreatorIntelligencePage() {
         ) : null}
 
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Weekly Health Movement</h2>
@@ -3943,9 +4071,9 @@ export default function CreatorIntelligencePage() {
               </div>
             </div>
           </div>
-        </section>
+        </section>}
 
-        <section className="mb-6 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-2xl font-black uppercase text-red-700">Needs Improvement List</h2>
@@ -3985,7 +4113,7 @@ export default function CreatorIntelligencePage() {
               </p>
             ) : null}
           </div>
-        </section>
+        </section>}
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -4108,13 +4236,22 @@ export default function CreatorIntelligencePage() {
                   Creators 7 days in or less are shown here instead of being placed into health buckets. From day 8 onwards, creators are included in the health score.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={copyNewCreatorsText}
-                className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
-              >
-                Copy WhatsApp Text
-              </button>
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={downloadNewCreatorsExcel}
+                  className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700 hover:bg-sky-100"
+                >
+                  Download Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={copyNewCreatorsText}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-100"
+                >
+                  Copy WhatsApp Text
+                </button>
+              </div>
             </div>
             {inactiveNewCreators.length ? (
               <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
@@ -4130,7 +4267,7 @@ export default function CreatorIntelligencePage() {
                       onClick={() => setSelectedCreatorKey(creator.key)}
                       className="flex items-center justify-between rounded-xl border border-red-100 bg-white px-3 py-2 text-left hover:border-red-200"
                     >
-                      <span className="font-bold text-red-900">{creator.username}</span>
+                      <span className="font-bold text-red-900">{creator.username} — {creator.managerLabel} ({creator.managerGroup})</span>
                       <span className="text-xs font-black text-red-700">
                         Day {formatNumber(creator.daysSinceJoining)} / 0 diamonds
                       </span>
@@ -4163,7 +4300,7 @@ export default function CreatorIntelligencePage() {
                     </div>
                     <div>
                       <p className="text-slate-400">DPH (diamonds per hour)</p>
-                      <p className="font-bold">{formatNumber(creator.dph)}</p>
+                      <p className={`mt-1 w-fit rounded-full px-2 py-0.5 font-black ${creator.dph >= 2500 ? "bg-emerald-100 text-emerald-800" : creator.dph >= 2000 ? "bg-orange-100 text-orange-800" : creator.dph >= 1000 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>{formatNumber(creator.dph)}</p>
                     </div>
                     <div>
                       <p className="text-slate-400">Health</p>
@@ -4198,6 +4335,49 @@ export default function CreatorIntelligencePage() {
                 creators={hiddenPotentialCreators}
                 tone="border-emerald-100 bg-emerald-50 text-emerald-800"
               />
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-violet-100 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-black uppercase text-violet-900">Recruitment Quality</h2>
+              <p className="mt-1 text-sm text-slate-500">Manager recruitment over the last 14 days, ranked by average diamonds per hour.</p>
+            </div>
+            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-black uppercase text-violet-700">{formatNumber(recruitmentCreators.length)} recruits</span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {recruitmentAgencyQuality.map((item) => {
+              const dphClass = item.averageDph >= 2500 ? "border-emerald-200 bg-emerald-50 text-emerald-900" : item.averageDph >= 2000 ? "border-orange-200 bg-orange-50 text-orange-900" : item.averageDph >= 1000 ? "border-yellow-200 bg-yellow-50 text-yellow-900" : "border-red-200 bg-red-50 text-red-900";
+              const selected = selectedRecruitmentAgencies.includes(item.agency);
+              return <button type="button" key={item.agency} onClick={() => toggleRecruitmentAgency(item.agency)} className={`rounded-2xl border p-4 text-left transition ${dphClass} ${selected ? "ring-4 ring-violet-500/40" : "opacity-80 hover:opacity-100"}`}>
+                <p className="text-xs font-black uppercase tracking-wide">{item.agency}</p>
+                <p className="mt-3 text-3xl font-black">{formatNumber(item.recruits)}</p>
+                <p className="text-xs font-bold uppercase">Recruits in 14 days</p>
+                <div className="mt-3 flex items-end justify-between gap-2 text-xs font-black"><span>{formatNumber(item.diamonds)} diamonds</span><span>{formatNumber(item.averageDph)} DPH</span></div>
+              </button>;
+            })}
+          </div>
+          <div className="mt-5 overflow-x-auto">
+            <div className="min-w-[720px] overflow-hidden rounded-2xl border border-slate-200">
+              <div className="grid grid-cols-[52px_minmax(220px,1.8fr)_1fr_1fr_1fr] gap-3 bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-wide text-white">
+                <span>Rank</span><span>Manager</span><span>Recruits</span><span>Diamonds</span><span>Average DPH</span>
+              </div>
+              {visibleRecruitmentQuality.map((item, index) => {
+                const dphClass = item.averageDph >= 2500 ? "bg-emerald-100 text-emerald-800" : item.averageDph >= 2000 ? "bg-orange-100 text-orange-800" : item.averageDph >= 1000 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
+                const noRecruitClass = item.recruits === 0 ? "text-red-600" : "text-slate-900";
+                return (
+                  <div key={item.manager} className="grid grid-cols-[52px_minmax(220px,1.8fr)_1fr_1fr_1fr] items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm">
+                    <span className="text-lg font-black text-violet-700">{index + 1}</span>
+                    <div><p className={`font-black ${noRecruitClass}`}>{item.manager}</p><p className="mt-0.5 text-xs font-bold text-slate-400">{item.group}</p></div>
+                    <span className={`font-black ${item.recruits === 0 ? "text-red-600" : "text-slate-700"}`}>{formatNumber(item.recruits)}</span>
+                    <span className="font-black text-slate-700">{formatNumber(item.diamonds)}</span>
+                    <span className={`w-fit rounded-full px-3 py-1 font-black ${dphClass}`}>{formatNumber(item.averageDph)} DPH</span>
+                  </div>
+                );
+              })}
+              {!visibleRecruitmentQuality.length ? <p className="p-4 text-sm text-slate-400">No manager recruitment matches the selected groups.</p> : null}
             </div>
           </div>
         </section>
