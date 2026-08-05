@@ -6,6 +6,15 @@ type ReminderStatus = { status: "success" | "failed"; at: string };
 type Battle = { id: string; date: string; time: string; creator: string; manager: string; size: string; opponent: string; agency: string; type?: string; notified?: number[]; reminders?: Record<string, ReminderStatus> };
 type Settings = { managerFilter: string; reminderMinutes: number[]; battles: Battle[] };
 
+function calendarTime(value: unknown) {
+  const match = String(value || "").trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return "";
+  let hour = Number(match[1]);
+  if (match[3]?.toUpperCase() === "PM" && hour !== 12) hour += 12;
+  if (match[3]?.toUpperCase() === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${match[2]}`;
+}
+
 function normalize(input: unknown): Settings {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const battles = Array.isArray(value.battles) ? value.battles.flatMap((item) => {
@@ -28,6 +37,21 @@ export async function PUT(request: Request) { try { const settings = normalize(a
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (body?.action === "import-dfjd-battles") {
+      const sourceRows: unknown[] = Array.isArray(body.rows) ? body.rows : [];
+      const settings = await load();
+      const candidates = sourceRows.flatMap((row) => {
+        const item = row as Record<string, unknown>;
+        const manager = String(item.manager || "").trim().toUpperCase();
+        const date = String(item.date || ""); const time = calendarTime(item.time);
+        const creator = String(item.creator || "").trim().replace(/^@/, "").toUpperCase(); const opponent = String(item.opponent || "").trim().replace(/^@/, "").toUpperCase();
+        if (manager.replace(/\s/g, "") !== "DF/JD" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !time || !creator || !opponent) return [];
+        return [{ id: crypto.randomUUID(), date, time, creator, opponent, manager: "DF/JD", size: String(item.size || "").trim().toUpperCase(), agency: String(item.agency || "").trim().toUpperCase(), type: "ARRANGED BATTLE", notified: [], reminders: {} }];
+      });
+      const unique = candidates.filter((battle) => !settings.battles.some((saved) => saved.date === battle.date && saved.manager === battle.manager && saved.time === battle.time && saved.creator === battle.creator && saved.opponent === battle.opponent));
+      if (unique.length) await save({ ...settings, battles: [...settings.battles, ...unique] });
+      return NextResponse.json({ added: unique.length, skipped: candidates.length - unique.length });
+    }
     if (body?.action !== "send-test") return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
     const token = process.env.BATTLE_CALENDAR_TELEGRAM_BOT_TOKEN;
     const chatId = process.env.BATTLE_CALENDAR_TELEGRAM_CHAT_ID;

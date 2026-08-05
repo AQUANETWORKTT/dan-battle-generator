@@ -522,6 +522,13 @@ function getManagerLeaderboardCreatorKey(row: ManagerLeaderboardStat) {
   return String(row.creator_username || row["Creator's username"] || row.creator_id || row["Creator ID"] || "").trim().toLowerCase();
 }
 
+function calendarDateFromParts(dayRaw: string, monthRaw: string) {
+  if (!dayRaw || !monthRaw) return "";
+  const day = Number(dayRaw); const month = Number(monthRaw);
+  if (!Number.isInteger(day) || !Number.isInteger(month)) return "";
+  return `${DEFAULT_YEAR}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function getManagerLeaderboardManagerKey(row: ManagerLeaderboardStat) {
   return String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "")
     .trim()
@@ -912,6 +919,25 @@ export default function BattleGeneratorPage() {
   const [teamPosterStatus, setTeamPosterStatus] = useState("Team Dan poster builder ready.");
 
   const selectedBattle = battles.find((b) => b.id === selectedId) || null;
+
+  async function syncDfjdbattlesToCalendar(rows: string[], date: string) {
+    if (!date) return;
+    const calendarRows = rows.flatMap((row) => {
+      const parts = row.split(/\t+/);
+      const manager = String(parts[1] || "").trim().toUpperCase();
+      const creator = getTikTokUsername(parts[3] || "") || String(parts[0] || "").replace("@", "").trim();
+      const opponent = getTikTokUsername(parts[5] || "");
+      const time = String(parts[6] || "").trim();
+      if (parts.length < 8 || manager.replace(/\s/g, "") !== "DF/JD" || !creator || !opponent || !time) return [];
+      return [{ date, time, creator, opponent, manager, size: String(parts[2] || ""), agency: String(parts[7] || "") }];
+    });
+    if (!calendarRows.length) return;
+    try {
+      await fetch("/api/battle-calendar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "import-dfjd-battles", rows: calendarRows }) });
+    } catch {
+      // Poster generation stays available even if the calendar is temporarily unreachable.
+    }
+  }
 
   const blankPreviewBattle: Battle = {
     id: "blank-preview",
@@ -2345,6 +2371,8 @@ export default function BattleGeneratorPage() {
     setSingleBattle(parsed);
     setSelectedId(parsed.id);
 
+    await syncDfjdbattlesToCalendar([row], calendarDateFromParts(singleDay, singleMonth) || calendarDateFromParts(massDay, massMonth));
+
     setLoading(false);
   }
 
@@ -2369,6 +2397,7 @@ export default function BattleGeneratorPage() {
 
     setBattles(parsed);
     setSelectedId(parsed[0]?.id || "");
+    await syncDfjdbattlesToCalendar(rows, calendarDateFromParts(massDay, massMonth));
     setLoading(false);
   }
 
