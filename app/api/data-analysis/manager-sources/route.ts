@@ -113,7 +113,7 @@ export async function GET() {
 
     const latestByCreator = new Map<string, CreatorStat>();
     for (const row of rows) { const key = getCreatorKey(row); if (key) latestByCreator.set(key, row); }
-    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames) })).filter((manager) => manager.manager_key && !deletedManagers.has(normalize(manager.manager_key)) && manager.manager_label !== "Unassigned");
+    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames) })).filter((manager) => manager.manager_key && !deletedManagers.has(normalize(manager.manager_key)) && managerAssignments[normalize(manager.manager_key)] !== "Recruitment" && manager.manager_label !== "Unassigned");
 
     return NextResponse.json({ statDate: latestDate, managers });
   } catch (error) {
