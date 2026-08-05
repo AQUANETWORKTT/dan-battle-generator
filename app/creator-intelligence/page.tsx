@@ -2611,6 +2611,7 @@ export default function CreatorIntelligencePage() {
   const [managerNames, setManagerNames] = useState<Record<string, string>>({});
   const [assignedManagers, setAssignedManagers] = useState<AssignedManager[]>([]);
   const [selectedRecruitmentAgencies, setSelectedRecruitmentAgencies] = useState<string[]>([]);
+  const [recruitmentView, setRecruitmentView] = useState<"managers" | "creators">("managers");
   const [managerAssignmentsLoaded, setManagerAssignmentsLoaded] = useState(false);
   const [configuredLeaderboardExclusions, setConfiguredLeaderboardExclusions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -2985,6 +2986,14 @@ export default function CreatorIntelligencePage() {
         ? recruitmentQuality.filter((item) => selectedRecruitmentAgencies.includes(item.group))
         : recruitmentQuality,
     [recruitmentQuality, selectedRecruitmentAgencies]
+  );
+
+  const visibleRecruitmentCreators = useMemo(
+    () =>
+      recruitmentCreators
+        .filter((creator) => !selectedRecruitmentAgencies.length || selectedRecruitmentAgencies.includes(creator.managerGroup))
+        .sort((a, b) => b.dph - a.dph || b.diamonds - a.diamonds),
+    [recruitmentCreators, selectedRecruitmentAgencies]
   );
 
   function toggleRecruitmentAgency(agency: string) {
@@ -4343,9 +4352,9 @@ export default function CreatorIntelligencePage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-2xl font-black uppercase text-violet-900">Recruitment Quality</h2>
-              <p className="mt-1 text-sm text-slate-500">Manager recruitment over the last 14 days, ranked by average diamonds per hour.</p>
+              <p className="mt-1 text-sm text-slate-500">{recruitmentView === "managers" ? "Manager recruitment over the last 14 days, ranked by average diamonds per hour." : "Every recruited creator from the last 14 days, ranked by their diamonds per hour."}</p>
             </div>
-            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-black uppercase text-violet-700">{formatNumber(recruitmentCreators.length)} recruits</span>
+            <div className="flex items-center gap-2"><div className="rounded-xl border border-violet-200 bg-violet-50 p-1 text-xs font-black uppercase"><button type="button" onClick={() => setRecruitmentView("managers")} className={`rounded-lg px-3 py-2 ${recruitmentView === "managers" ? "bg-violet-700 text-white" : "text-violet-700"}`}>Managers</button><button type="button" onClick={() => setRecruitmentView("creators")} className={`rounded-lg px-3 py-2 ${recruitmentView === "creators" ? "bg-violet-700 text-white" : "text-violet-700"}`}>Creators</button></div><span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-black uppercase text-violet-700">{formatNumber(recruitmentCreators.length)} recruits</span></div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {recruitmentAgencyQuality.map((item) => {
@@ -4361,7 +4370,7 @@ export default function CreatorIntelligencePage() {
           </div>
           <div className="mt-5 overflow-x-auto">
             <div className="min-w-[720px] overflow-hidden rounded-2xl border border-slate-200">
-              <div className="grid grid-cols-[52px_minmax(220px,1.8fr)_1fr_1fr_1fr] gap-3 bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-wide text-white">
+              {recruitmentView === "managers" ? <><div className="grid grid-cols-[52px_minmax(220px,1.8fr)_1fr_1fr_1fr] gap-3 bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-wide text-white">
                 <span>Rank</span><span>Manager</span><span>Recruits</span><span>Diamonds</span><span>Average DPH</span>
               </div>
               {visibleRecruitmentQuality.map((item, index) => {
@@ -4377,7 +4386,7 @@ export default function CreatorIntelligencePage() {
                   </div>
                 );
               })}
-              {!visibleRecruitmentQuality.length ? <p className="p-4 text-sm text-slate-400">No manager recruitment matches the selected groups.</p> : null}
+              {!visibleRecruitmentQuality.length ? <p className="p-4 text-sm text-slate-400">No manager recruitment matches the selected groups.</p> : null}</> : <><div className="grid grid-cols-[52px_minmax(180px,1.2fr)_minmax(180px,1.2fr)_1fr_1fr] gap-3 bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-wide text-white"><span>Rank</span><span>Manager</span><span>Creator</span><span>Diamonds</span><span>DPH</span></div>{visibleRecruitmentCreators.map((creator, index) => { const dphClass = creator.dph >= 2500 ? "bg-emerald-100 text-emerald-800" : creator.dph >= 2000 ? "bg-orange-100 text-orange-800" : creator.dph >= 1000 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"; return <div key={creator.key} className="grid grid-cols-[52px_minmax(180px,1.2fr)_minmax(180px,1.2fr)_1fr_1fr] items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm"><span className="text-lg font-black text-violet-700">{index + 1}</span><div><p className="font-black text-slate-900">{creator.managerLabel}</p><p className="mt-0.5 text-xs font-bold text-slate-400">{creator.managerGroup}</p></div><span className="font-black text-slate-900">{creator.username}</span><span className="font-black text-slate-700">{formatNumber(creator.diamonds)}</span><span className={`w-fit rounded-full px-3 py-1 font-black ${dphClass}`}>{formatNumber(creator.dph)} DPH</span></div>; })}{!visibleRecruitmentCreators.length ? <p className="p-4 text-sm text-slate-400">No recruited creators match the selected groups.</p> : null}</>}
             </div>
           </div>
         </section>
