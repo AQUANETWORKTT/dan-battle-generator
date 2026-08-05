@@ -710,18 +710,27 @@ export default function TeamDiamondsYesterdayPage() {
     try {
       const zip = new JSZip();
       const failedAvatars = new Set<string>();
+      const failedPosters: string[] = [];
       for (const [index, item] of items.entries()) {
-        setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
-        setSelectedTemplateName(item.name);
-        const failedForPoster = await buildPreview(item.template, true);
-        if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
-        failedForPoster.forEach((username) => failedAvatars.add(username));
-        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-        const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
-        if (!node) throw new Error("Could not prepare the poster preview.");
-        await waitForImages(node);
-        const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
-        if (blob) zip.file(`${templateLabel(item.name)}.png`, blob);
+        try {
+          setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
+          setSelectedTemplateName(item.name);
+          // Renew the signed background URL immediately before rendering, so a
+          // sub-owner never downloads a poster with an expired or missing image.
+          const template = await resolveTemplateBackground(item.template);
+          const failedForPoster = await buildPreview(template, true);
+          if (!failedForPoster) throw new Error("No current creator data");
+          failedForPoster.forEach((username) => failedAvatars.add(username));
+          await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+          const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
+          if (!node) throw new Error("Could not prepare the poster preview");
+          await waitForImages(node);
+          const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
+          if (!blob) throw new Error("Could not render poster");
+          zip.file(`${templateLabel(item.name)}.png`, blob);
+        } catch {
+          failedPosters.push(templateLabel(item.name));
+        }
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
       const sideLabel = teamPosterCategoryLabel(activeSide);
@@ -731,7 +740,8 @@ export default function TeamDiamondsYesterdayPage() {
       const failedText = failedAvatars.size
         ? ` Picture not found for: ${[...failedAvatars].join(", ")}. Add any of these in Fallback Pictures if needed.`
         : " All creator pictures loaded.";
-      setMessage(`${sideLabel}: ${items.length} poster${items.length === 1 ? "" : "s"} saved in one ZIP file.${failedText}`);
+      const savedCount = items.length - failedPosters.length;
+      setMessage(`${sideLabel}: ${savedCount} of ${items.length} posters saved.${failedPosters.length ? ` Failed: ${failedPosters.join(", ")}.` : ""}${failedText}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not download all posters.");
     } finally {
@@ -821,7 +831,7 @@ export default function TeamDiamondsYesterdayPage() {
     setSelectedTemplateName(item.name);
     setLoading(true);
     try {
-      const failedForPoster = await buildPreview(item.template, true);
+      const failedForPoster = await buildPreview(await resolveTemplateBackground(item.template), true);
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
