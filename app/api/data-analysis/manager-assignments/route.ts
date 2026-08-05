@@ -4,7 +4,7 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 export const dynamic = "force-dynamic";
 
 const SETTINGS_NAME = "manager-assignment-settings";
-const GROUPS = ["Team Dan", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Recruitment", "New Managers", "Excluded"] as const;
+const GROUPS = ["Team Dan / James", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Recruitment", "New Managers", "Excluded"] as const;
 const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "firstclassagencyalf", "firstclassagencydan", "teamdan", "firstclassagencyjenson", "firstclassagencyjacob", "teamjacob", "cscott1232005", "trident125", "firstclassindi", "firstclassagencyindi", "teritilcock1994"];
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
@@ -26,7 +26,7 @@ function defaultGroup(row: CreatorStat): Group {
   if (/(trident125gmailcom|trident125mailcom)/.test(manager) || source.includes("trident")) return "Trident";
   if (/(hannakingismail92|stormlive)/.test(manager) || /(storm|strive|horizon)/.test(source)) return "Horizon";
   if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
-  if (/(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|candiceaquaagency|firstclassagencykyran|kbon03|kaybon03)/.test(manager)) return "Team Dan";
+  if (/(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|candiceaquaagency|firstclassagencykyran|kbon03|kaybon03)/.test(manager)) return "Team Dan / James";
   if (/(mikehalesjb|bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(manager)) return "Team Mike / Indi";
   if (source.includes("paradise")) return "Paradise";
   if (source.includes("respawn")) return "Respawn";
