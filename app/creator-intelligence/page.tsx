@@ -1848,9 +1848,9 @@ function CreatorListPanel({
         <span className="text-sm font-black">{creators.length}</span>
       </div>
       <div className="mt-3 space-y-2">
-        {creators.slice(0, 8).map((creator) => (
+        {creators.map((creator) => (
           <div key={`${title}-${creator.key}`} className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-3 rounded-xl bg-white/70 px-3 py-2 text-sm">
-            <span className="truncate font-bold">{creator.username}</span>
+            <div className="min-w-0"><span className="block truncate font-bold">{creator.username}</span><span className="block truncate text-[10px] font-bold text-slate-500">{creator.managerLabel} ({creator.managerGroup})</span></div>
             <span className="shrink-0 font-black text-sky-700">DAY {creator.daysSinceJoining}</span>
             <span className="shrink-0 text-slate-500">{creator.healthScore}/100</span>
             <span className="shrink-0 font-black text-slate-700">{formatNumber(creator.diamonds)} 💎</span>
@@ -3028,18 +3028,16 @@ export default function CreatorIntelligencePage() {
   }
 
   const hiddenPotentialCreators = useMemo(
-    () => newCreators,
+    () => newCreators.slice(0, 8),
     [newCreators]
   );
 
   const inactiveNewCreators = useMemo(
     () =>
-      newCreators.filter(
+      aquaSummaries.filter(
         (creator) =>
           creator.daysSinceJoining >= 3 &&
-          creator.diamonds <= 0 &&
-          creator.liveHours <= 0 &&
-          creator.healthWindowHours <= 0
+          creator.liveHours <= 0
       ),
     [newCreators]
   );
@@ -3339,6 +3337,7 @@ export default function CreatorIntelligencePage() {
         ? newCreators.map((creator) =>
             [
               `💎 ${creator.username}`,
+              `• Manager: ${creator.managerLabel} (${creator.managerGroup})`,
               `• Days since joining: ${formatNumber(creator.daysSinceJoining)}`,
               `• Diamonds: ${formatNumber(creator.diamonds)}`,
             ].join("\n")
@@ -4291,7 +4290,7 @@ export default function CreatorIntelligencePage() {
               <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
                 <h3 className="text-sm font-black uppercase text-red-700">Needs removal check</h3>
                 <p className="mt-1 text-xs text-red-600">
-                  New creators who are 3+ days in with no live hours and no diamonds.
+                  Any creator who is 3+ days in and has not been live since joining.
                 </p>
                 <div className="mt-3 grid gap-2">
                   {inactiveNewCreators.map((creator) => (

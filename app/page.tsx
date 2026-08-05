@@ -43,10 +43,10 @@ export default function HomePage() {
       <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col">
         <header className="flex items-center justify-between border-b border-white/10 pb-5">
           <div className="font-[family-name:var(--font-norwester)] text-xl uppercase tracking-wide sm:text-2xl">
-            First Class <span className="text-yellow-300">Space</span>
+            First Class <span className="text-yellow-300">Leadership Space</span>
           </div>
           <span className="rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-200 sm:px-4">
-            Agency Portal
+            Leadership Portal
           </span>
         </header>
 
@@ -90,6 +90,7 @@ export default function HomePage() {
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
           <span>First Class Agency</span>
+          <Link href="/login" className="text-yellow-200 transition hover:text-white">Go Back · Choose Leadership or Management</Link>
           <span>Data · Creator Intelligence · Agency tools</span>
         </footer>
       </div>

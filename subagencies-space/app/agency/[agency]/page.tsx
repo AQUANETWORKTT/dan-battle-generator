@@ -69,6 +69,9 @@ export default function AgencySpace() {
         <strong>HEALTH SCORE<br />SYSTEM</strong>
         <em>COMING SOON</em>
       </div>
+      <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/tasks`}>
+        <span>OWNER TOOL</span><strong>TASK<br />SPACE</strong><span className="poster-generator-cta">OPEN TASKS&nbsp;&rarr;</span>
+      </Link>
       {params.agency === "paradise" ? <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/onboarding-progress`}>
         <span>AGENCY VIEW</span><strong>MANAGER ONBOARDING<br />PROGRESS</strong><span className="poster-generator-cta">REVIEW COMPLETIONS&nbsp;&rarr;</span>
       </Link> : null}

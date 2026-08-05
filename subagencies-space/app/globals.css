@@ -81,7 +81,7 @@ button, input { font: inherit; }
 .coming-soon-card { display: flex; min-height: 210px; flex-direction: column; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,.13); border-radius: 22px; padding: 22px; background: linear-gradient(145deg, #171717, #090909 72%); color: #777; opacity: .72; cursor: not-allowed; text-align: center; user-select: none; }
 .coming-soon-card > span, .coming-soon-card > em { color: #9a9a9a; font: 900 9px "Norwester", Impact, sans-serif; letter-spacing: .16em; font-style: normal; }
 .coming-soon-card strong { color: #9d9d9d; font: 900 clamp(23px, 3.3vw, 30px)/.96 "Norwester", Impact, sans-serif; letter-spacing: -.02em; }
-.diamond-hours-card { border-color: rgba(148,163,184,.32); background: linear-gradient(145deg, #161c26, #090a0c 72%); }
+.diamond-hours-card { border-color: color-mix(in srgb, var(--agency) 48%, transparent); background: linear-gradient(145deg, color-mix(in srgb, var(--agency) 14%, #111), #080808 72%); }
 .health-score-card { border-color: rgba(161,161,170,.3); background: linear-gradient(145deg, #1a1a1a, #090909 72%); }
 @media (max-width: 760px) { .agency-workspace { grid-template-columns: 1fr; width: min(420px, 100%); } }
 .agency-generator-shell { position: relative; isolation: isolate; background: #050505; }
@@ -122,3 +122,28 @@ button, input { font: inherit; }
 .onboarding-bulk-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;border:1px solid color-mix(in srgb,var(--onboarding-accent,#facc15) 38%,#333);border-radius:12px;padding:12px 14px;background:#101010;color:#d3d3d3;font:900 11px "Norwester",Impact,sans-serif;letter-spacing:.12em}.onboarding-bulk-bar button{border:0;border-radius:8px;padding:10px 14px;background:var(--onboarding-accent,#facc15);color:#050505;font:900 10px "Norwester",Impact,sans-serif;letter-spacing:.1em;cursor:pointer}.onboarding-bulk-bar button:disabled{cursor:not-allowed;opacity:.35}.owner-onboarding-card.is-selected{border-color:var(--onboarding-accent,#facc15);box-shadow:0 0 0 1px color-mix(in srgb,var(--onboarding-accent,#facc15) 40%,transparent)}.owner-onboarding-card header{grid-template-columns:auto minmax(180px,1.2fr) minmax(200px,1fr) auto}.onboarding-select{display:grid!important;gap:5px!important;justify-items:center;color:#aaa!important;font:900 9px "Norwester",Impact,sans-serif!important;letter-spacing:.08em}.onboarding-select input{width:18px;height:18px;accent-color:var(--onboarding-accent,#facc15)}@media(max-width:900px){.owner-onboarding-card header{grid-template-columns:1fr}.onboarding-select{justify-items:start}}
 .manager-portal-logo{display:flex;justify-content:center;align-items:center;margin:8px auto 12px}.manager-portal-logo img{width:min(280px,70vw);height:auto;object-fit:contain}
 @media (max-width: 760px) { .agency-grid { grid-template-columns: repeat(2, 1fr); margin-top: 34px; } .agency-card-logo { min-height: 115px; } .agency-card strong { font-size: 13px; } }
+
+/* Keep the agency branding, but use a much clearer typeface for the actual UI.
+   Norwester is retained only inside the exported poster artwork. */
+:root { --space-ui-font: Arial, Helvetica, sans-serif; --space-heading-font: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }
+body, button, input, select, textarea { font-family: var(--space-ui-font); }
+button, input, select, textarea { font-weight: 700; letter-spacing: .035em; line-height: 1.25; }
+.home-shell .hero h1 { font-family: Impact, "Arial Black", Arial, sans-serif; }
+.agency-generator-shell :is(button, input, select, textarea, h1, h2, h3, p, label, a),
+.onboarding-page,
+.manager-picker button, .manager-password, .manager-password input, .manager-password button,
+.onboarding-table button, .onboarding-tasks button, .complete-onboarding,
+.backstage-status > span, .backstage-status > small, .backstage-status > button,
+.poster-generator-kicker, .poster-generator-cta, .coming-soon-card > span, .coming-soon-card > em,
+.onboarding-title p, .owner-onboarding-card header strong, .confirm-onboarding,
+.recently-confirmed button, .onboarding-confirm-box p, .onboarding-confirm-box h2,
+.onboarding-confirm-box button, .owner-creator-metrics > span, .owner-creator-metrics > strong,
+.onboarding-warning, .decline-onboarding, .onboarding-proof-links a, .onboarding-bulk-bar,
+.onboarding-bulk-bar button, .onboarding-select { font-family: var(--space-ui-font) !important; }
+.poster-generator-link strong, .coming-soon-card strong, .space-shell > h1,
+.space-shell h2, .onboarding-page h1, .onboarding-title h1 { font-family: var(--space-heading-font) !important; letter-spacing: .01em !important; line-height: 1.04 !important; }
+.space-shell .diamond-hours-card > span:not(.poster-generator-cta),
+.space-shell .managers-link > span:not(.poster-generator-cta) { color: var(--agency); }
+.space-shell .diamond-hours-card > span:not(.poster-generator-cta),
+.space-shell .managers-link > span:not(.poster-generator-cta) { font-family: var(--space-heading-font) !important; font-weight: 900 !important; letter-spacing: .08em !important; }
+.space-shell .poster-generator-link > strong { color: #fff; font-family: var(--space-heading-font) !important; letter-spacing: .035em !important; text-shadow: 2px 2px 0 #090909, 0 0 16px color-mix(in srgb, var(--agency) 34%, transparent); -webkit-text-stroke: .35px rgba(0,0,0,.62); }
