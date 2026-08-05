@@ -3003,6 +3003,24 @@ export default function CreatorIntelligencePage() {
     [expandedRecruitmentManager, recruitmentCreators]
   );
 
+  useEffect(() => {
+    const panel = Array.from(document.querySelectorAll<HTMLDivElement>("div")).find((element) => element.className.includes("bg-violet-50/60"));
+    if (!panel) return;
+    const rows = Array.from(panel.querySelectorAll<HTMLDivElement>("div")).filter((element) => element.className.includes("mt-2 grid") && !element.dataset.profileButtonAdded);
+    for (const row of rows) {
+      const username = row.querySelector("span")?.textContent?.trim().replace(/^@/, "");
+      if (!username) continue;
+      const link = document.createElement("a");
+      link.href = `https://www.tiktok.com/@${username}`;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "VIEW PROFILE";
+      link.className = "w-fit rounded-lg border border-violet-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-violet-700 hover:bg-violet-100";
+      row.appendChild(link);
+      row.dataset.profileButtonAdded = "true";
+    }
+  }, [expandedRecruitmentManager, expandedRecruitmentCreators]);
+
   function toggleRecruitmentAgency(agency: string) {
     setSelectedRecruitmentAgencies((current) =>
       current.includes(agency) ? current.filter((item) => item !== agency) : [...current, agency]
