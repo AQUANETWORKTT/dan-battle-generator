@@ -28,7 +28,10 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const publicRoutes = ["/login", "/api/login"];
+  // The reminder route is still protected by CRON_SECRET inside the route
+  // handler, but must be reachable by the external scheduler without a web
+  // login cookie.
+  const publicRoutes = ["/login", "/api/login", "/api/battle-calendar/reminders"];
 
   const isPublic = publicRoutes.some((route) => path.startsWith(route));
 

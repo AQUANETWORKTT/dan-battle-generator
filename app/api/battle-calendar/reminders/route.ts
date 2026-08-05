@@ -24,6 +24,11 @@ export async function GET(request: Request) {
   const battles = await Promise.all((settings.battles || []).map(async (battle) => {
     if (battle.date !== now.date) return battle;
     const [hour, minute] = battle.time.split(":").map(Number); const battleMinutes = hour * 60 + minute;
+    const missed = reminders.filter((lead) => now.minutes >= battleMinutes - lead + 5 && !(battle.notified || []).includes(lead));
+    for (const lead of missed) {
+      battle.reminders = { ...(battle.reminders || {}), [String(lead)]: { status: "failed", at: new Date().toISOString() } };
+      changed = true;
+    }
     const due = reminders.filter((lead) => now.minutes >= battleMinutes - lead && now.minutes < battleMinutes - lead + 5 && !(battle.notified || []).includes(lead));
     for (const lead of due) {
       const text = `DF/JD BATTLE REMINDER\n\n${battle.creator} VS ${battle.opponent}\nTIME: ${battle.time}\nSIZE: ${battle.size}\nAGENCY: ${battle.agency}\nMANAGER: ${battle.manager}\n\nSTARTS IN ${lead} MINUTES.`;

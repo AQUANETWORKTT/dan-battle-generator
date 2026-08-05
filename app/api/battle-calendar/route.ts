@@ -13,6 +13,7 @@ function normalize(input: unknown): Settings {
     const date = String(row.date || ""); const time = String(row.time || ""); const creator = String(row.creator || "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time) || !creator) return [];
     const reminders = (row.reminders && typeof row.reminders === "object" ? Object.fromEntries(Object.entries(row.reminders as Record<string, unknown>).flatMap(([lead, status]) => { const value = status as Record<string, unknown>; return value && (value.status === "success" || value.status === "failed") ? [[lead, { status: value.status as ReminderStatus["status"], at: String(value.at || "") }]] : []; })) : {}) as Record<string, ReminderStatus>;
+    for (const lead of Array.isArray(row.notified) ? row.notified.map(Number).filter(Number.isFinite) : []) reminders[String(lead)] ||= { status: "success", at: "" };
     return [{ id: String(row.id || crypto.randomUUID()), date, time, creator, manager: String(row.manager || ""), size: String(row.size || ""), opponent: String(row.opponent || ""), agency: String(row.agency || ""), type: String(row.type || "ARRANGED BATTLE"), notified: Array.isArray(row.notified) ? row.notified.map(Number).filter(Number.isFinite) : [], reminders }];
   }) : [];
   const reminders = Array.isArray(value.reminderMinutes) ? value.reminderMinutes.map(Number).filter((item) => Number.isFinite(item) && item >= 0 && item <= 1440) : [60, 15];
