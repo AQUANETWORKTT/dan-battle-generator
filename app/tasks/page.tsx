@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Assignee = "JD" | "DF" | "JD / DF" | "PARADISE" | "RESPAWN" | "HORIZON" | "TRIDENT";
-type Priority = "OVERDUE" | "TODAY" | "TOMORROW" | "2 DAYS" | "3+ DAYS" | "WHEN AVAILABLE";
+type Priority = "URGENT" | "OVERDUE" | "TODAY" | "TOMORROW" | "2 DAYS" | "3+ DAYS" | "WHEN AVAILABLE";
 type Task = {
   id: string;
   description: string;
@@ -20,6 +20,7 @@ type Task = {
 };
 
 const statusStyle: Record<Priority, string> = {
+  URGENT: "border-red-300 bg-red-500/25 text-red-100",
   OVERDUE: "border-red-400/70 bg-red-400/10 text-red-200",
   TODAY: "border-orange-300/70 bg-orange-300/10 text-orange-200",
   TOMORROW: "border-yellow-300/70 bg-yellow-300/10 text-yellow-100",
@@ -42,6 +43,7 @@ export default function TaskSpacePage() {
   const [assignee, setAssignee] = useState<Assignee>("JD / DF");
   const [forWho, setForWho] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [urgent, setUrgent] = useState(false);
   const [editingDueDate, setEditingDueDate] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
@@ -89,15 +91,16 @@ export default function TaskSpacePage() {
       description: description.trim(),
       assignee,
       creator: forWho.trim(),
-      dueDate,
+      dueDate: urgent ? "" : dueDate,
       dueTime: "",
-      priority: "WHEN AVAILABLE",
+      priority: urgent ? "URGENT" : "WHEN AVAILABLE",
       complete: false,
       createdAt: new Date().toISOString(),
     };
     setDescription("");
     setForWho("");
     setDueDate("");
+    setUrgent(false);
     void save([task, ...tasks]);
   }
 
@@ -108,6 +111,11 @@ export default function TaskSpacePage() {
   function updateDueDate(id: string, nextDueDate: string) {
     setEditingDueDate(null);
     void save(tasks.map((task) => task.id === id ? { ...task, dueDate: nextDueDate } : task), nextDueDate ? "DUE DATE UPDATED." : "DUE DATE CLEARED.");
+  }
+
+  function updateUrgency(id: string, nextUrgent: boolean) {
+    setEditingDueDate(null);
+    void save(tasks.map((task) => task.id === id ? { ...task, priority: nextUrgent ? "URGENT" : "WHEN AVAILABLE", dueDate: nextUrgent ? "" : task.dueDate } : task), nextUrgent ? "TASK MARKED URGENT." : "URGENT STATUS REMOVED.");
   }
 
   function completeSelected() {
@@ -142,8 +150,8 @@ export default function TaskSpacePage() {
             <select value={assignee} onChange={(event) => setAssignee(event.target.value as Assignee)} className="rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-lg font-bold text-white">
               <option value="JD">JD</option><option value="DF">DF</option><option value="JD / DF">JD / DF</option><option value="PARADISE">PARADISE</option><option value="RESPAWN">RESPAWN</option><option value="HORIZON">HORIZON</option><option value="TRIDENT">TRIDENT</option>
             </select>
-            <p className="rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm font-black uppercase tracking-wide text-white/60">DUE STATUS SETS AUTOMATICALLY</p>
-            <input type="date" value={dueDate} onClick={openDatePicker} onChange={(event) => setDueDate(event.target.value)} className="w-full cursor-pointer rounded-xl border border-emerald-300/35 bg-black/40 px-4 py-3 text-lg font-bold text-white" />
+            <label className="flex items-center gap-3 rounded-xl border border-red-300/35 bg-red-500/10 px-4 py-3 text-sm font-black uppercase tracking-wide text-red-100"><input type="checkbox" checked={urgent} onChange={(event) => setUrgent(event.target.checked)} /> URGENT — NO DUE DATE</label>
+            <input type="date" value={dueDate} disabled={urgent} onClick={openDatePicker} onChange={(event) => setDueDate(event.target.value)} className="w-full cursor-pointer rounded-xl border border-emerald-300/35 bg-black/40 px-4 py-3 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-35" />
           </div>
           <button onClick={add} className="mt-3 rounded-xl bg-emerald-300 px-5 py-3 text-xs font-black uppercase text-black">ADD TASK</button>
           {message && <p className="mt-3 text-sm font-bold text-emerald-100">{message}</p>}
@@ -160,6 +168,7 @@ export default function TaskSpacePage() {
             {tasks.map((task) => {
               const sourceKey = task.sourceAgency?.toLowerCase();
               const isEditing = editingDueDate === task.id;
+              const isUrgent = task.priority === "URGENT";
               return (
                 <article
                   key={task.id}
@@ -184,11 +193,12 @@ export default function TaskSpacePage() {
 
                   {isEditing && (
                     <div onClick={(event) => event.stopPropagation()} className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
-                      <label className="flex min-w-56 flex-col gap-2 text-xs font-black uppercase tracking-widest text-emerald-100">
+                      {!isUrgent && <><label className="flex min-w-56 flex-col gap-2 text-xs font-black uppercase tracking-widest text-emerald-100">
                         CHANGE DUE DATE
                         <input type="date" value={task.dueDate} onClick={openDatePicker} onChange={(event) => updateDueDate(task.id, event.target.value)} className="cursor-pointer rounded-lg border border-emerald-300/40 bg-black px-3 py-2 text-base font-bold text-white" />
                       </label>
-                      <button onClick={() => updateDueDate(task.id, "")} className="rounded-lg border border-white/25 px-3 py-2 text-xs font-black uppercase text-white/80">CLEAR DATE</button>
+                      <button onClick={() => updateDueDate(task.id, "")} className="rounded-lg border border-white/25 px-3 py-2 text-xs font-black uppercase text-white/80">CLEAR DATE</button></>}
+                      <button onClick={() => updateUrgency(task.id, !isUrgent)} className={`rounded-lg px-3 py-2 text-xs font-black uppercase ${isUrgent ? "border border-white/25 text-white/80" : "bg-red-400 text-black"}`}>{isUrgent ? "REMOVE URGENT" : "MARK URGENT"}</button>
                     </div>
                   )}
                 </article>

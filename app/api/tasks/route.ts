@@ -4,7 +4,7 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 const SETTINGS_NAME = "agency-task-space";
 const ASSIGNMENTS_NAME = "manager-assignment-settings";
 type Agency = "PARADISE" | "RESPAWN" | "HORIZON" | "TRIDENT";
-type TaskPriority = "OVERDUE" | "TODAY" | "TOMORROW" | "2 DAYS" | "3+ DAYS" | "WHEN AVAILABLE";
+type TaskPriority = "URGENT" | "OVERDUE" | "TODAY" | "TOMORROW" | "2 DAYS" | "3+ DAYS" | "WHEN AVAILABLE";
 type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF" | Agency; creator: string; dueDate: string; dueTime: string; highPriority: boolean; priority: TaskPriority; complete: boolean; createdAt: string; autoKey?: string; forwardedToAgency?: boolean; sourceAgency?: string; sourceManager?: string; sourceManagerLabel?: string };
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; assignedAt?: Record<string, string> };
 type TemplateRow = { name: string; template_json: { managerKey?: unknown } | null };
@@ -27,9 +27,10 @@ function normalize(input: unknown): Task[] {
     const row = item as Record<string, unknown>;
     const description = String(row?.description || "").trim();
     if (!description) return [];
-    const priority = duePriority(String(row.dueDate || ""));
-    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: priority === "OVERDUE", priority, complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency), sourceAgency: String(row.sourceAgency || "") || undefined, sourceManager: String(row.sourceManager || "") || undefined, sourceManagerLabel: String(row.sourceManagerLabel || "") || undefined }];
-  }).sort((a, b) => Number(a.complete) - Number(b.complete) || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
+    const urgent = row.priority === "URGENT";
+    const priority = urgent ? "URGENT" : duePriority(String(row.dueDate || ""));
+    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: urgent ? "" : String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: priority === "URGENT", priority, complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency), sourceAgency: String(row.sourceAgency || "") || undefined, sourceManager: String(row.sourceManager || "") || undefined, sourceManagerLabel: String(row.sourceManagerLabel || "") || undefined }];
+  }).sort((a, b) => Number(a.complete) - Number(b.complete) || Number(b.priority === "URGENT") - Number(a.priority === "URGENT") || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
 }
 
 function taskText(event: "NEW TASK" | "TASK COMPLETED", task: Task) { return [event, `Task: ${task.description}`, `Assigned to: ${task.assignee}`, `For: ${task.creator || "Not specified"}`, `Due: ${task.dueDate || "No date"}${task.dueTime ? ` ${task.dueTime}` : ""}`, `Priority: ${task.priority}`].join("\n"); }
