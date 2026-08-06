@@ -3036,7 +3036,7 @@ export default function CreatorIntelligencePage() {
     () =>
       aquaSummaries.filter(
         (creator) =>
-          creator.daysSinceJoining >= 3 &&
+          creator.daysSinceJoining >= 3 && creator.daysSinceJoining <= 20 &&
           creator.liveHours <= 0
       ),
     [newCreators]
