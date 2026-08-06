@@ -39,6 +39,7 @@ const sourceColors: Record<string, string> = {
 export default function TaskSpacePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState<Assignee>("JD / DF");
   const [forWho, setForWho] = useState("");
@@ -108,6 +109,11 @@ export default function TaskSpacePage() {
     setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
+  function completeTask(task: Task) {
+    if (task.complete || !window.confirm(`MARK “${task.description}” AS FINISHED?`)) return;
+    void save(tasks.map((entry) => entry.id === task.id ? { ...entry, complete: true } : entry), "TASK COMPLETED.");
+  }
+
   function updateDueDate(id: string, nextDueDate: string) {
     setEditingDueDate(null);
     void save(tasks.map((task) => task.id === id ? { ...task, dueDate: nextDueDate } : task), nextDueDate ? "DUE DATE UPDATED." : "DUE DATE CLEARED.");
@@ -157,11 +163,18 @@ export default function TaskSpacePage() {
           {message && <p className="mt-3 text-sm font-bold text-emerald-100">{message}</p>}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 p-4">
-            <label className="text-xs font-black uppercase tracking-widest"><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : tasks.map((task) => task.id))} /> {selected.length} SELECTED</label>
-            <div className="flex gap-2">
-              <button onClick={completeSelected} disabled={!selected.length} className="rounded-lg bg-emerald-300 px-3 py-2 text-[10px] font-black uppercase text-black disabled:opacity-40">CONFIRM COMPLETED</button>
-              <button onClick={removeSelected} disabled={!selected.length} className="rounded-lg border border-red-300/60 px-3 py-2 text-[10px] font-black uppercase text-red-200 disabled:opacity-40">REMOVE SELECTED</button>
-            </div>
+            {!selectionMode ? (
+              <button onClick={() => setSelectionMode(true)} className="rounded-lg border border-emerald-300/45 bg-emerald-300/10 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-emerald-100">SELECT TASKS</button>
+            ) : (
+              <>
+                <label className="text-xs font-black uppercase tracking-widest"><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : tasks.map((task) => task.id))} /> {selected.length} SELECTED</label>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={completeSelected} disabled={!selected.length} className="rounded-lg bg-emerald-300 px-3 py-2 text-[10px] font-black uppercase text-black disabled:opacity-40">CONFIRM COMPLETED</button>
+                  <button onClick={removeSelected} disabled={!selected.length} className="rounded-lg border border-red-300/60 px-3 py-2 text-[10px] font-black uppercase text-red-200 disabled:opacity-40">REMOVE SELECTED</button>
+                  <button onClick={() => { setSelectionMode(false); setSelected([]); }} className="rounded-lg border border-white/25 px-3 py-2 text-[10px] font-black uppercase text-white/75">CANCEL SELECT</button>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="mt-3 space-y-3">
@@ -177,7 +190,11 @@ export default function TaskSpacePage() {
                   className={`cursor-pointer rounded-2xl border p-4 transition hover:border-emerald-200/40 ${task.complete ? "border-white/10 bg-black/20 opacity-55" : "border-white/10 bg-black/30"}`}
                 >
                   <div className="flex flex-wrap items-center gap-4">
-                    <input type="checkbox" checked={selected.includes(task.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggle(task.id)} />
+                    {selectionMode ? (
+                      <input type="checkbox" checked={selected.includes(task.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggle(task.id)} aria-label={`Select ${task.description}`} />
+                    ) : (
+                      <input type="checkbox" checked={task.complete} onClick={(event) => event.stopPropagation()} onChange={() => completeTask(task)} className="h-5 w-5 cursor-pointer accent-emerald-300" aria-label={`Mark ${task.description} as finished`} />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className={task.complete ? "line-through" : "font-black"}>{task.description}</p>
                       <p className="mt-2 text-sm font-bold text-emerald-100">
