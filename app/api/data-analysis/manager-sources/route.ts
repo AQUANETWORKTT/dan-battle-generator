@@ -113,7 +113,34 @@ export async function GET() {
 
     const latestByCreator = new Map<string, CreatorStat>();
     for (const row of rows) { const key = getCreatorKey(row); if (key) latestByCreator.set(key, row); }
-    const managers = Array.from(latestByCreator.values()).map((row) => ({ manager_key: getManagerRaw(row), manager_label: getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames) })).filter((manager) => manager.manager_key && !deletedManagers.has(normalize(manager.manager_key)) && managerAssignments[normalize(manager.manager_key)] !== "Recruitment" && manager.manager_label !== "Unassigned");
+    // The Team Poster Builder is controlled by Manager Assignments. Do not
+    // surface one-off/raw export emails until they have been intentionally
+    // added and named there.
+    // Start with every saved Manager Assignment, not just whoever happened to
+    // have a creator in today's export. This keeps every real manager in the
+    // Team Poster Builder, while Recruitment and Excluded stay out of it.
+    const managersByKey = new Map<string, { manager_key: string; manager_label: string }>();
+    for (const [managerKey, assignedGroup] of Object.entries(managerAssignments)) {
+      if (deletedManagers.has(managerKey) || assignedGroup === "Recruitment" || assignedGroup === "Excluded") continue;
+      managersByKey.set(managerKey, {
+        manager_key: managerKey,
+        manager_label: managerNames[managerKey] || getManagerLabel(managerKey, assignedGroup),
+      });
+    }
+
+    // Replace the normalised key with the current real email whenever it is in
+    // the export. The display name remains the one saved in Manager Assignments.
+    for (const row of latestByCreator.values()) {
+      const managerRaw = getManagerRaw(row);
+      const managerKey = normalize(managerRaw);
+      const assignedGroup = managerAssignments[managerKey];
+      if (!managersByKey.has(managerKey) || deletedManagers.has(managerKey) || assignedGroup === "Recruitment" || assignedGroup === "Excluded") continue;
+      managersByKey.set(managerKey, {
+        manager_key: managerRaw,
+        manager_label: managerNames[managerKey] || getCreatorIntelligenceManagerLabel(row, managerAssignments, managerNames),
+      });
+    }
+    const managers = Array.from(managersByKey.values());
 
     return NextResponse.json({ statDate: latestDate, managers });
   } catch (error) {

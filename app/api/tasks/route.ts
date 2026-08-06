@@ -3,7 +3,8 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 const SETTINGS_NAME = "agency-task-space";
 const ASSIGNMENTS_NAME = "manager-assignment-settings";
-type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF"; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string; autoKey?: string };
+type Agency = "PARADISE" | "RESPAWN" | "HORIZON" | "TRIDENT";
+type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF" | Agency; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string; autoKey?: string; forwardedToAgency?: boolean };
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; assignedAt?: Record<string, string> };
 type TemplateRow = { name: string; template_json: { managerKey?: unknown } | null };
 
@@ -14,12 +15,30 @@ function normalize(input: unknown): Task[] {
     const row = item as Record<string, unknown>;
     const description = String(row?.description || "").trim();
     if (!description) return [];
-    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: Boolean(row.highPriority), complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined }];
+    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: Boolean(row.highPriority), complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency) }];
   }).sort((a, b) => Number(a.complete) - Number(b.complete) || Number(b.highPriority) - Number(a.highPriority) || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
 }
 
 function taskText(event: "NEW TASK" | "TASK COMPLETED", task: Task) { return [event, `Task: ${task.description}`, `Assigned to: ${task.assignee}`, `For: ${task.creator || "Not specified"}`, `Due: ${task.dueDate || "No date"}${task.dueTime ? ` ${task.dueTime}` : ""}`, `Priority: ${task.highPriority ? "HIGH" : "Normal"}`].join("\n"); }
 async function notify(event: "NEW TASK" | "TASK COMPLETED", task: Task) { const token = process.env.TELEGRAM_BOT_TOKEN; const chatId = process.env.BATTLE_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID; if (!token || !chatId) return; await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: chatId, text: taskText(event, task) }) }); }
+
+async function forwardAgencyTasks(tasks: Task[]) {
+  const agencyTasks = tasks.filter((task) => ["PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(task.assignee) && !task.forwardedToAgency);
+  for (const task of agencyTasks) {
+    const agency = task.assignee.toLowerCase();
+    const templateName = `sub-owner-tasks-${agency}`;
+    const { data, error } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", templateName).maybeSingle();
+    if (error) throw new Error(error.message);
+    const existing = Array.isArray((data?.template_json as { tasks?: unknown[] } | null)?.tasks) ? (data?.template_json as { tasks: Record<string, unknown>[] }).tasks : [];
+    if (!existing.some((entry) => String(entry.id) === task.id)) {
+      existing.unshift({ ...task, assignee: "OWNER", complete: false, forwardedFromMain: true });
+      const { error: saveError } = await submissionsSupabase.from("poster_templates").upsert({ name: templateName, template_json: { tasks: existing }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
+      if (saveError) throw new Error(saveError.message);
+    }
+  }
+  const forwardedIds = new Set(agencyTasks.map((task) => task.id));
+  return forwardedIds.size ? tasks.map((task) => forwardedIds.has(task.id) ? { ...task, forwardedToAgency: true } : task) : tasks;
+}
 
 async function addMissingPosterTasks(tasks: Task[]) {
   const [{ data: assignmentRow }, { data: templates }] = await Promise.all([
@@ -64,7 +83,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const tasks = normalize(body?.tasks);
+    let tasks = normalize(body?.tasks);
+    tasks = await forwardAgencyTasks(tasks);
     const { data: current } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle();
     const previous = new Map(normalize((current?.template_json as Record<string, unknown> | null)?.tasks).map((task) => [task.id, task]));
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { tasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });

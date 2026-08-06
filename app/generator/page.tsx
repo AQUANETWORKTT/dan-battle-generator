@@ -1699,7 +1699,9 @@ export default function BattleGeneratorPage() {
         if (["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKey)) {
           return ["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKeyNormalized);
         }
-        return manager === managerKey;
+        // Manager Assignments store a normalised email key, while the export
+        // retains punctuation in the actual email. Support either form.
+        return manager === managerKey || managerKeyNormalized === managerKey;
       });
       if (!rows.length) throw new Error("No creators were found for this data source on the latest upload.");
       const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
