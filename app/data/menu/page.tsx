@@ -41,6 +41,7 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
   ] },
   { title: "Management", description: "First Class manager onboarding and team completion progress.", accent: "yellow", workspaces: [
     { href: "/data/manager-onboarding-progress", number: "15", label: "Creator care", title: "Manager Onboarding Progress", description: "Review onboarding work submitted by First Class managers.", accent: "yellow" },
+    { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
   ] },
   { title: "In Development", description: "Features that are being prepared for a future release.", accent: "gray", workspaces: [
     { href: "/daily-rankings", number: "06", label: "Backstage", title: "Daily Rankings", description: "Awaiting Tikleap API access for automated daily rankings.", accent: "gray", maintenance: true, unavailable: true },
