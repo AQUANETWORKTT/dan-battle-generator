@@ -700,18 +700,24 @@ export default function TeamDiamondsYesterdayPage() {
     try {
       const zip = new JSZip();
       const failedAvatars = new Set<string>();
+      const skippedPosters: string[] = [];
       for (const [index, item] of items.entries()) {
-        setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
-        setSelectedTemplateName(item.name);
-        const failedForPoster = await buildPreview(item.template, true);
-        if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
-        failedForPoster.forEach((username) => failedAvatars.add(username));
-        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-        const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
-        if (!node) throw new Error("Could not prepare the poster preview.");
-        await waitForImages(node);
-        const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
-        if (blob) zip.file(`${templateLabel(item.name)}.png`, blob);
+        try {
+          setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
+          setSelectedTemplateName(item.name);
+          const failedForPoster = await buildPreview(item.template, true);
+          if (!failedForPoster) throw new Error("No current creator data.");
+          failedForPoster.forEach((username) => failedAvatars.add(username));
+          await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+          const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
+          if (!node) throw new Error("Could not prepare preview.");
+          await waitForImages(node);
+          const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
+          if (!blob) throw new Error("Could not create image.");
+          zip.file(`${templateLabel(item.name)}.png`, blob);
+        } catch {
+          skippedPosters.push(templateLabel(item.name));
+        }
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
       const sideLabel = side ? teamPosterCategoryLabel(side) : "All teams";
@@ -721,7 +727,8 @@ export default function TeamDiamondsYesterdayPage() {
       const failedText = failedAvatars.size
         ? ` Picture not found for: ${[...failedAvatars].join(", ")}. Add any of these in Fallback Pictures if needed.`
         : " All creator pictures loaded.";
-      setMessage(`${sideLabel}: ${items.length} poster${items.length === 1 ? "" : "s"} saved in one ZIP file.${failedText}`);
+      const savedCount = items.length - skippedPosters.length;
+      setMessage(`${sideLabel}: ${savedCount} poster${savedCount === 1 ? "" : "s"} saved in one ZIP file.${skippedPosters.length ? ` Skipped: ${skippedPosters.join(", ")}.` : ""}${failedText}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not download all posters.");
     } finally {

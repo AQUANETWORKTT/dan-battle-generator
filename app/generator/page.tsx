@@ -159,6 +159,8 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   louisesquelch: "Louise",
   ashwalbridge: "Ash",
   ashwalbridgeaolcom: "Ash",
+  firstclassagencyashoutlookcom: "Ash",
+  firstclassagencyash: "Ash",
   candiceaquaagency: "Candice",
   firstclassagencykyran: "Kyran",
   kyran: "Kyran",
@@ -563,7 +565,7 @@ function createManagerLeaderboardTemplate(rowCount = DEFAULT_MANAGER_LEADERBOARD
       height: 72,
       value: `Team Manager ${index + 1}`,
       fontFamily: "Norwester",
-      fontSize: 42,
+      fontSize: 37,
       color: "#ffffff",
       fontWeight: 900,
     });
@@ -576,7 +578,7 @@ function createManagerLeaderboardTemplate(rowCount = DEFAULT_MANAGER_LEADERBOARD
       height: 72,
       value: "0 diamonds",
       fontFamily: "Norwester",
-      fontSize: 38,
+      fontSize: 37,
       color: "#facc15",
       fontWeight: 900,
     });
@@ -3924,7 +3926,7 @@ function renderText(
                     style={{
                       color: element.color || "#FACC15",
                       fontFamily: element.fontFamily || "Luckiest Guy",
-                      fontSize: element.fontSize || 42,
+                      fontSize: element.fontSize || 37,
                       fontWeight: element.fontWeight || 900,
                       textShadow: "3px 3px 0 #000",
                       whiteSpace: "nowrap",
@@ -4118,8 +4120,8 @@ function renderText(
                     <div className="grid grid-cols-2 gap-3">
                       <TextInput
                         label="Font Size"
-                        value={String(selectedElement.fontSize || 42)}
-                        onChange={(value) => updateTeamPosterElement(selectedElement.id, { fontSize: Number(value) || 42 })}
+                        value={String(selectedElement.fontSize || 37)}
+                        onChange={(value) => updateTeamPosterElement(selectedElement.id, { fontSize: Number(value) || 37 })}
                       />
                       <label className="block">
                         <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Colour</p>
