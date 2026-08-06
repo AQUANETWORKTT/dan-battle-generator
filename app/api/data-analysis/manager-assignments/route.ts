@@ -77,12 +77,12 @@ export async function GET() {
     rows.push(...page);
     hasMore = page.length === 1000;
   }
-  const managers = new Map<string, { key: string; name: string; group: Group }>();
+  const managers = new Map<string, { key: string; name: string; group: Group; email: string }>();
   for (const row of rows) {
     const manager = key(managerRaw(row));
-    if (manager && !deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
+    if (manager && !deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)), email: managerRaw(row) });
   }
-  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group });
+  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group, email: manager });
   const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
   const managerGroups = Object.fromEntries(managerList.map((manager) => [manager.key, manager.group]));
   return NextResponse.json({ statDate, groups: GROUPS, managers: managerList, managerGroups, assignments });
