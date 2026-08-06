@@ -1696,6 +1696,9 @@ export default function BattleGeneratorPage() {
           const agency = String(row.agency || "").trim().toLowerCase();
           return agency === "first class";
         }
+        if (["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKey)) {
+          return ["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKeyNormalized);
+        }
         return manager === managerKey;
       });
       if (!rows.length) throw new Error("No creators were found for this data source on the latest upload.");

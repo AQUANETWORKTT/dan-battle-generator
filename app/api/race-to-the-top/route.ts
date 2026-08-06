@@ -188,6 +188,14 @@ export async function GET() {
           return [{ creatorId: stableCreatorId(row.creator_id), username, lastMonthDiamonds: 0, track, target: override.target ?? 100_000, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers) }];
         })
       : [];
+    const forcedDoryRow = !savedRosterKeys.has("doryelizabeth09") && !newCreatorKeys.has("doryelizabeth09")
+      ? progressRows.find((row) => text(row.stat_date) === statDate && text(row.creator_username).replace(/^@/, "").toLowerCase() === "doryelizabeth09")
+      : undefined;
+    const forcedDory = forcedDoryRow ? (() => {
+      const username = text(forcedDoryRow.creator_username).replace(/^@/, "");
+      const progress = progressByCreator.get(stableCreatorId(forcedDoryRow.creator_id) || username.toLowerCase()) || progressByUsername.get(username.toLowerCase());
+      return { creatorId: stableCreatorId(forcedDoryRow.creator_id), username, lastMonthDiamonds: 0, track: "gold" as TrackId, target: 300_000, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + 2, liveHours: number(progress?.liveHours) + 5, followers: number(progress?.followers) };
+    })() : null;
     return NextResponse.json({
       statDate,
       hasRaceProgress,
@@ -203,6 +211,7 @@ export async function GET() {
           return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers) };
         }),
         ...newBlueCreators,
+        ...(forcedDory ? [forcedDory] : []),
       ],
     });
   }
