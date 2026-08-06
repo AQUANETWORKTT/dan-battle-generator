@@ -4,22 +4,35 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 const SETTINGS_NAME = "agency-task-space";
 const ASSIGNMENTS_NAME = "manager-assignment-settings";
 type Agency = "PARADISE" | "RESPAWN" | "HORIZON" | "TRIDENT";
-type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF" | Agency; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string; autoKey?: string; forwardedToAgency?: boolean; sourceAgency?: string; sourceManager?: string; sourceManagerLabel?: string };
+type TaskPriority = "OVERDUE" | "TODAY" | "TOMORROW" | "2 DAYS" | "3+ DAYS" | "WHEN AVAILABLE";
+type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF" | Agency; creator: string; dueDate: string; dueTime: string; highPriority: boolean; priority: TaskPriority; complete: boolean; createdAt: string; autoKey?: string; forwardedToAgency?: boolean; sourceAgency?: string; sourceManager?: string; sourceManagerLabel?: string };
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; assignedAt?: Record<string, string> };
 type TemplateRow = { name: string; template_json: { managerKey?: unknown } | null };
 
 function managerKey(value: unknown) { return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+function duePriority(dueDate: string): TaskPriority {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return "WHEN AVAILABLE";
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(`${dueDate}T00:00:00`); due.setHours(0, 0, 0, 0);
+  const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return "OVERDUE";
+  if (days === 0) return "TODAY";
+  if (days === 1) return "TOMORROW";
+  if (days === 2) return "2 DAYS";
+  return "3+ DAYS";
+}
 function normalize(input: unknown): Task[] {
   if (!Array.isArray(input)) return [];
   return input.flatMap((item) => {
     const row = item as Record<string, unknown>;
     const description = String(row?.description || "").trim();
     if (!description) return [];
-    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: Boolean(row.highPriority), complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency), sourceAgency: String(row.sourceAgency || "") || undefined, sourceManager: String(row.sourceManager || "") || undefined, sourceManagerLabel: String(row.sourceManagerLabel || "") || undefined }];
-  }).sort((a, b) => Number(a.complete) - Number(b.complete) || Number(b.highPriority) - Number(a.highPriority) || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
+    const priority = duePriority(String(row.dueDate || ""));
+    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: priority === "OVERDUE", priority, complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency), sourceAgency: String(row.sourceAgency || "") || undefined, sourceManager: String(row.sourceManager || "") || undefined, sourceManagerLabel: String(row.sourceManagerLabel || "") || undefined }];
+  }).sort((a, b) => Number(a.complete) - Number(b.complete) || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
 }
 
-function taskText(event: "NEW TASK" | "TASK COMPLETED", task: Task) { return [event, `Task: ${task.description}`, `Assigned to: ${task.assignee}`, `For: ${task.creator || "Not specified"}`, `Due: ${task.dueDate || "No date"}${task.dueTime ? ` ${task.dueTime}` : ""}`, `Priority: ${task.highPriority ? "HIGH" : "Normal"}`].join("\n"); }
+function taskText(event: "NEW TASK" | "TASK COMPLETED", task: Task) { return [event, `Task: ${task.description}`, `Assigned to: ${task.assignee}`, `For: ${task.creator || "Not specified"}`, `Due: ${task.dueDate || "No date"}${task.dueTime ? ` ${task.dueTime}` : ""}`, `Priority: ${task.priority}`].join("\n"); }
 async function notify(event: "NEW TASK" | "TASK COMPLETED", task: Task) { const token = process.env.TELEGRAM_BOT_TOKEN; const chatId = process.env.BATTLE_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID; if (!token || !chatId) return; await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: chatId, text: taskText(event, task) }) }); }
 
 async function forwardAgencyTasks(tasks: Task[]) {

@@ -25,7 +25,7 @@ export async function PUT(request: Request) {
     const { data } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", "agency-task-space").maybeSingle();
     const main = ((data?.template_json as { tasks?: unknown } | null)?.tasks as Record<string, unknown>[] || []); const ids = new Set(main.map((task) => String(task.id)));
     for (const task of toForward) if (!ids.has(task.id)) main.unshift({ ...task, assignee: "JD / DF", complete: false, sourceAgency: agency });
-    tasks = tasks.map((task) => task.assignee === "DF / JD" ? { ...task, forwardedToMain: true, sourceAgency: agency } : task);
+    tasks = tasks.filter((task) => task.assignee !== "DF / JD");
     const { error: mainError } = await submissionsSupabase.from("poster_templates").upsert({ name: "agency-task-space", template_json: { tasks: main }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (mainError) return NextResponse.json({ error: mainError.message }, { status: 500 });
     await Promise.all(toForward.map((task) => notifyMain(task, agency)));

@@ -40,7 +40,7 @@ export async function PUT(request: Request) {
       for (const task of outgoing) if (!ids.has(task.id)) ownerTasks.unshift({ ...task, assignee: "OWNER", creator: task.creator || manager, forwardedToOwner: true, sourceManager: manager, sourceManagerLabel: clean(body?.managerLabel) } as Task & { sourceManager: string; sourceManagerLabel: string });
       const { error: ownerError } = await submissionsSupabase.from("poster_templates").upsert({ name: ownerKey(agency), template_json: { tasks: ownerTasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
       if (ownerError) throw new Error(ownerError.message);
-      tasks = tasks.map((task) => task.assignee === "OWNER" ? { ...task, forwardedToOwner: true } : task);
+      tasks = tasks.filter((task) => task.assignee !== "OWNER");
     }
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: privateKey(agency, manager), template_json: { tasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) throw new Error(error.message);
