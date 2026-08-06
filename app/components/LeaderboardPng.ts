@@ -18,7 +18,17 @@ function loadImage(src: string) {
   });
 }
 
-export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean }) {
+function drawPersonIcon(context: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  context.fillStyle = color;
+  context.beginPath();
+  context.arc(x, y + 20, 11, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.roundRect(x - 22, y + 34, 44, 23, 15);
+  context.fill();
+}
+
+export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean; titleImage?: string }) {
   const width = 1080;
   const rowHeight = 92;
   const height = Math.max(1350, 490 + rows.length * rowHeight + 110);
@@ -39,30 +49,32 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
   const logoWidth = 330;
   const logoHeight = logo ? logoWidth * (logo.naturalHeight / logo.naturalWidth) : 0;
   if (logo) context.drawImage(logo, width / 2 - logoWidth / 2, 64, logoWidth, logoHeight);
+  const titleArtwork = titleImage ? await loadImage(titleImage) : null;
   context.textAlign = "center";
   const titleY = logo ? 64 + logoHeight + 70 : 180;
-  context.fillStyle = solidTitle ? "#f6c515" : metallic; drawFittedText(context, title, width / 2, titleY, width - 150, 64);
-  const firstRowY = titleY + 88;
+  const titleArtworkWidth = titleArtwork ? 720 : 0;
+  const titleArtworkHeight = titleArtwork ? titleArtworkWidth * (titleArtwork.naturalHeight / titleArtwork.naturalWidth) : 0;
+  const titleArtworkY = logo ? 64 + logoHeight + 28 : 120;
+  if (titleArtwork) {
+    context.drawImage(titleArtwork, width / 2 - titleArtworkWidth / 2, titleArtworkY, titleArtworkWidth, titleArtworkHeight);
+  } else if (solidTitle) { const softGold = context.createLinearGradient(0, titleY - 64, 0, titleY); softGold.addColorStop(0, "#ffe9a0"); softGold.addColorStop(.42, "#e7bd54"); softGold.addColorStop(.72, "#c9982d"); softGold.addColorStop(1, "#f4d174"); context.fillStyle = softGold; context.shadowColor = "rgba(227,181,76,.35)"; context.shadowBlur = 6; drawFittedText(context, title, width / 2, titleY, width - 150, 64); context.shadowBlur = 0; } else { context.fillStyle = metallic; drawFittedText(context, title, width / 2, titleY, width - 150, 64); }
+  const firstRowY = (titleArtwork ? titleArtworkY + titleArtworkHeight : titleY) + 88;
   context.strokeStyle = "#e5b635"; context.lineWidth = 2; context.beginPath(); context.moveTo(76, firstRowY - 42); context.lineTo(width - 76, firstRowY - 42); context.stroke();
   context.textAlign = "left";
   rows.forEach((row, index) => {
     const y = firstRowY + index * rowHeight;
-    const medal = index === 0 ? ["#fff1a6", "#d89b14", "#7a4300"] : index === 1 ? ["#ffffff", "#b8c1cb", "#66717d"] : index === 2 ? ["#ffd1a3", "#bd6833", "#6b2d14"] : null;
-    const rowMetal = medal ? context.createLinearGradient(76, y, width - 76, y) : metallic;
-    if (medal && "addColorStop" in rowMetal) { rowMetal.addColorStop(0, medal[2]); rowMetal.addColorStop(.22, medal[0]); rowMetal.addColorStop(.52, medal[1]); rowMetal.addColorStop(.8, medal[0]); rowMetal.addColorStop(1, medal[2]); }
-    context.fillStyle = medal ? "rgba(32,22,12,.96)" : "rgba(0,0,0,.72)"; context.strokeStyle = rowMetal; context.lineWidth = medal ? 4 : 2;
+    context.fillStyle = "rgba(0,0,0,.72)"; context.strokeStyle = metallic; context.lineWidth = 2;
     context.beginPath(); context.roundRect(76, y, width - 152, 70, 14); context.fill(); context.stroke();
-    if (medal) { const badge = context.createRadialGradient(122, y + 35, 4, 122, y + 35, 30); badge.addColorStop(0, medal[0]); badge.addColorStop(.55, medal[1]); badge.addColorStop(1, medal[2]); context.fillStyle = badge; context.beginPath(); context.arc(122, y + 35, 28, 0, Math.PI * 2); context.fill(); context.strokeStyle = "#fff6d5"; context.lineWidth = 2; context.stroke(); }
-    context.fillStyle = medal ? "#160b05" : metallic; context.font = "900 30px Arial Black, Arial, sans-serif"; context.textAlign = medal ? "center" : "left"; context.fillText(String(index + 1), medal ? 122 : 100, y + 46);
-    context.textAlign = "left"; context.fillStyle = "#ffffff"; drawFittedText(context, row.name.replace(/^team\s+/i, "").toUpperCase(), 180, y + 45, 540, medal ? 33 : 30);
-    context.textAlign = "right"; context.fillStyle = medal ? medal[0] : paleRose; drawFittedText(context, row.value.toUpperCase(), width - 102, y + 45, 230, medal ? 31 : 28); context.textAlign = "left";
+    drawPersonIcon(context, 122, y, "#ffffff");
+    context.textAlign = "left"; context.fillStyle = "#ffffff"; drawFittedText(context, row.name.replace(/^team\s+/i, "").toUpperCase(), 180, y + 45, 540, 30);
+    context.textAlign = "right"; context.fillStyle = paleRose; drawFittedText(context, row.value.toUpperCase(), width - 102, y + 45, 230, 28); context.textAlign = "left";
   });
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("Could not create PNG.");
   return blob;
 }
 
-export async function downloadLeaderboardPng({ title, subtitle, rows, filename, solidTitle = false }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; filename: string; solidTitle?: boolean }) {
-  const blob = await createLeaderboardPng({ title, subtitle, rows, solidTitle });
+export async function downloadLeaderboardPng({ title, subtitle, rows, filename, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; filename: string; solidTitle?: boolean; titleImage?: string }) {
+  const blob = await createLeaderboardPng({ title, subtitle, rows, solidTitle, titleImage });
   const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.download = filename; link.href = url; link.click(); URL.revokeObjectURL(url);
 }

@@ -4,7 +4,7 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 const SETTINGS_NAME = "agency-task-space";
 const ASSIGNMENTS_NAME = "manager-assignment-settings";
 type Agency = "PARADISE" | "RESPAWN" | "HORIZON" | "TRIDENT";
-type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF" | Agency; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string; autoKey?: string; forwardedToAgency?: boolean };
+type Task = { id: string; description: string; assignee: "JD" | "DF" | "JD / DF" | Agency; creator: string; dueDate: string; dueTime: string; highPriority: boolean; complete: boolean; createdAt: string; autoKey?: string; forwardedToAgency?: boolean; sourceAgency?: string; sourceManager?: string; sourceManagerLabel?: string };
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; assignedAt?: Record<string, string> };
 type TemplateRow = { name: string; template_json: { managerKey?: unknown } | null };
 
@@ -15,7 +15,7 @@ function normalize(input: unknown): Task[] {
     const row = item as Record<string, unknown>;
     const description = String(row?.description || "").trim();
     if (!description) return [];
-    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: Boolean(row.highPriority), complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency) }];
+    return [{ id: String(row.id || crypto.randomUUID()), description, assignee: ["JD", "DF", "JD / DF", "PARADISE", "RESPAWN", "HORIZON", "TRIDENT"].includes(String(row.assignee)) ? String(row.assignee) as Task["assignee"] : "JD / DF", creator: String(row.creator || "").trim(), dueDate: String(row.dueDate || ""), dueTime: String(row.dueTime || ""), highPriority: Boolean(row.highPriority), complete: Boolean(row.complete), createdAt: String(row.createdAt || new Date().toISOString()), autoKey: String(row.autoKey || "") || undefined, forwardedToAgency: Boolean(row.forwardedToAgency), sourceAgency: String(row.sourceAgency || "") || undefined, sourceManager: String(row.sourceManager || "") || undefined, sourceManagerLabel: String(row.sourceManagerLabel || "") || undefined }];
   }).sort((a, b) => Number(a.complete) - Number(b.complete) || Number(b.highPriority) - Number(a.highPriority) || `${a.dueDate || "9999-12-31"}T${a.dueTime || "23:59"}`.localeCompare(`${b.dueDate || "9999-12-31"}T${b.dueTime || "23:59"}`));
 }
 
@@ -89,7 +89,7 @@ export async function PUT(request: Request) {
     const previous = new Map(normalize((current?.template_json as Record<string, unknown> | null)?.tasks).map((task) => [task.id, task]));
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { tasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await Promise.all(tasks.flatMap((task) => { const old = previous.get(task.id); if (!old) return [notify(task.complete ? "TASK COMPLETED" : "NEW TASK", task)]; if (!old.complete && task.complete) return [notify("TASK COMPLETED", task)]; return []; }));
+    await Promise.all(tasks.flatMap((task) => { if (task.sourceManager || !["JD", "DF", "JD / DF"].includes(task.assignee)) return []; const old = previous.get(task.id); if (!old) return [notify(task.complete ? "TASK COMPLETED" : "NEW TASK", task)]; if (!old.complete && task.complete) return [notify("TASK COMPLETED", task)]; return []; }));
     return NextResponse.json({ tasks });
   } catch { return NextResponse.json({ error: "Invalid task settings." }, { status: 400 }); }
 }
