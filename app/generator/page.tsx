@@ -877,10 +877,10 @@ export default function BattleGeneratorPage() {
     createBattle(`single-${stableId}`)
   );
   const [singleDay, setSingleDay] = useState("");
-  const [singleMonth, setSingleMonth] = useState("7");
+  const [singleMonth, setSingleMonth] = useState(() => String(new Date().getMonth()));
 
   const [massDay, setMassDay] = useState("");
-  const [massMonth, setMassMonth] = useState(() => String(new Date().getMonth() + 1));
+  const [massMonth, setMassMonth] = useState(() => String(new Date().getMonth()));
   const [massDate, setMassDate] = useState("");
 
   const [battles, setBattles] = useState<Battle[]>([]);
@@ -2172,11 +2172,15 @@ export default function BattleGeneratorPage() {
     setSingleBattle((prev) => ({ ...prev, ...changes }));
   }
 
+  function swapSingleOpponents() {
+    setSingleBattle((prev) => ({ ...prev, name1: prev.name2, name2: prev.name1, image1: prev.image2, image2: prev.image1 }));
+  }
+
   function clearSinglePoster() {
     setSingleBattle(createBattle(`single-${stableId}`));
     setSinglePaste("");
     setSingleDay("");
-    setSingleMonth("7");
+    setSingleMonth(String(new Date().getMonth()));
     setSelectedId("");
   }
 
@@ -4262,6 +4266,14 @@ function renderText(
                     autoFillSingleAvatar("image2", singleBattle.name2)
                   }
                 />
+
+                <button
+                  type="button"
+                  onClick={swapSingleOpponents}
+                  className="w-full rounded-lg border border-yellow-300/60 bg-yellow-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-yellow-100 transition hover:bg-yellow-300/20"
+                >
+                  Swap Opponents ↔
+                </button>
 
                 <DayMonthDateSelect
                   day={singleDay}
