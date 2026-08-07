@@ -187,7 +187,7 @@ export default function TaskSpacePage() {
                   key={task.id}
                   onClick={() => setEditingDueDate(isEditing ? null : task.id)}
                   style={sourceKey ? { borderLeftWidth: 8, borderLeftColor: sourceColors[sourceKey] || "#fff" } : undefined}
-                  className={`cursor-pointer rounded-2xl border p-4 transition hover:border-emerald-200/40 ${task.complete ? "border-white/10 bg-black/20 opacity-55" : "border-white/10 bg-black/30"}`}
+                  className={`cursor-pointer rounded-2xl border p-4 transition ${task.complete ? "border-white/10 bg-black/20 opacity-55" : isUrgent ? "border-red-400/70 bg-red-950/55 shadow-[0_0_24px_rgba(248,113,113,.16)] hover:border-red-300" : "border-white/10 bg-black/30 hover:border-emerald-200/40"}`}
                 >
                   <div className="flex flex-wrap items-center gap-4">
                     {selectionMode ? (
