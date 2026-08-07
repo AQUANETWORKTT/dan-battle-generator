@@ -57,7 +57,7 @@ const DEFAULT_CARD_LAYOUT: CardLayout = { home: { x: 0, y: 0, width: 480, height
 const DEFAULT_CARD_TYPOGRAPHY: CardTypography = { username: 16, manager: 13, heading: 10, time: 18 };
 const LAYOUT_SECTIONS: LayoutSection[] = ["home", "time", "opponent", "opponentLink", "agencyLogo", "opponentEdit", "copyRows", "cancel", "actions"];
 
-function withLayout(layout: CardLayout, section: LayoutSection) { const offset = layout[section]; return { transform: `translate(${Math.max(-60, Math.min(60, offset.x))}px, ${Math.max(-24, Math.min(24, offset.y))}px)` }; }
+function withLayout(_layout: CardLayout, _section: LayoutSection) { return {}; }
 function mergeCardLayout(layout?: Partial<CardLayout>): CardLayout { const safe = (section: LayoutSection) => ({ ...DEFAULT_CARD_LAYOUT[section], ...layout?.[section], x: Math.max(-60, Math.min(60, Number(layout?.[section]?.x) || 0)), y: Math.max(-24, Math.min(24, Number(layout?.[section]?.y) || 0)), width: Math.max(64, Math.min(600, Number(layout?.[section]?.width) || DEFAULT_CARD_LAYOUT[section].width)), height: Math.max(48, Math.min(160, Number(layout?.[section]?.height) || DEFAULT_CARD_LAYOUT[section].height)) }); return { home: safe("home"), time: safe("time"), opponent: safe("opponent"), opponentLink: safe("opponentLink"), agencyLogo: safe("agencyLogo"), opponentEdit: safe("opponentEdit"), copyRows: safe("copyRows"), cancel: safe("cancel"), actions: safe("actions") }; }
 function mergeCardTypography(typography?: Partial<CardTypography>): CardTypography { return { ...DEFAULT_CARD_TYPOGRAPHY, ...typography }; }
 
@@ -74,7 +74,7 @@ function AgencyMark({ agency }: { agency: Agency }) { const [failed, setFailed] 
 export default function BattleNetworkPage() {
   const [agencies, setAgencies] = useState<Agency[]>([]); const [battles, setBattles] = useState<Battle[]>([]); const [agencyId, setAgencyId] = useState(""); const [password, setPassword] = useState(""); const [tab, setTab] = useState<"SHEET" | "AVAILABLE">("SHEET"); const [week, setWeek] = useState(monday); const [status, setStatus] = useState("ENTER YOUR AGENCY PASSWORD."); const [addingDay, setAddingDay] = useState<string | null>(null); const [draft, setDraft] = useState<Draft>(draftFor("MONDAY")); const [editing, setEditing] = useState<Battle | null>(null); const [matching, setMatching] = useState<{ battle: Battle; mode: "EXACT" | "CLOSE"; ownOnly?: boolean } | null>(null); const [claiming, setClaiming] = useState<Battle | null>(null); const [registering, setRegistering] = useState(false); const [newAgency, setNewAgency] = useState({ name: "", password: "", logoUrl: "" });
   const [externalMode, setExternalMode] = useState(false);
-  const [layoutEditing, setLayoutEditing] = useState(false);
+  const [layoutEditing] = useState(false); const setLayoutEditing = () => {};
   const [cardLayout, setCardLayout] = useState<CardLayout>(DEFAULT_CARD_LAYOUT);
   const [cardTypography, setCardTypography] = useState<CardTypography>(DEFAULT_CARD_TYPOGRAPHY);
   const [selectedLayoutSection, setSelectedLayoutSection] = useState<LayoutSection>("home");
