@@ -27,6 +27,7 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
   { title: "Creator Targets", description: "Track creator progress, graduation and mature-creator retention.", accent: "emerald", workspaces: [
     { href: "/graduation-tracker", number: "03", label: "Progress", title: "Graduation Tracker", description: "Track creator progress towards 200,000 diamonds and graduation milestones.", accent: "emerald" },
     { href: "/data/mature-creators-tracker", number: "04", label: "Retention", title: "Mature Creators", description: "Keep 200,000+ diamond creators visible, supported and moving forward.", accent: "orange" },
+    { href: "/data/incremental-data-tracking", number: "17", label: "Monthly pace", title: "Incremental Data Tracking", description: "Enter month-to-date diamonds and see the nearest daily incremental target prediction.", accent: "yellow" },
   ] },
   { title: "Creator Analysis", description: "Performance analysis, creator health and agency intelligence.", accent: "purple", workspaces: [
     { href: "/data-analysis", number: "01", label: "Reporting", title: "AI Analysis", description: "Analyse creator performance, agency trends, live hours and diamonds.", accent: "yellow" },
