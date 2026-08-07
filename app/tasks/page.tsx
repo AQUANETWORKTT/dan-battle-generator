@@ -110,7 +110,7 @@ export default function TaskSpacePage() {
   }
 
   function completeTask(task: Task) {
-    if (task.complete || !window.confirm(`MARK “${task.description}” AS FINISHED?`)) return;
+    if (task.complete) return;
     void save(tasks.map((entry) => entry.id === task.id ? { ...entry, complete: true } : entry), "TASK COMPLETED.");
   }
 
