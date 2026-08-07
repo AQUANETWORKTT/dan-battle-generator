@@ -29,14 +29,19 @@ export default function BattleNetworkLayout({ children }: { children: ReactNode 
         display: none;
       }
       main .battle-field a {
-        overflow: visible;
-        text-overflow: clip;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
       }
+      main .battle-field strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       /* Preserve the desktop battle-sheet proportions on narrower screens. */
-      @media (max-width: 1480px) {
+      @media (max-width: 1320px) {
         main > div > div.mt-5.space-y-4 {
-          width: 1420px;
-          zoom: clamp(.3, calc((100vw - 32px) / 1420), 1);
+          width: 1290px;
+          zoom: clamp(.32, calc((100vw - 32px) / 1290), 1);
+          transform-origin: top left;
         }
       }
     `}</style>
