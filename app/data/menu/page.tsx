@@ -32,23 +32,23 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
     { href: "/data-analysis", number: "01", label: "Reporting", title: "AI Analysis", description: "Analyse creator performance, agency trends, live hours and diamonds.", accent: "yellow" },
     { href: "/creator-intelligence", number: "02", label: "Creator health", title: "First Class Creator Intelligence", description: "Creator health, manager groups, reports and performance trends in one place.", accent: "sky" },
   ] },
-  { title: "Diamond Information", description: "Daily diamond rankings and yesterday's team posters.", accent: "yellow", workspaces: [
+  { title: "Leaderboards", description: "Daily posters and manager performance leaderboards.", accent: "yellow", workspaces: [
     { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Posters", description: "Build and download yesterday's top diamonds and live-hours posters.", accent: "yellow" },
     { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Leaderboard", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
+    { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
   ] },
   { title: "Battle Data", description: "Import DF/JD battles, manage the calendar and send Telegram reminders.", accent: "sky", workspaces: [
     { href: "/data/battle-calendar", number: "14", label: "DF / JD Operations", title: "Battle Calendar", description: "Paste battle sheets, keep the DF/JD schedule organised and manage battle reminders.", accent: "sky" },
   ] },
   { title: "Management", description: "First Class manager onboarding and team completion progress.", accent: "yellow", workspaces: [
     { href: "/data/manager-onboarding-progress", number: "15", label: "Creator care", title: "Manager Onboarding Progress", description: "Review onboarding work submitted by First Class managers.", accent: "yellow" },
-    { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
   ] },
   { title: "In Development", description: "Features that are being prepared for a future release.", accent: "gray", workspaces: [
     { href: "/daily-rankings", number: "06", label: "Backstage", title: "Daily Rankings", description: "Awaiting Tikleap API access for automated daily rankings.", accent: "gray", maintenance: true, unavailable: true },
   ] },
 ];
 
-const workspaceGroupOrder = ["Diamond Information", "Creator Targets", "Creator Analysis", "Battle Data", "Management", "Data Settings", "In Development"];
+const workspaceGroupOrder = ["Leaderboards", "Creator Targets", "Creator Analysis", "Battle Data", "Management", "Data Settings", "In Development"];
 
 export default function DataMenuPage() {
   return <DataAccessGuard><main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8"><div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.16),transparent_27%),radial-gradient(circle_at_0%_100%,rgba(250,204,21,0.12),transparent_30%)]" /><div className="relative mx-auto max-w-7xl">
