@@ -31,7 +31,16 @@ function drawPersonIcon(context: CanvasRenderingContext2D, x: number, y: number,
 export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean; titleImage?: string }) {
   const width = 1080;
   const rowHeight = 92;
-  const height = Math.max(1350, 490 + rows.length * rowHeight + 110);
+  const logo = await loadImage("/world-cup-2026/agencies/first-class.png");
+  const logoWidth = 330;
+  const logoHeight = logo ? logoWidth * (logo.naturalHeight / logo.naturalWidth) : 0;
+  const titleArtwork = titleImage ? await loadImage(titleImage) : null;
+  const titleY = logo ? 64 + logoHeight + 70 : 180;
+  const titleArtworkWidth = titleArtwork ? 720 : 0;
+  const titleArtworkHeight = titleArtwork ? titleArtworkWidth * (titleArtwork.naturalHeight / titleArtwork.naturalWidth) : 0;
+  const titleArtworkY = logo ? 64 + logoHeight + 28 : 120;
+  const firstRowY = (titleArtwork ? titleArtworkY + titleArtworkHeight : titleY) + 88;
+  const height = Math.max(620, firstRowY + rows.length * rowHeight + 72);
   const canvas = document.createElement("canvas");
   canvas.width = width; canvas.height = height;
   const context = canvas.getContext("2d");
@@ -45,20 +54,11 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
   context.strokeStyle = metallic; context.lineWidth = 5; context.strokeRect(22, 22, width - 44, height - 44);
   context.strokeStyle = "rgba(246,209,188,.45)"; context.lineWidth = 1; context.strokeRect(38, 38, width - 76, height - 76);
 
-  const logo = await loadImage("/world-cup-2026/agencies/first-class.png");
-  const logoWidth = 330;
-  const logoHeight = logo ? logoWidth * (logo.naturalHeight / logo.naturalWidth) : 0;
   if (logo) context.drawImage(logo, width / 2 - logoWidth / 2, 64, logoWidth, logoHeight);
-  const titleArtwork = titleImage ? await loadImage(titleImage) : null;
   context.textAlign = "center";
-  const titleY = logo ? 64 + logoHeight + 70 : 180;
-  const titleArtworkWidth = titleArtwork ? 720 : 0;
-  const titleArtworkHeight = titleArtwork ? titleArtworkWidth * (titleArtwork.naturalHeight / titleArtwork.naturalWidth) : 0;
-  const titleArtworkY = logo ? 64 + logoHeight + 28 : 120;
   if (titleArtwork) {
     context.drawImage(titleArtwork, width / 2 - titleArtworkWidth / 2, titleArtworkY, titleArtworkWidth, titleArtworkHeight);
   } else if (solidTitle) { const softGold = context.createLinearGradient(0, titleY - 64, 0, titleY); softGold.addColorStop(0, "#ffe9a0"); softGold.addColorStop(.42, "#e7bd54"); softGold.addColorStop(.72, "#c9982d"); softGold.addColorStop(1, "#f4d174"); context.fillStyle = softGold; context.shadowColor = "rgba(227,181,76,.35)"; context.shadowBlur = 6; drawFittedText(context, title, width / 2, titleY, width - 150, 64); context.shadowBlur = 0; } else { context.fillStyle = metallic; drawFittedText(context, title, width / 2, titleY, width - 150, 64); }
-  const firstRowY = (titleArtwork ? titleArtworkY + titleArtworkHeight : titleY) + 88;
   context.strokeStyle = "#e5b635"; context.lineWidth = 2; context.beginPath(); context.moveTo(76, firstRowY - 42); context.lineTo(width - 76, firstRowY - 42); context.stroke();
   context.textAlign = "left";
   rows.forEach((row, index) => {
