@@ -50,6 +50,7 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
   const logoWidth = 330;
   const logoHeight = logo ? logoWidth * (logo.naturalHeight / logo.naturalWidth) : 0;
   const titleArtwork = titleImage ? await loadImage(titleImage) : null;
+  const diamondIcon = title === "MANAGER DIAMONDS" ? await loadImage("/leaderboards/diamond-icon.png") : null;
   const titleY = logo ? 64 + logoHeight + 70 : 180;
   const titleArtworkWidth = titleArtwork ? 720 : 0;
   const titleArtworkHeight = titleArtwork ? titleArtworkWidth * (titleArtwork.naturalHeight / titleArtwork.naturalWidth) : 0;
@@ -80,7 +81,9 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
     const y = firstRowY + index * rowHeight;
     context.fillStyle = "rgba(0,0,0,.72)"; context.strokeStyle = metallic; context.lineWidth = 2;
     context.beginPath(); context.roundRect(76, y, width - 152, 70, 14); context.fill(); context.stroke();
-    if (title === "MANAGER DIAMONDS") drawDiamondIcon(context, 122, y); else drawPersonIcon(context, 122, y, "#ffffff");
+    if (title === "MANAGER DIAMONDS") {
+      if (diamondIcon) context.drawImage(diamondIcon, 94, y + 14, 56, 42); else drawDiamondIcon(context, 122, y);
+    } else drawPersonIcon(context, 122, y, "#ffffff");
     context.textAlign = "left"; context.fillStyle = "#ffffff"; drawFittedText(context, row.name.replace(/^team\s+/i, "").toUpperCase(), 180, y + 45, 540, 30);
     context.textAlign = "right"; context.fillStyle = paleRose; drawFittedText(context, row.value.toUpperCase(), width - 102, y + 45, 230, 28); context.textAlign = "left";
   });
