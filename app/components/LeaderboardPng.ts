@@ -28,6 +28,21 @@ function drawPersonIcon(context: CanvasRenderingContext2D, x: number, y: number,
   context.fill();
 }
 
+function drawDiamondIcon(context: CanvasRenderingContext2D, x: number, y: number) {
+  const top = y + 8, mid = y + 30, bottom = y + 58;
+  context.save();
+  context.shadowColor = "rgba(102, 214, 255, .55)"; context.shadowBlur = 10;
+  context.fillStyle = "#8eeaff";
+  context.beginPath(); context.moveTo(x - 22, top); context.lineTo(x + 22, top); context.lineTo(x + 30, mid); context.lineTo(x, bottom); context.lineTo(x - 30, mid); context.closePath(); context.fill();
+  context.shadowBlur = 0;
+  context.strokeStyle = "#ffffff"; context.lineWidth = 2; context.stroke();
+  context.fillStyle = "#d9f8ff"; context.beginPath(); context.moveTo(x - 22, top); context.lineTo(x, mid); context.lineTo(x + 22, top); context.closePath(); context.fill();
+  context.fillStyle = "#54bde9"; context.beginPath(); context.moveTo(x - 30, mid); context.lineTo(x, mid); context.lineTo(x, bottom); context.closePath(); context.fill();
+  context.fillStyle = "#2398d0"; context.beginPath(); context.moveTo(x, mid); context.lineTo(x + 30, mid); context.lineTo(x, bottom); context.closePath(); context.fill();
+  context.strokeStyle = "rgba(255,255,255,.78)"; context.lineWidth = 1; context.beginPath(); context.moveTo(x, mid); context.lineTo(x, top); context.moveTo(x - 30, mid); context.lineTo(x, mid); context.lineTo(x + 30, mid); context.lineTo(x, mid); context.stroke();
+  context.restore();
+}
+
 export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean; titleImage?: string }) {
   const width = 1080;
   const rowHeight = 92;
@@ -65,7 +80,7 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
     const y = firstRowY + index * rowHeight;
     context.fillStyle = "rgba(0,0,0,.72)"; context.strokeStyle = metallic; context.lineWidth = 2;
     context.beginPath(); context.roundRect(76, y, width - 152, 70, 14); context.fill(); context.stroke();
-    drawPersonIcon(context, 122, y, "#ffffff");
+    if (title === "MANAGER DIAMONDS") drawDiamondIcon(context, 122, y); else drawPersonIcon(context, 122, y, "#ffffff");
     context.textAlign = "left"; context.fillStyle = "#ffffff"; drawFittedText(context, row.name.replace(/^team\s+/i, "").toUpperCase(), 180, y + 45, 540, 30);
     context.textAlign = "right"; context.fillStyle = paleRose; drawFittedText(context, row.value.toUpperCase(), width - 102, y + 45, 230, 28); context.textAlign = "left";
   });
