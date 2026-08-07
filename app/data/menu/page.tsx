@@ -23,9 +23,10 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
     { href: "/data/events-leaderboards-admin", number: "09", label: "Event operations", title: "Events Leaderboards Admin", description: "Event score controls, Crew Showdown downloads and private leaderboard tools.", accent: "emerald" },
     { href: "/data/manager-assignments", number: "12", label: "Team setup", title: "Manager Assignments", description: "Drag managers into their correct group. New managers begin unassigned.", accent: "cyan" },
     { href: "/data/telegram-bot-settings", number: "13", label: "Notifications", title: "Telegram Bot Settings", description: "Set Battle Calendar reminder timings and send a safe test message to the battle group.", accent: "sky" },
+    { href: "/data/battle-calendar", number: "14", label: "DF / JD Operations", title: "Battle Calendar", description: "Paste battle sheets, keep the DF/JD schedule organised and manage battle reminders.", accent: "sky" },
     { href: "/data/battle-network-settings", number: "18", label: "Battle network", title: "Battle Network Settings", description: "Add external agencies, their Battle Network passwords and logos for manual pairing.", accent: "sky" },
   ] },
-  { title: "Creator Targets", description: "Track creator progress, graduation and mature-creator retention.", accent: "emerald", workspaces: [
+  { title: "Creator/Agency Targets", description: "Track creator progress, graduation and mature-creator retention.", accent: "emerald", workspaces: [
     { href: "/graduation-tracker", number: "03", label: "Progress", title: "Graduation Tracker", description: "Track creator progress towards 200,000 diamonds and graduation milestones.", accent: "emerald" },
     { href: "/data/mature-creators-tracker", number: "04", label: "Retention", title: "Mature Creators", description: "Keep 200,000+ diamond creators visible, supported and moving forward.", accent: "orange" },
     { href: "/data/incremental-data-tracking", number: "17", label: "Monthly pace", title: "Incremental Data Tracking", description: "Enter month-to-date diamonds and see the nearest daily incremental target prediction.", accent: "yellow" },
@@ -33,14 +34,14 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
   { title: "Creator Analysis", description: "Performance analysis, creator health and agency intelligence.", accent: "purple", workspaces: [
     { href: "/data-analysis", number: "01", label: "Reporting", title: "AI Analysis", description: "Analyse creator performance, agency trends, live hours and diamonds.", accent: "yellow" },
     { href: "/creator-intelligence", number: "02", label: "Creator health", title: "First Class Creator Intelligence", description: "Creator health, manager groups, reports and performance trends in one place.", accent: "sky" },
+    { href: "/creator-intelligence?view=recruitment-quality#recruitment-quality", number: "19", label: "Recruitment", title: "Recruitment Quality", description: "Review 14-day recruitment quality by agency, manager and creator DPH.", accent: "purple" },
   ] },
   { title: "Leaderboards", description: "Daily posters and manager performance leaderboards.", accent: "yellow", workspaces: [
     { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Posters", description: "Build and download yesterday's top diamonds and live-hours posters.", accent: "yellow" },
     { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Leaderboard", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
     { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
   ] },
-  { title: "Battle Data", description: "Import DF/JD battles, manage the calendar and send Telegram reminders.", accent: "sky", workspaces: [
-    { href: "/data/battle-calendar", number: "14", label: "DF / JD Operations", title: "Battle Calendar", description: "Paste battle sheets, keep the DF/JD schedule organised and manage battle reminders.", accent: "sky" },
+  { title: "Battle Data", description: "Import DF/JD battles and review battle performance.", accent: "sky", workspaces: [
   ] },
   { title: "Management", description: "First Class manager onboarding and team completion progress.", accent: "yellow", workspaces: [
     { href: "/data/manager-onboarding-progress", number: "15", label: "Creator care", title: "Manager Onboarding Progress", description: "Review onboarding work submitted by First Class managers.", accent: "yellow" },
@@ -50,7 +51,7 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
   ] },
 ];
 
-const workspaceGroupOrder = ["Leaderboards", "Creator Targets", "Creator Analysis", "Battle Data", "Management", "Data Settings", "In Development"];
+const workspaceGroupOrder = ["Leaderboards", "Creator/Agency Targets", "Creator Analysis", "Battle Data", "Management", "Data Settings", "In Development"];
 
 export default function DataMenuPage() {
   return <DataAccessGuard><main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8"><div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.16),transparent_27%),radial-gradient(circle_at_0%_100%,rgba(250,204,21,0.12),transparent_30%)]" /><div className="relative mx-auto max-w-7xl">

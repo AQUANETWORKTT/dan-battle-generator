@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
 import { jsPDF } from "jspdf";
@@ -2600,6 +2601,8 @@ async function downloadManagerReport(
 }
 
 export default function CreatorIntelligencePage() {
+  const searchParams = useSearchParams();
+  const showRecruitmentQuality = searchParams.get("view") === "recruitment-quality";
   const [rollingEndDate, setRollingEndDate] = useState("");
   const [manager, setManager] = useState("All Managers");
   const [groupFilter, setGroupFilter] = useState("All Groups");
@@ -4373,7 +4376,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>
 
-        <section className="mt-6 rounded-3xl border border-violet-100 bg-white p-5 shadow-sm">
+        <section id="recruitment-quality" className={`mt-6 rounded-3xl border border-violet-100 bg-white p-5 shadow-sm ${showRecruitmentQuality ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-2xl font-black uppercase text-violet-900">Recruitment Quality</h2>
