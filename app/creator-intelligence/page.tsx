@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
 import { jsPDF } from "jspdf";
@@ -2601,8 +2600,7 @@ async function downloadManagerReport(
 }
 
 export default function CreatorIntelligencePage() {
-  const searchParams = useSearchParams();
-  const showRecruitmentQuality = searchParams.get("view") === "recruitment-quality";
+  const [showRecruitmentQuality] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "recruitment-quality");
   const [rollingEndDate, setRollingEndDate] = useState("");
   const [manager, setManager] = useState("All Managers");
   const [groupFilter, setGroupFilter] = useState("All Groups");
