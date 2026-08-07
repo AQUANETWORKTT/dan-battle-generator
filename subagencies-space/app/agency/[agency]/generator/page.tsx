@@ -4348,7 +4348,7 @@ function renderText(
                 <textarea
                   value={paste}
                   onChange={(e) => setPaste(e.target.value)}
-                  placeholder="Paste Daniel battle sheet rows here"
+                  placeholder="Paste battle sheet rows here"
                   className="w-full h-72 bg-black/40 border border-white/20 text-white p-5 rounded-lg text-sm outline-none focus:border-yellow-300"
                 />
 
