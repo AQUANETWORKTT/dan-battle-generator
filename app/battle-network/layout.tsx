@@ -7,8 +7,12 @@ export default function BattleNetworkLayout({ children }: { children: ReactNode 
     const rename = () => document.querySelectorAll("button, h2").forEach((element) => {
       if (element.textContent?.trim() === "AVAILABLE CREATORS") element.textContent = "AVAILABLE BATTLES";
     });
+    const removeUsernameAtSigns = () => document.querySelectorAll("main strong, main h2, main p").forEach((element) => {
+      if (element.children.length === 0 && element.textContent?.includes("@")) element.textContent = element.textContent.replace(/@(?=[a-z0-9_.-])/gi, "");
+    });
     rename();
-    const observer = new MutationObserver(rename);
+    removeUsernameAtSigns();
+    const observer = new MutationObserver(() => { rename(); removeUsernameAtSigns(); });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
@@ -25,7 +29,8 @@ export default function BattleNetworkLayout({ children }: { children: ReactNode 
         flex-direction: column;
         justify-content: center;
       }
-      main .battle-field:has(img) img + span {
+      main .battle-field:has(img) img + span,
+      main .battle-field:has(img) > div > span:last-child {
         display: none;
       }
       main .battle-field a {
