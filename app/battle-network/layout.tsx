@@ -30,17 +30,15 @@ export default function BattleNetworkLayout({ children }: { children: ReactNode 
       }
       main .battle-field a {
         display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 11px;
+        font-size: 9px;
       }
-      main .battle-field strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      main .battle-field strong { min-width: 0; }
       /* Preserve the desktop battle-sheet proportions on narrower screens. */
       @media (max-width: 1320px) {
         main > div > div.mt-5.space-y-4 {
-          width: 1290px;
-          zoom: clamp(.32, calc((100vw - 32px) / 1290), 1);
+          width: 1325px;
+          zoom: clamp(.32, calc((100vw - 32px) / 1325), 1);
           transform-origin: top left;
         }
       }
