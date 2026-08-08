@@ -158,10 +158,13 @@ function getManagerIdentity(value: string) {
 }
 
 function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
-  if (rowManagerKey === templateManagerKey) return true;
+  const normalizedRowKey = rowManagerKey.replace(/[^a-z0-9]/g, "");
+  const normalizedTemplateKey = templateManagerKey.replace(/[^a-z0-9]/g, "");
+  if (normalizedRowKey === normalizedTemplateKey) return true;
   const rowIdentity = getManagerIdentity(rowManagerKey);
   const templateIdentity = getManagerIdentity(templateManagerKey);
-  return Boolean(rowIdentity && templateIdentity && rowIdentity === templateIdentity);
+  if (rowIdentity && templateIdentity && rowIdentity === templateIdentity) return true;
+  return normalizedRowKey.replace(/(outlook|gmail|mail)com$/, "") === normalizedTemplateKey.replace(/(outlook|gmail|mail)com$/, "");
 }
 
 const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
@@ -224,7 +227,7 @@ function normalizeTemplate(input: Partial<TeamPosterTemplate> | null): TeamPoste
     backgroundPath: input?.backgroundPath || "",
     managerKey: input?.managerKey || "team-dan",
     teamSide: input?.teamSide || "dan",
-    elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
+    elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}), fontSize: element.kind === "avatar" ? undefined : 37 })),
   };
 }
 
@@ -439,7 +442,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
       {template.elements.map((element) => (
         <div
           key={element.id}
-          className="absolute flex items-center justify-center overflow-hidden"
+          className={`absolute flex items-center justify-center ${element.kind === "avatar" ? "overflow-hidden" : "overflow-visible"}`}
           style={{
             left: element.x,
             top: element.y,

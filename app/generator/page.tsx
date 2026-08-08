@@ -661,6 +661,7 @@ function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | nu
     elements: base.elements.map((element) => ({
       ...element,
       ...(byId.get(element.id) || {}),
+      fontSize: element.kind === "avatar" ? undefined : 37,
     })),
   };
 }
