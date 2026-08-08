@@ -2600,7 +2600,6 @@ async function downloadManagerReport(
 }
 
 export default function CreatorIntelligencePage() {
-  const [showRecruitmentQuality] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "recruitment-quality");
   const [rollingEndDate, setRollingEndDate] = useState("");
   const [manager, setManager] = useState("All Managers");
   const [groupFilter, setGroupFilter] = useState("All Groups");
@@ -4262,8 +4261,8 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>
 
-        <section className="mt-6 grid gap-6 xl:grid-cols-2">
-          <div className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
+        <section id="recruitment-new-and-hidden" className="mt-6 grid gap-6 xl:grid-cols-2">
+          <div id="recruitment-new-creators" className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-black uppercase text-sky-900">New Creators</h2>
@@ -4348,7 +4347,7 @@ export default function CreatorIntelligencePage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+          <div id="recruitment-hidden-potential" className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-black uppercase text-emerald-700">Hidden Potential</h2>
@@ -4374,7 +4373,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>
 
-        <section id="recruitment-quality" className={`mt-6 rounded-3xl border border-violet-100 bg-white p-5 shadow-sm ${showRecruitmentQuality ? "" : "hidden"}`}>
+        <section id="recruitment-quality" className="mt-6 rounded-3xl border border-violet-100 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-2xl font-black uppercase text-violet-900">Recruitment Quality</h2>
