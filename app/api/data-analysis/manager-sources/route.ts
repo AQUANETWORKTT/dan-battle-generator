@@ -100,12 +100,23 @@ export async function GET() {
     if (newestError) return NextResponse.json({ error: newestError.message }, { status: 500 });
     if (!latestDate) return NextResponse.json({ statDate: "", managers: [] });
 
+    // The poster selector must always expose every manager intentionally saved
+    // in Manager Assignments. Building it from 30 days of creator rows made
+    // the endpoint slow enough to time out, leaving only the hard-coded
+    // fallback sources visible.
+    const savedManagerKeys = new Set([...Object.keys(managerAssignments), ...Object.keys(managerNames)]);
+    const savedManagers = Array.from(savedManagerKeys)
+      .filter((managerKey) => !deletedManagers.has(managerKey) && managerAssignments[managerKey] !== "Recruitment" && managerAssignments[managerKey] !== "Excluded")
+      .map((managerKey) => ({ manager_key: managerKey, manager_label: managerNames[managerKey] || getManagerLabel(managerKey, managerAssignments[managerKey] || "Unassigned") }))
+      .sort((a, b) => a.manager_label.localeCompare(b.manager_label));
+    return NextResponse.json({ statDate: latestDate, managers: savedManagers });
+
     const latest = new Date(`${latestDate}T12:00:00`);
     latest.setDate(latest.getDate() - 29);
     const rows: CreatorStat[] = [];
     for (let from = 0, hasMore = true; hasMore; from += 1000) {
       const { data, error } = await submissionsSupabase.from("creator_daily_stats").select("*").gte("stat_date", toDateValue(latest)).lte("stat_date", latestDate).order("stat_date", { ascending: true }).range(from, from + 999);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error?.message) return NextResponse.json({ error: error?.message }, { status: 500 });
       const batch = (data || []) as CreatorStat[];
       rows.push(...batch);
       hasMore = batch.length === 1000;
@@ -126,6 +137,15 @@ export async function GET() {
         manager_key: managerKey,
         manager_label: managerNames[managerKey] || getManagerLabel(managerKey, assignedGroup),
       });
+    }
+
+    // A manager can have a saved display name before their latest export key
+    // has been seen again. Keep those intentional assignments selectable in
+    // the poster builder instead of silently dropping them.
+    for (const [managerKey, managerLabel] of Object.entries(managerNames)) {
+      const assignedGroup = managerAssignments[managerKey];
+      if (managersByKey.has(managerKey) || deletedManagers.has(managerKey) || assignedGroup === "Recruitment" || assignedGroup === "Excluded") continue;
+      managersByKey.set(managerKey, { manager_key: managerKey, manager_label: managerLabel || getManagerLabel(managerKey, assignedGroup || "Unassigned") });
     }
 
     // Replace the normalised key with the current real email whenever it is in
