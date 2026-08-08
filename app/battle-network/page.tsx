@@ -89,8 +89,9 @@ export default function BattleNetworkPage() {
   async function load() { const response = await fetch("/api/battle-network", { cache: "no-store" }); const data = await response.json(); if (!response.ok) { setStatus(data.error || "COULD NOT LOAD BATTLE NETWORK."); return; } setAgencies(data.agencies || []); setBattles(data.battles || []); if (data.cardLayout) setCardLayout(mergeCardLayout(data.cardLayout)); if (data.cardTypography) setCardTypography(mergeCardTypography(data.cardTypography)); }
   useEffect(() => { void load(); setAgencyId(sessionStorage.getItem("battle-network-active-agency") || ""); }, []);
   useEffect(() => { setWeek(monday()); }, []);
-  useEffect(() => { const updateDay = () => setCurrentDayIndex(activeDayIndex()); updateDay(); const timer = window.setInterval(updateDay, 60000); return () => window.clearInterval(timer); }, []);
+  useEffect(() => { setCurrentDayIndex(-1); }, []);
   useEffect(() => { if (tab !== "SHEET") return; const labels = new Set(DAYS); document.querySelectorAll("h2, button span").forEach((element) => { const day = element.textContent?.trim(); if (day && labels.has(day)) element.textContent = dayHeading(day); }); }, [tab, currentDayIndex, battles]);
+  useEffect(() => { if (tab !== "SHEET") return; document.querySelectorAll("button span").forEach((element) => { if (element.textContent === "⌄") (element as HTMLElement).style.display = "none"; }); }, [tab, battles]);
   useEffect(() => { if (sessionStorage.getItem("battle-network-external") === "true") setExternalMode(true); }, []);
   useEffect(() => { const mondayValue = monday(week); if (week !== mondayValue) setWeek(mondayValue); }, [week]);
   useEffect(() => { if (agencyId && agency && status === "ENTER YOUR AGENCY PASSWORD.") setStatus(""); }, [agencyId, agency, status]);
