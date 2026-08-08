@@ -1665,7 +1665,7 @@ export default function BattleGeneratorPage() {
       if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
       const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
-      const managerKey = String(teamPosterTemplate.managerKey || "team-dan").toLowerCase();
+      const managerKey = String(teamPosterTemplate.managerKey || "team-dan").toLowerCase().replace(/[^a-z0-9:-]/g, "");
       const managerFor = (row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim().toLowerCase();
       const usernameFor = (row: Record<string, unknown>) => String(row.creator_username || row["Creator's username"] || "").replace("@", "").trim().toLowerCase();
       const numeric = (value: unknown) => Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
@@ -1701,7 +1701,7 @@ export default function BattleGeneratorPage() {
         }
         // Manager Assignments store a normalised email key, while the export
         // retains punctuation in the actual email. Support either form.
-        return manager === managerKey || managerKeyNormalized === managerKey;
+        return managerKeyNormalized === managerKey;
       });
       if (!rows.length) throw new Error("No creators were found for this data source on the latest upload.");
       const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
