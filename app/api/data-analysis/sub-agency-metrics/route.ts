@@ -18,8 +18,6 @@ type Metric = {
   recruitmentContribution: number | null;
   recruitmentGrowth: number | null;
   creatorGrowth: number | null;
-  recruitmentTargetDiamonds: number;
-  creatorTargetDiamonds: number;
   quitCreators: number;
   quitDiamonds: number;
 };
@@ -177,8 +175,6 @@ export async function GET() {
       recruitmentContribution: null,
       recruitmentGrowth: null,
       creatorGrowth: null,
-      recruitmentTargetDiamonds: 0,
-      creatorTargetDiamonds: 0,
       quitCreators: 0,
       quitDiamonds: 0,
     }));
@@ -221,8 +217,6 @@ export async function GET() {
         return matchesMetric(metric.key, placement.assignedGroup, placement.row) ? total + number(row.diamonds || row.Diamonds) : total;
       }, 0);
       metric.creatorGrowth = existingPreviousDiamonds ? ((existingCurrentDiamonds - existingPreviousDiamonds) / existingPreviousDiamonds) * 100 : null;
-      metric.recruitmentTargetDiamonds = metric.previousMonthDiamonds * 0.1;
-      metric.creatorTargetDiamonds = metric.previousMonthDiamonds * 0.1;
     }
 
     const quitEvents = new Map<string, Row>();
