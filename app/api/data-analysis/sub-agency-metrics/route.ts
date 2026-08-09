@@ -11,11 +11,15 @@ type Metric = {
   name: string;
   diamonds: number;
   previousDiamonds: number;
+  previousMonthDiamonds: number;
   diamondsChange: number | null;
   recruits: number;
   recruitDiamonds: number;
   recruitmentContribution: number | null;
   recruitmentGrowth: number | null;
+  creatorGrowth: number | null;
+  recruitmentTargetDiamonds: number;
+  creatorTargetDiamonds: number;
   quitCreators: number;
   quitDiamonds: number;
 };
@@ -166,11 +170,15 @@ export async function GET() {
       ...definition,
       diamonds: 0,
       previousDiamonds: 0,
+      previousMonthDiamonds: 0,
       diamondsChange: null,
       recruits: 0,
       recruitDiamonds: 0,
       recruitmentContribution: null,
       recruitmentGrowth: null,
+      creatorGrowth: null,
+      recruitmentTargetDiamonds: 0,
+      creatorTargetDiamonds: 0,
       quitCreators: 0,
       quitDiamonds: 0,
     }));
@@ -181,6 +189,7 @@ export async function GET() {
       const diamonds = number(row.diamonds || row.Diamonds);
       const isCurrent = date >= currentStart && date <= latestDate;
       const isPrevious = date >= previousStart && date <= previousEnd;
+      const isPreviousMonth = date >= previousStart && date < currentStart;
       const isRecruit = recruitIds.has(creatorKey(row));
 
       for (const metric of metrics) {
@@ -190,6 +199,7 @@ export async function GET() {
           if (isRecruit) metric.recruitDiamonds += diamonds;
         }
         if (isPrevious) metric.previousDiamonds += diamonds;
+        if (isPreviousMonth) metric.previousMonthDiamonds += diamonds;
       }
     }
 
@@ -202,7 +212,17 @@ export async function GET() {
       }).length;
       metric.diamondsChange = metric.previousDiamonds ? ((metric.diamonds - metric.previousDiamonds) / metric.previousDiamonds) * 100 : null;
       metric.recruitmentContribution = metric.diamonds ? (metric.recruitDiamonds / metric.diamonds) * 100 : null;
-      metric.recruitmentGrowth = metric.previousDiamonds ? (metric.recruitDiamonds / metric.previousDiamonds) * 100 : null;
+      metric.recruitmentGrowth = metric.previousMonthDiamonds ? (metric.recruitDiamonds / metric.previousMonthDiamonds) * 100 : null;
+      const existingCurrentDiamonds = metric.diamonds - metric.recruitDiamonds;
+      const existingPreviousDiamonds = rows.reduce((total, row) => {
+        const date = text(row.stat_date);
+        if (date < previousStart || date > previousEnd || recruitIds.has(creatorKey(row))) return total;
+        const placement = placementFor(row);
+        return matchesMetric(metric.key, placement.assignedGroup, placement.row) ? total + number(row.diamonds || row.Diamonds) : total;
+      }, 0);
+      metric.creatorGrowth = existingPreviousDiamonds ? ((existingCurrentDiamonds - existingPreviousDiamonds) / existingPreviousDiamonds) * 100 : null;
+      metric.recruitmentTargetDiamonds = metric.previousMonthDiamonds * 0.1;
+      metric.creatorTargetDiamonds = metric.previousMonthDiamonds * 0.1;
     }
 
     const quitEvents = new Map<string, Row>();
