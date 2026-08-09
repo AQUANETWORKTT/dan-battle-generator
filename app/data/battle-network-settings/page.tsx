@@ -4,11 +4,11 @@ import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
-type Agency = { id: string; name: string; accent: string; logoUrl?: string; externalOnly?: boolean };
-type Draft = { id?: string; name: string; accent: string; logoUrl: string };
+type Agency = { id: string; name: string; accent: string; logoUrl?: string; externalOnly?: boolean; password?: string };
+type Draft = { id?: string; name: string; accent: string; logoUrl: string; password: string };
 
 const BUILT_INS = new Set(["paradise", "respawn", "horizon", "trident", "first-class-dan-james", "honey-bloom", "external-agency"]);
-const blank: Draft = { name: "", accent: "#38bdf8", logoUrl: "" };
+const blank: Draft = { name: "", accent: "#38bdf8", logoUrl: "", password: "" };
 
 export default function BattleNetworkSettingsPage() {
   const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -17,13 +17,14 @@ export default function BattleNetworkSettingsPage() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
-    const response = await fetch("/api/battle-network", { cache: "no-store" });
+    const response = await fetch("/api/battle-network?settings=1", { cache: "no-store" });
     const data = await response.json();
     if (response.ok) setAgencies(data.agencies || []);
     else setMessage(data.error || "COULD NOT LOAD AGENCIES.");
   }
 
   useEffect(() => { void load(); }, []);
+  useEffect(() => { const colourInput = document.querySelector('input[type="color"]'); const container = colourInput?.parentElement?.parentElement; if (!container || document.getElementById("external-agency-password")) return; const label = document.createElement("label"); label.className = "text-xs font-black uppercase text-white/55"; label.textContent = "Agency password"; const input = document.createElement("input"); input.id = "external-agency-password"; input.type = "text"; input.placeholder = "LEAVE BLANK TO REMOVE PASSWORD"; input.className = "mt-2 w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-white"; input.value = draft.password; input.oninput = () => setDraft((value) => ({ ...value, password: input.value })); label.append(input); container.append(label); return () => label.remove(); }, [draft.id]);
 
   async function fileToLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -58,7 +59,7 @@ export default function BattleNetworkSettingsPage() {
   }
 
   function edit(agency: Agency) {
-    setDraft({ id: agency.id, name: agency.name, accent: agency.accent, logoUrl: agency.logoUrl || "" });
+    setDraft({ id: agency.id, name: agency.name, accent: agency.accent, logoUrl: agency.logoUrl || "", password: agency.password || "" });
     setMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }

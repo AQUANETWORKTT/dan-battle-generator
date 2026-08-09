@@ -21,11 +21,21 @@ export type BattleNetworkInitialData = { agencies: ReturnType<typeof toAgency>[]
 
 export async function getBattleNetworkInitialData(): Promise<BattleNetworkInitialData> {
   const startedAt = performance.now();
-  const [agenciesResult, battlesResult, settingsResult] = await Promise.all([
-    submissionsSupabase.from("battle_network_agencies").select(AGENCY_COLUMNS).order("name"),
-    submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).order("created_at", { ascending: false }),
-    submissionsSupabase.from("poster_templates").select("template_json").eq("name", "battle-network-settings").maybeSingle(),
-  ]);
+  let agenciesResult;
+  let battlesResult;
+  let settingsResult;
+  try {
+    [agenciesResult, battlesResult, settingsResult] = await Promise.race([
+      Promise.all([
+        submissionsSupabase.from("battle_network_agencies").select(AGENCY_COLUMNS).order("name"),
+        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).order("created_at", { ascending: false }),
+        submissionsSupabase.from("poster_templates").select("template_json").eq("name", "battle-network-settings").maybeSingle(),
+      ]),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),
+    ]);
+  } catch {
+    return { agencies: [], battles: [], error: "BATTLE NETWORK DATA TIMED OUT. CHECK THE SUPABASE SQL QUERY HAS FINISHED." };
+  }
   const error = agenciesResult.error || battlesResult.error || settingsResult.error;
   if (error) return { agencies: [], battles: [], error: error.message };
   const settings = (settingsResult.data?.template_json || {}) as { cardLayout?: unknown; cardTypography?: unknown };
