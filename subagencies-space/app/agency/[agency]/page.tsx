@@ -72,6 +72,9 @@ export default function AgencySpace() {
       <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/tasks`}>
         <span>OWNER TOOL</span><strong>TASK<br />SPACE</strong><span className="poster-generator-cta">OPEN TASKS&nbsp;&rarr;</span>
       </Link>
+      <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/strikes`}>
+        <span>OWNER TOOL</span><strong>MANAGER<br />STRIKES</strong><span className="poster-generator-cta">OPEN TRACKER&nbsp;&rarr;</span>
+      </Link>
       <div className="poster-generator-link managers-link cursor-not-allowed opacity-40 grayscale" aria-disabled="true">
         <span>NETWORK TOOL</span><strong>BATTLE<br />NETWORK</strong><span className="poster-generator-cta">COMING SOON</span>
       </div>
