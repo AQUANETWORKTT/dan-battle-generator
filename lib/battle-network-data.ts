@@ -1,7 +1,7 @@
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 const AGENCY_COLUMNS = "id,name,accent,logo_url,external_only";
-const BATTLE_COLUMNS = "id,agency_id,week_start,day,creator_username,manager,size,power_ups,requested_time,actual_time,opponent_battle_id,created_at";
+const BATTLE_COLUMNS = "id,agency_id,week_start,day,creator_username,manager,size,power_ups,requested_time,actual_time,opponent_battle_id,created_at,cancelled_at,cancelled_by";
 
 function time(value: string | null) { return String(value || "").slice(0, 5); }
 
@@ -13,7 +13,7 @@ export function toBattle(row: Record<string, unknown>) {
   return {
     id: String(row.id), agencyId: String(row.agency_id), weekStart: String(row.week_start || ""), day: String(row.day),
     creatorUsername: String(row.creator_username), manager: String(row.manager), size: String(row.size), powerUps: String(row.power_ups) === "NPU" ? "NPU" : "POWER-UPS ALLOWED",
-    requestedTime: time(row.requested_time as string), actualTime: time(row.actual_time as string), opponentBattleId: row.opponent_battle_id ? String(row.opponent_battle_id) : undefined, createdAt: String(row.created_at || ""),
+    requestedTime: time(row.requested_time as string), actualTime: time(row.actual_time as string), opponentBattleId: row.opponent_battle_id ? String(row.opponent_battle_id) : undefined, createdAt: String(row.created_at || ""), cancelledAt: row.cancelled_at ? String(row.cancelled_at) : undefined, cancelledBy: row.cancelled_by ? String(row.cancelled_by) : undefined,
   };
 }
 
