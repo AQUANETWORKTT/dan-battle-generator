@@ -21,7 +21,8 @@ button, input { font: inherit; }
 @keyframes ambient-shift { to { transform: scale(1.12) translateY(-2%); opacity: .72; } }
 .hero, .agency-grid { position: relative; z-index: 1; max-width: 1120px; margin: auto; }
 .hero { text-align: center; }
-.hero img { display: block; width: clamp(118px, 15vw, 180px); height: auto; margin: 0 auto; filter: drop-shadow(0 0 28px rgba(251,191,36,.45)); }
+.hero-logo { display: block; width: clamp(118px, 15vw, 180px); height: auto; margin: 0 auto; filter: drop-shadow(0 0 28px rgba(251,191,36,.45)); }
+.portal-title { display: block; width: min(820px, 94vw); height: auto; margin: 14px auto 10px; filter: drop-shadow(0 0 20px rgba(251,191,36,.24)); }
 .hero p, .hero small, .agency-card small { font: 800 11px Arial, sans-serif; letter-spacing: .22em; }
 .hero p { margin: 7px 0; color: #facc15; }
 .hero h1 { margin: 8px 0; font-size: clamp(40px, 8vw, 96px); letter-spacing: .025em; word-spacing: .14em; line-height: .9; }
