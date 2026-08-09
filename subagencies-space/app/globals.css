@@ -128,7 +128,7 @@ button, input { font: inherit; }
 :root { --space-ui-font: Arial, Helvetica, sans-serif; --space-heading-font: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }
 body, button, input, select, textarea { font-family: var(--space-ui-font); }
 button, input, select, textarea { font-weight: 700; letter-spacing: .035em; line-height: 1.25; }
-.home-shell .hero h1 { font-family: Impact, "Arial Black", Arial, sans-serif; }
+.home-shell .hero h1 { font-family: "Norwester", Impact, sans-serif; letter-spacing: .07em; transform: scaleX(1.08); }
 .agency-generator-shell :is(button, input, select, textarea, h1, h2, h3, p, label, a),
 .onboarding-page,
 .manager-picker button, .manager-password, .manager-password input, .manager-password button,

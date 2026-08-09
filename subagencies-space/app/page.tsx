@@ -11,6 +11,7 @@ const agencies = [
   { id: "horizon", name: "HORIZON", password: "DENS34", color: "#f97316", background: "/agency-backgrounds/horizon.png" },
   { id: "trident", name: "TRIDENT", password: "MARCY78", color: "#38bdf8", background: "/agency-backgrounds/trident.png" },
 ] as const;
+const MASTER_ACCESS_PASSWORD = "DAN44";
 
 //
 
@@ -26,7 +27,9 @@ export default function Home() {
     event.preventDefault();
     if (!selected) return;
     const enteredPassword = password.trim().toUpperCase();
-    if (enteredPassword !== selected.password && enteredPassword !== "DAN44") {
+    const hasAgencyAccess = enteredPassword === selected.password;
+    const hasMasterAccess = enteredPassword === MASTER_ACCESS_PASSWORD;
+    if (!hasAgencyAccess && !hasMasterAccess) {
       setError("ACCESS DENIED");
       window.setTimeout(() => { setSelectedId(""); setPassword(""); setError(""); }, 900);
       return;
@@ -36,6 +39,8 @@ export default function Home() {
     } catch {
       // Storage can be unavailable in some mobile and private browsing modes.
     }
+    // The master password grants access to the agency selected above; it never
+    // changes the destination to First Class or another sub-agency.
     router.push(`/agency/${selected.id}`);
   }
 
