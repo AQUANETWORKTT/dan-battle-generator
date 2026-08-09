@@ -7,6 +7,8 @@ import { Rnd } from "react-rnd";
 import type { BattleNetworkInitialData } from "@/lib/battle-network-data";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
+const compactLogoCache = new Map<string, string>();
+
 function AgencyLoginScreen({ agencies, password, setPassword, status, onLogin, onExternal }: any) {
   const cards = agencies.filter((agency: Agency) => ["paradise", "respawn", "horizon", "trident", "first-class-dan-james"].includes(agency.id));
   const [selected, setSelected] = useState(""); const [externalOpen, setExternalOpen] = useState(false); const [externalPassword, setExternalPassword] = useState("");
@@ -91,8 +93,40 @@ function UsernameCopyButton({ username }: { username: string }) { return <button
 function CompactLinkButton({ username }: { username: string }) { const url = `https://www.tiktok.com/@${clean(username).toLowerCase()}`; return <button type="button" onClick={() => void navigator.clipboard.writeText(url)} title="COPY CREATOR LINK" className="h-5 w-full rounded border border-sky-300/40 bg-black px-1 text-[8px] font-black uppercase leading-none text-sky-300 transition hover:bg-sky-300 hover:text-black">COPY LINK</button>; }
 function AgencyMark({ agency }: { agency: Agency }) { const [failed, setFailed] = useState(false); const logoUrl = agency.id === "first-class-dan-james" ? "/world-cup-2026/agencies/first-class.png" : agency.logoUrl; return logoUrl && !failed ? <span className="inline-grid h-16 w-32 shrink-0 place-items-center overflow-hidden"><img src={logoUrl} alt={agency.name} onError={() => setFailed(true)} className="block max-h-16 max-w-32 object-contain object-center" style={{ width: "auto", height: "auto" }} /></span> : null; }
 
-function CompactAgencyMark({ agency }: { agency?: Agency }) { const [failed, setFailed] = useState(false); const logoUrl = agency?.id === "first-class-dan-james" ? "/world-cup-2026/agencies/first-class-cropped.png" : agency?.logoUrl; return logoUrl && !failed ? <img src={logoUrl} alt={agency?.name || "Agency"} onError={() => setFailed(true)} className={`h-5 w-20 origin-center object-contain object-center ${agency?.id === "first-class-dan-james" ? "scale-[1.6]" : "scale-[1.4]"}`} /> : null; }
-
+function CompactAgencyMark({ agency }: { agency?: Agency }) {
+  const [failed, setFailed] = useState(false);
+  const logoUrl = agency?.id === "first-class-dan-james" ? "/world-cup-2026/agencies/first-class-cropped.png" : agency?.logoUrl;
+  const [croppedUrl, setCroppedUrl] = useState(() => logoUrl ? compactLogoCache.get(logoUrl) || logoUrl : "");
+  useEffect(() => {
+    if (!logoUrl) return;
+    const cached = compactLogoCache.get(logoUrl);
+    if (cached) { setCroppedUrl(cached); return; }
+    let active = true;
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const scale = Math.min(1, 1024 / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale)), height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const source = document.createElement("canvas"); source.width = width; source.height = height;
+        const context = source.getContext("2d", { willReadFrequently: true }); if (!context) return;
+        context.drawImage(image, 0, 0, width, height);
+        const pixels = context.getImageData(0, 0, width, height).data;
+        let left = width, top = height, right = -1, bottom = -1;
+        for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) if (pixels[(y * width + x) * 4 + 3] > 8) { left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y); }
+        if (right < left || bottom < top) { compactLogoCache.set(logoUrl, logoUrl); if (active) setCroppedUrl(logoUrl); return; }
+        const padding = Math.max(3, Math.round(Math.max(right - left + 1, bottom - top + 1) * 0.035));
+        left = Math.max(0, left - padding); top = Math.max(0, top - padding); right = Math.min(width - 1, right + padding); bottom = Math.min(height - 1, bottom + padding);
+        const cropped = document.createElement("canvas"); cropped.width = right - left + 1; cropped.height = bottom - top + 1;
+        cropped.getContext("2d")?.drawImage(source, left, top, cropped.width, cropped.height, 0, 0, cropped.width, cropped.height);
+        const result = cropped.toDataURL("image/png"); compactLogoCache.set(logoUrl, result); if (active) setCroppedUrl(result);
+      } catch { if (active) setCroppedUrl(logoUrl); }
+    };
+    image.onerror = () => { if (active) setFailed(true); };
+    image.src = logoUrl;
+    return () => { active = false; };
+  }, [logoUrl]);
+  return croppedUrl && !failed ? <img src={croppedUrl} alt={agency?.name || "Agency"} onError={() => setFailed(true)} className="h-5 w-20 origin-center object-contain object-center" /> : null;
+}
 export default function BattleNetworkClient({ initialData, initialAgencyId }: { initialData: BattleNetworkInitialData; initialAgencyId: string }) {
   const [agencies, setAgencies] = useState<Agency[]>(() => initialData.agencies as Agency[]); const [battles, setBattles] = useState<Battle[]>(() => initialData.battles.filter(Boolean) as Battle[]); const [agencyId, setAgencyId] = useState(initialAgencyId); const [password, setPassword] = useState(""); const [tab, setTab] = useState<"SHEET" | "AVAILABLE">("SHEET"); const [week, setWeek] = useState(""); const [status, setStatus] = useState(initialData.error || "ENTER YOUR AGENCY PASSWORD."); const [addingDay, setAddingDay] = useState<string | null>(null); const [draftWeekStart, setDraftWeekStart] = useState(""); const [draft, setDraft] = useState<Draft>(draftFor("MONDAY")); const [editing, setEditing] = useState<Battle | null>(null); const [creatingBattle, setCreatingBattle] = useState(false); const [matching, setMatching] = useState<{ battle: Battle; mode: "EXACT" | "CLOSE"; ownOnly?: boolean } | null>(null); const [pairingMatchId, setPairingMatchId] = useState<string | null>(null); const [openPastDays, setOpenPastDays] = useState<string[]>([]); const [currentDayIndex, setCurrentDayIndex] = useState(-1); const [claiming, setClaiming] = useState<Battle | null>(null); const [registering, setRegistering] = useState(false); const [newAgency, setNewAgency] = useState({ name: "", password: "", logoUrl: "" });
   const [externalMode, setExternalMode] = useState(false);
