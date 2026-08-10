@@ -23,7 +23,7 @@ export function toBattle(row: Record<string, unknown>) {
   };
 }
 
-export type BattleNetworkInitialData = { agencies: ReturnType<typeof toAgency>[]; battles: ReturnType<typeof toBattle>[]; cardLayout?: unknown; cardTypography?: unknown; error?: string };
+export type BattleNetworkInitialData = { agencies: ReturnType<typeof toAgency>[]; battles: ReturnType<typeof toBattle>[]; cardLayout?: unknown; cardTypography?: unknown; managerSettings?: unknown; error?: string };
 
 export async function getBattleNetworkInitialData(): Promise<BattleNetworkInitialData> {
   const startedAt = performance.now();
@@ -46,9 +46,9 @@ export async function getBattleNetworkInitialData(): Promise<BattleNetworkInitia
   }
   const error = agenciesResult.error || battlesResult.error || settingsResult.error;
   if (error) return { agencies: [], battles: [], error: error.message };
-  const settings = (settingsResult.data?.template_json || {}) as { cardLayout?: unknown; cardTypography?: unknown };
+  const settings = (settingsResult.data?.template_json || {}) as { cardLayout?: unknown; cardTypography?: unknown; managerSettings?: unknown };
   console.info(`[battle-network] initial parallel queries ${Math.round(performance.now() - startedAt)}ms`);
-  return { agencies: (agenciesResult.data || []).map(toAgency), battles: (battlesResult.data || []).map(toBattle), cardLayout: settings.cardLayout, cardTypography: settings.cardTypography };
+  return { agencies: (agenciesResult.data || []).map(toAgency), battles: (battlesResult.data || []).map(toBattle), cardLayout: settings.cardLayout, cardTypography: settings.cardTypography, managerSettings: settings.managerSettings };
 }
 
 export { AGENCY_COLUMNS, BATTLE_COLUMNS };

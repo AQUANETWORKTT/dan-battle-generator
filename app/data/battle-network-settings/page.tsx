@@ -15,11 +15,13 @@ export default function BattleNetworkSettingsPage() {
   const [draft, setDraft] = useState<Draft>(blank);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [managerSettings, setManagerSettings] = useState<Record<string, { name: string; initials: string }[]>>({});
+  const [managerDrafts, setManagerDrafts] = useState<Record<string, { name: string; initials: string }>>({});
 
   async function load() {
     const response = await fetch("/api/battle-network?settings=1", { cache: "no-store" });
     const data = await response.json();
-    if (response.ok) setAgencies(data.agencies || []);
+    if (response.ok) { setAgencies(data.agencies || []); setManagerSettings(data.managerSettings || {}); }
     else setMessage(data.error || "COULD NOT LOAD AGENCIES.");
   }
 
@@ -64,6 +66,9 @@ export default function BattleNetworkSettingsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function saveManagers() { const response = await fetch("/api/battle-network", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save-manager-settings", managerSettings }) }); setMessage(response.ok ? "MANAGER SETTINGS SAVED." : "COULD NOT SAVE MANAGERS."); }
+  function addManager(agencyId: string) { const draft = managerDrafts[agencyId]; if (!draft?.name?.trim() || !draft.initials?.trim()) return; setManagerSettings((current) => ({ ...current, [agencyId]: [...(current[agencyId] || []), { name: draft.name.trim(), initials: draft.initials.trim().toUpperCase().slice(0, 2) }] })); setManagerDrafts((current) => ({ ...current, [agencyId]: { name: "", initials: "" } })); }
+
   async function remove(agency: Agency) {
     if (!window.confirm(`REMOVE ${agency.name}?`)) return;
     const response = await fetch("/api/battle-network", {
@@ -92,6 +97,7 @@ export default function BattleNetworkSettingsPage() {
       <button type="submit" disabled={saving} className="mt-6 rounded-xl bg-sky-300 px-5 py-3 text-xs font-black uppercase text-black disabled:opacity-50">{saving ? "SAVING…" : draft.id ? "SAVE AGENCY" : "ADD AGENCY"}</button>
     </form>
     <p className="mt-4 min-h-6 text-xs font-black uppercase text-yellow-100">{message}</p>
+    <section className="mt-12"><h2 className="font-[family-name:var(--font-norwester)] text-3xl uppercase">INTERNAL AGENCY MANAGERS</h2><p className="mt-2 text-sm text-white/60">Add each manager name and two-letter initials. These are used in the Battle Network manager dropdown.</p><div className="mt-4 grid gap-4">{agencies.filter((agency) => !agency.externalOnly).map((agency) => { const draft = managerDrafts[agency.id] || { name: "", initials: "" }; return <article key={agency.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-4"><h3 className="font-black uppercase" style={{ color: agency.accent }}>{agency.name}</h3><div className="mt-3 flex flex-wrap gap-2">{(managerSettings[agency.id] || []).map((manager, index) => <span key={`${manager.initials}-${index}`} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">{manager.initials} - {manager.name}<button onClick={() => setManagerSettings((current) => ({ ...current, [agency.id]: current[agency.id].filter((_, itemIndex) => itemIndex !== index) }))} className="ml-3 text-red-300">REMOVE</button></span>)}</div><div className="mt-4 grid gap-2 sm:grid-cols-[1fr_110px_auto]"><input value={draft.name} onChange={(event) => setManagerDrafts((current) => ({ ...current, [agency.id]: { ...draft, name: event.target.value } }))} placeholder="MANAGER NAME" className="rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-white"/><input value={draft.initials} onChange={(event) => setManagerDrafts((current) => ({ ...current, [agency.id]: { ...draft, initials: event.target.value } }))} placeholder="INITIALS" maxLength={2} className="rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-white"/><button onClick={() => addManager(agency.id)} className="rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase text-black">ADD MANAGER</button></div></article>; })}</div><button onClick={() => void saveManagers()} className="mt-5 rounded-xl bg-yellow-300 px-5 py-3 text-xs font-black uppercase text-black">SAVE MANAGERS</button></section>
     <section className="mt-12"><h2 className="font-[family-name:var(--font-norwester)] text-3xl uppercase">EXTERNAL AGENCY LIST</h2><div className="mt-4 grid gap-3">
       {custom.map((agency) => <article key={agency.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.025] p-4"><div className="flex items-center gap-4">{agency.logoUrl ? <img src={agency.logoUrl} alt="" className="h-12 w-20 object-contain" /> : <div className="grid h-12 w-20 place-items-center rounded-lg border border-white/15 text-[9px] font-black text-white/35">NO LOGO</div>}<strong>{agency.name}</strong></div><div className="flex gap-2"><button onClick={() => edit(agency)} className="rounded-lg border border-sky-300/40 px-3 py-2 text-xs font-black uppercase text-sky-200">EDIT</button><button onClick={() => void remove(agency)} className="rounded-lg border border-red-300/40 px-3 py-2 text-xs font-black uppercase text-red-300">REMOVE</button></div></article>)}
       {!custom.length ? <p className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-sm text-white/45">NO EXTERNAL AGENCIES ADDED YET.</p> : null}
