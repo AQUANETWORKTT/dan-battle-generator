@@ -158,10 +158,13 @@ function getManagerIdentity(value: string) {
 }
 
 function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
-  if (rowManagerKey === templateManagerKey) return true;
+  const normalizedRowKey = rowManagerKey.replace(/[^a-z0-9]/g, "");
+  const normalizedTemplateKey = templateManagerKey.replace(/[^a-z0-9]/g, "");
+  if (normalizedRowKey === normalizedTemplateKey) return true;
   const rowIdentity = getManagerIdentity(rowManagerKey);
   const templateIdentity = getManagerIdentity(templateManagerKey);
-  return Boolean(rowIdentity && templateIdentity && rowIdentity === templateIdentity);
+  if (rowIdentity && templateIdentity && rowIdentity === templateIdentity) return true;
+  return normalizedRowKey.replace(/(outlook|gmail|mail)com$/, "") === normalizedTemplateKey.replace(/(outlook|gmail|mail)com$/, "");
 }
 
 const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
@@ -348,17 +351,18 @@ async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<strin
   const normalizedUsername = cleanUsername.replace(/[^a-z0-9]/g, "");
   const localAvatar = fallbackAvatars[normalizedUsername] || LOCAL_AVATAR_PATHS[normalizedUsername];
   if (localAvatar) return localAvatar;
+  const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     const res = await fetch("/api/tiktok-avatar-v2", {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", Pragma: "no-cache" },
-      body: JSON.stringify({ username: cleanUsername }),
+      body: JSON.stringify({ username: cleanUsername, forceRefresh: true, refresh: refreshKey }),
     });
     const json = await res.json();
     if (!json.avatar) return "";
     if (String(json.avatar).startsWith("/")) return String(json.avatar);
-    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}`;
+    return `/api/tiktok-avatar-image?url=${encodeURIComponent(json.avatar)}&username=${encodeURIComponent(cleanUsername)}&refresh=${refreshKey}`;
   } catch {
     return "";
   }
