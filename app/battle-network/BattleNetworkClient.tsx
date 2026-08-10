@@ -79,6 +79,7 @@ function mergeCardTypography(typography?: Partial<CardTypography>): CardTypograp
 function monday(value?: string) { const date = value ? new Date(`${value}T12:00:00`) : new Date(); date.setDate(date.getDate() - ((date.getDay() + 6) % 7)); return date.toISOString().slice(0, 10); }
 function clean(value: string) { return value.trim().replace(/^@/, ""); }
 function displayTime(value: string) { const [hourText, minutes = "00"] = value.split(":"); const hour = Number(hourText); return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? "PM" : "AM"}`; }
+function battleSearchDate(battle: Battle) { const date = new Date(`${battle.weekStart}T12:00:00`); date.setDate(date.getDate() + Math.max(0, WEEK_DAYS.indexOf(battle.day))); return `${battle.day} ${date.toLocaleDateString("en-GB", { day: "numeric", month: "long" }).toUpperCase()}`; }
 function minutes(value: string) { const [hours = "0", mins = "0"] = value.split(":"); return Number(hours) * 60 + Number(mins); }
 function isCloseTime(first: string, second: string) { const a = minutes(first), b = minutes(second); return a >= 18 * 60 && b >= 18 * 60 && Math.abs(a - b) > 0 && Math.abs(a - b) <= 60; }
 function posterRow(battle: Battle, opponent: Battle, opponentAgency: Agency) { const creatorUrl = `https://www.tiktok.com/@${clean(battle.creatorUsername).toLowerCase()}`; const opponentUrl = `https://www.tiktok.com/@${clean(opponent.creatorUsername).toLowerCase()}`; const opponentAgencyName = opponent.manager.startsWith("MANUAL: ") ? opponent.manager.slice(8) : opponentAgency.name; return `${battle.creatorUsername}\t${battle.manager}\t${battle.size}\t${creatorUrl}\t${displayTime(battle.requestedTime)}\t${opponentUrl}\t${displayTime(battle.actualTime)}\t${opponentAgencyName}`; }
@@ -171,7 +172,7 @@ export default function BattleNetworkClient({ initialData, initialAgencyId }: { 
   async function copyBattleSearch(rows: Battle[]) {
     const openBattles = rows.filter((battle: Battle) => !battle.opponentBattleId && !battle.cancelledAt);
     if (!openBattles.length) { setStatus("NO OPEN BATTLES TO COPY."); return; }
-    const message = `Battles needed\n\n${openBattles.map((battle: Battle) => `${battle.requestedTime} ${battle.size} ${battle.creatorUsername}`).join("\n")}`;
+    const message = `Hey, I’ve got some battles up here, can anyone fill for me? 🫶🏽\n\n📆 ${battleSearchDate(openBattles[0])}\n\n${openBattles.map((battle: Battle) => `👤 ${battle.creatorUsername}\n🕥 ${displayTime(battle.requestedTime)}\n🪙 ${battle.size}`).join("\n\n")}`;
     try {
       await navigator.clipboard.writeText(message);
       setStatus(`${openBattles.length} BATTLE ${openBattles.length === 1 ? "SEARCH" : "SEARCHES"} COPIED.`);
