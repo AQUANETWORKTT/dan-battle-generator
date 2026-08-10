@@ -4,6 +4,12 @@ const AGENCY_COLUMNS = "id,name,accent,logo_url,external_only";
 const BATTLE_COLUMNS = "id,agency_id,week_start,day,creator_username,manager,size,power_ups,requested_time,actual_time,opponent_battle_id,created_at,cancelled_at,cancelled_by";
 
 function time(value: string | null) { return String(value || "").slice(0, 5); }
+function currentWeekStart() {
+  const date = new Date();
+  const offset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - offset);
+  return date.toISOString().slice(0, 10);
+}
 
 export function toAgency(row: Record<string, unknown>) {
   return { id: String(row.id), name: String(row.name), accent: String(row.accent), logoUrl: String(row.logo_url || ""), externalOnly: Boolean(row.external_only) };
@@ -30,7 +36,7 @@ export async function getBattleNetworkInitialData(): Promise<BattleNetworkInitia
         submissionsSupabase.from("battle_network_agencies").select(AGENCY_COLUMNS).order("name"),
         // Generated load-test rows are deliberately hidden from the live
         // network while the database cleanup completes.
-        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }),
+        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).eq("week_start", currentWeekStart()).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }),
         submissionsSupabase.from("poster_templates").select("template_json").eq("name", "battle-network-settings").maybeSingle(),
       ]),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),

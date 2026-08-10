@@ -8,6 +8,7 @@ const MASTER_PASSWORDS = new Set(["DAN44"]);
 const clean = (value: unknown) => String(value || "").trim().replace(/^@/, "");
 const key = (value: unknown) => clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const time = (value: unknown) => String(value || "").slice(0, 5);
+const currentWeekStart = () => { const date = new Date(); date.setDate(date.getDate() - ((date.getDay() + 6) % 7)); return date.toISOString().slice(0, 10); };
 const payload = (battle: Record<string, unknown>) => ({
   id: battle.id || crypto.randomUUID(), agency_id: key(battle.agencyId), week_start: battle.weekStart,
   day: String(battle.day || "MONDAY"), creator_username: clean(battle.creatorUsername), manager: clean(battle.manager), size: String(battle.size || "LESS THAN 1K"),
@@ -39,10 +40,13 @@ async function hasDuplicateBattle(row: { agency_id: string; week_start: string; 
 export async function GET(request: Request) {
   const startedAt = performance.now();
   try {
-    const includePasswords = new URL(request.url).searchParams.get("settings") === "1";
+    const url = new URL(request.url);
+    const includePasswords = url.searchParams.get("settings") === "1";
+    const history = url.searchParams.get("history") === "1";
+    const weekStart = url.searchParams.get("week") || currentWeekStart();
     const [agencies, battles, layout] = await Promise.all([
       submissionsSupabase.from("battle_network_agencies").select(includePasswords ? `${AGENCY_COLUMNS},password` : AGENCY_COLUMNS).order("name"),
-      submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }), settings(),
+      submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).eq("week_start", weekStart).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }), settings(),
     ]);
     if (agencies.error || battles.error) throw new Error(agencies.error?.message || battles.error?.message);
     const response = NextResponse.json({ agencies: ((agencies.data || []) as unknown as Record<string, unknown>[]).map((agency) => includePasswords ? { ...toAgency(agency), password: String(agency.password || "") } : toAgency(agency)), battles: ((battles.data || []) as unknown as Record<string, unknown>[]).map(toBattle), cardLayout: layout.cardLayout, cardTypography: layout.cardTypography });
