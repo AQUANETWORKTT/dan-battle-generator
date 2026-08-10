@@ -1431,7 +1431,12 @@ export default function BattleGeneratorPage() {
       return;
     }
 
-    const nextTemplate = normalizeTeamDanPosterTemplate(teamPosterTemplate);
+    // A sub-agency workspace must never save a layout under another agency's
+    // download category, even if it was opened after switching routes.
+    const nextTemplate = normalizeTeamDanPosterTemplate({
+      ...teamPosterTemplate,
+      teamSide: agencyId as TeamPosterCategory,
+    });
     setTeamPosterStatus("Saving Team Dan poster template...");
 
     const { error } = await supabase
@@ -1923,7 +1928,11 @@ export default function BattleGeneratorPage() {
 
       const library = (data || [])
         .filter((item) => item.template_json && (item.name === TEAM_DAN_POSTER_TEMPLATE_NAME || String(item.name).startsWith("team-poster-")))
-        .map((item) => ({ name: String(item.name), template: normalizeTeamDanPosterTemplate(item.template_json as TeamPosterTemplate) }));
+        .map((item) => ({ name: String(item.name), template: normalizeTeamDanPosterTemplate(item.template_json as TeamPosterTemplate) }))
+        // Each owner only needs their own agency's layouts. Previously this
+        // picker showed the full shared library, allowing a Paradise layout to
+        // be selected from another agency workspace.
+        .filter((item) => item.template.teamSide === agencyId);
 
       if (!library.length) {
         setTeamPosterStatus("No public Team Dan template saved yet. Press Save Template to create one.");
@@ -1941,7 +1950,7 @@ export default function BattleGeneratorPage() {
     }
 
     loadTeamPosterTemplate();
-  }, []);
+  }, [agencyId]);
 
   useEffect(() => {
     async function loadTeamPosterManagers() {
