@@ -410,6 +410,18 @@ async function waitForImages(node: HTMLElement) {
   );
 }
 
+// CSS backgrounds are not included in querySelectorAll("img"). Preloading
+// them prevents a batch download from capturing the previous poster's image.
+function waitForBackground(url: string) {
+  if (!url) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => resolve();
+    image.src = url;
+  });
+}
+
 function PosterPreview({ template }: { template: TeamPosterTemplate }) {
   return (
     <div
@@ -707,6 +719,7 @@ export default function TeamDiamondsYesterdayPage() {
           // Renew the signed background URL immediately before rendering, so a
           // sub-owner never downloads a poster with an expired or missing image.
           const template = await resolveTemplateBackground(item.template);
+          await waitForBackground(template.backgroundUrl);
           const failedForPoster = await buildPreview(template, true);
           if (!failedForPoster) throw new Error("No current creator data");
           failedForPoster.forEach((username) => failedAvatars.add(username));
@@ -821,7 +834,9 @@ export default function TeamDiamondsYesterdayPage() {
     setSelectedTemplateName(item.name);
     setLoading(true);
     try {
-      const failedForPoster = await buildPreview(await resolveTemplateBackground(item.template), true);
+      const template = await resolveTemplateBackground(item.template);
+      await waitForBackground(template.backgroundUrl);
+      const failedForPoster = await buildPreview(template, true);
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
