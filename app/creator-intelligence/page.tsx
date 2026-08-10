@@ -2600,6 +2600,7 @@ async function downloadManagerReport(
 }
 
 export default function CreatorIntelligencePage() {
+  const [isRecruitmentEmbed, setIsRecruitmentEmbed] = useState(false);
   const [rollingEndDate, setRollingEndDate] = useState("");
   const [manager, setManager] = useState("All Managers");
   const [groupFilter, setGroupFilter] = useState("All Groups");
@@ -2621,6 +2622,10 @@ export default function CreatorIntelligencePage() {
   const [expandedManager, setExpandedManager] = useState("");
   const [floatingProfileOpen, setFloatingProfileOpen] = useState(false);
   const [profileRange, setProfileRange] = useState<"week" | "month">("week");
+
+  useEffect(() => {
+    setIsRecruitmentEmbed(new URLSearchParams(window.location.search).get("view") === "recruitment");
+  }, []);
   const [selectedChartMetrics, setSelectedChartMetrics] = useState<ChartMetricKey[]>([
     "diamonds",
     "liveHours",
@@ -3431,33 +3436,33 @@ export default function CreatorIntelligencePage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 md:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="flex-1 text-center md:pl-40">
+        {!isRecruitmentEmbed && <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex-1 text-center">
             <Link href="/" className="text-sm font-bold text-sky-700 hover:text-sky-600">
               Back home
             </Link>
             <Image
               src="/logo.png"
               alt="First Class"
-              width={240}
-              height={120}
-              className="mx-auto mt-3 h-20 w-auto object-contain md:h-28"
+              width={420}
+              height={210}
+              className="mx-auto mt-3 h-28 w-auto max-w-full object-contain md:h-40"
               priority
             />
             <h1 className="mt-2 text-4xl font-black uppercase text-sky-950 md:text-6xl">
-              Creator Intelligence
+              New Health Score System
             </h1>
             <p className="mx-auto mt-2 max-w-3xl text-sm text-slate-500 md:text-base">
-              First Class creator health tracker with manager focus, group filters, new creator performance and report views.
+              First Class creator health scoring, manager focus, group filters, new creator performance and report views.
             </p>
           </div>
 
           <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
             {loading ? "Loading creator data..." : `${formatNumber(rows.length)} uploaded rows loaded`}
           </div>
-        </div>
+        </div>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
             This page uses the latest rolling 30 days from First Class creator daily stats. The trend chart uses the latest 14 uploaded days.
           </div>
@@ -3513,9 +3518,9 @@ export default function CreatorIntelligencePage() {
               />
             </label>
           </div>
-        </section>
+        </section>}
 
-        <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {false && <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Total creators" value={formatNumber(totals.totalCreators)} />
           <MetricCard
             label="Average health score"
@@ -3529,11 +3534,7 @@ export default function CreatorIntelligencePage() {
           <MetricCard label="Above average creators" value={totals.totalCreators ? formatPercent((totals.healthy / totals.totalCreators) * 100) : "0%"} />
           <MetricCard label="Elite creators" value={totals.totalCreators ? formatPercent((totals.elite / totals.totalCreators) * 100) : "0%"} />
           <MetricCard label="New creators" value={formatNumber(totals.newCreators)} />
-        </section>
-
-        <section className="mb-6">
-          <AgencyHealthTrendChart points={agencyHealthTrend} />
-        </section>
+        </section>}
 
         {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -3609,7 +3610,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Team Health</h2>
@@ -3797,7 +3798,7 @@ export default function CreatorIntelligencePage() {
               No manager health data found for these filters.
             </p>
           ) : null}
-        </section>
+        </section>}
 
         {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -3848,7 +3849,7 @@ export default function CreatorIntelligencePage() {
         </section>}
 
         {selectedCreator ? (
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase text-sky-700">Selected Creator Profile</p>
@@ -4149,7 +4150,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Health Tracker</h2>
@@ -4259,11 +4260,11 @@ export default function CreatorIntelligencePage() {
               </div>
             )}
           </div>
-        </section>
+        </section>}
 
-        <section id="recruitment-new-and-hidden" className="mt-6 grid gap-6 xl:grid-cols-2">
+<section id="recruitment-new-and-hidden" className="mt-6 grid gap-6 xl:grid-cols-2">
           <div id="recruitment-new-creators" className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
+            <div className="hidden">
               <div>
                 <h2 className="text-2xl font-black uppercase text-sky-900">New Creators</h2>
                 <p className="mt-1 text-sm text-slate-500">
@@ -4310,7 +4311,7 @@ export default function CreatorIntelligencePage() {
                 </div>
               </div>
             ) : null}
-            <div className="mt-5 grid gap-3">
+            <div className="hidden">
               {newCreators.map((creator) => (
                 <button
                   key={`new-${creator.key}`}
@@ -4371,7 +4372,7 @@ export default function CreatorIntelligencePage() {
               />
             </div>
           </div>
-        </section>
+          </section>
 
         <section id="recruitment-quality" className="mt-6 rounded-3xl border border-violet-100 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -4413,6 +4414,7 @@ export default function CreatorIntelligencePage() {
         </section>
 
         {selectedCreator ? (
+          <div className="hidden">
           <>
             <button
               type="button"
@@ -4477,6 +4479,7 @@ export default function CreatorIntelligencePage() {
               </aside>
             ) : null}
           </>
+          </div>
         ) : null}
       </div>
     </main>

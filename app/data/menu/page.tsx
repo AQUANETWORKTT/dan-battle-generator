@@ -32,8 +32,7 @@ const workspaceGroups: { title: string; description: string; accent: keyof typeo
     { href: "/data/incremental-data-tracking", number: "17", label: "Monthly pace", title: "Incremental Data Tracking", description: "Enter month-to-date diamonds and see the nearest daily incremental target prediction.", accent: "yellow" },
   ] },
   { title: "Creator Analysis", description: "Performance analysis, creator health and agency intelligence.", accent: "purple", workspaces: [
-    { href: "/data-analysis", number: "01", label: "Reporting", title: "AI Analysis", description: "Analyse creator performance, agency trends, live hours and diamonds.", accent: "yellow" },
-    { href: "/creator-intelligence", number: "02", label: "Creator health", title: "First Class Creator Intelligence", description: "Creator health, manager groups, reports and performance trends in one place.", accent: "sky" },
+    { href: "/creator-intelligence", number: "02", label: "Creator health", title: "New Health Score System", description: "Creator health scoring, manager groups, reports and performance trends in one place.", accent: "sky" },
     { href: "/data/recruitment-quality", number: "19", label: "Recruitment", title: "Recruitment Quality", description: "Review 14-day recruitment quality by agency, manager and creator DPH.", accent: "purple" },
     { href: "/data/sub-agency-metrics", number: "20", label: "Agency reporting", title: "Agency Diamond Metrics", description: "See month-to-date diamonds, recruitment contribution and growth across First Class and each sub-agency.", accent: "yellow" },
   ] },

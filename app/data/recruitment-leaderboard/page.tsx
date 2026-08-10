@@ -8,6 +8,7 @@ import { createLeaderboardPng, downloadLeaderboardPng } from "../../components/L
 type Manager = { key: string; name: string; group: string; recruits: number };
 type Data = { month: string; groups: string[]; managers: Manager[]; totalRecruits: number };
 const recruitmentTitleImage = "/leaderboards/recruitment-title.png";
+const recruitmentTitleImageWidth = 435;
 
 export default function RecruitmentLeaderboardPage() {
   const [data, setData] = useState<Data>({ month: "", groups: [], managers: [], totalRecruits: 0 });
@@ -31,7 +32,7 @@ export default function RecruitmentLeaderboardPage() {
 
   useEffect(() => {
     let active = true;
-    void createLeaderboardPng({ title: "RECRUITMENT", subtitle: "", rows, titleImage: recruitmentTitleImage }).then((blob) => {
+    void createLeaderboardPng({ title: "RECRUITMENT", subtitle: "", rows, titleImage: recruitmentTitleImage, titleImageWidth: recruitmentTitleImageWidth }).then((blob) => {
       if (!active) return;
       const url = URL.createObjectURL(blob);
       setPreview((previous) => { if (previous) URL.revokeObjectURL(previous); return url; });
@@ -46,7 +47,7 @@ export default function RecruitmentLeaderboardPage() {
   async function download() {
     setStatus("BUILDING PNG...");
     try {
-      await downloadLeaderboardPng({ title: "RECRUITMENT", subtitle: "", rows, titleImage: recruitmentTitleImage, filename: `RECRUITMENT-LEADERBOARD-${data.month || "CURRENT"}.png` });
+      await downloadLeaderboardPng({ title: "RECRUITMENT", subtitle: "", rows, titleImage: recruitmentTitleImage, titleImageWidth: recruitmentTitleImageWidth, filename: `RECRUITMENT-LEADERBOARD-${data.month || "CURRENT"}.png` });
       setStatus("PNG DOWNLOADED.");
     } catch {
       setStatus("COULD NOT BUILD PNG.");

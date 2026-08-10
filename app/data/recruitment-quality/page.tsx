@@ -1,10 +1,73 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 export default function RecruitmentQualityPage() {
   const frame = useRef<HTMLIFrameElement>(null);
-  useEffect(() => { const element = frame.current; if (!element) return; let observer: MutationObserver | null = null; const showOnlyRecruitment = () => { const document = element.contentDocument; if (!document) return; const keep = new Set(["recruitment-new-and-hidden", "recruitment-quality"]); document.querySelectorAll("main > div > *").forEach((node) => { const item = node as HTMLElement; item.style.display = keep.has(item.id) ? "" : "none"; }); const main = document.querySelector("main") as HTMLElement | null; if (main) { main.style.padding = "0"; main.style.background = "#f8fafc"; } }; const attach = () => { const document = element.contentDocument; if (!document) return; observer?.disconnect(); observer = new MutationObserver(showOnlyRecruitment); observer.observe(document.body, { childList: true, subtree: true }); showOnlyRecruitment(); window.setTimeout(showOnlyRecruitment, 500); window.setTimeout(showOnlyRecruitment, 1500); }; element.addEventListener("load", attach); return () => { element.removeEventListener("load", attach); observer?.disconnect(); }; }, []);
-  return <DataAccessGuard><main className="min-h-screen bg-[#080806] p-4"><iframe ref={frame} title="Recruitment Quality" src="/creator-intelligence" className="min-h-screen w-full border-0 bg-slate-50" /></main></DataAccessGuard>;
+
+  useEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    let observer: MutationObserver | null = null;
+    let resizer: ResizeObserver | null = null;
+
+    const showOnlyRecruitment = () => {
+      const embeddedDocument = element.contentDocument;
+      if (!embeddedDocument) return;
+      const target = embeddedDocument.getElementById("recruitment-quality");
+      if (!target) return;
+
+      let style = embeddedDocument.getElementById("recruitment-quality-only") as HTMLStyleElement | null;
+      if (!style) {
+        style = embeddedDocument.createElement("style");
+        style.id = "recruitment-quality-only";
+        embeddedDocument.head.append(style);
+      }
+      style.textContent = "#recruitment-quality { display: block !important; margin: 0 !important; }";
+
+      let current: HTMLElement | null = target;
+      while (current?.parentElement) {
+        const parent: HTMLElement = current.parentElement;
+        (Array.from(parent.children) as HTMLElement[]).forEach((sibling) => {
+          if (sibling !== current && !sibling.contains(target)) sibling.style.setProperty("display", "none", "important");
+        });
+        if (parent.tagName === "MAIN") break;
+        current = parent;
+      }
+
+      const main = embeddedDocument.querySelector("main") as HTMLElement | null;
+      if (main) {
+        main.style.padding = "0";
+        main.style.background = "#f8fafc";
+      }
+
+      window.requestAnimationFrame(() => {
+        element.style.height = `${Math.max(embeddedDocument.body.scrollHeight, embeddedDocument.documentElement.scrollHeight, target.scrollHeight)}px`;
+      });
+    };
+
+    const attach = () => {
+      const embeddedDocument = element.contentDocument;
+      if (!embeddedDocument) return;
+      observer?.disconnect();
+      resizer?.disconnect();
+      observer = new MutationObserver(showOnlyRecruitment);
+      observer.observe(embeddedDocument.body, { childList: true, subtree: true, attributes: true });
+      resizer = new ResizeObserver(showOnlyRecruitment);
+      resizer.observe(embeddedDocument.body);
+      showOnlyRecruitment();
+      [250, 750, 1500, 3000, 6000].forEach((delay) => window.setTimeout(showOnlyRecruitment, delay));
+    };
+
+    element.addEventListener("load", attach);
+    return () => {
+      element.removeEventListener("load", attach);
+      observer?.disconnect();
+      resizer?.disconnect();
+    };
+  }, []);
+
+  return <DataAccessGuard><main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950"><header className="mx-auto mb-8 max-w-6xl text-center"><Image src="/logo.png" alt="First Class Agency" width={520} height={260} priority className="mx-auto h-28 w-auto max-w-full object-contain sm:h-36" /><h1 className="mt-4 text-4xl font-black uppercase text-sky-950 sm:text-6xl">Recruitment Quality</h1></header><iframe ref={frame} title="Recruitment Quality" src="/creator-intelligence?view=recruitment" scrolling="no" className="mx-auto block w-full max-w-6xl border-0 bg-slate-50" /></main></DataAccessGuard>;
 }

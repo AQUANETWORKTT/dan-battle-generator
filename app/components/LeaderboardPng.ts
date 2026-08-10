@@ -43,7 +43,7 @@ function drawDiamondIcon(context: CanvasRenderingContext2D, x: number, y: number
   context.restore();
 }
 
-export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean; titleImage?: string }) {
+export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false, titleImage, titleImageWidth = 720 }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean; titleImage?: string; titleImageWidth?: number }) {
   const width = 1080;
   const rowHeight = 92;
   // The tight brand asset has no empty border, so the First Class mark can
@@ -54,7 +54,7 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
   const titleArtwork = titleImage ? await loadImage(titleImage) : null;
   const diamondIcon = title === "MANAGER DIAMONDS" ? await loadImage("/leaderboards/diamond-icon.png") : null;
   const titleY = logo ? 64 + logoHeight + 70 : 180;
-  const titleArtworkWidth = titleArtwork ? 720 : 0;
+  const titleArtworkWidth = titleArtwork ? titleImageWidth : 0;
   const titleArtworkHeight = titleArtwork ? titleArtworkWidth * (titleArtwork.naturalHeight / titleArtwork.naturalWidth) : 0;
   const titleArtworkY = logo ? 64 + logoHeight + 28 : 120;
   const firstRowY = (titleArtwork ? titleArtworkY + titleArtworkHeight : titleY) + 88;
@@ -94,7 +94,7 @@ export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, s
   return blob;
 }
 
-export async function downloadLeaderboardPng({ title, subtitle, rows, filename, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; filename: string; solidTitle?: boolean; titleImage?: string }) {
-  const blob = await createLeaderboardPng({ title, subtitle, rows, solidTitle, titleImage });
+export async function downloadLeaderboardPng({ title, subtitle, rows, filename, solidTitle = false, titleImage, titleImageWidth }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; filename: string; solidTitle?: boolean; titleImage?: string; titleImageWidth?: number }) {
+  const blob = await createLeaderboardPng({ title, subtitle, rows, solidTitle, titleImage, titleImageWidth });
   const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.download = filename; link.href = url; link.click(); URL.revokeObjectURL(url);
 }
