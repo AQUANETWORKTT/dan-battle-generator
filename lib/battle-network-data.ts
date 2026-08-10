@@ -28,7 +28,9 @@ export async function getBattleNetworkInitialData(): Promise<BattleNetworkInitia
     [agenciesResult, battlesResult, settingsResult] = await Promise.race([
       Promise.all([
         submissionsSupabase.from("battle_network_agencies").select(AGENCY_COLUMNS).order("name"),
-        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).order("created_at", { ascending: false }),
+        // Generated load-test rows are deliberately hidden from the live
+        // network while the database cleanup completes.
+        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }),
         submissionsSupabase.from("poster_templates").select("template_json").eq("name", "battle-network-settings").maybeSingle(),
       ]),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),

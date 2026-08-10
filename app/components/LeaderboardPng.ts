@@ -46,8 +46,10 @@ function drawDiamondIcon(context: CanvasRenderingContext2D, x: number, y: number
 export async function createLeaderboardPng({ title, subtitle: _subtitle, rows, solidTitle = false, titleImage }: { title: string; subtitle: string; rows: LeaderboardPngRow[]; solidTitle?: boolean; titleImage?: string }) {
   const width = 1080;
   const rowHeight = 92;
-  const logo = await loadImage("/world-cup-2026/agencies/first-class.png");
-  const logoWidth = 330;
+  // The tight brand asset has no empty border, so the First Class mark can
+  // read clearly at leaderboard size instead of appearing tiny.
+  const logo = await loadImage("/branding/first-class-logo-tight.png");
+  const logoWidth = 600;
   const logoHeight = logo ? logoWidth * (logo.naturalHeight / logo.naturalWidth) : 0;
   const titleArtwork = titleImage ? await loadImage(titleImage) : null;
   const diamondIcon = title === "MANAGER DIAMONDS" ? await loadImage("/leaderboards/diamond-icon.png") : null;

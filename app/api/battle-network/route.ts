@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     const includePasswords = new URL(request.url).searchParams.get("settings") === "1";
     const [agencies, battles, layout] = await Promise.all([
       submissionsSupabase.from("battle_network_agencies").select(includePasswords ? `${AGENCY_COLUMNS},password` : AGENCY_COLUMNS).order("name"),
-      submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).order("created_at", { ascending: false }), settings(),
+      submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }), settings(),
     ]);
     if (agencies.error || battles.error) throw new Error(agencies.error?.message || battles.error?.message);
     const response = NextResponse.json({ agencies: ((agencies.data || []) as unknown as Record<string, unknown>[]).map((agency) => includePasswords ? { ...toAgency(agency), password: String(agency.password || "") } : toAgency(agency)), battles: ((battles.data || []) as unknown as Record<string, unknown>[]).map(toBattle), cardLayout: layout.cardLayout, cardTypography: layout.cardTypography });

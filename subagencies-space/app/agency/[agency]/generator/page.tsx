@@ -1919,6 +1919,7 @@ export default function BattleGeneratorPage() {
       const { data, error } = await supabase
         .from("poster_templates")
         .select("name,template_json")
+        .or(`name.eq.${TEAM_DAN_POSTER_TEMPLATE_NAME},name.like.team-poster-%`)
         .order("updated_at", { ascending: false });
 
       if (error) {
