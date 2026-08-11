@@ -10,6 +10,11 @@ function currentWeekStart() {
   date.setDate(date.getDate() - offset);
   return date.toISOString().slice(0, 10);
 }
+function recentWeekStart() {
+  const date = new Date();
+  date.setDate(date.getDate() - 14);
+  return date.toISOString().slice(0, 10);
+}
 
 export function toAgency(row: Record<string, unknown>) {
   return { id: String(row.id), name: String(row.name), accent: String(row.accent), logoUrl: String(row.logo_url || ""), externalOnly: Boolean(row.external_only) };
@@ -36,7 +41,7 @@ export async function getBattleNetworkInitialData(): Promise<BattleNetworkInitia
         submissionsSupabase.from("battle_network_agencies").select(AGENCY_COLUMNS).order("name"),
         // Generated load-test rows are deliberately hidden from the live
         // network while the database cleanup completes.
-        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).eq("week_start", currentWeekStart()).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }),
+        submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).gte("week_start", recentWeekStart()).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }),
         submissionsSupabase.from("poster_templates").select("template_json").eq("name", "battle-network-settings").maybeSingle(),
       ]),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000)),
