@@ -8,9 +8,20 @@ type Avatar = { username: string; imageUrl: string };
 
 function readImage(file: File, done: (imageUrl: string) => void) {
   if (!file.type.startsWith("image/")) return;
-  const reader = new FileReader();
-  reader.onload = () => done(String(reader.result || ""));
-  reader.readAsDataURL(file);
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    const longestSide = 480;
+    const scale = Math.min(1, longestSide / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    done(canvas.toDataURL("image/jpeg", 0.82));
+  };
+  image.onerror = () => { URL.revokeObjectURL(url); };
+  image.src = url;
 }
 
 function normalizeUsername(value: string) {

@@ -354,11 +354,29 @@ function getSavedTemplate() {
   }
 }
 
+function fallbackAvatarFor(username: string, fallbackAvatars: Record<string, string> = {}) {
+  const normalized = username.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (fallbackAvatars[normalized]) return fallbackAvatars[normalized];
+  const nearMatches = Object.entries(fallbackAvatars).filter(([candidate, imageUrl]) => {
+    if (!imageUrl || Math.abs(candidate.length - normalized.length) > 1) return false;
+    let changes = 0; let left = 0; let right = 0;
+    while (left < candidate.length && right < normalized.length) {
+      if (candidate[left] === normalized[right]) { left += 1; right += 1; continue; }
+      changes += 1; if (changes > 1) return false;
+      if (candidate.length > normalized.length) left += 1;
+      else if (candidate.length < normalized.length) right += 1;
+      else { left += 1; right += 1; }
+    }
+    return changes + (candidate.length - left) + (normalized.length - right) <= 1;
+  });
+  return nearMatches.length === 1 ? nearMatches[0][1] : "";
+}
+
 async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<string, string> = {}) {
   const cleanUsername = username.replace("@", "").trim().toLowerCase();
   if (!cleanUsername) return "";
   const normalizedUsername = cleanUsername.replace(/[^a-z0-9]/g, "");
-  const localAvatar = fallbackAvatars[normalizedUsername] || LOCAL_AVATAR_PATHS[normalizedUsername];
+  const localAvatar = fallbackAvatarFor(username, fallbackAvatars) || LOCAL_AVATAR_PATHS[normalizedUsername];
   if (localAvatar) return localAvatar;
   const refreshKey = `${cleanUsername}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -400,8 +418,9 @@ async function embedAvatarForPoster(url: string) {
 async function resolveAvatarForPoster(username: string, fallbackAvatars: Record<string, string> = {}) {
   const normalizedUsername = username.replace(/[^a-z0-9]/gi, "").toLowerCase();
   // A manual fallback should always take priority over a previously scraped image.
-  if (fallbackAvatars[normalizedUsername]) {
-    return embedAvatarForPoster(fallbackAvatars[normalizedUsername]);
+  const fallbackAvatar = fallbackAvatarFor(username, fallbackAvatars);
+  if (fallbackAvatar) {
+    return embedAvatarForPoster(fallbackAvatar);
   }
   const cachedAvatar = sessionAvatarCache.get(normalizedUsername);
   if (cachedAvatar) return cachedAvatar;
