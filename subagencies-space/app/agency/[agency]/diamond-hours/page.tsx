@@ -435,12 +435,22 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
         width: POSTER_WIDTH,
         height: POSTER_HEIGHT,
         backgroundImage: template.backgroundUrl
-          ? `url(${template.backgroundUrl})`
+          ? undefined
           : "linear-gradient(180deg, #090909 0%, #241d05 55%, #050505 100%)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
       }}
     >
+      {template.backgroundUrl ? (
+        // The sub-agency batch switches templates in one live preview. Keep
+        // each manager's saved background as a keyed image layer so the PNG
+        // exporter cannot retain Paradise's generic previous background.
+        <img
+          key={template.backgroundUrl}
+          src={template.backgroundUrl}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+      ) : null}
       {template.elements.map((element) => (
         <div
           key={element.id}
@@ -723,10 +733,12 @@ export default function TeamDiamondsYesterdayPage() {
           // Renew the signed background URL immediately before rendering, so a
           // sub-owner never downloads a poster with an expired or missing image.
           const template = await resolveTemplateBackground(item.template);
-          await waitForBackground(template.backgroundUrl);
           const failedForPoster = await buildPreview(template, true);
           if (!failedForPoster) throw new Error("No current creator data");
           failedForPoster.forEach((username) => failedAvatars.add(username));
+          // Render this template before waiting. Waiting beforehand left the
+          // generic Paradise background in the export node on quick batches.
+          await waitForBackground(template.backgroundUrl);
           await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
           const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
           if (!node) throw new Error("Could not prepare the poster preview");
@@ -839,9 +851,9 @@ export default function TeamDiamondsYesterdayPage() {
     setLoading(true);
     try {
       const template = await resolveTemplateBackground(item.template);
-      await waitForBackground(template.backgroundUrl);
       const failedForPoster = await buildPreview(template, true);
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
+      await waitForBackground(template.backgroundUrl);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
