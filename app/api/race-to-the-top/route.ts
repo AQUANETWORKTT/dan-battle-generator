@@ -135,6 +135,7 @@ export async function GET() {
     }
     const progressByCreator = new Map<string, Progress>();
     const progressByUsername = new Map<string, Progress>();
+    const latestUsernameByCreator = new Map<string, string>();
     for (const row of dailyProgress.values()) {
       const username = text(row.creator_username).replace(/^@/, "");
       const normalizedUsername = username.toLowerCase();
@@ -144,6 +145,7 @@ export async function GET() {
       const progress: Progress = { creatorId, username, diamonds: (previous?.diamonds || 0) + number(row.diamonds), validLiveDays: (previous?.validLiveDays || 0) + number(row.valid_live_days), liveHours: (previous?.liveHours || 0) + number(row.live_hours), followers: (previous?.followers || 0) + number(row.new_followers) };
       progressByCreator.set(identity, progress);
       progressByUsername.set(normalizedUsername, progress);
+      if (creatorId) latestUsernameByCreator.set(creatorId, username);
     }
 
     function completionDateFor(creator: { creatorId: string; username: string; track: TrackId; target: number }, override: CreatorOverride = {}) {
@@ -225,10 +227,11 @@ export async function GET() {
           // back to the stable username from the same daily upload.
           const progress = progressByCreator.get(stableCreatorId(creator.creatorId))
             || progressByUsername.get(creator.username.replace(/^@/, "").toLowerCase());
-          const override = creatorOverride(creator.username);
+          const username = latestUsernameByCreator.get(stableCreatorId(creator.creatorId)) || progress?.username || creator.username;
+          const override = creatorOverride(username);
           const track = override.track || creator.track;
           const target = override.target ?? (track === "blue" ? 100_000 : creator.target);
-          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers), completedAt: completionDateFor({ creatorId: creator.creatorId, username: creator.username, track, target }, override) };
+          return { ...creator, ...override, username, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers), completedAt: completionDateFor({ creatorId: creator.creatorId, username, track, target }, override) };
         }),
         ...newBlueCreators,
         ...(forcedDory ? [forcedDory] : []),

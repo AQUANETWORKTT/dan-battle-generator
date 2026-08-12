@@ -7,6 +7,7 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 type CreatorStat = {
   stat_date: string;
+  creator_id?: string | null;
   creator_username: string;
   email: string | null;
   manager_email?: string | null;
@@ -55,7 +56,6 @@ const MONTHS = [
   { value: "2026-12", label: "December 2026" },
 ];
 
-const AGENCIES = ["All", "First Class", "Aqua", "Respawn", "Paradise", "Horizon", "Trident"];
 const GRADUATION_TARGET = 200000;
 const MINIMUM_TRACKER_DIAMONDS = 1000;
 const REPORT_MINIMUM_PROGRESS = 15;
@@ -83,6 +83,22 @@ function getDayNumber(dateValue: string) {
   return Number(dayText || 0);
 }
 
+function currentAgency(row: CreatorStat) {
+  const manager = String(row.manager_email || row.email || "").trim().toLowerCase();
+  const team = String(row.team || row.group_name || "");
+  if (["trident125@gmail.com", "trident125@mail.com"].includes(manager) || /trident sub-agency/i.test(team)) return "Trident";
+  if (String(row.agency || "").trim().toLowerCase() === "strive" || /(hanna.*ismail|stormlive)/i.test(team)) return "Horizon";
+  return String(row.agency || "").trim() || "Unassigned";
+}
+
+function creatorKey(row: CreatorStat) {
+  const creatorId = String(row.creator_id || "").trim();
+  if (creatorId) return `id:${creatorId}`;
+  const username = String(row.creator_username || "").trim().toLowerCase().replace(/^@/, "");
+  // Covers this historical rename if an older export did not contain a creator ID.
+  return `username:${username === "jacobr015" ? "albi.j10" : username}`;
+}
+
 function cleanGraduationStatus(status: string | null | undefined) {
   return String(status || "")
     .trim()
@@ -97,12 +113,9 @@ function isGraduationEligibleStatus(status: string | null | undefined) {
   if (!cleanStatus) return false;
   if (cleanStatus.includes("non new")) return false;
   if (cleanStatus.includes("quit")) return false;
-  if (cleanStatus === "graduated") return false;
-  if (cleanStatus.includes("graduated") && !cleanStatus.includes("not graduated")) {
-    return false;
-  }
-
   return (
+    cleanStatus === "graduated" ||
+    (cleanStatus.includes("graduated") && !cleanStatus.includes("not graduated")) ||
     cleanStatus.includes("not graduated") ||
     cleanStatus.includes("non graduated") ||
     cleanStatus.includes("not reached")
@@ -205,19 +218,7 @@ export default function GraduationTrackerPage() {
         }
       }
 
-      setRows(
-        allData.map((row) => ({
-          ...row,
-          agency:
-            ["trident125@gmail.com", "trident125@mail.com"].includes(String(row.manager_email || row.email || "").trim().toLowerCase()) ||
-            /trident sub-agency/i.test(String(row.team || row.group_name || ""))
-              ? "Trident"
-              : String(row.agency || "").trim().toLowerCase() === "strive" ||
-            /(hanna.*ismail|stormlive)/i.test(String(row.team || row.group_name || ""))
-              ? "Horizon"
-              : row.agency,
-        }))
-      );
+      setRows(allData.map((row) => ({ ...row, agency: currentAgency(row) })));
       setLoading(false);
     }
 
@@ -238,6 +239,20 @@ export default function GraduationTrackerPage() {
 
     return ["All Teams", ...uniqueTeams];
   }, [rowsUntilEndDay]);
+
+  const latestCreatorRows = useMemo(() => {
+    const latestExportDate = rowsUntilEndDay.reduce((latest, row) => row.stat_date > latest ? row.stat_date : latest, "");
+    const latest = new Map<string, CreatorStat>();
+    for (const row of rowsUntilEndDay) {
+      if (row.stat_date !== latestExportDate) continue;
+      const key = creatorKey(row);
+      const previous = latest.get(key);
+      if (!previous || row.stat_date >= previous.stat_date) latest.set(key, row);
+    }
+    return latest;
+  }, [rowsUntilEndDay]);
+
+  const agencies = useMemo(() => ["All", ...Array.from(new Set(Array.from(latestCreatorRows.values()).map((row) => row.agency || "Unassigned").filter((item) => item && item !== "Aqua"))).sort()], [latestCreatorRows]);
 
   const latestGraduationUploadDay = useMemo(() => {
     const uploadedDayNumbers = rowsUntilEndDay
@@ -261,13 +276,11 @@ export default function GraduationTrackerPage() {
     const currentTotals = new Map<string, number>();
 
     for (const row of rowsUntilEndDay) {
-      currentTotals.set(
-        row.creator_username,
-        (currentTotals.get(row.creator_username) || 0) + safeNumber(row.diamonds)
-      );
+      const key = creatorKey(row);
+      currentTotals.set(key, (currentTotals.get(key) || 0) + safeNumber(row.diamonds));
     }
 
-    const eligibleMonthRows = rowsUntilEndDay
+    const eligibleMonthRows = Array.from(latestCreatorRows.values())
       .filter((row) => {
         const rowAgency = String(row.agency || "").trim().toLowerCase();
         const selectedAgency = String(agency || "").trim().toLowerCase();
@@ -288,7 +301,7 @@ export default function GraduationTrackerPage() {
           .toLowerCase();
 
         const searchMatch = !search.trim() || searchText.includes(search.toLowerCase());
-        const totalDiamonds = currentTotals.get(row.creator_username) || 0;
+        const totalDiamonds = currentTotals.get(creatorKey(row)) || 0;
 
         return (
           agencyMatch &&
@@ -298,23 +311,15 @@ export default function GraduationTrackerPage() {
           isGraduationEligibleStatus(row.graduation_status)
         );
       })
-      .sort((a, b) => a.stat_date.localeCompare(b.stat_date));
-
-    const startingCohort = new Map<string, CreatorStat>();
-
-    for (const row of eligibleMonthRows) {
-      if (!startingCohort.has(row.creator_username)) {
-        startingCohort.set(row.creator_username, row);
-      }
-    }
+      .sort((a, b) => a.creator_username.localeCompare(b.creator_username));
 
     const currentMonthDay = Math.min(latestGraduationUploadDay, lastDay);
     const targetToDate = (GRADUATION_TARGET / lastDay) * currentMonthDay;
     const remainingDays = Math.max(lastDay - currentMonthDay, 0);
 
-    return Array.from(startingCohort.values())
+    return eligibleMonthRows
       .map((creator) => {
-        const diamonds = currentTotals.get(creator.creator_username) || 0;
+        const diamonds = currentTotals.get(creatorKey(creator)) || 0;
         const remainingDiamonds = Math.max(GRADUATION_TARGET - diamonds, 0);
         const avgNeededPerDay =
           remainingDays > 0 ? remainingDiamonds / remainingDays : remainingDiamonds;
@@ -364,7 +369,7 @@ export default function GraduationTrackerPage() {
 
         return a.remainingDiamonds - b.remainingDiamonds;
       });
-  }, [rowsUntilEndDay, agency, team, search, latestGraduationUploadDay, lastDay]);
+  }, [rowsUntilEndDay, latestCreatorRows, agency, team, search, latestGraduationUploadDay, lastDay]);
 
   const graduationReportRows = useMemo(() => {
     return graduationTrackerRows
@@ -584,7 +589,7 @@ export default function GraduationTrackerPage() {
               }}
               className="mt-2 w-full rounded-xl border border-green-300/20 bg-black px-3 py-3 text-white"
             >
-              {AGENCIES.map((agencyName) => (
+              {agencies.map((agencyName) => (
                 <option key={agencyName}>{agencyName}</option>
               ))}
             </select>
@@ -676,7 +681,7 @@ export default function GraduationTrackerPage() {
                     onChange={(event) => setGraduationReportAgency(event.target.value)}
                     className="w-full rounded-xl border border-green-300/20 bg-black px-3 py-3 text-sm font-bold text-white outline-none"
                   >
-                    {AGENCIES.map((agencyName) => (
+                    {agencies.map((agencyName) => (
                       <option key={`graduation-report-${agencyName}`} value={agencyName}>
                         {agencyName}
                       </option>
