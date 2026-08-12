@@ -21,6 +21,7 @@ type Metric = {
   creatorGrowth: number | null;
   quitCreators: number;
   quitDiamonds: number;
+  performanceBands: { over1600k: number; from500kTo1600k: number; from200kTo500k: number; from30kTo200k: number; from1kTo30k: number; from10To1k: number; under10: number; zero: number };
 };
 
 const SETTINGS_NAME = "manager-assignment-settings";
@@ -179,6 +180,7 @@ export async function GET() {
       creatorGrowth: null,
       quitCreators: 0,
       quitDiamonds: 0,
+      performanceBands: { over1600k: 0, from500kTo1600k: 0, from200kTo500k: 0, from30kTo200k: 0, from1kTo30k: 0, from10To1k: 0, under10: 0, zero: 0 },
     }));
 
     for (const row of rows) {
@@ -206,6 +208,24 @@ export async function GET() {
         const placement = placementFor(creator);
         return matchesMetric(metric.key, placement.assignedGroup, placement.row);
       }).length;
+      const currentCreatorDiamonds = new Map<string, number>();
+      for (const row of rows) {
+        if (text(row.stat_date) < currentStart || text(row.stat_date) > latestDate) continue;
+        const placement = placementFor(row);
+        if (!matchesMetric(metric.key, placement.assignedGroup, placement.row)) continue;
+        const id = creatorKey(row);
+        if (id) currentCreatorDiamonds.set(id, (currentCreatorDiamonds.get(id) || 0) + number(row.diamonds || row.Diamonds));
+      }
+      for (const diamonds of currentCreatorDiamonds.values()) {
+        if (diamonds >= 1_600_000) metric.performanceBands.over1600k += 1;
+        else if (diamonds >= 500_000) metric.performanceBands.from500kTo1600k += 1;
+        else if (diamonds >= 200_000) metric.performanceBands.from200kTo500k += 1;
+        else if (diamonds >= 30_000) metric.performanceBands.from30kTo200k += 1;
+        else if (diamonds >= 1_000) metric.performanceBands.from1kTo30k += 1;
+        else if (diamonds >= 10) metric.performanceBands.from10To1k += 1;
+        else if (diamonds > 0) metric.performanceBands.under10 += 1;
+        else metric.performanceBands.zero += 1;
+      }
       metric.recruits = [...recruitIds].filter((id) => {
         const latestCreatorRow = latestRowsByCreator.get(id);
         if (!latestCreatorRow) return false;
