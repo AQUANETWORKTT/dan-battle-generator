@@ -16,7 +16,7 @@ export default function RecruitmentQualityPage() {
     const showOnlyRecruitment = () => {
       const embeddedDocument = element.contentDocument;
       if (!embeddedDocument) return;
-      const target = embeddedDocument.getElementById("recruitment-quality");
+      const target = embeddedDocument.getElementById("recruitment-dashboard");
       if (!target) return;
 
       let style = embeddedDocument.getElementById("recruitment-quality-only") as HTMLStyleElement | null;
@@ -25,7 +25,7 @@ export default function RecruitmentQualityPage() {
         style.id = "recruitment-quality-only";
         embeddedDocument.head.append(style);
       }
-      style.textContent = "#recruitment-quality { display: block !important; margin: 0 !important; }";
+      style.textContent = "#recruitment-dashboard { display: block !important; margin: 0 !important; }";
 
       let current: HTMLElement | null = target;
       while (current?.parentElement) {

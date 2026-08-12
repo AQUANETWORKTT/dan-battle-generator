@@ -3538,11 +3538,11 @@ export default function CreatorIntelligencePage() {
           <MetricCard label="New creators" value={formatNumber(totals.newCreators)} />
         </section>
 
-        <section className="mb-6">
+        {false && <section className="mb-6">
           <AgencyHealthTrendChart points={agencyHealthTrend} />
-        </section>
+        </section>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Growth Leaderboard</h2>
@@ -3614,9 +3614,9 @@ export default function CreatorIntelligencePage() {
               </p>
             ) : null}
           </div>
-        </section>
+        </section>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Team Health</h2>
@@ -3804,9 +3804,9 @@ export default function CreatorIntelligencePage() {
               No manager health data found for these filters.
             </p>
           ) : null}
-        </section>
+        </section>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-3xl font-black uppercase text-sky-900">Manager Focus Queue</h2>
@@ -3852,7 +3852,7 @@ export default function CreatorIntelligencePage() {
                 </p>
               ) : null}
             </div>
-        </section>
+        </section>}
 
         {selectedCreator ? (
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -4114,7 +4114,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>
 
-        <section className="mb-6 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-2xl font-black uppercase text-red-700">Needs Improvement List</h2>
@@ -4154,9 +4154,9 @@ export default function CreatorIntelligencePage() {
               </p>
             ) : null}
           </div>
-        </section>
+        </section>}
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Health Tracker</h2>
@@ -4266,7 +4266,7 @@ export default function CreatorIntelligencePage() {
               </div>
             )}
           </div>
-        </section>
+        </section>}
 
         {isRecruitmentEmbed && <div id="recruitment-dashboard"><section className="mt-6 grid gap-6 xl:grid-cols-2">
           <div className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">

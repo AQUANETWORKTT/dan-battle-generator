@@ -13,6 +13,7 @@ type Metric = {
   previousDiamonds: number;
   previousMonthDiamonds: number;
   diamondsChange: number | null;
+  totalCreators: number;
   recruits: number;
   recruitDiamonds: number;
   recruitmentContribution: number | null;
@@ -170,6 +171,7 @@ export async function GET() {
       previousDiamonds: 0,
       previousMonthDiamonds: 0,
       diamondsChange: null,
+      totalCreators: 0,
       recruits: 0,
       recruitDiamonds: 0,
       recruitmentContribution: null,
@@ -200,6 +202,10 @@ export async function GET() {
     }
 
     for (const metric of metrics) {
+      metric.totalCreators = Array.from(latestRowsByCreator.values()).filter((creator) => text(creator.stat_date) === latestDate && !hasQuitNetworkMarker(creator)).filter((creator) => {
+        const placement = placementFor(creator);
+        return matchesMetric(metric.key, placement.assignedGroup, placement.row);
+      }).length;
       metric.recruits = [...recruitIds].filter((id) => {
         const latestCreatorRow = latestRowsByCreator.get(id);
         if (!latestCreatorRow) return false;
