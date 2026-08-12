@@ -464,12 +464,22 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
         width: POSTER_WIDTH,
         height: POSTER_HEIGHT,
         backgroundImage: template.backgroundUrl
-          ? `url(${template.backgroundUrl})`
+          ? undefined
           : "linear-gradient(180deg, #090909 0%, #241d05 55%, #050505 100%)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
       }}
     >
+      {template.backgroundUrl ? (
+        // Export the background as its own keyed image rather than a CSS
+        // background. html-to-image can otherwise reuse the whole-agency
+        // background when switching between individual manager templates.
+        <img
+          key={template.backgroundUrl}
+          src={template.backgroundUrl}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+      ) : null}
       {template.elements.map((element) => (
         <div
           key={element.id}
