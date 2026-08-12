@@ -739,10 +739,13 @@ export default function TeamDiamondsYesterdayPage() {
         try {
           setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
           setSelectedTemplateName(item.name);
-          await waitForBackground(item.template.backgroundUrl);
           const failedForPoster = await buildPreview(item.template, true);
           if (!failedForPoster) throw new Error("No current creator data.");
           failedForPoster.forEach((username) => failedAvatars.add(username));
+          // buildPreview switches the live poster to this template.  Wait for
+          // that template's background afterwards, otherwise a fast batch can
+          // capture the previous agency's background in the new PNG.
+          await waitForBackground(item.template.backgroundUrl);
           await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
           const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
           if (!node) throw new Error("Could not prepare preview.");
@@ -853,9 +856,11 @@ export default function TeamDiamondsYesterdayPage() {
     setSelectedTemplateName(item.name);
     setLoading(true);
     try {
-      await waitForBackground(item.template.backgroundUrl);
       const failedForPoster = await buildPreview(item.template, true);
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
+      // Keep the standalone route identical to the grouped download route:
+      // render this template first, then wait for its own background to paint.
+      await waitForBackground(item.template.backgroundUrl);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
