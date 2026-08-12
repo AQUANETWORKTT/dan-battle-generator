@@ -212,18 +212,26 @@ export async function GET(request: Request) {
     }
 
     for (const metric of metrics) {
-      metric.totalCreators = Array.from(latestRowsByCreator.values()).filter((creator) => text(creator.stat_date) === latestDate && !hasQuitNetworkMarker(creator)).filter((creator) => {
-        const placement = placementFor(creator);
-        return matchesMetric(metric.key, placement.assignedGroup, placement.row);
-      }).length;
+      const currentCreatorIds = new Set(
+        Array.from(latestRowsByCreator.entries())
+          .filter(([, creator]) => text(creator.stat_date) === latestDate && !hasQuitNetworkMarker(creator))
+          .filter(([, creator]) => {
+            const placement = placementFor(creator);
+            return matchesMetric(metric.key, placement.assignedGroup, placement.row);
+          })
+          .map(([id]) => id)
+      );
+      metric.totalCreators = currentCreatorIds.size;
       const currentCreatorDiamonds = new Map<string, number>();
+      for (const id of currentCreatorIds) currentCreatorDiamonds.set(id, 0);
       for (const row of rows) {
         if (text(row.stat_date) < currentStart || text(row.stat_date) > latestDate) continue;
-        const placement = placementFor(row);
-        if (!matchesMetric(metric.key, placement.assignedGroup, placement.row)) continue;
         const id = creatorKey(row);
-        if (id) currentCreatorDiamonds.set(id, (currentCreatorDiamonds.get(id) || 0) + number(row.diamonds || row.Diamonds));
+        if (!currentCreatorIds.has(id)) continue;
+        currentCreatorDiamonds.set(id, (currentCreatorDiamonds.get(id) || 0) + number(row.diamonds || row.Diamonds));
       }
+      /* A band is now calculated from the same current creator set as its denominator. */
+      /* This means every creator belongs to one and only one band. */
       for (const diamonds of currentCreatorDiamonds.values()) {
         if (diamonds >= 1_600_000) metric.performanceBands.over1600k += 1;
         else if (diamonds >= 500_000) metric.performanceBands.from500kTo1600k += 1;
@@ -278,8 +286,9 @@ export async function GET(request: Request) {
       }
     }
 
+    const [latestYear, latestMonthNumber] = newestAvailableMonth.split("-").map(Number);
     const availableMonths = Array.from({ length: 12 }, (_, offset) => {
-      const date = new Date(Date.UTC(year, monthNumber - 1 - offset, 1));
+      const date = new Date(Date.UTC(latestYear, latestMonthNumber - 1 - offset, 1));
       return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
     });
     return NextResponse.json({ latestDate, month, previousMonth, availableMonths, metrics: month <= "2026-07" ? metrics : metrics.filter((metric) => metric.key !== "aqua") });
