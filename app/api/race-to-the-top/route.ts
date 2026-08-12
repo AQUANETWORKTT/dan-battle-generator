@@ -146,6 +146,25 @@ export async function GET() {
       progressByUsername.set(normalizedUsername, progress);
     }
 
+    function completionDateFor(creator: { creatorId: string; username: string; track: TrackId; target: number }, override: CreatorOverride = {}) {
+      const requirements: Record<TrackId, { days: number; hours: number; followers: number }> = {
+        blue: { days: 8, hours: 20, followers: 75 }, bronze: { days: 11, hours: 30, followers: 100 }, silver: { days: 15, hours: 40, followers: 150 }, gold: { days: 18, hours: 60, followers: 200 }, platinum: { days: 22, hours: 80, followers: 250 },
+      };
+      const creatorId = stableCreatorId(creator.creatorId);
+      const username = creator.username.replace(/^@/, "").toLowerCase();
+      const timeline = Array.from(dailyProgress.values()).filter((row) => {
+        const rowUsername = text(row.creator_username).replace(/^@/, "").toLowerCase();
+        return (creatorId && stableCreatorId(row.creator_id) === creatorId) || rowUsername === username;
+      }).sort((a, b) => text(a.stat_date).localeCompare(text(b.stat_date)));
+      const required = requirements[creator.track];
+      let diamonds = 0; let validLiveDays = number(override.validLiveDaysBonus); let liveHours = number(override.liveHoursBonus); let followers = 0;
+      for (const row of timeline) {
+        diamonds += number(row.diamonds); validLiveDays += number(row.valid_live_days); liveHours += number(row.live_hours); followers += number(row.new_followers);
+        if (diamonds >= creator.target && validLiveDays >= required.days && liveHours >= required.hours && followers >= required.followers) return text(row.stat_date);
+      }
+      return "";
+    }
+
     // Daily exports are full snapshots. Anyone who appears in today's export
     // but not the immediately preceding export is a new creator and begins
     // in the Blue track automatically.
@@ -209,7 +228,7 @@ export async function GET() {
           const override = creatorOverride(creator.username);
           const track = override.track || creator.track;
           const target = override.target ?? (track === "blue" ? 100_000 : creator.target);
-          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers) };
+          return { ...creator, ...override, track, target, diamonds: number(progress?.diamonds), validLiveDays: number(progress?.validLiveDays) + number(override.validLiveDaysBonus), liveHours: number(progress?.liveHours) + number(override.liveHoursBonus), followers: number(progress?.followers), completedAt: completionDateFor({ creatorId: creator.creatorId, username: creator.username, track, target }, override) };
         }),
         ...newBlueCreators,
         ...(forcedDory ? [forcedDory] : []),
