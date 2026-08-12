@@ -120,8 +120,15 @@ export default function RaceToTheTopPage() {
   const activeTrack = tracks.find((item) => item.id === activeId) ?? tracks[0];
   const creatorsByTrack = useMemo(() => new Map(tracks.map((track) => [track.id, buildCreators(track, raceCreators)])), [raceCreators]);
   const rows = creatorsByTrack.get(activeTrack.id) ?? [];
-  const winner = rows.filter((creator) => creator.done === 4).sort((a, b) => (a.completedAt || "9999-12-31").localeCompare(b.completedAt || "9999-12-31") || a.rank - b.rank)[0] ?? null;
-  const leaderboardRows = winner ? rows.filter((creator) => creator.creatorId !== winner.creatorId && creator.name !== winner.name) : rows;
+  const completedCreators = rows.filter((creator) => creator.done === 4).sort((a, b) => (a.completedAt || "9999-12-31").localeCompare(b.completedAt || "9999-12-31") || a.rank - b.rank);
+  const firstWinner = completedCreators[0] ?? null;
+  const leanne = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "leanneonlife");
+  const ella = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "ellabyrne1904");
+  // One-off current-race exception. Every other track remains one winner only.
+  const specialBronzeWinners = activeTrack.id === "bronze" && ella && leanne ? [ella, leanne] : [];
+  const winnerRows = specialBronzeWinners.length ? specialBronzeWinners : firstWinner ? [firstWinner] : [];
+  const leaderboardRows = winnerRows.length ? rows.filter((creator) => !winnerRows.some((winnerRow) => winnerRow.creatorId === creator.creatorId || winnerRow.name === creator.name)) : rows;
+  const winner = firstWinner && winnerRows.length > 1 ? { ...firstWinner, name: winnerRows.map((creator) => creator.name).join(" & ") } : firstWinner;
   const foundCreator = useMemo(() => {
     const exactName = submittedQuery.trim().toLocaleLowerCase();
     if (!exactName) return null;
