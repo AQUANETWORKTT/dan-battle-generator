@@ -4,7 +4,7 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 export const dynamic = "force-dynamic";
 
 type Row = Record<string, unknown>;
-type MetricKey = "whole" | "main" | "danJames" | "mikeIndi" | "paradise" | "respawn" | "trident" | "horizon" | "unassigned";
+type MetricKey = "whole" | "main" | "danJames" | "mikeIndi" | "paradise" | "respawn" | "trident" | "horizon" | "aqua" | "unassigned";
 
 type Metric = {
   key: MetricKey;
@@ -70,6 +70,7 @@ function subAgencyForRow(row: Row, assignedGroup: string) {
   const source = `${row.team || ""} ${row.group_name || ""} ${row.Group || ""} ${row.agency || ""}`.toLowerCase();
   const manager = managerKey(row);
   if (source.includes("respawn")) return "Respawn";
+  if (source.includes("aqua")) return "Aqua";
   if (source.includes("paradise")) return "Paradise";
   if (source.includes("trident") || manager === "trident125mailcom" || manager === "trident125gmailcom") return "Trident";
   if (source.includes("horizon") || source.includes("storm") || source.includes("strive") || manager === "stormliveagencyoutlookcom" || manager === "hannakingismail92gmailcom") return "Horizon";
@@ -87,7 +88,7 @@ function matchesMetric(metric: MetricKey, assignedGroup: string, row?: Row) {
     const isMain = assignedGroup === "Team Dan / James" || assignedGroup === "Team Mike / Indi";
     return !isMain && !subAgencyForRow(row || {}, assignedGroup);
   }
-  return subAgencyForRow(row || {}, assignedGroup) === ({ paradise: "Paradise", respawn: "Respawn", trident: "Trident", horizon: "Horizon" } as const)[metric];
+  return subAgencyForRow(row || {}, assignedGroup) === ({ paradise: "Paradise", respawn: "Respawn", trident: "Trident", horizon: "Horizon", aqua: "Aqua" } as const)[metric];
 }
 
 const definitions: Array<Pick<Metric, "key" | "name">> = [
@@ -99,10 +100,11 @@ const definitions: Array<Pick<Metric, "key" | "name">> = [
   { key: "respawn", name: "First Class — Respawn" },
   { key: "trident", name: "First Class — Trident" },
   { key: "horizon", name: "First Class — Horizon" },
+  { key: "aqua", name: "First Class — Aqua" },
   { key: "unassigned", name: "First Class — Unassigned / Legacy" },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const [{ data: latestRow, error: latestError }, { data: settingsRow, error: settingsError }] = await Promise.all([
       submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(),
@@ -110,11 +112,17 @@ export async function GET() {
     ]);
     if (latestError || settingsError) throw new Error(latestError?.message || settingsError?.message);
 
-    const latestDate = text(latestRow?.stat_date);
-    if (!latestDate) return NextResponse.json({ latestDate: "", metrics: [] });
-
-    const month = latestDate.slice(0, 7);
+    const newestAvailableDate = text(latestRow?.stat_date);
+    if (!newestAvailableDate) return NextResponse.json({ latestDate: "", metrics: [] });
+    const requestedMonth = new URL(request.url).searchParams.get("month") || "";
+    const newestAvailableMonth = newestAvailableDate.slice(0, 7);
+    const month = /^\d{4}-\d{2}$/.test(requestedMonth) && requestedMonth <= newestAvailableMonth ? requestedMonth : newestAvailableMonth;
     const [year, monthNumber] = month.split("-").map(Number);
+    const endOfMonth = `${month}-${String(new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()).padStart(2, "0")}`;
+    const { data: selectedLatestRow, error: selectedLatestError } = await submissionsSupabase.from("creator_daily_stats").select("stat_date").gte("stat_date", `${month}-01`).lte("stat_date", endOfMonth).order("stat_date", { ascending: false }).limit(1).maybeSingle();
+    if (selectedLatestError) throw new Error(selectedLatestError.message);
+    const latestDate = text(selectedLatestRow?.stat_date);
+    if (!latestDate) return NextResponse.json({ latestDate: "", month, metrics: [] });
     const elapsedDays = Number(latestDate.slice(-2));
     const previousYear = monthNumber === 1 ? year - 1 : year;
     const previousMonthNumber = monthNumber === 1 ? 12 : monthNumber - 1;
@@ -270,7 +278,11 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ latestDate, month, previousMonth, metrics });
+    const availableMonths = Array.from({ length: 12 }, (_, offset) => {
+      const date = new Date(Date.UTC(year, monthNumber - 1 - offset, 1));
+      return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    });
+    return NextResponse.json({ latestDate, month, previousMonth, availableMonths, metrics: month <= "2026-07" ? metrics : metrics.filter((metric) => metric.key !== "aqua") });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load sub-agency metrics." }, { status: 500 });
   }

@@ -3464,7 +3464,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </div>
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
             This page uses the latest rolling 30 days from First Class creator daily stats. The trend chart uses the latest 14 uploaded days.
           </div>
@@ -3520,9 +3520,9 @@ export default function CreatorIntelligencePage() {
               />
             </label>
           </div>
-        </section>
+        </section>}
 
-        <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {false && <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Total creators" value={formatNumber(totals.totalCreators)} />
           <MetricCard
             label="Average health score"
@@ -3536,7 +3536,7 @@ export default function CreatorIntelligencePage() {
           <MetricCard label="Above average creators" value={totals.totalCreators ? formatPercent((totals.healthy / totals.totalCreators) * 100) : "0%"} />
           <MetricCard label="Elite creators" value={totals.totalCreators ? formatPercent((totals.elite / totals.totalCreators) * 100) : "0%"} />
           <MetricCard label="New creators" value={formatNumber(totals.newCreators)} />
-        </section>
+        </section>}
 
         {false && <section className="mb-6">
           <AgencyHealthTrendChart points={agencyHealthTrend} />
@@ -3616,7 +3616,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </section>}
 
-        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-3xl font-black uppercase text-sky-900">Manager Team Health</h2>
@@ -3804,7 +3804,7 @@ export default function CreatorIntelligencePage() {
               No manager health data found for these filters.
             </p>
           ) : null}
-        </section>}
+        </section>
 
         {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -3994,7 +3994,7 @@ export default function CreatorIntelligencePage() {
         ) : null}
 
 
-        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-2xl font-black uppercase text-sky-950">Weekly Health Movement</h2>
@@ -4112,7 +4112,7 @@ export default function CreatorIntelligencePage() {
               </div>
             </div>
           </div>
-        </section>
+        </section>}
 
         {false && <section className="mb-6 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
