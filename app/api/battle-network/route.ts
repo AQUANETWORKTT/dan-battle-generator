@@ -24,7 +24,10 @@ async function settings() {
   return (data?.template_json || {}) as Record<string, unknown>;
 }
 async function saveSettings(next: Record<string, unknown>) {
-  const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: next, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
+  // Battles live exclusively in battle_network_battles. Strip the retired
+  // settings copy so old schedules cannot bloat or delay the battle page.
+  const { battles: _retiredBattleCache, agencies: _retiredAgencyCache, ...settingsOnly } = next;
+  const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: settingsOnly, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
   if (error) throw new Error(error.message);
 }
 async function battle(id: string) {

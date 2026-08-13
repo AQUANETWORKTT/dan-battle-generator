@@ -7,5 +7,5 @@ export async function GET(request: Request) {
   if (!path || path.includes("..")) return new Response("Missing background", { status: 400 });
   const { data, error } = await submissionsSupabase.storage.from("poster-backgrounds").download(path);
   if (error || !data) return new Response("Background not found", { status: 404 });
-  return new Response(data, { headers: { "Content-Type": data.type || "image/png", "Cache-Control": "public, max-age=3600" } });
+  return new Response(data, { headers: { "Content-Type": data.type || "image/png", "Cache-Control": "no-store" } });
 }

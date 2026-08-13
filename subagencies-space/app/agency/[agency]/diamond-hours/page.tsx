@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
@@ -227,7 +227,7 @@ function normalizeTemplate(input: Partial<TeamPosterTemplate> | null): TeamPoste
     backgroundPath: input?.backgroundPath || "",
     managerKey: input?.managerKey || "team-dan",
     teamSide: input?.teamSide || "dan",
-    elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
+    elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}), fontSize: element.kind === "avatar" ? undefined : 37 })),
   };
 }
 
@@ -244,15 +244,18 @@ function getPosterSupabaseClient() {
 }
 
 function getBackgroundPathFromUrl(url: string) {
-  const marker = ["/storage/v1/object/public/poster-backgrounds/", "/storage/v1/object/sign/poster-backgrounds/"].find((value) => url.includes(value));
-  if (!marker) return "";
-  return decodeURIComponent(url.slice(url.indexOf(marker) + marker.length).split("?")[0] || "");
+  const marker = "/storage/v1/object/public/poster-backgrounds/";
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex === -1) return "";
+  return decodeURIComponent(url.slice(markerIndex + marker.length).split("?")[0] || "");
 }
 
 async function resolveTemplateBackground(template: TeamPosterTemplate) {
   const backgroundPath = template.backgroundPath || getBackgroundPathFromUrl(template.backgroundUrl);
   if (!backgroundPath) return template;
-  return { ...template, backgroundPath, backgroundUrl: `/api/poster-background?path=${encodeURIComponent(backgroundPath)}` };
+  // Serve a distinct, uncached URL for each saved image. This keeps the
+  // sub-agency exporter from inheriting the prior manager's background.
+  return { ...template, backgroundPath, backgroundUrl: `/api/poster-background?path=${encodeURIComponent(backgroundPath)}&v=${encodeURIComponent(backgroundPath)}` };
 }
 
 async function getPublicSavedTemplate() {
@@ -309,17 +312,12 @@ function teamPosterCategoryLabel(category: TeamPosterCategory) {
 }
 
 async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
-  const supabase = getPosterSupabaseClient();
-  if (!supabase) return [];
-
-  const { data, error } = await supabase
-    .from("poster_templates")
-    .select("name,template_json,background_url")
-    .order("updated_at", { ascending: false });
-  if (error || !data) return [];
+  const response = await fetch("/api/team-poster-templates", { cache: "no-store" });
+  const payload = await response.json() as { templates?: Array<{ name?: string; template_json?: unknown; background_url?: string | null }> };
+  if (!response.ok || !payload.templates) return [];
 
   const templates = await Promise.all(
-    data
+    payload.templates
       .filter((row) => isTeamPosterTemplate(String(row.name || "")) && row.template_json)
       .map(async (row) => ({
         name: String(row.name),
@@ -454,7 +452,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
       {template.elements.map((element) => (
         <div
           key={element.id}
-          className="absolute flex items-center justify-center overflow-hidden"
+          className={`absolute flex items-center justify-center ${element.kind === "avatar" ? "overflow-hidden" : "overflow-visible"}`}
           style={{
             left: element.x,
             top: element.y,
@@ -464,7 +462,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
             borderRadius: element.kind === "avatar" ? 999 : 0,
             color: element.color || "#FACC15",
             fontFamily: element.fontFamily || "Luckiest Guy",
-            fontSize: element.fontSize || 42,
+            fontSize: element.fontSize || 37,
             fontWeight: element.fontWeight || 900,
             textShadow: element.kind === "avatar" ? undefined : "3px 3px 0 #000",
             whiteSpace: "nowrap",
@@ -499,7 +497,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
   const [latestStatDate, setLatestStatDate] = useState("");
-  const [autoDownloadStarted, setAutoDownloadStarted] = useState(false);
+  const autoDownloadStartedRef = useRef(false);
 
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
@@ -730,21 +728,18 @@ export default function TeamDiamondsYesterdayPage() {
         try {
           setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
           setSelectedTemplateName(item.name);
-          // Renew the signed background URL immediately before rendering, so a
-          // sub-owner never downloads a poster with an expired or missing image.
-          const template = await resolveTemplateBackground(item.template);
-          const failedForPoster = await buildPreview(template, true);
-          if (!failedForPoster) throw new Error("No current creator data");
+          const failedForPoster = await buildPreview(item.template, true);
+          if (!failedForPoster) throw new Error("No current creator data.");
           failedForPoster.forEach((username) => failedAvatars.add(username));
-          // Render this template before waiting. Waiting beforehand left the
-          // generic Paradise background in the export node on quick batches.
-          await waitForBackground(template.backgroundUrl);
+          // Build the new preview first, then wait for this template's own
+          // background before exporting it.
+          await waitForBackground(item.template.backgroundUrl);
           await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
           const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
-          if (!node) throw new Error("Could not prepare the poster preview");
+          if (!node) throw new Error("Could not prepare preview.");
           await waitForImages(node);
           const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
-          if (!blob) throw new Error("Could not render poster");
+          if (!blob) throw new Error("Could not create image.");
           zip.file(`${templateLabel(item.name)}.png`, blob);
         } catch {
           failedPosters.push(templateLabel(item.name));
@@ -850,10 +845,11 @@ export default function TeamDiamondsYesterdayPage() {
     setSelectedTemplateName(item.name);
     setLoading(true);
     try {
-      const template = await resolveTemplateBackground(item.template);
-      const failedForPoster = await buildPreview(template, true);
+      const failedForPoster = await buildPreview(item.template, true);
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
-      await waitForBackground(template.backgroundUrl);
+      // Keep the standalone route identical to the grouped download route:
+      // render this template first, then wait for its own background to paint.
+      await waitForBackground(item.template.backgroundUrl);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
@@ -869,10 +865,10 @@ export default function TeamDiamondsYesterdayPage() {
   }
 
   useEffect(() => {
-    if (!autoDownload || autoDownloadStarted || !templateCards.length) return;
-    setAutoDownloadStarted(true);
+    if (!autoDownload || autoDownloadStartedRef.current || !templateCards.length) return;
+    autoDownloadStartedRef.current = true;
     void downloadTemplate(templateCards[0]);
-  }, [autoDownload, autoDownloadStarted, templateCards]);
+  }, [autoDownload, templateCards]);
 
   return (
       <main className="agency-diamond-hours min-h-screen bg-[#080603] px-4 py-6 text-white" style={{ "--agency-poster-accent": agencyColours[agencySide] } as React.CSSProperties}>
@@ -924,13 +920,14 @@ export default function TeamDiamondsYesterdayPage() {
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
             {pictureCheck ? <div className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-5"><p className="text-xs font-black uppercase tracking-widest text-sky-100">Picture check — {pictureCheck.checked} creators</p>{pictureCheck.failed.length ? <><p className="mt-2 text-sm text-white/80">Add fallback pictures for these usernames, then run the check again:</p><textarea readOnly value={pictureCheck.failed.join("\n")} rows={Math.min(Math.max(pictureCheck.failed.length, 3), 10)} aria-label="Missing creator usernames" className="mt-3 w-full rounded-xl border border-rose-300/30 bg-black/30 px-3 py-2 font-mono text-sm text-rose-100"/><div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={() => void copyMissingCreatorList()} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-100 hover:bg-sky-300/20">Copy list</button><Link href="/data/fallback-pictures" className="inline-flex rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">Open Fallback Pictures</Link></div></> : <p className="mt-2 text-sm font-bold text-green-200">Every creator who will appear in the posters has a picture ready.</p>}</div> : null}
             {downloadProgress ? <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4"><div className="flex items-center justify-between gap-4 text-xs font-black uppercase tracking-widest text-sky-100"><span>Preparing {downloadProgress.label}</span><span>{downloadProgress.current} / {downloadProgress.total}</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-black/40"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%` }} /></div><p className="mt-2 text-xs text-sky-100/70">Loading creator photos and rendering the poster. Download time after this is controlled by your browser.</p></div> : null}
-            <div className="hidden overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
+            <section className="overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
+              <p className="mb-4 text-xs font-black uppercase tracking-widest text-yellow-200">Live export preview</p>
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
                 <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
-                  <PosterPreview template={visibleTemplate} />
+                  <PosterPreview key={visibleTemplate.backgroundUrl || selectedTemplateName} template={visibleTemplate} />
                 </div>
               </div>
-            </div>
+            </section>
           </section>
         </div>
       </main>
