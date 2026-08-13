@@ -452,7 +452,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
       {template.elements.map((element) => (
         <div
           key={element.id}
-          className={`absolute flex items-center ${element.kind === "username" ? "justify-start" : "justify-center"} ${element.kind === "avatar" ? "overflow-hidden" : "overflow-visible"}`}
+          className={`absolute flex items-center justify-center ${element.kind === "avatar" ? "overflow-hidden" : "overflow-visible"}`}
           style={{
             left: element.x,
             top: element.y,
@@ -466,6 +466,9 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
             fontWeight: element.fontWeight || 900,
             textShadow: element.kind === "avatar" ? undefined : "3px 3px 0 #000",
             whiteSpace: "nowrap",
+            // The poster font's visual baseline sits below its CSS line box.
+            // Lift leaderboard text to the centre of the printed background rows.
+            transform: ["username", "diamonds", "hours"].includes(element.kind) ? "translateY(-20px)" : undefined,
           }}
         >
           {element.kind === "avatar" ? (
