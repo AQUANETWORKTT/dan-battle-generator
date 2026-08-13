@@ -489,7 +489,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
   const [savedTemplate, setSavedTemplate] = useState<TeamPosterTemplate | null>(null);
   const [templates, setTemplates] = useState<SavedTemplateRow[]>([]);
-  const [selectedTemplateName, setSelectedTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
+  const [selectedTemplateName, setSelectedTemplateName] = useState("");
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [message, setMessage] = useState("");
@@ -498,12 +498,20 @@ export default function TeamDiamondsYesterdayPage() {
   const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
   const [latestStatDate, setLatestStatDate] = useState("");
   const autoDownloadStartedRef = useRef(false);
+  const previewBuildKeyRef = useRef("");
 
   const previewScale = 0.42;
+  const agencyFallbackTemplate = useMemo(() => ({
+    ...createDefaultTemplate(),
+    managerKey: `group:${agencySide}`,
+    teamSide: agencySide,
+  }), [agencySide]);
+  const agencyTemplates = templates.filter((item) => (item.template.teamSide || "dan") === agencySide);
   // A browser-local template should enhance the poster, not be required for it.
   // This lets every signed-in user build a poster even when no public custom template exists yet.
-  const selectedSavedTemplate = templates.find((item) => item.name === selectedTemplateName)?.template || savedTemplate;
-  const visibleTemplate = useMemo(() => template || selectedSavedTemplate || getSavedTemplate() || createDefaultTemplate(), [template, selectedSavedTemplate]);
+  const selectedSavedTemplate = agencyTemplates.find((item) => item.name === selectedTemplateName)?.template || agencyTemplates[0]?.template || null;
+  const activeTemplateName = agencyTemplates.find((item) => item.name === selectedTemplateName)?.name || agencyTemplates[0]?.name || `${agencySide}-default`;
+  const visibleTemplate = useMemo(() => template?.teamSide === agencySide ? template : selectedSavedTemplate || agencyFallbackTemplate, [template, agencySide, selectedSavedTemplate, agencyFallbackTemplate]);
   const templateCards = (templates.length
     ? templates
     : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }])
@@ -688,6 +696,14 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
+  useEffect(() => {
+    const source = selectedSavedTemplate || agencyFallbackTemplate;
+    const buildKey = `${agencySide}:${activeTemplateName}`;
+    if (previewBuildKeyRef.current === buildKey) return;
+    previewBuildKeyRef.current = buildKey;
+    void buildPreview(source, true);
+  }, [agencySide, activeTemplateName, agencyFallbackTemplate, selectedSavedTemplate]);
+
   async function downloadPoster() {
     const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
     if (!node) {
@@ -704,7 +720,7 @@ export default function TeamDiamondsYesterdayPage() {
       backgroundColor: "#000000",
     });
     if (!blob) return;
-    saveAs(blob, `${selectedTemplateName}-${latestStatDate || getYesterdayDateKey()}.png`);
+    saveAs(blob, `${activeTemplateName}-${latestStatDate || getYesterdayDateKey()}.png`);
   }
 
   async function downloadAllPosters(side?: TeamPosterCategory) {
@@ -924,7 +940,7 @@ export default function TeamDiamondsYesterdayPage() {
               <p className="mb-4 text-xs font-black uppercase tracking-widest text-yellow-200">Live export preview</p>
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
                 <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
-                  <PosterPreview key={visibleTemplate.backgroundUrl || selectedTemplateName} template={visibleTemplate} />
+                  <PosterPreview key={visibleTemplate.backgroundUrl || activeTemplateName} template={visibleTemplate} />
                 </div>
               </div>
             </section>

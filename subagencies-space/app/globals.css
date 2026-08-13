@@ -66,6 +66,7 @@ button, input { font: inherit; }
 .manager-picker button,.manager-password { border:1px solid color-mix(in srgb,var(--agency) 55%,transparent); border-radius:14px; padding:16px; background:#090909; color:#fff; font:900 13px "Norwester",Impact,sans-serif; }
 .manager-picker button.selected { background:var(--agency); color:#050505; }
 .manager-password { display:grid; max-width:430px; margin:auto; gap:10px; text-align:left; }.manager-password input,.manager-password button { padding:13px; border-radius:9px; border:0; font:900 12px "Norwester",Impact,sans-serif; }.manager-password button { background:var(--agency); color:#050505; }.manager-password small{color:#fb7185}
+.manager-battle-space{display:inline-flex;align-items:center;justify-content:center;margin:18px auto -6px;border:1px solid color-mix(in srgb,var(--agency) 65%,transparent);border-radius:12px;padding:13px 18px;background:color-mix(in srgb,var(--agency) 18%,#090909);color:var(--agency);font:900 12px Arial,sans-serif;letter-spacing:.12em;text-decoration:none}.manager-battle-space:hover{background:var(--agency);color:#050505}
 .onboarding-page{min-height:100vh;padding:48px;background:linear-gradient(135deg,#050505,#101010);color:#fff;font-family:"Norwester",Impact,sans-serif}.onboarding-page>a,.onboarding-page h1{color:var(--onboarding-accent,#facc15)}.onboarding-page h1{font-size:clamp(32px,5vw,58px);margin:24px 0 6px}.onboarding-page>p{font:700 13px Arial,sans-serif;letter-spacing:.12em;color:#bdbdbd}.onboarding-table{display:grid;gap:10px;margin-top:30px}.onboarding-head,.onboarding-table article{display:grid;grid-template-columns:1.15fr 1.2fr .55fr .8fr 1.3fr;gap:18px;align-items:center}.onboarding-head{padding:0 18px;color:var(--onboarding-accent,#facc15);font-size:11px;letter-spacing:.12em}.onboarding-table article{min-height:76px;border:1px solid color-mix(in srgb,var(--onboarding-accent,#facc15) 35%,#333);border-radius:14px;padding:16px 18px;background:rgba(0,0,0,.5);font-size:16px;letter-spacing:.04em}.onboarding-table article>div{display:flex;gap:10px}.onboarding-table button{flex:1;padding:12px;background:var(--onboarding-accent,#facc15);color:#000;border:0;border-radius:8px;font:900 11px "Norwester",Impact,sans-serif}.onboarding-table button+button{background:#292929;color:#fff}@media(max-width:800px){.onboarding-page{padding:24px}.onboarding-head{display:none}.onboarding-table article{grid-template-columns:1fr 1fr;gap:10px}.onboarding-table article>div{grid-column:span 2}}
 .onboarding-cards{display:grid;gap:18px;margin-top:28px}.onboarding-card{border:1px solid color-mix(in srgb,var(--onboarding-accent,#facc15) 42%,#333);border-radius:18px;padding:20px;background:rgba(0,0,0,.55);box-shadow:0 14px 30px rgba(0,0,0,.22)}.onboarding-card header{display:flex;justify-content:space-between;align-items:center;color:var(--onboarding-accent,#facc15);font-size:24px}.onboarding-card header span{font-size:12px;color:#d5d5d5}.onboarding-tasks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:18px 0}.onboarding-tasks label{display:flex;min-height:76px;flex-direction:column;justify-content:space-between;border:1px solid #343434;border-radius:10px;padding:12px;background:#0a0a0a;font:700 12px Arial,sans-serif;letter-spacing:.06em}.onboarding-tasks input{accent-color:var(--onboarding-accent,#facc15)}.onboarding-tasks button,.complete-onboarding{border:0;border-radius:7px;padding:8px;background:var(--onboarding-accent,#facc15);color:#050505;font:900 11px "Norwester",Impact,sans-serif}.complete-onboarding{width:100%;padding:14px;letter-spacing:.1em}@media(max-width:900px){.onboarding-tasks{grid-template-columns:repeat(2,1fr)}}
 .backstage-status { grid-column: 1 / -1; display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; padding: 10px 14px; background: rgba(0,0,0,.62); color: #a1a1aa; }
@@ -127,8 +128,24 @@ button, input { font: inherit; }
 /* Keep the agency branding, but use a much clearer typeface for the actual UI.
    Norwester is retained only inside the exported poster artwork. */
 :root { --space-ui-font: Arial, Helvetica, sans-serif; --space-heading-font: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }
-body, button, input, select, textarea { font-family: var(--space-ui-font); }
-button, input, select, textarea { font-weight: 700; letter-spacing: .035em; line-height: 1.25; }
+.subspace-app,
+.subspace-app button,
+.subspace-app input,
+.subspace-app select,
+.subspace-app textarea { font-family: var(--space-ui-font); }
+.subspace-app button,
+.subspace-app input,
+.subspace-app select,
+.subspace-app textarea { font-weight: 700; letter-spacing: .035em; line-height: 1.25; }
+.subspace-app button,
+.subspace-app input,
+.subspace-app select,
+.subspace-app textarea { font-family: inherit; }
+.subspace-app button:focus-visible,
+.subspace-app input:focus-visible,
+.subspace-app select:focus-visible,
+.subspace-app textarea:focus-visible,
+.subspace-app a:focus-visible { outline: 2px solid var(--space-focus, #facc15); outline-offset: 3px; }
 .home-shell .hero h1 { font-family: "Norwester", Impact, sans-serif; letter-spacing: .07em; transform: scaleX(1.08); }
 .agency-generator-shell :is(button, input, select, textarea, h1, h2, h3, p, label, a),
 .onboarding-page,
@@ -148,3 +165,8 @@ button, input, select, textarea { font-weight: 700; letter-spacing: .035em; line
 .space-shell .diamond-hours-card > span:not(.poster-generator-cta),
 .space-shell .managers-link > span:not(.poster-generator-cta) { font-family: var(--space-heading-font) !important; font-weight: 900 !important; letter-spacing: .08em !important; }
 .space-shell .poster-generator-link > strong { color: #fff; font-family: var(--space-heading-font) !important; letter-spacing: .035em !important; text-shadow: 2px 2px 0 #090909, 0 0 16px color-mix(in srgb, var(--agency) 34%, transparent); -webkit-text-stroke: .35px rgba(0,0,0,.62); }
+
+/* Battle Network uses Tailwind's local Norwester utility in a few places.
+   Keep its headings aligned with every other Subspace screen while leaving
+   user-configurable poster artwork untouched. */
+.subspace-app [class*="font-[family-name:var(--font-norwester)]"] { font-family: var(--space-heading-font) !important; letter-spacing: .01em !important; line-height: 1.04 !important; }
