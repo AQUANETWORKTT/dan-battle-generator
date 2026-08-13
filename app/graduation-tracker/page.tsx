@@ -91,6 +91,10 @@ function currentAgency(row: CreatorStat) {
   return String(row.agency || "").trim() || "Unassigned";
 }
 
+function managerAssignmentKey(row: CreatorStat) {
+  return String(row.manager_email || row.email || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function creatorKey(row: CreatorStat) {
   const creatorId = String(row.creator_id || "").trim();
   if (creatorId) return `id:${creatorId}`;
@@ -166,6 +170,7 @@ export default function GraduationTrackerPage() {
   const [search, setSearch] = useState("");
   const [graduationReportAgency, setGraduationReportAgency] = useState("All");
   const [rows, setRows] = useState<CreatorStat[]>([]);
+  const [managerGroups, setManagerGroups] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -225,20 +230,21 @@ export default function GraduationTrackerPage() {
     loadData();
   }, [month]);
 
+  useEffect(() => {
+    async function loadManagerAssignments() {
+      const response = await fetch("/api/data-analysis/manager-assignments", { cache: "no-store" });
+      const data = await response.json();
+      if (response.ok) setManagerGroups(data.managerGroups || {});
+    }
+    void loadManagerAssignments();
+  }, []);
+
   const rowsUntilEndDay = useMemo(() => {
     return rows.filter((row) => {
       const dayNumber = getDayNumber(row.stat_date);
       return dayNumber >= 1 && dayNumber <= endDay;
     });
   }, [rows, endDay]);
-
-  const teams = useMemo(() => {
-    const uniqueTeams = Array.from(
-      new Set(rowsUntilEndDay.map((row) => row.team || "Unassigned").filter(Boolean))
-    ).sort();
-
-    return ["All Teams", ...uniqueTeams];
-  }, [rowsUntilEndDay]);
 
   const latestCreatorRows = useMemo(() => {
     const latestExportDate = rowsUntilEndDay.reduce((latest, row) => row.stat_date > latest ? row.stat_date : latest, "");
@@ -252,7 +258,30 @@ export default function GraduationTrackerPage() {
     return latest;
   }, [rowsUntilEndDay]);
 
-  const agencies = useMemo(() => ["All", ...Array.from(new Set(Array.from(latestCreatorRows.values()).map((row) => row.agency || "Unassigned").filter((item) => item && item !== "Aqua"))).sort()], [latestCreatorRows]);
+  // Creator Intelligence can lag a manager move by a day. Use each creator's
+  // prior available export for their manager, then apply the Manager
+  // Assignments group rather than the historical agency text in the export.
+  const assignedCreatorRows = useMemo(() => {
+    const latestExportDate = rowsUntilEndDay.reduce((latest, row) => row.stat_date > latest ? row.stat_date : latest, "");
+    const previousManagers = new Map<string, CreatorStat>();
+
+    for (const row of rowsUntilEndDay) {
+      if (row.stat_date >= latestExportDate) continue;
+      const key = creatorKey(row);
+      const previous = previousManagers.get(key);
+      if (!previous || row.stat_date > previous.stat_date) previousManagers.set(key, row);
+    }
+
+    return Array.from(latestCreatorRows.values()).map((row) => {
+      const managerSource = previousManagers.get(creatorKey(row)) || row;
+      const assignedGroup = managerGroups[managerAssignmentKey(managerSource)] || currentAgency(managerSource);
+      return { ...row, agency: assignedGroup, team: assignedGroup };
+    });
+  }, [latestCreatorRows, managerGroups, rowsUntilEndDay]);
+
+  const teams = useMemo(() => ["All Teams", ...Array.from(new Set(assignedCreatorRows.map((row) => row.team || "Unassigned").filter(Boolean))).sort()], [assignedCreatorRows]);
+
+  const agencies = useMemo(() => ["All", ...Array.from(new Set(assignedCreatorRows.map((row) => row.agency || "Unassigned").filter(Boolean))).sort()], [assignedCreatorRows]);
 
   const latestGraduationUploadDay = useMemo(() => {
     const uploadedDayNumbers = rowsUntilEndDay
@@ -280,7 +309,7 @@ export default function GraduationTrackerPage() {
       currentTotals.set(key, (currentTotals.get(key) || 0) + safeNumber(row.diamonds));
     }
 
-    const eligibleMonthRows = Array.from(latestCreatorRows.values())
+    const eligibleMonthRows = assignedCreatorRows
       .filter((row) => {
         const rowAgency = String(row.agency || "").trim().toLowerCase();
         const selectedAgency = String(agency || "").trim().toLowerCase();
@@ -369,7 +398,7 @@ export default function GraduationTrackerPage() {
 
         return a.remainingDiamonds - b.remainingDiamonds;
       });
-  }, [rowsUntilEndDay, latestCreatorRows, agency, team, search, latestGraduationUploadDay, lastDay]);
+  }, [rowsUntilEndDay, assignedCreatorRows, agency, team, search, latestGraduationUploadDay, lastDay]);
 
   const graduationReportRows = useMemo(() => {
     return graduationTrackerRows
