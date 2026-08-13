@@ -3,7 +3,7 @@
 @import "tailwindcss";
 @source "./agency";
 
-:root { color-scheme: dark; }
+:root { color-scheme: dark; --font-norwester: "Norwester", Impact, sans-serif; }
 @font-face { font-family: "Norwester"; src: url("/fonts/Norwester.otf") format("opentype"); font-weight: normal; font-style: normal; }
 * { box-sizing: border-box; }
 body { margin: 0; background: #030303; color: #fff; font-family: Impact, "Arial Black", Arial, sans-serif; }
