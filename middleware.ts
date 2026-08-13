@@ -48,7 +48,11 @@ export function middleware(req: NextRequest) {
   // The reminder route is still protected by CRON_SECRET inside the route
   // handler, but must be reachable by the external scheduler without a web
   // login cookie.
-  const publicRoutes = ["/login", "/management", "/api/login", "/api/battle-network", "/api/data-analysis/manager-assignments", "/api/management-onboarding", "/api/management-onboarding-upload", "/api/battle-calendar/reminders"];
+  const publicRoutes = ["/login", "/api/login", "/api/battle-network", "/api/data-analysis/manager-assignments", "/api/management-onboarding", "/api/management-onboarding-upload", "/api/battle-calendar/reminders"];
+
+  if (path.startsWith("/management") && req.cookies.get("first-class-management-auth")?.value !== "true") {
+    return NextResponse.redirect(new URL("/login/management", req.url));
+  }
 
   const isPublic = publicRoutes.some((route) => path.startsWith(route));
 

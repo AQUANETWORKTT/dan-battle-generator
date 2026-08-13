@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 const cards = [
   { href: "/login/leadership", eyebrow: "FIRST CLASS", title: "LEADERSHIP", description: <>FOR OWNERS, HEAD OF OPERATIONS<br />AND SENIOR LEADERSHIP.</>, tone: "border-yellow-300/55 bg-yellow-300/15 hover:bg-yellow-300/25", label: "text-yellow-100" },
-  { href: "/management", eyebrow: "FIRST CLASS", title: "CREATOR MANAGERS", description: <>TEAM POSTERS, ONBOARDING<br />AND TEAM HEALTH.</>, tone: "border-white/30 bg-black/65 hover:border-yellow-300/60 hover:bg-black/75", label: "text-yellow-100" },
+  { href: "/login/management", eyebrow: "FIRST CLASS", title: "CREATOR MANAGERS", description: <>TEAM POSTERS, ONBOARDING<br />AND TEAM HEALTH.</>, tone: "border-white/30 bg-black/65 hover:border-yellow-300/60 hover:bg-black/75", label: "text-yellow-100" },
   { href: "/battle-network", eyebrow: "AGENCY NETWORK", title: "BATTLE NETWORK", description: <>BATTLE SHEETS, MATCHING<br />AND POSTER DOWNLOADS.</>, tone: "border-sky-300/45 bg-sky-950/25 hover:border-sky-200 hover:bg-sky-900/30", label: "text-sky-100" },
 ];
 
