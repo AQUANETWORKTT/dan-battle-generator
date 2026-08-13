@@ -1,12 +1,7 @@
-import BattleNetworkClient from "./BattleNetworkClient";
-import { getBattleNetworkInitialData } from "@/lib/battle-network-data";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function BattleNetworkPage({ params, searchParams }: { params: Promise<{ agency: string }>; searchParams: Promise<{ access?: string }> }) {
-  const { agency } = await params;
-  const { access } = await searchParams;
-  const initialData = await getBattleNetworkInitialData();
-  const managerAccess = agency === "respawn" && access === "managers";
-  return <BattleNetworkClient initialData={initialData} initialAgencyId={managerAccess ? "respawn" : ""} preferredAgencyId={agency} />;
+export default function BattleNetworkPage() {
+  // Kept only for old bookmarked Subspace URLs. The Battle Network lives in
+  // the main First Class app, so this route never renders a separate copy.
+  redirect("https://firstclassagency.management/battle-network");
 }
