@@ -922,10 +922,10 @@ export default function TeamDiamondsYesterdayPage() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {templatesBySide[side].map((item) => (
-                <article key={item.name} className="flex min-h-60 flex-col rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
+                <article key={item.name} onClick={() => { setSelectedTemplateName(item.name); previewBuildKeyRef.current = ""; void buildPreview(item.template, true); }} className={`flex min-h-60 cursor-pointer flex-col rounded-3xl border p-5 transition hover:bg-yellow-300/10 ${activeTemplateName === item.name ? "border-yellow-300 bg-yellow-300/10" : "border-yellow-300/20 bg-black/50"}`}>
                   <p className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-white/55">Saved preset</p>
                   <h2 className="mt-3 font-sans text-2xl font-extrabold uppercase tracking-[0.045em] text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300 disabled:opacity-50">Download</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); void downloadTemplate(item); }} disabled={loading} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300 disabled:opacity-50">Download</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
