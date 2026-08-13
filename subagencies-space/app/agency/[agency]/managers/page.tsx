@@ -20,7 +20,7 @@ export default function ManagersPage() {
   function enter(event: React.FormEvent) { event.preventDefault(); if (!selected || (password.trim().toUpperCase() !== managerPassword(selected.manager_label) && password.trim().toUpperCase() !== "DAN44")) { setError("ACCESS DENIED"); return; } window.location.assign(`/agency/${agency}/managers/${encodeURIComponent(selected.manager_key)}?label=${encodeURIComponent(selected.manager_label)}`); }
   return <main className="space-shell" style={{ "--agency": accents[agency] || "#facc15", "--page-background": "none" } as React.CSSProperties}>
     <nav><Link href="/">BACK</Link></nav><p>MANAGER ACCESS</p><h1>{agency} MANAGERS</h1>
-    {agency === "respawn" ? <a href="https://firstclassagency.management/battle-network?agency=respawn&source=subspace-manager" className="manager-battle-space">OPEN RESPAWN BATTLE SPACE</a> : null}
+    {agency === "respawn" ? <a href="https://firstclassbattles.space" className="manager-battle-space">OPEN RESPAWN BATTLE SPACE</a> : null}
     <section className="manager-picker">{loading ? <span>MANAGERS LOADING...</span> : visible.map((manager) => <button key={manager.manager_key} onClick={() => { setSelected(manager); setError(""); }} className={selected?.manager_key === manager.manager_key ? "selected" : ""}>{manager.manager_label}</button>)}{!loading && !visible.length && <span>NO MANAGERS FOUND FOR THIS AGENCY YET.</span>}</section>
     {selected && <form className="manager-password" onSubmit={enter}><span>{selected.manager_label}</span><input autoFocus type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="ENTER PASSWORD"/><button>ENTER</button>{error && <small>{error}</small>}</form>}
   </main>;

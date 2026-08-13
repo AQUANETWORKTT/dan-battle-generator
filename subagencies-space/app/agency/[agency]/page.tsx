@@ -75,7 +75,7 @@ export default function AgencySpace() {
       <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/strikes`}>
         <span>OWNER TOOL</span><strong>MANAGER<br />STRIKES</strong><span className="poster-generator-cta">OPEN TRACKER&nbsp;&rarr;</span>
       </Link>
-      <a className="poster-generator-link managers-link" href="https://firstclassagency.management/battle-network">
+      <a className="poster-generator-link managers-link" href="https://firstclassbattles.space">
         <span>NETWORK TOOL</span><strong>BATTLE<br />NETWORK</strong><span className="poster-generator-cta">OPEN BATTLE SHEET&nbsp;→</span>
       </a>
       {params.agency === "paradise" ? <Link className="poster-generator-link managers-link" href={`/agency/${params.agency}/onboarding-progress`}>
