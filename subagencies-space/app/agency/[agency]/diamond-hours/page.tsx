@@ -605,16 +605,14 @@ export default function TeamDiamondsYesterdayPage() {
   }
 
   async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false): Promise<string[] | null> {
-    setLoading(true);
-    setMessage("");
+    if (!quiet) { setLoading(true); setMessage(""); }
 
     try {
       const activeTemplate = forTemplate || selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
 
       const statDate = await getLatestUploadedDate();
-      const month = statDate.slice(0, 7);
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?date=${statDate}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
@@ -699,7 +697,7 @@ export default function TeamDiamondsYesterdayPage() {
       setMessage(error instanceof Error ? error.message : "Could not build Team Dan poster.");
       return null;
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }
 
