@@ -452,7 +452,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
       {template.elements.map((element) => (
         <div
           key={element.id}
-          className={`absolute flex items-center justify-center ${element.kind === "avatar" ? "overflow-hidden" : "overflow-visible"}`}
+          className={`absolute flex items-center ${element.kind === "username" ? "justify-start" : "justify-center"} ${element.kind === "avatar" ? "overflow-hidden" : "overflow-visible"}`}
           style={{
             left: element.x,
             top: element.y,
