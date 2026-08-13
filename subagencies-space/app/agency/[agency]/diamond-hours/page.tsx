@@ -412,16 +412,22 @@ async function waitForImages(node: HTMLElement) {
   );
 }
 
-// CSS backgrounds are not included in querySelectorAll("img"). Preloading
-// them prevents a batch download from capturing the previous poster's image.
-function waitForBackground(url: string) {
-  if (!url) return Promise.resolve();
-  return new Promise<void>((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve();
-    image.onerror = () => resolve();
-    image.src = url;
-  });
+async function waitForRenderedBackground(node: HTMLElement, url: string) {
+  if (!url) return;
+  const expected = new URL(url, window.location.href).href;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const image = node.querySelector<HTMLImageElement>('img[data-poster-background="true"]');
+    if (image && image.src === expected) {
+      if (!image.complete) await new Promise<void>((resolve) => { image.onload = () => resolve(); image.onerror = () => resolve(); });
+      if (image.naturalWidth) {
+        await image.decode?.().catch(() => {});
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        return;
+      }
+    }
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+  throw new Error("THE SELECTED POSTER BACKGROUND DID NOT LOAD.");
 }
 
 function PosterPreview({ template }: { template: TeamPosterTemplate }) {
@@ -443,6 +449,7 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
         // exporter cannot retain Paradise's generic previous background.
         <img
           key={template.backgroundUrl}
+          data-poster-background="true"
           src={template.backgroundUrl}
           alt=""
           aria-hidden="true"
@@ -466,9 +473,6 @@ function PosterPreview({ template }: { template: TeamPosterTemplate }) {
             fontWeight: element.fontWeight || 900,
             textShadow: element.kind === "avatar" ? undefined : "3px 3px 0 #000",
             whiteSpace: "nowrap",
-            // The poster font's visual baseline sits below its CSS line box.
-            // Lift leaderboard text to the centre of the printed background rows.
-            transform: ["username", "diamonds", "hours"].includes(element.kind) ? "translateY(-20px)" : undefined,
           }}
         >
           {element.kind === "avatar" ? (
@@ -750,12 +754,12 @@ export default function TeamDiamondsYesterdayPage() {
           const failedForPoster = await buildPreview(item.template, true);
           if (!failedForPoster) throw new Error("No current creator data.");
           failedForPoster.forEach((username) => failedAvatars.add(username));
-          // Build the new preview first, then wait for this template's own
-          // background before exporting it.
-          await waitForBackground(item.template.backgroundUrl);
-          await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
           const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
           if (!node) throw new Error("Could not prepare preview.");
+          // Verify the rendered poster itself has switched to this template's
+          // background. A separate preload can complete while the DOM is still
+          // displaying the previous manager's image.
+          await waitForRenderedBackground(node, item.template.backgroundUrl);
           await waitForImages(node);
           const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
           if (!blob) throw new Error("Could not create image.");
@@ -866,12 +870,9 @@ export default function TeamDiamondsYesterdayPage() {
     try {
       const failedForPoster = await buildPreview(item.template, true);
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
-      // Keep the standalone route identical to the grouped download route:
-      // render this template first, then wait for its own background to paint.
-      await waitForBackground(item.template.backgroundUrl);
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
+      await waitForRenderedBackground(node, item.template.backgroundUrl);
       await waitForImages(node);
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
       if (blob) saveAs(blob, `${item.name}-${latestStatDate || getYesterdayDateKey()}.png`);
