@@ -10,6 +10,23 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  const isSubspaceBattleEntry = path === "/battle-network" && req.nextUrl.searchParams.get("source") === "subspace-manager" && req.nextUrl.searchParams.get("agency") === "respawn";
+  const isSubspaceBattleSession = req.cookies.get("subspace-battle-entry")?.value === "respawn";
+
+  // Subspace managers use the real First Class Battle Network, but cannot
+  // navigate into the rest of First Class Space.
+  if (isSubspaceBattleEntry) {
+    const response = NextResponse.next();
+    response.cookies.set("subspace-battle-entry", "respawn", { httpOnly: true, maxAge: 60 * 60 * 12, path: "/", sameSite: "lax" });
+    return response;
+  }
+
+  if (isSubspaceBattleSession) {
+    const isBattleNetwork = path === "/battle-network" || path.startsWith("/api/battle-network");
+    const isRestrictedLogin = path === "/login" && req.nextUrl.searchParams.get("from") === "subspace-battle";
+    if (!isBattleNetwork && !isRestrictedLogin) return NextResponse.redirect(new URL("/login?from=subspace-battle", req.url));
+  }
+
   const isEventsSpace = process.env.SITE_MODE === "events";
 
   if (isEventsSpace) {
