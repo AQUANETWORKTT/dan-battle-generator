@@ -280,6 +280,7 @@ async function getPublicSavedTemplate() {
 }
 
 type SavedTemplateRow = { name: string; template: TeamPosterTemplate };
+type AssignedManager = { key: string; name: string; group: string };
 
 function isTeamPosterTemplate(name: string) {
   return name === TEAM_DAN_POSTER_TEMPLATE_NAME || name.startsWith("team-poster-");
@@ -496,6 +497,7 @@ export default function TeamDiamondsYesterdayPage() {
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
   const [savedTemplate, setSavedTemplate] = useState<TeamPosterTemplate | null>(null);
   const [templates, setTemplates] = useState<SavedTemplateRow[]>([]);
+  const [assignedManagers, setAssignedManagers] = useState<AssignedManager[]>([]);
   const [selectedTemplateName, setSelectedTemplateName] = useState("");
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showNewTemplate, setShowNewTemplate] = useState(false);
@@ -542,15 +544,23 @@ export default function TeamDiamondsYesterdayPage() {
     trident: templateCards.filter((item) => item.template.teamSide === "trident"),
     respawn: templateCards.filter((item) => item.template.teamSide === "respawn"),
   };
+  const missingManagers = useMemo(() => {
+    const group = teamPosterCategoryLabel(agencySide);
+    return assignedManagers.filter((manager) => manager.group === group && !agencyTemplates.some((item) => managerKeysMatch(manager.key, item.template.managerKey || "")));
+  }, [agencySide, agencyTemplates, assignedManagers]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadTemplate() {
-      const [publicTemplate, savedTemplates] = await Promise.all([getPublicSavedTemplate(), getTeamPosterTemplates()]);
+      const [publicTemplate, savedTemplates, assignmentsResponse] = await Promise.all([getPublicSavedTemplate(), getTeamPosterTemplates(), fetch("/api/data-analysis/manager-assignments", { cache: "no-store" })]);
       if (cancelled) return;
       if (publicTemplate) setSavedTemplate(publicTemplate);
       setTemplates(savedTemplates);
+      if (assignmentsResponse.ok) {
+        const assignments = await assignmentsResponse.json();
+        setAssignedManagers(assignments.managers || []);
+      }
     }
 
     loadTemplate();
@@ -970,6 +980,14 @@ export default function TeamDiamondsYesterdayPage() {
                   <h2 className="mt-3 font-sans text-2xl font-extrabold uppercase tracking-[0.045em] text-yellow-200">{templateLabel(item.name)}</h2>
                   <button type="button" onClick={(event) => { event.stopPropagation(); void downloadTemplate(item); }} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300">Download</button>
                 </article>
+                    ))}
+                    {missingManagers.map((manager) => (
+                      <article key={`missing-${manager.key}`} className="flex min-h-60 flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-5 opacity-45 grayscale">
+                        <p className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-white/55">Manager assignment</p>
+                        <h2 className="mt-3 font-sans text-2xl font-extrabold uppercase tracking-[0.045em] text-white">{manager.name}</h2>
+                        <p className="mt-2 text-sm text-white/60">No team poster created yet.</p>
+                        <button type="button" disabled className="mt-auto w-full rounded-xl bg-white/15 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-white/60">Poster needed</button>
+                      </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
                   </div>
