@@ -506,6 +506,9 @@ export default function TeamDiamondsYesterdayPage() {
   const [latestStatDate, setLatestStatDate] = useState("");
   const autoDownloadStartedRef = useRef(false);
   const previewBuildKeyRef = useRef("");
+  const previewRequestRef = useRef(0);
+  const previewReadyRef = useRef("");
+  const [previewReadyFor, setPreviewReadyFor] = useState("");
 
   const previewScale = 0.42;
   const agencyFallbackTemplate = useMemo(() => ({
@@ -604,7 +607,12 @@ export default function TeamDiamondsYesterdayPage() {
     return statDate;
   }
 
-  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false): Promise<string[] | null> {
+  async function buildPreview(forTemplate?: TeamPosterTemplate, quiet = false, previewName = ""): Promise<string[] | null> {
+    const requestId = ++previewRequestRef.current;
+    if (previewName) {
+      previewReadyRef.current = "";
+      setPreviewReadyFor("");
+    }
     if (!quiet) { setLoading(true); setMessage(""); }
 
     try {
@@ -689,7 +697,19 @@ export default function TeamDiamondsYesterdayPage() {
 
       // The poster may be captured immediately after this update. Flush it so
       // images from the preceding download cannot be reused by the next one.
+      if (requestId !== previewRequestRef.current) return null;
       flushSync(() => setTemplate(filledTemplate));
+      const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
+      if (node) {
+        await waitForRenderedBackground(node, filledTemplate.backgroundUrl);
+        await waitForImages(node);
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      }
+      if (requestId !== previewRequestRef.current) return null;
+      if (previewName) {
+        previewReadyRef.current = previewName;
+        setPreviewReadyFor(previewName);
+      }
       if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${statDate}.`);
       return failedAvatars;
     } catch (error) {
@@ -706,7 +726,7 @@ export default function TeamDiamondsYesterdayPage() {
     const buildKey = `${agencySide}:${activeTemplateName}`;
     if (previewBuildKeyRef.current === buildKey) return;
     previewBuildKeyRef.current = buildKey;
-    void buildPreview(source, true);
+    void buildPreview(source, true, activeTemplateName);
   }, [agencySide, activeTemplateName, agencyFallbackTemplate, selectedSavedTemplate]);
 
   async function downloadPoster() {
@@ -748,8 +768,9 @@ export default function TeamDiamondsYesterdayPage() {
       for (const [index, item] of items.entries()) {
         try {
           setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
+          previewBuildKeyRef.current = `${agencySide}:${item.name}`;
           setSelectedTemplateName(item.name);
-          const failedForPoster = await buildPreview(item.template, true);
+          const failedForPoster = await buildPreview(item.template, true, item.name);
           if (!failedForPoster) throw new Error("No current creator data.");
           failedForPoster.forEach((username) => failedAvatars.add(username));
           const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
@@ -862,21 +883,19 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
-  async function downloadTemplate(item: SavedTemplateRow) {
+  async function downloadTemplate(item: SavedTemplateRow, prepareIfNeeded = false) {
     setLoading(true);
     try {
-      // When this card is already the one shown in Live export preview, capture
-      // that exact DOM. Rebuilding here could race the preview state and export
-      // a previous manager's background or an unfilled template.
-      const isCurrentPreview = activeTemplateName === item.name && template?.teamSide === agencySide;
-      if (!isCurrentPreview) {
+      if (previewReadyRef.current !== item.name) {
+        if (!prepareIfNeeded) throw new Error("This preview is still preparing. Please wait for the Download button to turn on.");
+        previewBuildKeyRef.current = `${agencySide}:${item.name}`;
         setSelectedTemplateName(item.name);
-        const failedForPoster = await buildPreview(item.template, true);
+        const failedForPoster = await buildPreview(item.template, true, item.name);
         if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
       }
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
-      const renderedBackground = isCurrentPreview ? template?.backgroundUrl || item.template.backgroundUrl : item.template.backgroundUrl;
+      const renderedBackground = template?.backgroundUrl || item.template.backgroundUrl;
       await waitForRenderedBackground(node, renderedBackground);
       await waitForImages(node);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -893,7 +912,7 @@ export default function TeamDiamondsYesterdayPage() {
   useEffect(() => {
     if (!autoDownload || autoDownloadStartedRef.current || !templateCards.length) return;
     autoDownloadStartedRef.current = true;
-    void downloadTemplate(templateCards[0]);
+    void downloadTemplate(templateCards[0], true);
   }, [autoDownload, templateCards]);
 
   return (
@@ -932,10 +951,10 @@ export default function TeamDiamondsYesterdayPage() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {templatesBySide[side].map((item) => (
-                <article key={item.name} onClick={() => { setSelectedTemplateName(item.name); previewBuildKeyRef.current = ""; void buildPreview(item.template, true); }} className={`flex min-h-60 cursor-pointer flex-col rounded-3xl border p-5 transition hover:bg-yellow-300/10 ${activeTemplateName === item.name ? "border-yellow-300 bg-yellow-300/10" : "border-yellow-300/20 bg-black/50"}`}>
+                <article key={item.name} onClick={() => { setSelectedTemplateName(item.name); previewBuildKeyRef.current = `${agencySide}:${item.name}`; void buildPreview(item.template, true, item.name); }} className={`flex min-h-60 cursor-pointer flex-col rounded-3xl border p-5 transition hover:bg-yellow-300/10 ${activeTemplateName === item.name ? "border-yellow-300 bg-yellow-300/10" : "border-yellow-300/20 bg-black/50"}`}>
                   <p className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-white/55">Saved preset</p>
                   <h2 className="mt-3 font-sans text-2xl font-extrabold uppercase tracking-[0.045em] text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={(event) => { event.stopPropagation(); void downloadTemplate(item); }} disabled={loading} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300 disabled:opacity-50">Download</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); void downloadTemplate(item); }} disabled={loading || previewReadyFor !== item.name} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:opacity-50">{previewReadyFor === item.name ? "Download" : "Preparing preview..."}</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
