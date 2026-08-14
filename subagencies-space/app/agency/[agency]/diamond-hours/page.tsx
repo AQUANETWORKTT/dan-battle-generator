@@ -863,15 +863,23 @@ export default function TeamDiamondsYesterdayPage() {
   }
 
   async function downloadTemplate(item: SavedTemplateRow) {
-    setSelectedTemplateName(item.name);
     setLoading(true);
     try {
-      const failedForPoster = await buildPreview(item.template, true);
-      if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
+      // When this card is already the one shown in Live export preview, capture
+      // that exact DOM. Rebuilding here could race the preview state and export
+      // a previous manager's background or an unfilled template.
+      const isCurrentPreview = activeTemplateName === item.name && template?.teamSide === agencySide;
+      if (!isCurrentPreview) {
+        setSelectedTemplateName(item.name);
+        const failedForPoster = await buildPreview(item.template, true);
+        if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
+      }
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
-      await waitForRenderedBackground(node, item.template.backgroundUrl);
+      const renderedBackground = isCurrentPreview ? template?.backgroundUrl || item.template.backgroundUrl : item.template.backgroundUrl;
+      await waitForRenderedBackground(node, renderedBackground);
       await waitForImages(node);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
       if (blob) saveAs(blob, `${item.name}-${latestStatDate || getYesterdayDateKey()}.png`);
       setMessage(`${templateLabel(item.name)} downloaded.`);
