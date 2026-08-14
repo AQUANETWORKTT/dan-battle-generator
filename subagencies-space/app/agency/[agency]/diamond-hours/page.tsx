@@ -509,6 +509,7 @@ export default function TeamDiamondsYesterdayPage() {
   const previewRequestRef = useRef(0);
   const previewReadyRef = useRef("");
   const [previewReadyFor, setPreviewReadyFor] = useState("");
+  const exportInProgressRef = useRef(false);
 
   const previewScale = 0.42;
   const agencyFallbackTemplate = useMemo(() => ({
@@ -883,20 +884,20 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
-  async function downloadTemplate(item: SavedTemplateRow, prepareIfNeeded = false) {
+  async function downloadTemplate(item: SavedTemplateRow) {
+    if (exportInProgressRef.current) return;
+    exportInProgressRef.current = true;
     setLoading(true);
     try {
-      if (previewReadyRef.current !== item.name) {
-        if (!prepareIfNeeded) throw new Error("This preview is still preparing. Please wait for the Download button to turn on.");
-        previewBuildKeyRef.current = `${agencySide}:${item.name}`;
-        setSelectedTemplateName(item.name);
-        const failedForPoster = await buildPreview(item.template, true, item.name);
-        if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
-      }
+      // Download always follows the identical render route as Live export
+      // preview, then captures that rendered DOM once it is fully loaded.
+      previewBuildKeyRef.current = `${agencySide}:${item.name}`;
+      setSelectedTemplateName(item.name);
+      const failedForPoster = await buildPreview(item.template, true, item.name);
+      if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
-      const renderedBackground = template?.backgroundUrl || item.template.backgroundUrl;
-      await waitForRenderedBackground(node, renderedBackground);
+      await waitForRenderedBackground(node, item.template.backgroundUrl);
       await waitForImages(node);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
@@ -906,13 +907,14 @@ export default function TeamDiamondsYesterdayPage() {
       setMessage(error instanceof Error ? error.message : "Could not download this poster.");
     } finally {
       setLoading(false);
+      exportInProgressRef.current = false;
     }
   }
 
   useEffect(() => {
     if (!autoDownload || autoDownloadStartedRef.current || !templateCards.length) return;
     autoDownloadStartedRef.current = true;
-    void downloadTemplate(templateCards[0], true);
+    void downloadTemplate(templateCards[0]);
   }, [autoDownload, templateCards]);
 
   return (
@@ -954,7 +956,7 @@ export default function TeamDiamondsYesterdayPage() {
                 <article key={item.name} onClick={() => { setSelectedTemplateName(item.name); previewBuildKeyRef.current = `${agencySide}:${item.name}`; void buildPreview(item.template, true, item.name); }} className={`flex min-h-60 cursor-pointer flex-col rounded-3xl border p-5 transition hover:bg-yellow-300/10 ${activeTemplateName === item.name ? "border-yellow-300 bg-yellow-300/10" : "border-yellow-300/20 bg-black/50"}`}>
                   <p className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-white/55">Saved preset</p>
                   <h2 className="mt-3 font-sans text-2xl font-extrabold uppercase tracking-[0.045em] text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={(event) => { event.stopPropagation(); void downloadTemplate(item); }} disabled={loading || previewReadyFor !== item.name} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:opacity-50">{previewReadyFor === item.name ? "Download" : "Preparing preview..."}</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); void downloadTemplate(item); }} className="mt-auto w-full rounded-xl bg-green-400 px-5 py-4 font-sans text-sm font-extrabold uppercase tracking-[0.14em] text-black hover:bg-green-300">Download</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
