@@ -508,6 +508,7 @@ export default function TeamDiamondsYesterdayPage() {
   const previewBuildKeyRef = useRef("");
   const previewRequestRef = useRef(0);
   const previewReadyRef = useRef("");
+  const renderedBackgroundRef = useRef("");
   const [previewReadyFor, setPreviewReadyFor] = useState("");
   const exportInProgressRef = useRef(false);
 
@@ -618,6 +619,16 @@ export default function TeamDiamondsYesterdayPage() {
 
     try {
       const activeTemplate = forTemplate || selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
+      // html-to-image can retain the preceding remote image while cloning the
+      // preview. Embed this preset's background first, making the preview and
+      // resulting PNG use the same immutable image data.
+      const embeddedBackground = activeTemplate.backgroundUrl
+        ? await embedAvatarForPoster(activeTemplate.backgroundUrl)
+        : "";
+      const renderTemplate = {
+        ...activeTemplate,
+        backgroundUrl: embeddedBackground || activeTemplate.backgroundUrl,
+      };
 
       const statDate = await getLatestUploadedDate();
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
@@ -674,8 +685,8 @@ export default function TeamDiamondsYesterdayPage() {
       }));
 
       const filledTemplate: TeamPosterTemplate = {
-        ...activeTemplate,
-        elements: activeTemplate.elements.map((element) => {
+        ...renderTemplate,
+        elements: renderTemplate.elements.map((element) => {
           const diamondMatch = element.id.match(/^(avatar|username|diamonds)-(\d+)$/);
           const hourTextMatch = element.id.match(/^(avatar|username)-hours-(\d+)$/);
           const hourValueMatch = element.id.match(/^hours-(\d+)$/);
@@ -700,6 +711,7 @@ export default function TeamDiamondsYesterdayPage() {
       // images from the preceding download cannot be reused by the next one.
       if (requestId !== previewRequestRef.current) return null;
       flushSync(() => setTemplate(filledTemplate));
+      renderedBackgroundRef.current = filledTemplate.backgroundUrl;
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (node) {
         await waitForRenderedBackground(node, filledTemplate.backgroundUrl);
@@ -779,7 +791,7 @@ export default function TeamDiamondsYesterdayPage() {
           // Verify the rendered poster itself has switched to this template's
           // background. A separate preload can complete while the DOM is still
           // displaying the previous manager's image.
-          await waitForRenderedBackground(node, item.template.backgroundUrl);
+          await waitForRenderedBackground(node, renderedBackgroundRef.current);
           await waitForImages(node);
           const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
           if (!blob) throw new Error("Could not create image.");
@@ -897,7 +909,7 @@ export default function TeamDiamondsYesterdayPage() {
       if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
-      await waitForRenderedBackground(node, item.template.backgroundUrl);
+      await waitForRenderedBackground(node, renderedBackgroundRef.current);
       await waitForImages(node);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
