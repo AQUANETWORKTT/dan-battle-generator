@@ -2768,7 +2768,18 @@ export default function CreatorIntelligencePage() {
     return ["All Managers", ...Array.from(values).sort()];
   }, [aquaSummaries]);
 
-  const groups = useMemo(() => ["All Groups", ...Array.from(new Set(Object.values(managerAssignments).filter((group) => group && group !== "Excluded" && group !== "Recruitment"))).sort()], [managerAssignments]);
+  const groups = useMemo(() => {
+    const values = new Set<string>();
+
+    for (const creator of aquaSummaries) {
+      [creator.managerGroup, creator.group, creator.agency]
+        .map((value) => value.trim())
+        .filter((value) => value && value !== "Excluded" && value !== "Recruitment" && value !== "Unassigned")
+        .forEach((value) => values.add(value));
+    }
+
+    return ["All Groups", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
+  }, [aquaSummaries]);
 
   const activeManager = managers.includes(manager) ? manager : "All Managers";
   const activeGroup = groups.includes(groupFilter) ? groupFilter : "All Groups";
@@ -3464,7 +3475,7 @@ export default function CreatorIntelligencePage() {
           </div>
         </div>
 
-        {false && <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
             This page uses the latest rolling 30 days from First Class creator daily stats. The trend chart uses the latest 14 uploaded days.
           </div>
@@ -3519,8 +3530,22 @@ export default function CreatorIntelligencePage() {
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-950 placeholder:text-slate-300"
               />
             </label>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setGroupFilter("All Groups");
+                  setManager("All Managers");
+                  setHealthStatus("All Health");
+                  setSearch("");
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-slate-950 px-3 py-3 text-sm font-black uppercase text-white transition hover:bg-slate-800"
+              >
+                Clear filters
+              </button>
+            </div>
           </div>
-        </section>}
+        </section>
 
         {false && <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Total creators" value={formatNumber(totals.totalCreators)} />
