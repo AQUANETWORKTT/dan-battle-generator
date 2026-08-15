@@ -4,6 +4,28 @@ export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const host = req.headers.get("host")?.split(":")[0].toLowerCase();
 
+  // First Class Owners is deliberately a small, separate experience that is
+  // hosted from this codebase. The domain is the boundary: it exposes only
+  // the owners landing page and its clean poster generator, never the wider
+  // Management site.
+  const isOwnersSpace = host === "firstclassowners.space" || host === "www.firstclassowners.space";
+  if (isOwnersSpace) {
+    if (path === "/") {
+      return NextResponse.rewrite(new URL("/owners", req.url));
+    }
+
+    if (path === "/owners" || path.startsWith("/api/")) {
+      return NextResponse.next();
+    }
+
+    if (path === "/generator") {
+      if (req.nextUrl.searchParams.get("owner") === "1") return NextResponse.next();
+      return NextResponse.redirect(new URL("/generator?owner=1", req.url));
+    }
+
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   // Sub-Agencies has its own password screen. Do not let First Class's
   // site-wide login middleware send successful agency entries back to /login.
   if (host === "subagencies.space" || host === "www.subagencies.space") {
