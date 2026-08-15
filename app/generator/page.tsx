@@ -54,7 +54,7 @@ type ManagerLeaderboardStat = {
   manager_label?: string | null;
 };
 
-type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
+type PosterElementKey = "avatar1" | "avatar2" | "avatar3" | "avatar4" | "username1" | "username2" | "username3" | "username4" | "date";
 type TwoVTwoPosterElementKey =
   | "avatar1" | "avatar2" | "avatar3" | "avatar4"
   | "username1" | "username2" | "username3" | "username4" | "date";
@@ -222,8 +222,12 @@ function savedFallbackAvatar(username: string, fallbacks: Record<string, string>
 const ELEMENT_LABELS: Record<PosterElementKey, string> = {
   avatar1: "Avatar 1",
   avatar2: "Avatar 2",
+  avatar3: "Avatar 3",
+  avatar4: "Avatar 4",
   username1: "Username 1",
   username2: "Username 2",
+  username3: "Username 3",
+  username4: "Username 4",
   date: "Date / Time",
 };
 
@@ -254,7 +258,7 @@ const FONT_OPTIONS = [
   "Times New Roman",
 ];
 
-const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "date"];
+const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "username3", "username4", "date"];
 const DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-default-template-id";
 const DEFAULT_TEMPLATE_SETTING_KEY = "poster-template-default";
 const TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-2v2-default-template-id";
@@ -266,6 +270,8 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
   backgroundUrl: "",
   avatar1: { x: 82, y: 570, width: 346, height: 346 },
   avatar2: { x: 651, y: 570, width: 346, height: 346 },
+  avatar3: { x: 82, y: 1040, width: 220, height: 220 },
+  avatar4: { x: 780, y: 1040, width: 220, height: 220 },
   username1: {
     x: 17,
     y: 953,
@@ -312,6 +318,8 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
     gradientTo: "#0044FF",
     gradientDirection: "to bottom",
   },
+  username3: { x: 20, y: 1280, width: 360, height: 62, fontFamily: "Luckiest Guy", fontSize: 42, color: "#5CEEFF", strokeColor: "black", strokeWidth: 2, shadowX: 2, shadowY: 2, shadowBlur: 0, shadowColor: "#000000", letterSpacing: 1, fontWeight: 900, uppercase: true },
+  username4: { x: 700, y: 1280, width: 360, height: 62, fontFamily: "Luckiest Guy", fontSize: 42, color: "#5CEEFF", strokeColor: "black", strokeWidth: 2, shadowX: 2, shadowY: 2, shadowBlur: 0, shadowColor: "#000000", letterSpacing: 1, fontWeight: 900, uppercase: true },
   date: {
     x: 155,
     y: 1337,
@@ -387,8 +395,12 @@ function normalizeTemplateJson(input: Partial<PosterTemplateJson> | null | undef
     ...incoming,
     avatar1: { ...DEFAULT_TEMPLATE_JSON.avatar1, ...(incoming.avatar1 || {}) },
     avatar2: { ...DEFAULT_TEMPLATE_JSON.avatar2, ...(incoming.avatar2 || {}) },
+    avatar3: { ...DEFAULT_TEMPLATE_JSON.avatar3, ...(incoming.avatar3 || {}) },
+    avatar4: { ...DEFAULT_TEMPLATE_JSON.avatar4, ...(incoming.avatar4 || {}) },
     username1: { ...DEFAULT_TEMPLATE_JSON.username1, ...(incoming.username1 || {}) },
     username2: { ...DEFAULT_TEMPLATE_JSON.username2, ...(incoming.username2 || {}) },
+    username3: { ...DEFAULT_TEMPLATE_JSON.username3, ...(incoming.username3 || {}) },
+    username4: { ...DEFAULT_TEMPLATE_JSON.username4, ...(incoming.username4 || {}) },
     date: { ...DEFAULT_TEMPLATE_JSON.date, ...(incoming.date || {}) },
     backgroundUrl:
       Object.prototype.hasOwnProperty.call(incoming, "backgroundUrl")
@@ -1091,7 +1103,7 @@ export default function BattleGeneratorPage() {
     if (isTwoVTwo) setTwoVTwoDefaultTemplateId(template.id);
     else setDefaultTemplateId(template.id);
     if (isTwoVTwo && typeof window !== "undefined") {
-      window.localStorage.setItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${template.id}`, JSON.stringify(twoVTwoTemplateJson));
+      window.localStorage.setItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${template.id}`, JSON.stringify(normalize2v2TemplateJson(templateEditorMode === "2v2" ? templateJson : twoVTwoTemplateJson)));
     }
 
     const supabase = getPosterSupabaseClient();
@@ -2855,7 +2867,8 @@ export default function BattleGeneratorPage() {
   }
 
   function TwoVTwoPosterPreview({ scale = 0.3 }: { scale?: number }) {
-    const active = normalize2v2TemplateJson({ ...twoVTwoTemplateJson, backgroundUrl: twoVTwoTemplateJson.backgroundUrl || templateJson.backgroundUrl || BRAND.posterBackground });
+    const editingTwoVTwoTemplate = templateEditorMode === "2v2";
+    const active = normalize2v2TemplateJson(editingTwoVTwoTemplate ? { ...templateJson, backgroundUrl: templateJson.backgroundUrl || BRAND.posterBackground } : { ...twoVTwoTemplateJson, backgroundUrl: twoVTwoTemplateJson.backgroundUrl || templateJson.backgroundUrl || BRAND.posterBackground });
     const slots = [
       ["avatar1", "username1", twoVTwoBattle.image1, twoVTwoBattle.home1, "Home 1"],
       ["avatar2", "username2", twoVTwoBattle.image2, twoVTwoBattle.home2, "Home 2"],
@@ -3206,7 +3219,9 @@ function renderText(
   }
 
   function TemplateControls() {
-    if (templateEditorMode === "2v2") return TwoVTwoTemplateControls();
+    const editorElementKeys: PosterElementKey[] = templateEditorMode === "2v2"
+      ? ["avatar1", "avatar2", "avatar3", "avatar4", "username1", "username2", "username3", "username4", "date"]
+      : ["avatar1", "avatar2", "username1", "username2", "date"];
     const element = templateJson[selectedElement];
     const isTextElement = TEXT_ELEMENT_KEYS.includes(selectedElement);
     const backgroundUrl = templateJson.backgroundUrl ?? "";
@@ -3240,6 +3255,7 @@ function renderText(
               type="button"
               onClick={() => {
                 setTemplateEditorMode("2v2");
+                updateWholeTemplateJson(twoVTwoTemplateJson as PosterTemplateJson);
                 setTwoVTwoEditMode(true);
               }}
               className="bg-cyan-300 hover:bg-cyan-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
@@ -3376,7 +3392,7 @@ function renderText(
                 Select Element
               </p>
               <div className="grid grid-cols-2 2xl:grid-cols-1 gap-2">
-                {(Object.keys(ELEMENT_LABELS) as PosterElementKey[]).map((key) => (
+                {editorElementKeys.map((key) => (
                   <button
                     key={key}
                     type="button"
@@ -3398,7 +3414,7 @@ function renderText(
             <div className="text-xs text-yellow-200 font-black mb-3 uppercase tracking-widest">
               Live Template Preview
             </div>
-            {PosterPreview({ battle: blankPreviewBattle, scale: 0.42 })}
+            {templateEditorMode === "2v2" ? <TwoVTwoPosterPreview scale={0.42}/> : PosterPreview({ battle: blankPreviewBattle, scale: 0.42 })}
           </main>
 
           <aside className="space-y-4">
