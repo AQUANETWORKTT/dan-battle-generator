@@ -3191,7 +3191,15 @@ function renderText(
           </p>
           <button
             type="button"
-            onClick={() => { setTemplateEditorMode("single"); setEditMode(true); }}
+            onClick={() => {
+              const openingTwoVTwo = activeMode === "2v2";
+              setTemplateEditorMode(openingTwoVTwo ? "2v2" : "single");
+              if (openingTwoVTwo) {
+                updateWholeTemplateJson(twoVTwoTemplateJson as PosterTemplateJson);
+                setTwoVTwoEditMode(true);
+              }
+              setEditMode(true);
+            }}
             className="bg-cyan-300 hover:bg-cyan-200 transition text-black font-black px-3 py-2 rounded-lg uppercase tracking-widest text-xs"
           >
             Poster Template
