@@ -938,6 +938,7 @@ export default function BattleGeneratorPage() {
   const [twoVTwoBattle, setTwoVTwoBattle] = useState<TwoVTwoBattle>({ home1: "", home2: "", away1: "", away2: "", image1: "", image2: "", image3: "", image4: "", time: "", date: "" });
   const [twoVTwoDay, setTwoVTwoDay] = useState("");
   const [twoVTwoMonth, setTwoVTwoMonth] = useState(() => String(new Date().getMonth()));
+  const [twoVTwoPaste, setTwoVTwoPaste] = useState("");
   const [twoVTwoEditMode, setTwoVTwoEditMode] = useState(false);
   const [twoVTwoSelectedElement, setTwoVTwoSelectedElement] = useState<TwoVTwoPosterElementKey>("avatar1");
   const [twoVTwoTemplateJson, setTwoVTwoTemplateJson] = useState<TwoVTwoPosterTemplateJson>(() => normalize2v2TemplateJson());
@@ -2504,6 +2505,21 @@ export default function BattleGeneratorPage() {
     setTwoVTwoDay("");
     setTwoVTwoMonth(String(new Date().getMonth()));
     setTwoVTwoTemplateJson((current) => ({ ...normalize2v2TemplateJson(), backgroundUrl: current.backgroundUrl }));
+    setTwoVTwoPaste("");
+  }
+
+  async function readTwoVTwoPaste() {
+    const parts = twoVTwoPaste.trim().split(/\t+/).map((value) => value.trim());
+    if (parts[0]?.toUpperCase() !== "2V2" || parts.length < 12) {
+      alert("Paste a 2V2 Copy Poster Row from Battle Network.");
+      return;
+    }
+    const [home1, , home2, , away1, , away2, , day, time] = parts.slice(1);
+    const image1 = await fetchTikTokAvatar(home1);
+    const image2 = await fetchTikTokAvatar(home2);
+    const image3 = await fetchTikTokAvatar(away1);
+    const image4 = await fetchTikTokAvatar(away2);
+    setTwoVTwoBattle({ home1: formatName(home1), home2: formatName(home2), away1: formatName(away1), away2: formatName(away2), image1, image2, image3, image4, date: day || "", time: formatTime(time || "") });
   }
 
   async function autoFillTwoVTwoAvatar(field: "image1" | "image2" | "image3" | "image4", username: string) {
@@ -4547,6 +4563,11 @@ function renderText(
                 </div>
                 <button type="button" onClick={downloadTwoVTwoPoster} className="w-full bg-yellow-400 hover:bg-yellow-300 transition text-black font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest">Download 2v2 Poster</button>
                 <button type="button" onClick={clearTwoVTwoPoster} className="w-full bg-white/10 hover:bg-white/20 transition text-white font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-white/20">Clear 2v2 Poster</button>
+              </div>
+              <div className="bg-black/35 border border-white/15 rounded-xl p-5 space-y-4">
+                <h2 className="text-yellow-300 font-black uppercase tracking-widest">Paste 2v2 Poster Row</h2>
+                <textarea value={twoVTwoPaste} onChange={(event) => setTwoVTwoPaste(event.target.value)} placeholder="Paste the 2V2 Copy Poster Row from Battle Network" className="w-full h-28 bg-black/40 border border-white/20 text-white p-4 rounded-lg text-sm outline-none focus:border-yellow-300" />
+                <button type="button" onClick={readTwoVTwoPaste} className="w-full bg-yellow-300 hover:bg-yellow-200 transition text-black font-black px-4 py-4 rounded-lg uppercase tracking-widest">Read 2v2 Poster Row</button>
               </div>
               <div className="bg-black/35 border border-cyan-300/30 rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3"><h2 className="text-cyan-200 font-black uppercase tracking-widest">2v2 Template Layout</h2><button type="button" onClick={() => setTwoVTwoEditMode((value) => !value)} className="rounded-lg bg-cyan-300 px-4 py-2 text-xs font-black uppercase text-black">{twoVTwoEditMode ? "Done Moving" : "Move 2v2 Sections"}</button></div>
