@@ -2587,7 +2587,7 @@ export default function BattleGeneratorPage() {
       alert("Paste a 2V2 Copy Poster Row from Battle Network.");
       return;
     }
-    const [home1, , home2, , away1, , away2, , day, time] = parts.slice(1);
+    const [home1, , home2, , away1, , away2, , , day, time] = parts.slice(1);
     const image1 = await fetchTikTokAvatar(home1);
     const image2 = await fetchTikTokAvatar(home2);
     const image3 = await fetchTikTokAvatar(away1);
