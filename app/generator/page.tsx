@@ -1199,7 +1199,11 @@ export default function BattleGeneratorPage() {
     }
 
     const rows = data
-      .filter((row) => row.name !== TEAM_DAN_POSTER_TEMPLATE_NAME && !String(row.name || "").startsWith("team-poster-"))
+      .filter((row) => {
+        const layout = row.template_json as Record<string, unknown> | null;
+        const isBattlePoster = Boolean(layout?.avatar1 && layout?.avatar2 && layout?.username1 && layout?.username2);
+        return isBattlePoster && row.name !== TEAM_DAN_POSTER_TEMPLATE_NAME && !String(row.name || "").startsWith("team-poster-");
+      })
       .map((row) => ({
       ...row,
       template_json: normalizeTemplateJson(row.template_json),
