@@ -1236,18 +1236,27 @@ export default function BattleGeneratorPage() {
     if (!editingTemplateName) setTemplateName(template.name);
     setUndoStack([]);
     updateWholeTemplateJson(template.template_json);
+    if (activeMode === "2v2" || templateEditorMode === "2v2") {
+      const saved = typeof window === "undefined" ? null : window.localStorage.getItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${template.id}`);
+      try {
+        setTwoVTwoTemplateJson(normalize2v2TemplateJson(saved ? JSON.parse(saved) : template.template_json));
+      } catch {
+        setTwoVTwoTemplateJson(normalize2v2TemplateJson(template.template_json));
+      }
+    }
     setTemplateStatus(`Loaded ${template.name}.`);
   }
 
   function switchPosterMode(mode: "single" | "mass" | "2v2") {
     setActiveMode(mode);
     const defaultId = mode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
+    const template = templates.find((item) => item.id === defaultId);
     if (defaultId && defaultId !== selectedTemplateId) handleTemplateSelect(defaultId);
     if (mode === "2v2" && defaultId && typeof window !== "undefined") {
       try {
         const savedLayout = window.localStorage.getItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${defaultId}`);
-        if (savedLayout) setTwoVTwoTemplateJson(normalize2v2TemplateJson(JSON.parse(savedLayout)));
-      } catch { /* Keep the standard 2v2 layout if an old saved layout is invalid. */ }
+        setTwoVTwoTemplateJson(normalize2v2TemplateJson(savedLayout ? JSON.parse(savedLayout) : template?.template_json));
+      } catch { setTwoVTwoTemplateJson(normalize2v2TemplateJson(template?.template_json)); }
     }
   }
 
