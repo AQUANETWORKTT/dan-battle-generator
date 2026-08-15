@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Rnd } from "react-rnd";
 import { createClient } from "@supabase/supabase-js";
 import * as htmlToImage from "html-to-image";
@@ -19,7 +19,12 @@ type Battle = {
   image2: string;
 };
 
-type Mode = "single" | "mass" | "team" | "glory" | "manager";
+type Mode = "single" | "mass" | "2v2" | "team" | "glory" | "manager";
+type TwoVTwoBattle = {
+  home1: string; home2: string; away1: string; away2: string;
+  image1: string; image2: string; image3: string; image4: string;
+  time: string; date: string;
+};
 
 type RaceToGloryRow = {
   teamName: string;
@@ -50,6 +55,9 @@ type ManagerLeaderboardStat = {
 };
 
 type PosterElementKey = "avatar1" | "avatar2" | "username1" | "username2" | "date";
+type TwoVTwoPosterElementKey =
+  | "avatar1" | "avatar2" | "avatar3" | "avatar4"
+  | "username1" | "username2" | "username3" | "username4" | "date";
 
 type PosterElement = {
   x: number;
@@ -76,6 +84,10 @@ type PosterElement = {
 };
 
 type PosterTemplateJson = Record<PosterElementKey, PosterElement> & {
+  backgroundUrl?: string;
+};
+
+type TwoVTwoPosterTemplateJson = Record<TwoVTwoPosterElementKey, PosterElement> & {
   backgroundUrl?: string;
 };
 
@@ -321,6 +333,33 @@ const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
     gradientDirection: "to bottom",
   },
 };
+
+const DEFAULT_2V2_TEMPLATE_JSON: TwoVTwoPosterTemplateJson = {
+  backgroundUrl: "",
+  avatar1: { x: 80, y: 470, width: 220, height: 220 },
+  avatar2: { x: 780, y: 470, width: 220, height: 220 },
+  avatar3: { x: 80, y: 1040, width: 220, height: 220 },
+  avatar4: { x: 780, y: 1040, width: 220, height: 220 },
+  username1: { ...DEFAULT_TEMPLATE_JSON.username1, x: 20, y: 710, width: 360, height: 62, fontSize: 42 },
+  username2: { ...DEFAULT_TEMPLATE_JSON.username2, x: 700, y: 710, width: 360, height: 62, fontSize: 42 },
+  username3: { ...DEFAULT_TEMPLATE_JSON.username1, x: 20, y: 1280, width: 360, height: 62, fontSize: 42 },
+  username4: { ...DEFAULT_TEMPLATE_JSON.username2, x: 700, y: 1280, width: 360, height: 62, fontSize: 42 },
+  date: { ...DEFAULT_TEMPLATE_JSON.date, x: 155, y: 1510, width: 770, height: 70, fontSize: 52 },
+};
+
+function normalize2v2TemplateJson(input?: Partial<TwoVTwoPosterTemplateJson> | null): TwoVTwoPosterTemplateJson {
+  const incoming = input || {};
+  const base = structuredClone(DEFAULT_2V2_TEMPLATE_JSON);
+  return {
+    ...base,
+    ...incoming,
+    avatar1: { ...base.avatar1, ...(incoming.avatar1 || {}) }, avatar2: { ...base.avatar2, ...(incoming.avatar2 || {}) },
+    avatar3: { ...base.avatar3, ...(incoming.avatar3 || {}) }, avatar4: { ...base.avatar4, ...(incoming.avatar4 || {}) },
+    username1: { ...base.username1, ...(incoming.username1 || {}) }, username2: { ...base.username2, ...(incoming.username2 || {}) },
+    username3: { ...base.username3, ...(incoming.username3 || {}) }, username4: { ...base.username4, ...(incoming.username4 || {}) },
+    date: { ...base.date, ...(incoming.date || {}) },
+  };
+}
 
 function createBlankTemplateJson(): PosterTemplateJson {
   return normalizeTemplateJson({
@@ -856,6 +895,7 @@ function TimeSelect({
 export default function BattleGeneratorPage() {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const twoVTwoPosterRef = useRef<HTMLDivElement | null>(null);
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
   const fallbackAvatarUrlsRef = useRef<Record<string, string>>({});
   const [workspace, setWorkspace] = useState<string | null>(null);
@@ -895,6 +935,12 @@ export default function BattleGeneratorPage() {
   const [singleBattle, setSingleBattle] = useState<Battle>(() =>
     createBattle(`single-${stableId}`)
   );
+  const [twoVTwoBattle, setTwoVTwoBattle] = useState<TwoVTwoBattle>({ home1: "", home2: "", away1: "", away2: "", image1: "", image2: "", image3: "", image4: "", time: "", date: "" });
+  const [twoVTwoDay, setTwoVTwoDay] = useState("");
+  const [twoVTwoMonth, setTwoVTwoMonth] = useState(() => String(new Date().getMonth()));
+  const [twoVTwoEditMode, setTwoVTwoEditMode] = useState(false);
+  const [twoVTwoSelectedElement, setTwoVTwoSelectedElement] = useState<TwoVTwoPosterElementKey>("avatar1");
+  const [twoVTwoTemplateJson, setTwoVTwoTemplateJson] = useState<TwoVTwoPosterTemplateJson>(() => normalize2v2TemplateJson());
   const [singleDay, setSingleDay] = useState("");
   const [singleMonth, setSingleMonth] = useState(() => String(new Date().getMonth()));
 
@@ -2432,6 +2478,39 @@ export default function BattleGeneratorPage() {
     setLoading(false);
   }
 
+  function updateTwoVTwoDate(day: string, month: string) {
+    setTwoVTwoBattle((current) => ({ ...current, date: formatDateFromParts(day, month) }));
+  }
+
+  function handleTwoVTwoDayChange(value: string) {
+    setTwoVTwoDay(value);
+    updateTwoVTwoDate(value, twoVTwoMonth);
+  }
+
+  function handleTwoVTwoMonthChange(value: string) {
+    const fixedDay = twoVTwoDay && Number(twoVTwoDay) > getDaysInMonth(value)
+      ? String(getDaysInMonth(value)) : twoVTwoDay;
+    setTwoVTwoMonth(value);
+    setTwoVTwoDay(fixedDay);
+    updateTwoVTwoDate(fixedDay, value);
+  }
+
+  function updateTwoVTwoElement(key: TwoVTwoPosterElementKey, changes: Partial<PosterElement>) {
+    setTwoVTwoTemplateJson((current) => ({ ...current, [key]: { ...current[key], ...changes } }));
+  }
+
+  function clearTwoVTwoPoster() {
+    setTwoVTwoBattle({ home1: "", home2: "", away1: "", away2: "", image1: "", image2: "", image3: "", image4: "", time: "", date: "" });
+    setTwoVTwoDay("");
+    setTwoVTwoMonth(String(new Date().getMonth()));
+    setTwoVTwoTemplateJson((current) => ({ ...normalize2v2TemplateJson(), backgroundUrl: current.backgroundUrl }));
+  }
+
+  async function autoFillTwoVTwoAvatar(field: "image1" | "image2" | "image3" | "image4", username: string) {
+    const avatar = await fetchTikTokAvatar(username);
+    if (avatar) setTwoVTwoBattle((current) => ({ ...current, [field]: avatar }));
+  }
+
   async function imageToDataUrl(src: string) {
     if (!src || src.startsWith("data:")) return src;
 
@@ -2700,6 +2779,51 @@ export default function BattleGeneratorPage() {
     );
   }
 
+  function TwoVTwoPhotoBox({ field, usernameField, label }: { field: "image1" | "image2" | "image3" | "image4"; usernameField: "home1" | "home2" | "away1" | "away2"; label: string }) {
+    const inputId = `two-v-two-${field}`;
+    const image = twoVTwoBattle[field];
+    const setImage = (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => setTwoVTwoBattle((current) => ({ ...current, [field]: String(reader.result || "") }));
+      reader.readAsDataURL(file);
+    };
+    return <div onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files?.[0]; if (file?.type.startsWith("image/")) setImage(file); }} className="rounded-lg border-2 border-dashed border-yellow-300/40 bg-black/45 p-4 text-center hover:border-yellow-300 transition">
+      <p className="text-yellow-300 font-black uppercase text-sm tracking-widest">{label}</p>
+      {image ? <img src={addCacheBustToImageUrl(image, `2v2-${field}-${twoVTwoBattle[usernameField]}`)} alt="" className="w-24 h-24 rounded-full object-cover mx-auto mt-3 border-2 border-yellow-300" /> : <div className="w-24 h-24 rounded-full bg-black/60 mx-auto mt-3 border border-white/10 flex items-center justify-center text-white/25 text-xs">No image</div>}
+      <p className="text-white/45 text-xs mt-3">Drag photo here or click to choose</p>
+      <div className="mt-3 flex flex-col gap-2 items-center"><label htmlFor={inputId} className="inline-block cursor-pointer bg-yellow-300 text-black font-black px-4 py-2 rounded uppercase text-xs">Choose Image</label><button type="button" disabled={!twoVTwoBattle[usernameField]} onClick={() => autoFillTwoVTwoAvatar(field, twoVTwoBattle[usernameField])} className="bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black px-4 py-2 rounded uppercase text-xs">Refresh TikTok Photo</button></div>
+      <input id={inputId} type="file" accept="image/*" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) setImage(file); }} />
+    </div>;
+  }
+
+  async function downloadTwoVTwoPoster() {
+    const node = twoVTwoPosterRef.current;
+    if (!node) return;
+    await document.fonts.ready;
+    await waitForPosterImages(node);
+    const blob = await htmlToImage.toBlob(node, { cacheBust: true, pixelRatio: 2, backgroundColor: "#000000" });
+    if (blob) saveAs(blob, cleanFileName(`${twoVTwoBattle.home1 || "HOME1"} & ${twoVTwoBattle.home2 || "HOME2"} VS ${twoVTwoBattle.away1 || "AWAY1"} & ${twoVTwoBattle.away2 || "AWAY2"} - ${twoVTwoBattle.date || "DATE"} - ${twoVTwoBattle.time || "TIME"}.png`));
+  }
+
+  function TwoVTwoPosterPreview({ scale = 0.3 }: { scale?: number }) {
+    const active = normalize2v2TemplateJson({ ...twoVTwoTemplateJson, backgroundUrl: twoVTwoTemplateJson.backgroundUrl || templateJson.backgroundUrl || BRAND.posterBackground });
+    const slots = [
+      ["avatar1", "username1", twoVTwoBattle.image1, twoVTwoBattle.home1, "Home 1"],
+      ["avatar2", "username2", twoVTwoBattle.image2, twoVTwoBattle.home2, "Home 2"],
+      ["avatar3", "username3", twoVTwoBattle.image3, twoVTwoBattle.away1, "Opponent 1"],
+      ["avatar4", "username4", twoVTwoBattle.image4, twoVTwoBattle.away2, "Opponent 2"],
+    ] as const;
+    const dateText = [twoVTwoBattle.date, twoVTwoBattle.time].filter(Boolean).join(" | ");
+    const render = (key: TwoVTwoPosterElementKey, content: React.ReactNode, circle = false) => {
+      const element = active[key]; const selected = twoVTwoEditMode && twoVTwoSelectedElement === key;
+      const style = { left: element.x, top: element.y, width: element.width, height: element.height };
+      if (!twoVTwoEditMode) return <div key={key} className={`absolute ${circle ? "rounded-full overflow-hidden" : ""}`} style={style}>{content}</div>;
+      return <Rnd key={key} scale={scale} bounds="parent" lockAspectRatio={circle} position={{ x: element.x, y: element.y }} size={{ width: element.width, height: element.height }} onMouseDown={() => setTwoVTwoSelectedElement(key)} onDragStop={(_, data) => updateTwoVTwoElement(key, { x: Math.round(data.x), y: Math.round(data.y) })} onResizeStop={(_, __, ref, ___, position) => updateTwoVTwoElement(key, { x: Math.round(position.x), y: Math.round(position.y), width: Math.round(ref.offsetWidth), height: Math.round(ref.offsetHeight) })} className={`${circle ? "rounded-full overflow-hidden" : ""} ${selected ? "ring-[8px] ring-yellow-300" : "ring-[5px] ring-cyan-300/45"}`}>{content}</Rnd>;
+    };
+    const textStyle = (key: TwoVTwoPosterElementKey) => { const e = active[key]; return { fontFamily: `'${e.fontFamily || "Luckiest Guy"}', sans-serif`, fontSize: e.fontSize || 44, fontWeight: e.fontWeight || 900, color: e.color || "#5CEEFF", WebkitTextStroke: `${e.strokeWidth ?? 2}px ${e.strokeColor || "black"}`, textShadow: `${e.shadowX ?? 2}px ${e.shadowY ?? 2}px ${e.shadowBlur ?? 0}px ${e.shadowColor || "#000"}`, letterSpacing: `${e.letterSpacing ?? 1}px` } as CSSProperties; };
+    return <div className="overflow-hidden mx-auto bg-black rounded-lg" style={{ width: POSTER_WIDTH * scale, height: POSTER_HEIGHT * scale }}><div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}><div ref={twoVTwoPosterRef} className="relative w-[1080px] h-[1920px] overflow-hidden bg-black"><img src={active.backgroundUrl || BRAND.posterBackground} className="absolute inset-0 w-full h-full object-cover" alt="" />{slots.map(([avatar, username, image, name, label]) => <Fragment key={avatar}>{render(avatar, twoVTwoEditMode ? <div className="w-full h-full rounded-full border-[8px] border-dashed border-cyan-300 bg-black/60 flex items-center justify-center text-cyan-200 text-3xl font-black">{label}</div> : image ? <img crossOrigin="anonymous" src={addCacheBustToImageUrl(image, `${avatar}-${name}`)} className="w-full h-full rounded-full object-cover" alt="" /> : null, true)}{render(username, <div className="w-full h-full flex items-center justify-center text-center leading-none whitespace-nowrap uppercase" style={textStyle(username)}>{twoVTwoEditMode ? label : name}</div>)}</Fragment>)}{render("date", <div className="w-full h-full flex items-center justify-center text-center leading-none whitespace-nowrap uppercase" style={textStyle("date")}>{twoVTwoEditMode ? "DATE | TIME" : dateText}</div>)}</div></div></div>;
+  }
+
   function PosterPreview({
     battle,
     scale = 0.3,
@@ -2774,6 +2898,7 @@ export default function BattleGeneratorPage() {
           key={key}
           scale={scale}
           bounds="parent"
+          lockAspectRatio
           position={{ x: element.x, y: element.y }}
           size={{ width: element.width, height: element.height }}
           onMouseDown={() => setSelectedElement(key)}
@@ -4243,6 +4368,18 @@ function renderText(
               Mass Poster Generator
             </button>
 
+            <button
+              type="button"
+              onClick={() => setActiveMode("2v2")}
+              className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
+                activeMode === "2v2"
+                  ? "bg-yellow-300 text-black"
+                  : "bg-black/40 text-white border border-white/20 hover:border-yellow-300"
+              }`}
+            >
+              2v2 Poster
+            </button>
+
             </>}
           </div>
         </div>
@@ -4373,6 +4510,39 @@ function renderText(
             </section>
 
             {PosterGrid({ previewBattle: singleBattle })}
+          </div>
+        )}
+        {activeMode === "2v2" && (
+          <div className="grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-8 items-start">
+            <section className="space-y-6">
+              <div className="bg-black/35 border border-yellow-300/20 rounded-xl p-5 space-y-4">
+                <h2 className="text-yellow-300 font-black uppercase tracking-widest">2v2 Poster</h2>
+                {TemplateSelectorPanel({ compact: true })}
+                <div className="grid grid-cols-2 gap-3">
+                  <TextInput label="Home Username 1" value={twoVTwoBattle.home1} placeholder="HOME CREATOR 1" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, home1: formatName(value), image1: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image1", twoVTwoBattle.home1)} />
+                  <TextInput label="Home Username 2" value={twoVTwoBattle.home2} placeholder="HOME CREATOR 2" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, home2: formatName(value), image2: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image2", twoVTwoBattle.home2)} />
+                  <TextInput label="Opponent Username 1" value={twoVTwoBattle.away1} placeholder="OPPONENT 1" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, away1: formatName(value), image3: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image3", twoVTwoBattle.away1)} />
+                  <TextInput label="Opponent Username 2" value={twoVTwoBattle.away2} placeholder="OPPONENT 2" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, away2: formatName(value), image4: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image4", twoVTwoBattle.away2)} />
+                </div>
+                <DayMonthDateSelect day={twoVTwoDay} month={twoVTwoMonth} onDayChange={handleTwoVTwoDayChange} onMonthChange={handleTwoVTwoMonthChange} />
+                <TimeSelect label="Time" value={twoVTwoBattle.time} onChange={(time) => setTwoVTwoBattle((current) => ({ ...current, time }))} />
+                <div className="bg-black/30 border border-white/10 rounded-lg p-3"><p className="text-white/45 text-xs uppercase tracking-widest font-black">Selected Date</p><p className="text-yellow-300 font-black mt-1">{twoVTwoBattle.date || "NO DATE SELECTED"}</p></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <TwoVTwoPhotoBox field="image1" usernameField="home1" label="Home 1 Profile Picture" />
+                  <TwoVTwoPhotoBox field="image2" usernameField="home2" label="Home 2 Profile Picture" />
+                  <TwoVTwoPhotoBox field="image3" usernameField="away1" label="Opponent 1 Profile Picture" />
+                  <TwoVTwoPhotoBox field="image4" usernameField="away2" label="Opponent 2 Profile Picture" />
+                </div>
+                <button type="button" onClick={downloadTwoVTwoPoster} className="w-full bg-yellow-400 hover:bg-yellow-300 transition text-black font-black px-4 py-5 rounded-lg cursor-pointer uppercase tracking-widest">Download 2v2 Poster</button>
+                <button type="button" onClick={clearTwoVTwoPoster} className="w-full bg-white/10 hover:bg-white/20 transition text-white font-black px-4 py-4 rounded-lg cursor-pointer uppercase tracking-widest border border-white/20">Clear 2v2 Poster</button>
+              </div>
+              <div className="bg-black/35 border border-cyan-300/30 rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between gap-3"><h2 className="text-cyan-200 font-black uppercase tracking-widest">2v2 Template Layout</h2><button type="button" onClick={() => setTwoVTwoEditMode((value) => !value)} className="rounded-lg bg-cyan-300 px-4 py-2 text-xs font-black uppercase text-black">{twoVTwoEditMode ? "Done Moving" : "Move 2v2 Sections"}</button></div>
+                <p className="text-xs text-white/55">Move and resize all four names and all four avatar circles in the live preview. Avatar circles stay perfectly round.</p>
+                {twoVTwoEditMode && <div className="grid grid-cols-3 gap-2">{(["avatar1", "avatar2", "avatar3", "avatar4", "username1", "username2", "username3", "username4", "date"] as TwoVTwoPosterElementKey[]).map((key) => <button key={key} type="button" onClick={() => setTwoVTwoSelectedElement(key)} className={`rounded border px-2 py-2 text-[10px] font-black uppercase ${twoVTwoSelectedElement === key ? "border-yellow-300 text-yellow-200" : "border-white/15 text-white/60"}`}>{key.replace("username", "name ").replace("avatar", "avatar ")}</button>)}</div>}
+              </div>
+            </section>
+            <section className="grid grid-cols-1 2xl:grid-cols-2 gap-x-28 gap-y-16"><div className="bg-black/30 p-4 rounded-xl text-left border border-yellow-300/20"><div className="text-xs text-yellow-200 font-black mb-3">LIVE TEMPLATE PREVIEW</div><TwoVTwoPosterPreview /></div></section>
           </div>
         )}
         {activeMode === "mass" && (
