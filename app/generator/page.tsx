@@ -1198,10 +1198,12 @@ export default function BattleGeneratorPage() {
       return;
     }
 
-    const rows = data.map((row) => ({
+    const rows = data
+      .filter((row) => row.name !== TEAM_DAN_POSTER_TEMPLATE_NAME && !String(row.name || "").startsWith("team-poster-"))
+      .map((row) => ({
       ...row,
       template_json: normalizeTemplateJson(row.template_json),
-    })) as PosterTemplateRow[];
+      })) as PosterTemplateRow[];
 
     const publicDefaultId = await getPublicDefaultTemplateId(supabase);
     const publicTwoVTwoDefaultId = await getPublicDefaultTemplateId(supabase, TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY);
