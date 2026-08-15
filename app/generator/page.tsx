@@ -1165,6 +1165,17 @@ export default function BattleGeneratorPage() {
   }
 
   async function loadPosterTemplates() {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("owner") === "1") {
+      const local = createLocalTemplate();
+      setTemplates([local]);
+      setSelectedTemplateId(local.id);
+      setDefaultTemplateId(local.id);
+      setTwoVTwoDefaultTemplateId(local.id);
+      setTemplateName(local.name);
+      updateWholeTemplateJson(local.template_json);
+      setTemplateStatus("Clean Owner Space generator ready.");
+      return;
+    }
     const supabase = getPosterSupabaseClient();
 
     if (!supabase) {
