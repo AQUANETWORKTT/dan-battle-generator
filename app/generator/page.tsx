@@ -3174,6 +3174,18 @@ function renderText(
 
             <button
               type="button"
+              onClick={() => {
+                setEditMode(false);
+                setActiveMode("2v2");
+                setTwoVTwoEditMode(true);
+              }}
+              className="bg-cyan-300 hover:bg-cyan-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
+            >
+              2v2 Layout
+            </button>
+
+            <button
+              type="button"
               onClick={createNewTemplate}
               className="bg-black/40 hover:border-cyan-300 text-white border border-white/20 font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
