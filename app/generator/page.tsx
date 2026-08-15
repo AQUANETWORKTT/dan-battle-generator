@@ -958,6 +958,7 @@ export default function BattleGeneratorPage() {
   const [saving, setSaving] = useState(false);
 
   const [editMode, setEditMode] = useState(false);
+  const [templateEditorMode, setTemplateEditorMode] = useState<"single" | "2v2">("single");
   const [templates, setTemplates] = useState<PosterTemplateRow[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("local-default");
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
@@ -1083,7 +1084,7 @@ export default function BattleGeneratorPage() {
     const template = templates.find((item) => item.id === selectedTemplateId);
     if (!template) return;
 
-    const isTwoVTwo = activeMode === "2v2";
+    const isTwoVTwo = activeMode === "2v2" || templateEditorMode === "2v2";
     const storageKey = isTwoVTwo ? TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY : DEFAULT_TEMPLATE_STORAGE_KEY;
     const settingKey = isTwoVTwo ? TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY : DEFAULT_TEMPLATE_SETTING_KEY;
     rememberBrowserDefaultTemplateId(template.id, storageKey);
@@ -3158,7 +3159,7 @@ function renderText(
           </p>
           <button
             type="button"
-            onClick={() => setEditMode(true)}
+            onClick={() => { setTemplateEditorMode("single"); setEditMode(true); }}
             className="bg-cyan-300 hover:bg-cyan-200 transition text-black font-black px-3 py-2 rounded-lg uppercase tracking-widest text-xs"
           >
             Poster Template
@@ -3192,7 +3193,19 @@ function renderText(
     );
   }
 
+  function TwoVTwoTemplateControls() {
+    const key = twoVTwoSelectedElement;
+    const element = twoVTwoTemplateJson[key];
+    const textElement = key.startsWith("username") || key === "date";
+    const labels: Record<TwoVTwoPosterElementKey, string> = { avatar1: "Avatar 1", avatar2: "Avatar 2", avatar3: "Avatar 3", avatar4: "Avatar 4", username1: "Username 1", username2: "Username 2", username3: "Username 3", username4: "Username 4", date: "Date / Time" };
+    const numberInput = (label: string, field: "x" | "y" | "width" | "height") => <label><p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">{label}</p><input type="number" value={element[field]} onChange={(event) => updateTwoVTwoElement(key, { [field]: Number(event.target.value) })} className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300"/></label>;
+    return <div className="bg-black/35 border border-cyan-300/25 rounded-xl p-5 space-y-5" onKeyDown={(event) => event.stopPropagation()}>
+      <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between"><div><h2 className="text-cyan-300 text-2xl font-black uppercase tracking-[0.18em]">2v2 Poster Template</h2><p className="text-white/45 text-sm mt-2">Edit the four avatar and four name sections, then set this 2v2 layout as its own default.</p></div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => { setTemplateEditorMode("single"); setTwoVTwoEditMode(false); }} className="bg-yellow-300 hover:bg-yellow-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition">Single Layout</button><button type="button" onClick={() => setEditMode(false)} className="bg-black/40 text-white border border-white/20 font-black px-4 py-3 rounded-lg uppercase tracking-widest">Back</button></div></div>
+      <div className="grid grid-cols-1 2xl:grid-cols-[300px_minmax(420px,1fr)_360px] gap-5 items-start"><aside className="space-y-4"><div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-4"><p className="text-cyan-300 font-black uppercase tracking-widest text-sm">2v2 Template Selector</p><select value={selectedTemplateId} onChange={(event) => handleTemplateSelect(event.target.value)} className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300">{templates.map((template) => <option key={template.id} value={template.id}>{template.name}{template.id === twoVTwoDefaultTemplateId ? " (2v2 Default)" : ""}</option>)}</select><button type="button" onClick={setCurrentTemplateAsDefault} className="w-full rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-xs font-black uppercase tracking-widest text-cyan-200 hover:bg-cyan-300/20">Set 2v2 Default</button></div><div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-3"><p className="text-white/55 text-xs font-black uppercase tracking-widest">Select Element</p><div className="grid grid-cols-2 2xl:grid-cols-1 gap-2">{(Object.keys(labels) as TwoVTwoPosterElementKey[]).map((item) => <button key={item} type="button" onClick={() => setTwoVTwoSelectedElement(item)} className={`text-left px-3 py-2 rounded-lg font-black uppercase tracking-widest text-xs transition ${key === item ? "bg-cyan-300 text-black" : "bg-black/40 text-white border border-white/15 hover:border-cyan-300"}`}>{labels[item]}</button>)}</div></div></aside><main className="min-w-0 bg-black/30 border border-white/10 rounded-lg p-4"><div className="text-xs text-yellow-200 font-black mb-3 uppercase tracking-widest">Live 2v2 Template Preview</div><TwoVTwoPosterPreview scale={0.42}/></main><aside className="space-y-4"><div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-4"><p className="text-cyan-300 text-xs font-black uppercase tracking-widest">{labels[key]} Position</p><div className="grid grid-cols-2 gap-3">{numberInput("X", "x")}{numberInput("Y", "y")}{numberInput("Width", "width")}{numberInput("Height", "height")}</div></div>{textElement && <div className="bg-black/30 border border-white/10 rounded-lg p-4 space-y-4"><p className="text-cyan-300 text-xs font-black uppercase tracking-widest">Text Styling</p><label className="block"><p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font</p><select value={element.fontFamily || "Luckiest Guy"} onChange={(event) => updateTwoVTwoElement(key, { fontFamily: event.target.value })} className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg outline-none focus:border-cyan-300">{FONT_OPTIONS.map((font) => <option key={font} value={font}>{font}</option>)}</select></label><div className="grid grid-cols-2 gap-3"><label><p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font Size</p><input type="number" value={element.fontSize || 44} onChange={(event) => updateTwoVTwoElement(key, { fontSize: Number(event.target.value) })} className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg"/></label><label><p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Weight</p><input type="number" value={element.fontWeight || 900} onChange={(event) => updateTwoVTwoElement(key, { fontWeight: Number(event.target.value) })} className="w-full bg-black/45 border border-white/15 text-white p-3 rounded-lg"/></label><label><p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Font Colour</p><input type="color" value={element.color || "#5CEEFF"} onChange={(event) => updateTwoVTwoElement(key, { color: event.target.value })} className="w-full h-[46px] bg-black/45 border border-white/15 p-1 rounded-lg"/></label><label><p className="text-white/55 text-xs font-black uppercase tracking-widest mb-2">Outline Colour</p><input type="color" value={element.strokeColor || "#000000"} onChange={(event) => updateTwoVTwoElement(key, { strokeColor: event.target.value })} className="w-full h-[46px] bg-black/45 border border-white/15 p-1 rounded-lg"/></label></div></div>}</aside></div></div>;
+  }
+
   function TemplateControls() {
+    if (templateEditorMode === "2v2") return TwoVTwoTemplateControls();
     const element = templateJson[selectedElement];
     const isTextElement = TEXT_ELEMENT_KEYS.includes(selectedElement);
     const backgroundUrl = templateJson.backgroundUrl ?? "";
@@ -3225,8 +3238,7 @@ function renderText(
             <button
               type="button"
               onClick={() => {
-                setEditMode(false);
-                switchPosterMode("2v2");
+                setTemplateEditorMode("2v2");
                 setTwoVTwoEditMode(true);
               }}
               className="bg-cyan-300 hover:bg-cyan-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
