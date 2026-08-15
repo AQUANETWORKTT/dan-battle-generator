@@ -257,6 +257,9 @@ const FONT_OPTIONS = [
 const TEXT_ELEMENT_KEYS: PosterElementKey[] = ["username1", "username2", "date"];
 const DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-default-template-id";
 const DEFAULT_TEMPLATE_SETTING_KEY = "poster-template-default";
+const TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY = "battle-generator-2v2-default-template-id";
+const TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY = "poster-template-2v2-default";
+const TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX = "battle-generator-2v2-layout-";
 const TEAM_DAN_POSTER_TEMPLATE_NAME = "team-dan-poster";
 
 const DEFAULT_TEMPLATE_JSON: PosterTemplateJson = {
@@ -958,6 +961,7 @@ export default function BattleGeneratorPage() {
   const [templates, setTemplates] = useState<PosterTemplateRow[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("local-default");
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
+  const [twoVTwoDefaultTemplateId, setTwoVTwoDefaultTemplateId] = useState("");
   const [selectedElement, setSelectedElement] = useState<PosterElementKey>("avatar1");
   const [templateName, setTemplateName] = useState("Battle Template");
   const [editingTemplateName, setEditingTemplateName] = useState(false);
@@ -1052,23 +1056,23 @@ export default function BattleGeneratorPage() {
     });
   }
 
-  function getBrowserDefaultTemplateId() {
+  function getBrowserDefaultTemplateId(storageKey = DEFAULT_TEMPLATE_STORAGE_KEY) {
     if (typeof window === "undefined") return "";
-    return window.localStorage.getItem(DEFAULT_TEMPLATE_STORAGE_KEY) || "";
+    return window.localStorage.getItem(storageKey) || "";
   }
 
-  function rememberBrowserDefaultTemplateId(templateId: string) {
+  function rememberBrowserDefaultTemplateId(templateId: string, storageKey = DEFAULT_TEMPLATE_STORAGE_KEY) {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(DEFAULT_TEMPLATE_STORAGE_KEY, templateId);
+    window.localStorage.setItem(storageKey, templateId);
   }
 
-  async function getPublicDefaultTemplateId(supabase: ReturnType<typeof getPosterSupabaseClient>) {
+  async function getPublicDefaultTemplateId(supabase: ReturnType<typeof getPosterSupabaseClient>, settingKey = DEFAULT_TEMPLATE_SETTING_KEY) {
     if (!supabase) return "";
 
     const { data, error } = await supabase
       .from("poster_template_defaults")
       .select("template_id")
-      .eq("setting_key", DEFAULT_TEMPLATE_SETTING_KEY)
+      .eq("setting_key", settingKey)
       .maybeSingle();
 
     if (error) return "";
@@ -1079,8 +1083,15 @@ export default function BattleGeneratorPage() {
     const template = templates.find((item) => item.id === selectedTemplateId);
     if (!template) return;
 
-    rememberBrowserDefaultTemplateId(template.id);
-    setDefaultTemplateId(template.id);
+    const isTwoVTwo = activeMode === "2v2";
+    const storageKey = isTwoVTwo ? TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY : DEFAULT_TEMPLATE_STORAGE_KEY;
+    const settingKey = isTwoVTwo ? TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY : DEFAULT_TEMPLATE_SETTING_KEY;
+    rememberBrowserDefaultTemplateId(template.id, storageKey);
+    if (isTwoVTwo) setTwoVTwoDefaultTemplateId(template.id);
+    else setDefaultTemplateId(template.id);
+    if (isTwoVTwo && typeof window !== "undefined") {
+      window.localStorage.setItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${template.id}`, JSON.stringify(twoVTwoTemplateJson));
+    }
 
     const supabase = getPosterSupabaseClient();
     if (!supabase || template.id.startsWith("local-") || template.id === "local-default") {
@@ -1092,7 +1103,7 @@ export default function BattleGeneratorPage() {
       .from("poster_template_defaults")
       .upsert(
         {
-          setting_key: DEFAULT_TEMPLATE_SETTING_KEY,
+          setting_key: settingKey,
           template_id: template.id,
           updated_at: new Date().toISOString(),
         },
@@ -1143,6 +1154,8 @@ export default function BattleGeneratorPage() {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
+      setDefaultTemplateId(local.id);
+      setTwoVTwoDefaultTemplateId(local.id);
       if (!editingTemplateName) setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus("Supabase env not found. Using local template only.");
@@ -1158,6 +1171,8 @@ export default function BattleGeneratorPage() {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
+      setDefaultTemplateId(local.id);
+      setTwoVTwoDefaultTemplateId(local.id);
       if (!editingTemplateName) setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus(
@@ -1172,13 +1187,18 @@ export default function BattleGeneratorPage() {
     })) as PosterTemplateRow[];
 
     const publicDefaultId = await getPublicDefaultTemplateId(supabase);
+    const publicTwoVTwoDefaultId = await getPublicDefaultTemplateId(supabase, TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY);
     const browserDefaultId = getBrowserDefaultTemplateId();
+    const browserTwoVTwoDefaultId = getBrowserDefaultTemplateId(TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY);
     const defaultId = publicDefaultId || browserDefaultId;
+    const twoVTwoDefaultId = publicTwoVTwoDefaultId || browserTwoVTwoDefaultId;
     const defaultTemplate = rows.find((row) => row.id === defaultId) || rows[0];
 
     setTemplates(rows);
     setDefaultTemplateId(defaultTemplate.id);
+    setTwoVTwoDefaultTemplateId(rows.find((row) => row.id === twoVTwoDefaultId)?.id || rows[0].id);
     if (publicDefaultId) rememberBrowserDefaultTemplateId(publicDefaultId);
+    if (publicTwoVTwoDefaultId) rememberBrowserDefaultTemplateId(publicTwoVTwoDefaultId, TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY);
     setSelectedTemplateId(defaultTemplate.id);
     if (!editingTemplateName) setTemplateName(defaultTemplate.name);
     updateWholeTemplateJson(defaultTemplate.template_json);
@@ -1194,6 +1214,18 @@ export default function BattleGeneratorPage() {
     setUndoStack([]);
     updateWholeTemplateJson(template.template_json);
     setTemplateStatus(`Loaded ${template.name}.`);
+  }
+
+  function switchPosterMode(mode: "single" | "mass" | "2v2") {
+    setActiveMode(mode);
+    const defaultId = mode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
+    if (defaultId && defaultId !== selectedTemplateId) handleTemplateSelect(defaultId);
+    if (mode === "2v2" && defaultId && typeof window !== "undefined") {
+      try {
+        const savedLayout = window.localStorage.getItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${defaultId}`);
+        if (savedLayout) setTwoVTwoTemplateJson(normalize2v2TemplateJson(JSON.parse(savedLayout)));
+      } catch { /* Keep the standard 2v2 layout if an old saved layout is invalid. */ }
+    }
   }
 
   async function saveCurrentTemplate() {
@@ -3116,6 +3148,8 @@ function renderText(
   }
 
   function TemplateSelectorPanel({ compact = false }: { compact?: boolean }) {
+    const activeDefaultTemplateId = activeMode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
+    const posterTypeLabel = activeMode === "2v2" ? "2v2" : "Single / Mass";
     return (
       <div className={compact ? "space-y-3" : "bg-black/35 border border-cyan-300/20 rounded-xl p-5 space-y-4"}>
         <div className="flex items-center justify-between gap-3">
@@ -3138,21 +3172,21 @@ function renderText(
         >
           {templates.map((template) => (
             <option key={template.id} value={template.id}>
-              {template.name}{template.id === defaultTemplateId ? " (Default)" : ""}
+              {template.name}{template.id === activeDefaultTemplateId ? " (Default)" : ""}
             </option>
           ))}
         </select>
         <button
           type="button"
           onClick={setCurrentTemplateAsDefault}
-          disabled={!selectedTemplateId || selectedTemplateId === defaultTemplateId}
+          disabled={!selectedTemplateId || selectedTemplateId === activeDefaultTemplateId}
           className={`w-full rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-widest transition ${
-            selectedTemplateId === defaultTemplateId
+            selectedTemplateId === activeDefaultTemplateId
               ? "border-yellow-300/30 bg-yellow-300/10 text-yellow-200"
               : "border-cyan-300/30 bg-cyan-300/10 text-cyan-200 hover:bg-cyan-300/20"
           }`}
         >
-          {selectedTemplateId === defaultTemplateId ? "Current Default" : "Set As Default"}
+          {selectedTemplateId === activeDefaultTemplateId ? `${posterTypeLabel} Default` : `Set ${posterTypeLabel} Default`}
         </button>
       </div>
     );
@@ -3192,7 +3226,7 @@ function renderText(
               type="button"
               onClick={() => {
                 setEditMode(false);
-                setActiveMode("2v2");
+                switchPosterMode("2v2");
                 setTwoVTwoEditMode(true);
               }}
               className="bg-cyan-300 hover:bg-cyan-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
@@ -4374,7 +4408,7 @@ function renderText(
             ) : <>
             <button
               type="button"
-              onClick={() => setActiveMode("single")}
+              onClick={() => switchPosterMode("single")}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "single"
                   ? "bg-yellow-300 text-black"
@@ -4386,7 +4420,7 @@ function renderText(
 
             <button
               type="button"
-              onClick={() => setActiveMode("mass")}
+              onClick={() => switchPosterMode("mass")}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "mass"
                   ? "bg-yellow-300 text-black"
@@ -4398,7 +4432,7 @@ function renderText(
 
             <button
               type="button"
-              onClick={() => setActiveMode("2v2")}
+              onClick={() => switchPosterMode("2v2")}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "2v2"
                   ? "bg-yellow-300 text-black"
