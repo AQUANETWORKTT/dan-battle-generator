@@ -2542,6 +2542,10 @@ export default function BattleGeneratorPage() {
   }
 
   function updateTwoVTwoElement(key: TwoVTwoPosterElementKey, changes: Partial<PosterElement>) {
+    if (templateEditorMode === "2v2") {
+      setTemplateJson((current) => ({ ...current, [key]: { ...current[key as PosterElementKey], ...changes } }));
+      return;
+    }
     setTwoVTwoTemplateJson((current) => ({ ...current, [key]: { ...current[key], ...changes } }));
   }
 
@@ -3245,7 +3249,14 @@ function renderText(
           <div className="grid grid-cols-2 md:grid-cols-5 2xl:grid-cols-9 gap-2">
             <button
               type="button"
-              onClick={() => setEditMode(false)}
+              onClick={() => {
+                if (templateEditorMode === "2v2") {
+                  setTwoVTwoTemplateJson(normalize2v2TemplateJson(templateJson));
+                  setTwoVTwoEditMode(false);
+                  setTemplateEditorMode("single");
+                }
+                setEditMode(false);
+              }}
               className="bg-yellow-300 hover:bg-yellow-200 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest transition"
             >
               Back
