@@ -1052,20 +1052,24 @@ export default function BattleGeneratorPage() {
   ) {
     setTemplateJson((prev) => {
       if (recordUndo) addUndoSnapshot(prev);
-      return {
+      const next = {
         ...prev,
         [key]: {
           ...prev[key],
           ...changes,
         },
       };
+      if (templateEditorMode === "2v2") setTwoVTwoTemplateJson(normalize2v2TemplateJson(next));
+      return next;
     });
   }
 
   function updateWholeTemplateJson(nextJson: PosterTemplateJson, recordUndo = false) {
     setTemplateJson((prev) => {
       if (recordUndo) addUndoSnapshot(prev);
-      return normalizeTemplateJson(nextJson);
+      const next = normalizeTemplateJson(nextJson);
+      if (templateEditorMode === "2v2") setTwoVTwoTemplateJson(normalize2v2TemplateJson(next));
+      return next;
     });
   }
 
@@ -1244,6 +1248,11 @@ export default function BattleGeneratorPage() {
   async function saveCurrentTemplate() {
     const supabase = getPosterSupabaseClient();
     const nextJson = normalizeTemplateJson(templateJson);
+    if (templateEditorMode === "2v2" && typeof window !== "undefined" && selectedTemplateId) {
+      const layout = normalize2v2TemplateJson(nextJson);
+      setTwoVTwoTemplateJson(layout);
+      window.localStorage.setItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${selectedTemplateId}`, JSON.stringify(layout));
+    }
 
     if (!templateName.trim()) {
       alert("Name the template first.");
