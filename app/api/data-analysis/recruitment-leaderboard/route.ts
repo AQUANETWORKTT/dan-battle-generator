@@ -18,11 +18,13 @@ const creatorKey = (row: Row) => {
   return /^\d{8,}$/.test(id) ? id : key(row.creator_username || row["Creator's username"]);
 };
 const displayName = (raw: string) => {
+  if (/(kaybon03|kbon03)/.test(managerKey(raw))) return "Team KJB";
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim();
   return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : `Team ${raw}`;
 };
 const daysSinceJoining = (row: Row) => Number(text(row.days_since_joining || row["Days since joining"]).replace(/[^\d.-]/g, "")) || 0;
 function inferredGroup(manager: string) {
+  if (/(kaybon03|kbon03)/.test(manager)) return "Team Dan / James";
   if (/(bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990|mikehalesjb)/.test(manager)) return "Team Mike / Indi";
   if (/(cjtokens1237|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|firstclassagencyash|firstclassagencykyran)/.test(manager)) return "Team Dan / James";
   return "";
