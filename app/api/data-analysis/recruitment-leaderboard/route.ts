@@ -7,7 +7,6 @@ type Row = Record<string, unknown>;
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; ownerManagers?: string[] };
 const SETTINGS_NAME = "manager-assignment-settings";
 const excludedGroups = new Set(["Recruitment", "Excluded"]);
-const recruitmentExcludedManagerKeys = ["kbon03", "kaybon03"];
 
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
@@ -54,7 +53,7 @@ export async function GET() {
     const owners = new Set((settings.ownerManagers || []).map(managerKey));
     const eligible = Object.entries(groups).filter(([manager, group]) => !deleted.has(managerKey(manager)) && !owners.has(managerKey(manager)) && !excludedGroups.has(group));
     const nameFor = (manager: string) => Object.entries(names).find(([raw]) => managerKey(raw) === manager)?.[1] || displayName(manager);
-    const managers = new Map(eligible.filter(([manager]) => !recruitmentExcludedManagerKeys.some((excluded) => managerKey(manager).includes(excluded))).map(([manager, group]) => { const canonical = managerKey(manager); return [canonical, { key: canonical, name: nameFor(canonical), group, recruits: 0, diamonds: 0 }]; }));
+    const managers = new Map(eligible.map(([manager, group]) => { const canonical = managerKey(manager); return [canonical, { key: canonical, name: nameFor(canonical), group, recruits: 0, diamonds: 0 }]; }));
 
     const rows: Row[] = [];
     for (let from = 0, more = true; more; from += 1000) {
@@ -73,7 +72,7 @@ export async function GET() {
       const raw = managerRaw(row);
       const manager = managerKey(raw);
       const group = managers.get(manager)?.group || inferredGroup(manager);
-      if (!manager || managers.has(manager) || !group || deleted.has(manager) || owners.has(manager) || recruitmentExcludedManagerKeys.some((excluded) => manager.includes(excluded))) continue;
+      if (!manager || managers.has(manager) || !group || deleted.has(manager) || owners.has(manager)) continue;
       managers.set(manager, { key: manager, name: nameFor(manager), group, recruits: 0, diamonds: 0 });
     }
 
