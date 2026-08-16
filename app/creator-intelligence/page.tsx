@@ -391,7 +391,6 @@ const TRIDENT_MANAGER_KEYS = ["trident125gmailcom", "trident125mailcom"];
 const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "teritilcock1994"];
 const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
 const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
-const NO_MANAGER_KBON_KEYS = ["kbon03"];
 const TEAM_DAN_CREATOR_KEYS = ["kayjb3"];
 const EXCLUDED_LEADERBOARD_CREATOR_KEYS = ["allannahunknown444", "lucylou449", "lucyliu449"];
 const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
@@ -427,9 +426,6 @@ function getFirstClassManagerDetails(
   }
   if (hasManagerKey(managerDetails, ["firstclassagencymikeindi", "mikeindi"])) {
     return { managerLabel: "Team Mike / Indi (First Class — Team Mike / Indi)", managerGroup: "Exempt" };
-  }
-  if (hasManagerKey(managerDetails, NO_MANAGER_KBON_KEYS)) {
-    return { managerLabel: "No Manager On Backstage", managerGroup: "First Class" };
   }
   if (hasManagerKey(managerDetails, NO_MANAGER_ON_BACKSTAGE_KEYS)) {
     return { managerLabel: "No Manager On Backstage", managerGroup: "First Class" };
