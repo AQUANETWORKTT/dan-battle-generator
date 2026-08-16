@@ -7,6 +7,7 @@ type Row = Record<string, unknown>;
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; ownerManagers?: string[] };
 const SETTINGS_NAME = "manager-assignment-settings";
 const excludedGroups = new Set(["Recruitment", "Excluded"]);
+const recruitmentExcludedManagerKeys = ["kbon03", "kaybon03"];
 
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
@@ -38,8 +39,13 @@ const dateForJoin = (row: Row) => {
   return date.toISOString().slice(0, 10);
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // The Manager Diamonds page reuses these totals, but Team KJB belongs on
+    // that management leaderboard only — never on Recruitment.
+    const includeKjbForManagerDiamonds = new URL(request.url).searchParams.get("includeKjb") === "1";
+    const isRecruitmentExcludedManager = (manager: string) =>
+      !includeKjbForManagerDiamonds && recruitmentExcludedManagerKeys.some((excluded) => managerKey(manager).includes(excluded));
     const [{ data: latestRow, error: latestError }, { data: settingsRow, error: settingsError }] = await Promise.all([
       submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(),
       submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle(),
@@ -55,7 +61,7 @@ export async function GET() {
     const owners = new Set((settings.ownerManagers || []).map(managerKey));
     const eligible = Object.entries(groups).filter(([manager, group]) => !deleted.has(managerKey(manager)) && !owners.has(managerKey(manager)) && !excludedGroups.has(group));
     const nameFor = (manager: string) => Object.entries(names).find(([raw]) => managerKey(raw) === manager)?.[1] || displayName(manager);
-    const managers = new Map(eligible.map(([manager, group]) => { const canonical = managerKey(manager); return [canonical, { key: canonical, name: nameFor(canonical), group, recruits: 0, diamonds: 0 }]; }));
+    const managers = new Map(eligible.filter(([manager]) => !isRecruitmentExcludedManager(manager)).map(([manager, group]) => { const canonical = managerKey(manager); return [canonical, { key: canonical, name: nameFor(canonical), group, recruits: 0, diamonds: 0 }]; }));
 
     const rows: Row[] = [];
     for (let from = 0, more = true; more; from += 1000) {
@@ -74,7 +80,7 @@ export async function GET() {
       const raw = managerRaw(row);
       const manager = managerKey(raw);
       const group = managers.get(manager)?.group || inferredGroup(manager);
-      if (!manager || managers.has(manager) || !group || deleted.has(manager) || owners.has(manager)) continue;
+      if (!manager || managers.has(manager) || !group || deleted.has(manager) || owners.has(manager) || isRecruitmentExcludedManager(manager)) continue;
       managers.set(manager, { key: manager, name: nameFor(manager), group, recruits: 0, diamonds: 0 });
     }
 
