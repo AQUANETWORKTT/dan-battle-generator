@@ -133,8 +133,13 @@ function dailyPosterRows(rows: CreatorStat[], statDate: string) {
       const candidatePeriod = String((candidate as CreatorStat & { data_period?: string | null }).data_period || "");
       return candidate.stat_date >= match[1] && candidate.stat_date < statDate && candidatePeriod === `${candidate.stat_date} ~ ${candidate.stat_date}`;
     });
+    const expectedDates: string[] = [];
+    for (const date = new Date(`${match[1]}T00:00:00`); date < new Date(`${statDate}T00:00:00`); date.setDate(date.getDate() + 1)) {
+      expectedDates.push(date.toISOString().slice(0, 10));
+    }
+    if (!expectedDates.every((date) => priorDaily.some((candidate) => candidate.stat_date === date))) return null;
     return { ...row, diamonds: Math.max(0, safeNumber(row.diamonds) - priorDaily.reduce((sum, candidate) => sum + safeNumber(candidate.diamonds), 0)), live_hours: Math.max(0, getLiveHours(row) - priorDaily.reduce((sum, candidate) => sum + getLiveHours(candidate), 0)) };
-  });
+  }).filter((row): row is CreatorStat => row !== null);
 }
 
 function getUsername(row: CreatorStat) {
