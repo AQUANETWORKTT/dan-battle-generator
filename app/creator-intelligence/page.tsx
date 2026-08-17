@@ -2087,9 +2087,10 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
       const liveDayPoints = Math.min(creator.liveAppearDays * 3, 21);
       const validDayPoints = Math.min(creator.oneHourDays * 2, 14);
       return `
-        <div style="display:grid;grid-template-columns:46px minmax(210px,1fr) 112px 116px 116px 112px 120px 108px 156px;align-items:center;min-height:56px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border}99;background:linear-gradient(90deg,rgba(3,3,3,.96),rgba(17,17,17,.9));box-shadow:0 0 18px ${tone.border}33 inset;">
+        <div style="display:grid;grid-template-columns:46px minmax(170px,1fr) 92px 112px 116px 116px 112px 120px 108px 156px;align-items:center;min-height:56px;border-left:2px solid ${tone.border};border-right:2px solid ${tone.border};border-bottom:1px solid ${tone.border}99;background:linear-gradient(90deg,rgba(3,3,3,.96),rgba(17,17,17,.9));box-shadow:0 0 18px ${tone.border}33 inset;">
           <div style="text-align:center;color:#fff7ed;font-size:23px;font-weight:950;text-shadow:0 0 10px ${tone.color};">${index + 1}</div>
           <div style="overflow:hidden;padding-right:12px;color:#fff7ed;font-size:21px;font-weight:950;white-space:nowrap;text-overflow:ellipsis;text-shadow:2px 2px 0 #000;">${escapeHtml(creator.username)}</div>
+          <div style="text-align:center;color:#fff7ed;font-size:18px;font-weight:950;">${formatNumber(creator.daysSinceJoining)}</div>
           <div style="text-align:center;color:#fff7ed;font-weight:950;"><div style="font-size:18px;line-height:1;">${formatNumber(creator.liveAppearDays)}/7</div><div style="margin-top:3px;font-size:10px;color:#facc15;letter-spacing:1px;">${formatNumber(liveDayPoints)} PTS</div></div>
           <div style="text-align:center;color:#fff7ed;font-weight:950;"><div style="font-size:18px;line-height:1;">${formatNumber(creator.oneHourDays)}/7</div><div style="margin-top:3px;font-size:10px;color:#facc15;letter-spacing:1px;">${formatNumber(validDayPoints)} PTS</div></div>
           <div style="text-align:center;color:#fff7ed;font-weight:950;"><div style="font-size:18px;line-height:1;">${formatHours(creator.healthWindowHours)}/20h</div><div style="margin-top:3px;font-size:10px;color:#facc15;letter-spacing:1px;">${formatNumber(creator.healthBreakdown.liveHours)} PTS</div></div>
@@ -2155,9 +2156,10 @@ async function renderTeamHealthPosterToPngBlob(managerSummary: ManagerHealthSumm
         </div>
       </div>
       <div style="position:relative;z-index:1;margin-top:16px;">
-        <div style="display:grid;grid-template-columns:46px minmax(210px,1fr) 112px 116px 116px 112px 120px 108px 156px;align-items:center;min-height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.97),rgba(55,42,11,.86));box-shadow:0 0 24px #facc1533 inset;color:#fff7ed;text-transform:uppercase;font-size:14px;font-weight:950;letter-spacing:1.4px;">
+        <div style="display:grid;grid-template-columns:46px minmax(170px,1fr) 92px 112px 116px 116px 112px 120px 108px 156px;align-items:center;min-height:46px;border:2px solid #facc15;background:linear-gradient(90deg,rgba(3,3,3,.97),rgba(55,42,11,.86));box-shadow:0 0 24px #facc1533 inset;color:#fff7ed;text-transform:uppercase;font-size:14px;font-weight:950;letter-spacing:1.4px;">
           <div style="text-align:center;">#</div>
           <div>Creator</div>
+          <div style="text-align:center;">Joined</div>
           <div style="text-align:center;">Live Days</div>
           <div style="text-align:center;">Valid Days</div>
           <div style="text-align:center;">Hours</div>
