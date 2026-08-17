@@ -37,8 +37,21 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stored, setStored] = useState<Stored>({ targets: {}, deleted: [] });
+  const [sharedLoaded, setSharedLoaded] = useState(false);
 
-  useEffect(() => { try { const p = JSON.parse(localStorage.getItem(KEY) || "{}"); setStored({ targets: p.targets || {}, deleted: Array.isArray(p.deleted) ? p.deleted : [] }); } catch {} }, []);
+  useEffect(() => {
+    let active = true;
+    let local: Stored = { targets: {}, deleted: [] };
+    try { const saved = JSON.parse(localStorage.getItem(KEY) || "{}"); local = { targets: saved.targets || {}, deleted: Array.isArray(saved.deleted) ? saved.deleted : [] }; } catch {}
+    fetch("/api/data/team-target-tracker", { cache: "no-store" }).then(async response => {
+      const body = await response.json();
+      if (!response.ok) throw Error(body.error || "Could not load shared targets.");
+      if (body.settings) return body.settings as Stored;
+      await fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(local) });
+      return local;
+    }).then(settings => { if (active) setStored(settings); }).catch(e => active && setError(e.message)).finally(() => active && setSharedLoaded(true));
+    return () => { active = false; };
+  }, []);
   useEffect(() => localStorage.setItem(KEY, JSON.stringify(stored)), [stored]);
   useEffect(() => { let active = true; setLoading(true); fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`).then(async r => { const j = await r.json(); if (!r.ok) throw Error(j.error || "Could not load data"); if (active) setRows(j.rows || []); }).catch(e => active && setError(e.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [month]);
 
@@ -69,7 +82,15 @@ export default function Page() {
     const totalPercent = (t.days ? creator.days / t.days * 100 : 0) + (t.hours ? creator.hours / t.hours * 100 : 0) + (t.diamonds ? creator.diamonds / t.diamonds * 100 : 0);
     return { ...creator, t, dayPace, hourPace, diamondPace, totalPercent, pace: progress ? totalPercent / (progress * 300) : 0 };
   }).sort((a, b) => b.pace - a.pace), [creators, stored, month, progress]);
-  const update = (name: string, key: keyof Target, value: string) => setStored(s => ({ ...s, targets: { ...s.targets, [`${month}:${name}`]: { ...target(name), [key]: Math.max(0, number(value)) } } }));
+  const saveShared = (next: Stored) => {
+    setStored(next);
+    localStorage.setItem(KEY, JSON.stringify(next));
+    if (!sharedLoaded) return;
+    fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => {
+      if (!response.ok) { const body = await response.json(); throw Error(body.error || "Could not save shared targets."); }
+    }).catch(e => setError(e.message));
+  };
+  const update = (name: string, key: keyof Target, value: string) => saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), [key]: Math.max(0, number(value)) } } });
   const active = paced.filter(creator => !stored.deleted.includes(creator.username));
   const removed = paced.filter(creator => stored.deleted.includes(creator.username));
 
