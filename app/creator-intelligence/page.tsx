@@ -154,6 +154,7 @@ type ManagerHealthSummary = {
   totalCreators: number;
   matureCreators: number;
   newCreators: number;
+  noScore: number;
   averageScore: number;
   monthlyAverageScore: number;
   elite: number;
@@ -2880,6 +2881,7 @@ export default function CreatorIntelligencePage() {
           totalCreators: creators.length,
           matureCreators: matureCreators.length,
           newCreators: creators.length - matureCreators.length,
+          noScore: matureCreators.filter((creator) => creator.healthScore <= 0).length,
           averageScore,
           monthlyAverageScore,
           elite: matureCreators.filter((creator) => creator.healthStatus === "Elite").length,
@@ -3680,7 +3682,7 @@ export default function CreatorIntelligencePage() {
                       <p className="mt-1 text-xs font-bold text-slate-500">
                         {formatNumber(managerSummary.totalCreators)} creators /{" "}
                         {formatNumber(managerSummary.matureCreators)} scored /{" "}
-                        {formatNumber(managerSummary.newCreators)} new
+                        {formatNumber(managerSummary.newCreators)} new / {formatNumber(managerSummary.noScore)} no score
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
