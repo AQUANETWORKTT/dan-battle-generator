@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Assignee = "JD" | "DF" | "JD / DF" | "PARADISE" | "RESPAWN" | "HORIZON" | "TRIDENT";
 type Priority = "URGENT" | "OVERDUE" | "TODAY" | "TOMORROW" | "2 DAYS" | "3+ DAYS" | "WHEN AVAILABLE";
@@ -47,30 +47,41 @@ export default function TaskSpacePage() {
   const [urgent, setUrgent] = useState(false);
   const [editingDueDate, setEditingDueDate] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const tasksRef = useRef<Task[]>([]);
+  const saveQueue = useRef(Promise.resolve());
 
   async function load() {
     const response = await fetch("/api/tasks", { cache: "no-store" });
     const data = await response.json();
     setTasks(data.tasks || []);
+    tasksRef.current = data.tasks || [];
     setSelected([]);
     setMessage(response.ok ? "UP TO DATE." : data.error || "COULD NOT REFRESH TASKS.");
   }
 
   async function save(next: Task[], successMessage = "SAVED.") {
     setTasks(next);
-    const response = await fetch("/api/tasks", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tasks: next }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setMessage(data.error || "COULD NOT SAVE.");
-      void load();
-      return;
-    }
-    setTasks(data.tasks);
-    setMessage(successMessage);
+    tasksRef.current = next;
+    const send = async () => {
+      const response = await fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks: next }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.error || "COULD NOT SAVE.");
+        void load();
+        return;
+      }
+      if (tasksRef.current === next) {
+        tasksRef.current = data.tasks;
+        setTasks(data.tasks);
+        setMessage(successMessage);
+      }
+    };
+    saveQueue.current = saveQueue.current.then(send, send);
+    await saveQueue.current;
   }
 
   useEffect(() => {
@@ -102,7 +113,7 @@ export default function TaskSpacePage() {
     setForWho("");
     setDueDate("");
     setUrgent(false);
-    void save([task, ...tasks]);
+    void save([task, ...tasksRef.current]);
   }
 
   function toggle(id: string) {
@@ -111,28 +122,28 @@ export default function TaskSpacePage() {
 
   function completeTask(task: Task) {
     if (task.complete) return;
-    void save(tasks.map((entry) => entry.id === task.id ? { ...entry, complete: true } : entry), "TASK COMPLETED.");
+    void save(tasksRef.current.map((entry) => entry.id === task.id ? { ...entry, complete: true } : entry), "TASK COMPLETED.");
   }
 
   function updateDueDate(id: string, nextDueDate: string) {
     setEditingDueDate(null);
-    void save(tasks.map((task) => task.id === id ? { ...task, dueDate: nextDueDate } : task), nextDueDate ? "DUE DATE UPDATED." : "DUE DATE CLEARED.");
+    void save(tasksRef.current.map((task) => task.id === id ? { ...task, dueDate: nextDueDate } : task), nextDueDate ? "DUE DATE UPDATED." : "DUE DATE CLEARED.");
   }
 
   function updateUrgency(id: string, nextUrgent: boolean) {
     setEditingDueDate(null);
-    void save(tasks.map((task) => task.id === id ? { ...task, priority: nextUrgent ? "URGENT" : "WHEN AVAILABLE", dueDate: nextUrgent ? "" : task.dueDate } : task), nextUrgent ? "TASK MARKED URGENT." : "URGENT STATUS REMOVED.");
+    void save(tasksRef.current.map((task) => task.id === id ? { ...task, priority: nextUrgent ? "URGENT" : "WHEN AVAILABLE", dueDate: nextUrgent ? "" : task.dueDate } : task), nextUrgent ? "TASK MARKED URGENT." : "URGENT STATUS REMOVED.");
   }
 
   function completeSelected() {
     if (!selected.length || !window.confirm(`COMPLETE ${selected.length} SELECTED TASK(S)?`)) return;
-    void save(tasks.map((task) => selected.includes(task.id) ? { ...task, complete: true } : task));
+    void save(tasksRef.current.map((task) => selected.includes(task.id) ? { ...task, complete: true } : task));
     setSelected([]);
   }
 
   function removeSelected() {
     if (!selected.length || !window.confirm(`REMOVE ${selected.length} SELECTED TASK(S)?`)) return;
-    void save(tasks.filter((task) => !selected.includes(task.id)));
+    void save(tasksRef.current.filter((task) => !selected.includes(task.id)));
     setSelected([]);
   }
 
