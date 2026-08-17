@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 type Row = { creator_id?: string; creator_username?: string; "Creator's username"?: string; creator_network_manager?: string; manager_email?: string; stat_date?: string; data_period?: string; diamonds?: number; live_hours?: number; live_duration?: string; valid_days?: number; valid_live_days?: number };
@@ -48,6 +48,8 @@ export default function Page() {
   const [stored, setStored] = useState<Stored>({ targets: {}, deleted: [] });
   const [sharedLoaded, setSharedLoaded] = useState(false);
   const [matureTotals, setMatureTotals] = useState<MatureTotal[]>([]);
+  const diamondTimers = useRef<Record<string, number>>({});
+  const pendingDiamondKeys = useRef(new Set<string>());
 
   useEffect(() => { let active = true; let local: Stored = { targets: {}, deleted: [] }; try { const saved = JSON.parse(localStorage.getItem(KEY) || "{}"); local = { targets: saved.targets || {}, deleted: Array.isArray(saved.deleted) ? saved.deleted : [] }; } catch {} fetch("/api/data/team-target-tracker", { cache: "no-store" }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load shared targets."); if (body.settings) return body.settings as Stored; await fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(local) }); return local; }).then(settings => { if (active) setStored(settings); }).catch(e => active && setError(e.message)).finally(() => active && setSharedLoaded(true)); return () => { active = false; }; }, []);
   useEffect(() => localStorage.setItem(KEY, JSON.stringify(stored)), [stored]);
@@ -59,7 +61,7 @@ export default function Page() {
         const response = await fetch("/api/data/team-target-tracker", { cache: "no-store" });
         const body = await response.json();
         if (!response.ok) throw Error(body.error || "Could not refresh shared targets.");
-        if (active && body.settings) setStored(body.settings as Stored);
+        if (active && body.settings) setStored(current => ({ ...(body.settings as Stored), targets: { ...(body.settings as Stored).targets, ...Object.fromEntries([...pendingDiamondKeys.current].map(key => [key, current.targets[key]])) } }));
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Could not refresh shared targets.");
       }
@@ -67,6 +69,7 @@ export default function Page() {
     const timer = window.setInterval(() => void refreshShared(), 3000);
     return () => { active = false; window.clearInterval(timer); };
   }, [sharedLoaded]);
+  useEffect(() => () => { Object.values(diamondTimers.current).forEach(timer => window.clearTimeout(timer)); }, []);
   useEffect(() => { let active = true; setLoading(true); fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load data"); if (active) setRows(body.rows || []); }).catch(e => active && setError(e.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [month]);
 
   const previousMonth = useMemo(() => { const [year, monthNumber] = month.split("-").map(Number); const date = new Date(year, monthNumber - 2, 1); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; }, [month]);
@@ -87,7 +90,21 @@ export default function Page() {
   const ranked = useMemo(() => creators.map(creator => { const t = target(creator.username); const dayPace = monthProgress ? creator.days / (t.days * monthProgress) : 0; const hourPace = monthProgress ? creator.hours / (t.hours * monthProgress) : 0; const diamondPace = monthProgress ? creator.diamonds / (t.diamonds * monthProgress) : 0; const priorTotal = previousDiamonds.get(creator.username) || 0; const tierIndex = TIER_MINIMUMS.reduce((current, minimum, index) => priorTotal >= minimum ? index : current, -1); const maintenance = priorTotal >= 200000 && tierIndex >= 0 ? TIER_MINIMUMS[tierIndex] : null; const rankUp = maintenance && tierIndex < TIER_MINIMUMS.length - 1 ? TIER_MINIMUMS[tierIndex + 1] : null; return { ...creator, t, dayPace, hourPace, diamondPace, pace: (dayPace + hourPace + diamondPace) / 3, maintenance, rankUp }; }).sort((a, b) => b.diamonds - a.diamonds), [creators, stored, month, monthProgress, previousDiamonds]);
   const saveShared = (next: Stored) => { setStored(next); localStorage.setItem(KEY, JSON.stringify(next)); if (!sharedLoaded) return; fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not save shared targets."); return body.settings as Stored; }).then(settings => setStored(settings)).catch(e => setError(e.message)); };
   const setLevel = (name: string, level: number) => { const preset = LEVELS.find(item => item.level === level) || LEVELS[2]; saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), level: preset.level, days: preset.days, hours: preset.hours } } }); };
-  const setDiamonds = (name: string, diamonds: string) => saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), diamonds: Math.max(0, number(diamonds)) } } });
+  const setDiamonds = (name: string, diamonds: string) => {
+    const key = `${month}:${name}`;
+    const next = { ...stored, targets: { ...stored.targets, [key]: { ...target(name), diamonds: Math.max(0, number(diamonds)) } } };
+    pendingDiamondKeys.current.add(key);
+    setStored(next);
+    localStorage.setItem(KEY, JSON.stringify(next));
+    window.clearTimeout(diamondTimers.current[key]);
+    diamondTimers.current[key] = window.setTimeout(() => {
+      fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => {
+        const body = await response.json();
+        if (!response.ok) throw Error(body.error || "Could not save shared targets.");
+        return body.settings as Stored;
+      }).then(settings => { pendingDiamondKeys.current.delete(key); setStored(settings); }).catch(e => setError(e.message));
+    }, 3000);
+  };
   const active = ranked.filter(creator => !stored.deleted.includes(creator.username));
   const removed = ranked.filter(creator => stored.deleted.includes(creator.username));
 
