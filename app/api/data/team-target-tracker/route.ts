@@ -4,13 +4,14 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 const SETTINGS_NAME = "team-dan-target-tracker-settings";
 
 type Settings = {
-  targets?: Record<string, { days?: number; hours?: number; diamonds?: number }>;
+  targets?: Record<string, { level?: number; days?: number; hours?: number; diamonds?: number }>;
   deleted?: string[];
 };
 
 function clean(settings: unknown): Settings {
   const input = (settings && typeof settings === "object" ? settings : {}) as Settings;
   const targets = Object.fromEntries(Object.entries(input.targets || {}).map(([key, target]) => [key, {
+    level: Number.isInteger(Number(target?.level)) && Number(target?.level) >= 1 && Number(target?.level) <= 5 ? Number(target?.level) : undefined,
     days: Math.max(0, Number(target?.days) || 0),
     hours: Math.max(0, Number(target?.hours) || 0),
     diamonds: Math.max(0, Number(target?.diamonds) || 0),
