@@ -3666,6 +3666,9 @@ export default function CreatorIntelligencePage() {
           <div className="grid gap-3 xl:grid-cols-2">
             {managerHealthSummaries.map((managerSummary) => {
               const scoreWidth = Math.min(Math.max(managerSummary.averageScore, 0), 100);
+              const noScorePercent = managerSummary.totalCreators
+                ? (managerSummary.noScore / managerSummary.totalCreators) * 100
+                : 0;
 
               return (
                 <div
@@ -3682,26 +3685,33 @@ export default function CreatorIntelligencePage() {
                       <p className="mt-1 text-xs font-bold text-slate-500">
                         {formatNumber(managerSummary.totalCreators)} creators /{" "}
                         {formatNumber(managerSummary.matureCreators)} scored /{" "}
-                        {formatNumber(managerSummary.newCreators)} new / {formatNumber(managerSummary.noScore)} no score
+                        {formatNumber(managerSummary.newCreators)} new
                       </p>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span
-                        className={`rounded-full border px-3 py-1 text-sm font-black ${
-                          managerSummary.averageScore >= 85
-                            ? "border-yellow-300 bg-yellow-100 text-yellow-900"
-                            : managerSummary.averageScore >= 65
-                              ? "border-amber-300 bg-amber-100 text-amber-900"
-                              : managerSummary.averageScore >= 50
-                                ? "border-yellow-200 bg-yellow-50 text-yellow-800"
-                                : "border-yellow-300 bg-yellow-100 text-yellow-900"
-                        }`}
-                      >
-                        7-day {formatNumber(managerSummary.averageScore)}/100
-                      </span>
-                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-800">
-                        30-day {formatNumber(managerSummary.monthlyAverageScore)}/100
-                      </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="min-w-[92px] rounded-xl border-2 border-red-300 bg-red-100 px-3 py-2 text-center font-black text-red-800 shadow-sm">
+                        <p className="text-xl leading-none">{formatNumber(managerSummary.noScore)}</p>
+                        <p className="mt-1 text-[10px] uppercase leading-none">No score</p>
+                        <p className="mt-1 text-xs leading-none">{formatPercent(noScorePercent)}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-sm font-black ${
+                            managerSummary.averageScore >= 85
+                              ? "border-yellow-300 bg-yellow-100 text-yellow-900"
+                              : managerSummary.averageScore >= 65
+                                ? "border-amber-300 bg-amber-100 text-amber-900"
+                                : managerSummary.averageScore >= 50
+                                  ? "border-yellow-200 bg-yellow-50 text-yellow-800"
+                                  : "border-yellow-300 bg-yellow-100 text-yellow-900"
+                          }`}
+                        >
+                          7-day {formatNumber(managerSummary.averageScore)}/100
+                        </span>
+                        <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black text-sky-800">
+                          30-day {formatNumber(managerSummary.monthlyAverageScore)}/100
+                        </span>
+                      </div>
                     </div>
                   </div>
 
