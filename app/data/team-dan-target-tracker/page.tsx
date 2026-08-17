@@ -11,24 +11,20 @@ type Creator = { username: string; days: number; hours: number; diamonds: number
 
 const DEFAULT: Target = { days: 20, hours: 40, diamonds: 75000 };
 const KEY = "fc-dan-target-tracker-v1";
-const currentMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
-const username = (r: Row) => String(r.creator_username || r["Creator's username"] || "").trim().replace(/^@/, "").toLowerCase();
-const creatorId = (r: Row) => String(r.creator_id || username(r)).trim().toLowerCase();
-const number = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0;
-const liveHours = (r: Row) => r.live_hours != null ? number(r.live_hours) : number(String(r.live_duration || "").match(/(\d+(?:\.\d+)?)\s*h/i)?.[1]) + number(String(r.live_duration || "").match(/(\d+(?:\.\d+)?)\s*m/i)?.[1]) / 60;
-const isDan = (r: Row) => [r.creator_network_manager, r.manager_email].join("").toLowerCase().replace(/[^a-z0-9]/g, "").includes("firstclassagencydan");
-const isMonthTotal = (r: Row) => { const period = String(r.data_period || ""); return /^\d{4}-\d{2}-\d{2}\s*~\s*\d{4}-\d{2}-\d{2}$/.test(period) && period.slice(0, 10) !== period.slice(-10); };
+const currentMonth = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; };
+const number = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
+const username = (row: Row) => String(row.creator_username || row["Creator's username"] || "").trim().replace(/^@/, "").toLowerCase();
+const creatorId = (row: Row) => String(row.creator_id || username(row)).trim().toLowerCase();
+const liveHours = (row: Row) => row.live_hours != null ? number(row.live_hours) : number(String(row.live_duration || "").match(/(\d+(?:\.\d+)?)\s*h/i)?.[1]) + number(String(row.live_duration || "").match(/(\d+(?:\.\d+)?)\s*m/i)?.[1]) / 60;
+const isDan = (row: Row) => [row.creator_network_manager, row.manager_email].join("").toLowerCase().replace(/[^a-z0-9]/g, "").includes("firstclassagencydan");
+const isMonthTotal = (row: Row) => { const period = String(row.data_period || ""); return /^\d{4}-\d{2}-\d{2}\s*~\s*\d{4}-\d{2}-\d{2}$/.test(period) && period.slice(0, 10) !== period.slice(-10); };
 
-function paceClass(pace: number) { return pace >= 0.9 ? "border-emerald-300 bg-emerald-400/[.20]" : pace >= 0.5 ? "border-orange-400 bg-orange-500/[.20]" : "border-red-400 bg-red-500/[.18]"; }
-function paceColour(pace: number) { return pace >= 0.9 ? "bg-emerald-300" : pace >= 0.5 ? "bg-orange-400" : "bg-red-400"; }
-
-function Bar({ label, value, target, pace }: { label: string; value: number; target: number; pace: number }) {
-  const actualPercent = target ? value / target * 100 : 0;
-  return <div>
-    <div className="mb-1 flex justify-between text-[10px] font-black uppercase text-white/70"><span>{label}: {value.toLocaleString("en-GB", { maximumFractionDigits: 1 })} / {target.toLocaleString("en-GB")}</span><span>{Math.round(pace * 100)}% pace</span></div>
-    <div className="h-2.5 overflow-hidden rounded-full bg-black/35"><div className={`h-full rounded-full ${paceColour(pace)}`} style={{ width: `${Math.min(100, Math.round(pace * 100))}%` }} /></div>
-    <p className="mt-1 text-[10px] text-white/55">{Math.round(actualPercent)}% of full-month target</p>
-  </div>;
+function completionClass(completion: number) { return completion >= 0.75 ? "border-emerald-300 bg-emerald-400/[.20]" : completion >= 0.5 ? "border-orange-400 bg-orange-500/[.20]" : "border-red-400 bg-red-500/[.18]"; }
+function completionColour(completion: number) { return completion >= 0.75 ? "bg-emerald-300" : completion >= 0.5 ? "bg-orange-400" : "bg-red-400"; }
+function Bar({ label, value, target }: { label: string; value: number; target: number }) {
+  const completion = target ? value / target : 0;
+  const percent = Math.min(100, Math.round(completion * 100));
+  return <div><div className="mb-1 flex justify-between text-[10px] font-black uppercase text-white/70"><span>{label}: {value.toLocaleString("en-GB", { maximumFractionDigits: 1 })} / {target.toLocaleString("en-GB")}</span><span>{percent}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-black/35"><div className={`h-full rounded-full ${completionColour(completion)}`} style={{ width: `${percent}%` }} /></div></div>;
 }
 
 export default function Page() {
@@ -53,10 +49,9 @@ export default function Page() {
     return () => { active = false; };
   }, []);
   useEffect(() => localStorage.setItem(KEY, JSON.stringify(stored)), [stored]);
-  useEffect(() => { let active = true; setLoading(true); fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`).then(async r => { const j = await r.json(); if (!r.ok) throw Error(j.error || "Could not load data"); if (active) setRows(j.rows || []); }).catch(e => active && setError(e.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [month]);
+  useEffect(() => { let active = true; setLoading(true); fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load data"); if (active) setRows(body.rows || []); }).catch(e => active && setError(e.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [month]);
 
   const asOf = useMemo(() => rows.reduce((latest, row) => String(row.stat_date || "") > latest ? String(row.stat_date) : latest, ""), [rows]);
-  const progress = useMemo(() => { const days = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate(); return Math.min(1, (Number(asOf.slice(-2)) || 0) / days); }, [month, asOf]);
   const creators = useMemo(() => {
     const grouped = new Map<string, Row[]>();
     for (const row of rows) { const id = creatorId(row); if (id) grouped.set(id, [...(grouped.get(id) || []), row]); }
@@ -74,31 +69,22 @@ export default function Page() {
   }, [rows, asOf]);
 
   const target = (name: string) => stored.targets[`${month}:${name}`] || DEFAULT;
-  const paced = useMemo(() => creators.map(creator => {
+  const ranked = useMemo(() => creators.map(creator => {
     const t = target(creator.username);
-    const dayPace = progress && t.days ? creator.days / (t.days * progress) : 0;
-    const hourPace = progress && t.hours ? creator.hours / (t.hours * progress) : 0;
-    const diamondPace = progress && t.diamonds ? creator.diamonds / (t.diamonds * progress) : 0;
-    const totalPercent = (t.days ? creator.days / t.days * 100 : 0) + (t.hours ? creator.hours / t.hours * 100 : 0) + (t.diamonds ? creator.diamonds / t.diamonds * 100 : 0);
-    return { ...creator, t, dayPace, hourPace, diamondPace, totalPercent, pace: progress ? totalPercent / (progress * 300) : 0 };
-  }).sort((a, b) => b.pace - a.pace), [creators, stored, month, progress]);
-  const saveShared = (next: Stored) => {
-    setStored(next);
-    localStorage.setItem(KEY, JSON.stringify(next));
-    if (!sharedLoaded) return;
-    fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => {
-      if (!response.ok) { const body = await response.json(); throw Error(body.error || "Could not save shared targets."); }
-    }).catch(e => setError(e.message));
-  };
+    const completion = (Math.min(1, t.days ? creator.days / t.days : 0) + Math.min(1, t.hours ? creator.hours / t.hours : 0) + Math.min(1, t.diamonds ? creator.diamonds / t.diamonds : 0)) / 3;
+    return { ...creator, t, completion };
+  }).sort((a, b) => b.diamonds - a.diamonds), [creators, stored, month]);
+
+  const saveShared = (next: Stored) => { setStored(next); localStorage.setItem(KEY, JSON.stringify(next)); if (!sharedLoaded) return; fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => { if (!response.ok) { const body = await response.json(); throw Error(body.error || "Could not save shared targets."); } }).catch(e => setError(e.message)); };
   const update = (name: string, key: keyof Target, value: string) => saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), [key]: Math.max(0, number(value)) } } });
-  const active = paced.filter(creator => !stored.deleted.includes(creator.username));
-  const removed = paced.filter(creator => stored.deleted.includes(creator.username));
+  const active = ranked.filter(creator => !stored.deleted.includes(creator.username));
+  const removed = ranked.filter(creator => stored.deleted.includes(creator.username));
 
   return <DataAccessGuard><main className="min-h-screen bg-[#080806] px-5 py-8 text-white sm:px-8"><div className="mx-auto max-w-7xl">
-    <header className="flex flex-wrap items-end justify-between gap-5"><div><Link href="/data/menu" className="text-xs font-black uppercase tracking-widest text-yellow-200">&larr; Data Space</Link><p className="mt-7 text-xs font-black uppercase tracking-[.25em] text-sky-200">First Class Agency_Dan</p><h1 className="mt-3 font-[family-name:var(--font-norwester)] text-5xl uppercase">Target <span className="text-yellow-300">Tracker</span></h1><p className="mt-3 text-sm text-white/55">Cards are ranked by combined pace across all three targets (300% total).</p></div><label className="text-xs font-black uppercase text-white/55">Calendar month<input type="month" value={month} onChange={e => setMonth(e.target.value)} className="mt-2 block rounded-xl border border-white/20 bg-black px-4 py-3 text-white" /></label></header>
+    <header className="flex flex-wrap items-end justify-between gap-5"><div><Link href="/data/menu" className="text-xs font-black uppercase tracking-widest text-yellow-200">&larr; Data Space</Link><p className="mt-7 text-xs font-black uppercase tracking-[.25em] text-sky-200">First Class Agency_Dan</p><h1 className="mt-3 font-[family-name:var(--font-norwester)] text-5xl uppercase">Target <span className="text-yellow-300">Tracker</span></h1><p className="mt-3 text-sm text-white/55">Monthly targets, ordered by current diamonds.</p></div><label className="text-xs font-black uppercase text-white/55">Calendar month<input type="month" value={month} onChange={e => setMonth(e.target.value)} className="mt-2 block rounded-xl border border-white/20 bg-black px-4 py-3 text-white" /></label></header>
     {error && <p className="mt-6 rounded-xl bg-red-500/15 p-4 text-red-100">{error}</p>}
-    <p className="mt-8 text-xs font-black uppercase tracking-widest text-yellow-100/70">{loading ? "Loading creators..." : `${active.length} active creators — ${Math.round(progress * 300)}% combined target expected by ${asOf || "latest upload"}`}</p>
-    <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{active.map(creator => <article key={creator.username} className={`rounded-3xl border p-5 ${paceClass(creator.pace)}`}><div className="flex justify-between gap-3"><div><h2 className="font-black">@{creator.username}</h2><p className="text-xs font-black text-white/75">{Math.round(creator.totalPercent)}% / {Math.round(progress * 300)}% expected</p></div><button onClick={() => setStored(s => ({ ...s, deleted: [...new Set([...s.deleted, creator.username])]}))} className="text-xs font-black uppercase text-red-200">Remove</button></div><div className="mt-5 space-y-4"><Bar label="Days" value={creator.days} target={creator.t.days} pace={creator.dayPace} /><Bar label="Hours" value={creator.hours} target={creator.t.hours} pace={creator.hourPace} /><Bar label="Diamonds" value={creator.diamonds} target={creator.t.diamonds} pace={creator.diamondPace} /></div><div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">{([['days', 'Days'], ['hours', 'Hours'], ['diamonds', 'Diamonds']] as const).map(([key, label]) => <label key={key} className="text-[10px] font-black uppercase text-white/55">{label}<input type="number" min="0" value={creator.t[key]} onChange={e => update(creator.username, key, e.target.value)} className="mt-1 w-full rounded-lg border border-white/20 bg-black/40 px-2 py-2 text-sm text-white" /></label>)}</div></article>)}</section>
-    <section className="mt-8 rounded-3xl border border-white/15 bg-white/[.035] p-5"><h2 className="font-[family-name:var(--font-norwester)] text-2xl uppercase text-yellow-200">Removed creators</h2><div className="mt-4 flex flex-wrap gap-3">{removed.length ? removed.map(creator => <div key={creator.username} className="flex items-center gap-3 rounded-xl border border-white/15 px-3 py-2"><span>@{creator.username}</span><button onClick={() => setStored(s => ({ ...s, deleted: s.deleted.filter(name => name !== creator.username) }))} className="rounded-lg bg-yellow-300 px-2 py-1 text-xs font-black text-black">Recover</button></div>) : <p className="text-sm text-white/45">No creators have been removed.</p>}</div></section>
+    <p className="mt-8 text-xs font-black uppercase tracking-widest text-yellow-100/70">{loading ? "Loading creators..." : `${active.length} active creators - ${asOf || "latest upload"}`}</p>
+    <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{active.map(creator => <article key={creator.username} className={`rounded-3xl border p-5 ${completionClass(creator.completion)}`}><div className="flex justify-between gap-3"><div><h2 className="font-black">@{creator.username}</h2><p className="text-xs font-black text-white/75">{Math.round(creator.completion * 100)}% targets completed</p></div><button onClick={() => saveShared({ ...stored, deleted: [...new Set([...stored.deleted, creator.username])] })} className="text-xs font-black uppercase text-red-200">Remove</button></div><div className="mt-5 space-y-4"><Bar label="Days" value={creator.days} target={creator.t.days} /><Bar label="Hours" value={creator.hours} target={creator.t.hours} /><Bar label="Diamonds" value={creator.diamonds} target={creator.t.diamonds} /></div><div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">{([['days', 'Days'], ['hours', 'Hours'], ['diamonds', 'Diamonds']] as const).map(([key, label]) => <label key={key} className="text-[10px] font-black uppercase text-white/55">{label}<input type="number" min="0" value={creator.t[key]} onChange={e => update(creator.username, key, e.target.value)} className="mt-1 w-full rounded-lg border border-white/20 bg-black/40 px-2 py-2 text-sm text-white" /></label>)}</div></article>)}</section>
+    <section className="mt-8 rounded-3xl border border-white/15 bg-white/[.035] p-5"><h2 className="font-[family-name:var(--font-norwester)] text-2xl uppercase text-yellow-200">Removed creators</h2><div className="mt-4 flex flex-wrap gap-3">{removed.length ? removed.map(creator => <div key={creator.username} className="flex items-center gap-3 rounded-xl border border-white/15 px-3 py-2"><span>@{creator.username}</span><button onClick={() => saveShared({ ...stored, deleted: stored.deleted.filter(name => name !== creator.username) })} className="rounded-lg bg-yellow-300 px-2 py-1 text-xs font-black text-black">Recover</button></div>) : <p className="text-sm text-white/45">No creators have been removed.</p>}</div></section>
   </div></main></DataAccessGuard>;
 }
