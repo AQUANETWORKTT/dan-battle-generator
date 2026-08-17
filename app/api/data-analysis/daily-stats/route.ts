@@ -8,6 +8,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month") || "";
     const date = searchParams.get("date") || "";
+    const posterDate = searchParams.get("posterDate") || "";
 
     if (date) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -70,12 +71,29 @@ export async function GET(req: Request) {
       from += pageSize;
     }
 
+    const posterRows = posterDate && /^\d{4}-\d{2}-\d{2}$/.test(posterDate)
+      ? (() => {
+          const byCreator = new Map<string, any[]>();
+          for (const row of rows as any[]) {
+            const key = String(row.creator_id || row.creator_username || "").toLowerCase();
+            if (key) byCreator.set(key, [...(byCreator.get(key) || []), row]);
+          }
+          return (rows as any[]).filter((row) => row.stat_date === posterDate).map((row) => {
+            const period = String(row.data_period || "");
+            const match = period.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
+            if (!match || match[1] === match[2]) return row;
+            const key = String(row.creator_id || row.creator_username || "").toLowerCase();
+            const prior = (byCreator.get(key) || []).filter((item) => item.stat_date >= match[1] && item.stat_date < posterDate && String(item.data_period || "") === `${item.stat_date} ~ ${item.stat_date}`);
+            return { ...row, diamonds: Math.max(0, Number(row.diamonds || 0) - prior.reduce((sum, item) => sum + Number(item.diamonds || 0), 0)), live_hours: Math.max(0, Number(row.live_hours || 0) - prior.reduce((sum, item) => sum + Number(item.live_hours || 0), 0)), data_period: `${posterDate} ~ ${posterDate}` };
+          });
+        })()
+      : rows;
     return NextResponse.json({
       month,
       startDate,
       endDate,
-      count: rows.length,
-      rows,
+      count: posterRows.length,
+      rows: posterRows,
     });
   } catch (error) {
     return NextResponse.json(

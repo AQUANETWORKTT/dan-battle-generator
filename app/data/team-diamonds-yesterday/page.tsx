@@ -644,7 +644,7 @@ export default function TeamDiamondsYesterdayPage() {
 
       const statDate = await getLatestUploadedDate();
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}&posterDate=${statDate}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
@@ -817,7 +817,7 @@ export default function TeamDiamondsYesterdayPage() {
     try {
       const statDate = await getLatestUploadedDate();
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}&t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}&posterDate=${statDate}&t=${Date.now()}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
