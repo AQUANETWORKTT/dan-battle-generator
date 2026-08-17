@@ -121,15 +121,16 @@ function getYesterdayDateKey() {
 function dailyPosterRows(rows: CreatorStat[], statDate: string) {
   const byCreator = new Map<string, CreatorStat[]>();
   for (const row of rows) {
-    const username = getUsername(row);
-    if (!username) continue;
-    byCreator.set(username, [...(byCreator.get(username) || []), row]);
+    const creatorKey = String((row as CreatorStat & { creator_id?: string | null }).creator_id || getUsername(row));
+    if (!creatorKey) continue;
+    byCreator.set(creatorKey, [...(byCreator.get(creatorKey) || []), row]);
   }
   return rows.filter((row) => row.stat_date === statDate).map((row) => {
     const period = String((row as CreatorStat & { data_period?: string | null }).data_period || "");
     const match = period.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
     if (!match || match[1] === match[2]) return row;
-    const priorDaily = (byCreator.get(getUsername(row)) || []).filter((candidate) => {
+    const creatorKey = String((row as CreatorStat & { creator_id?: string | null }).creator_id || getUsername(row));
+    const priorDaily = (byCreator.get(creatorKey) || []).filter((candidate) => {
       const candidatePeriod = String((candidate as CreatorStat & { data_period?: string | null }).data_period || "");
       return candidate.stat_date >= match[1] && candidate.stat_date < statDate && candidatePeriod === `${candidate.stat_date} ~ ${candidate.stat_date}`;
     });
