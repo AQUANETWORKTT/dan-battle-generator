@@ -7,6 +7,22 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month") || "";
+    const date = searchParams.get("date") || "";
+
+    if (date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return NextResponse.json({ error: "Invalid date. Please use YYYY-MM-DD." }, { status: 400 });
+      }
+
+      const { data, error } = await submissionsSupabase
+        .from("creator_daily_stats")
+        .select("*")
+        .eq("stat_date", date)
+        .or("data_period.is.null,data_period.neq.mature_month_total");
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ date, count: data?.length || 0, rows: data || [] });
+    }
 
     if (!/^\d{4}-\d{2}$/.test(month)) {
       return NextResponse.json(

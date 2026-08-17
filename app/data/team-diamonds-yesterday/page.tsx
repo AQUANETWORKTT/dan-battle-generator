@@ -118,6 +118,29 @@ function getYesterdayDateKey() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function dailyPosterRows(rows: CreatorStat[], statDate: string) {
+  const byCreator = new Map<string, CreatorStat[]>();
+  for (const row of rows) {
+    const username = getUsername(row);
+    if (!username) continue;
+    byCreator.set(username, [...(byCreator.get(username) || []), row]);
+  }
+  return rows.filter((row) => row.stat_date === statDate).map((row) => {
+    const period = String((row as CreatorStat & { data_period?: string | null }).data_period || "");
+    const match = period.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
+    if (!match || match[1] === match[2]) return row;
+    const priorDaily = (byCreator.get(getUsername(row)) || []).filter((candidate) => {
+      const candidatePeriod = String((candidate as CreatorStat & { data_period?: string | null }).data_period || "");
+      return candidate.stat_date >= match[1] && candidate.stat_date < statDate && candidatePeriod === `${candidate.stat_date} ~ ${candidate.stat_date}`;
+    });
+    return {
+      ...row,
+      diamonds: Math.max(0, safeNumber(row.diamonds) - priorDaily.reduce((sum, candidate) => sum + safeNumber(candidate.diamonds), 0)),
+      live_hours: Math.max(0, getLiveHours(row) - priorDaily.reduce((sum, candidate) => sum + getLiveHours(candidate), 0)),
+    };
+  });
+}
+
 function getUsername(row: CreatorStat) {
   return String(row.creator_username || row["Creator's username"] || "")
     .replace("@", "")
@@ -619,9 +642,8 @@ export default function TeamDiamondsYesterdayPage() {
       const activeTemplate = forTemplate || selectedSavedTemplate || savedTemplate || getSavedTemplate() || createDefaultTemplate();
 
       const statDate = await getLatestUploadedDate();
-      const month = statDate.slice(0, 7);
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
@@ -633,8 +655,7 @@ export default function TeamDiamondsYesterdayPage() {
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
       const fallbackAvatars = Object.fromEntries((fallbacks.avatars || []).map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
 
-      const rows = ((json.rows || []) as CreatorStat[])
-        .filter((row) => row.stat_date === statDate)
+      const rows = dailyPosterRows((json.rows || []) as CreatorStat[], statDate)
         .filter((row) => matchesTemplateManager(row, activeTemplate, managerGroups))
         .filter((row) => getUsername(row))
         .filter((row) => !hiddenUsernames.has(getUsername(row)))
@@ -794,9 +815,8 @@ export default function TeamDiamondsYesterdayPage() {
     setPictureCheck(null);
     try {
       const statDate = await getLatestUploadedDate();
-      const month = statDate.slice(0, 7);
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}&t=${Date.now()}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
@@ -810,8 +830,7 @@ export default function TeamDiamondsYesterdayPage() {
         .map((creator: { username: string }) => creator.username.toLowerCase()));
       const fallbackAvatars = Object.fromEntries((fallbacks.avatars || [])
         .map((avatar: { username: string; imageUrl: string }) => [avatar.username, avatar.imageUrl]));
-      const allRows = ((json.rows || []) as CreatorStat[])
-        .filter((row) => row.stat_date === statDate)
+      const allRows = dailyPosterRows((json.rows || []) as CreatorStat[], statDate)
         .filter((row) => getUsername(row))
         .filter((row) => !hiddenUsernames.has(getUsername(row)))
         .filter((row) => getUsername(row) !== EXCLUDED_USERNAME);

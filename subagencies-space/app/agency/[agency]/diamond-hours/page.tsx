@@ -118,6 +118,25 @@ function getYesterdayDateKey() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function dailyPosterRows(rows: CreatorStat[], statDate: string) {
+  const byCreator = new Map<string, CreatorStat[]>();
+  for (const row of rows) {
+    const username = getUsername(row);
+    if (!username) continue;
+    byCreator.set(username, [...(byCreator.get(username) || []), row]);
+  }
+  return rows.filter((row) => row.stat_date === statDate).map((row) => {
+    const period = String((row as CreatorStat & { data_period?: string | null }).data_period || "");
+    const match = period.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
+    if (!match || match[1] === match[2]) return row;
+    const priorDaily = (byCreator.get(getUsername(row)) || []).filter((candidate) => {
+      const candidatePeriod = String((candidate as CreatorStat & { data_period?: string | null }).data_period || "");
+      return candidate.stat_date >= match[1] && candidate.stat_date < statDate && candidatePeriod === `${candidate.stat_date} ~ ${candidate.stat_date}`;
+    });
+    return { ...row, diamonds: Math.max(0, safeNumber(row.diamonds) - priorDaily.reduce((sum, candidate) => sum + safeNumber(candidate.diamonds), 0)), live_hours: Math.max(0, getLiveHours(row) - priorDaily.reduce((sum, candidate) => sum + getLiveHours(candidate), 0)) };
+  });
+}
+
 function getUsername(row: CreatorStat) {
   return String(row.creator_username || row["Creator's username"] || "")
     .replace("@", "")
@@ -642,7 +661,7 @@ export default function TeamDiamondsYesterdayPage() {
 
       const statDate = await getLatestUploadedDate();
       const [res, exclusionsResponse, fallbacksResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?date=${statDate}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?month=${statDate.slice(0, 7)}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
