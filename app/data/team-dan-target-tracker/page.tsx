@@ -37,6 +37,22 @@ export default function Page() {
 
   useEffect(() => { let active = true; let local: Stored = { targets: {}, deleted: [] }; try { const saved = JSON.parse(localStorage.getItem(KEY) || "{}"); local = { targets: saved.targets || {}, deleted: Array.isArray(saved.deleted) ? saved.deleted : [] }; } catch {} fetch("/api/data/team-target-tracker", { cache: "no-store" }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load shared targets."); if (body.settings) return body.settings as Stored; await fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(local) }); return local; }).then(settings => { if (active) setStored(settings); }).catch(e => active && setError(e.message)).finally(() => active && setSharedLoaded(true)); return () => { active = false; }; }, []);
   useEffect(() => localStorage.setItem(KEY, JSON.stringify(stored)), [stored]);
+  useEffect(() => {
+    if (!sharedLoaded) return;
+    let active = true;
+    const refreshShared = async () => {
+      try {
+        const response = await fetch("/api/data/team-target-tracker", { cache: "no-store" });
+        const body = await response.json();
+        if (!response.ok) throw Error(body.error || "Could not refresh shared targets.");
+        if (active && body.settings) setStored(body.settings as Stored);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Could not refresh shared targets.");
+      }
+    };
+    const timer = window.setInterval(() => void refreshShared(), 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [sharedLoaded]);
   useEffect(() => { let active = true; setLoading(true); fetch(`/api/data-analysis/daily-stats?month=${month}&t=${Date.now()}`).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load data"); if (active) setRows(body.rows || []); }).catch(e => active && setError(e.message)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [month]);
 
   const asOf = useMemo(() => rows.reduce((latest, row) => String(row.stat_date || "") > latest ? String(row.stat_date) : latest, ""), [rows]);
@@ -51,7 +67,7 @@ export default function Page() {
 
   const target = (name: string): Target => { const saved = stored.targets[`${month}:${name}`] || {}; const level = LEVELS.find(item => item.level === Number(saved.level)) || LEVELS[2]; return { level: level.level, days: level.days, hours: level.hours, diamonds: Math.max(0, number(saved.diamonds || DEFAULT.diamonds)) }; };
   const ranked = useMemo(() => creators.map(creator => { const t = target(creator.username); const dayPace = monthProgress ? creator.days / (t.days * monthProgress) : 0; const hourPace = monthProgress ? creator.hours / (t.hours * monthProgress) : 0; const diamondPace = monthProgress ? creator.diamonds / (t.diamonds * monthProgress) : 0; return { ...creator, t, dayPace, hourPace, diamondPace, pace: (dayPace + hourPace + diamondPace) / 3 }; }).sort((a, b) => b.diamonds - a.diamonds), [creators, stored, month, monthProgress]);
-  const saveShared = (next: Stored) => { setStored(next); localStorage.setItem(KEY, JSON.stringify(next)); if (!sharedLoaded) return; fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => { if (!response.ok) { const body = await response.json(); throw Error(body.error || "Could not save shared targets."); } }).catch(e => setError(e.message)); };
+  const saveShared = (next: Stored) => { setStored(next); localStorage.setItem(KEY, JSON.stringify(next)); if (!sharedLoaded) return; fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not save shared targets."); return body.settings as Stored; }).then(settings => setStored(settings)).catch(e => setError(e.message)); };
   const setLevel = (name: string, level: number) => { const preset = LEVELS.find(item => item.level === level) || LEVELS[2]; saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), level: preset.level, days: preset.days, hours: preset.hours } } }); };
   const setDiamonds = (name: string, diamonds: string) => saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), diamonds: Math.max(0, number(diamonds)) } } });
   const active = ranked.filter(creator => !stored.deleted.includes(creator.username));
