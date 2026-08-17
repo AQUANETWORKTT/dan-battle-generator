@@ -83,15 +83,19 @@ async function addMissingPosterTasks(tasks: Task[]) {
 }
 
 export async function GET() {
-  const { data, error } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const tasks = normalize((data?.template_json as Record<string, unknown> | null)?.tasks);
-  const nextTasks = await addMissingPosterTasks(tasks);
-  if (nextTasks.length !== tasks.length) {
-    const { error: saveError } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { tasks: nextTasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
-    if (saveError) return NextResponse.json({ error: saveError.message }, { status: 500 });
+  try {
+    const { data, error } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const tasks = normalize((data?.template_json as Record<string, unknown> | null)?.tasks);
+    const nextTasks = await addMissingPosterTasks(tasks);
+    if (nextTasks.length !== tasks.length) {
+      const { error: saveError } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { tasks: nextTasks }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
+      if (saveError) return NextResponse.json({ error: saveError.message }, { status: 500 });
+    }
+    return NextResponse.json({ tasks: nextTasks });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load tasks." }, { status: 500 });
   }
-  return NextResponse.json({ tasks: nextTasks });
 }
 
 export async function PUT(request: Request) {

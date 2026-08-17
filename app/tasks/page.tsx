@@ -51,34 +51,38 @@ export default function TaskSpacePage() {
   const saveQueue = useRef(Promise.resolve());
 
   async function load() {
-    const response = await fetch("/api/tasks", { cache: "no-store" });
-    const data = await response.json();
-    setTasks(data.tasks || []);
-    tasksRef.current = data.tasks || [];
-    setSelected([]);
-    setMessage(response.ok ? "UP TO DATE." : data.error || "COULD NOT REFRESH TASKS.");
+    try {
+      const response = await fetch("/api/tasks", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) { setMessage(data.error || "COULD NOT REFRESH TASKS."); return; }
+      setTasks(data.tasks || []);
+      tasksRef.current = data.tasks || [];
+      setSelected([]);
+      setMessage("UP TO DATE.");
+    } catch { setMessage("COULD NOT REFRESH TASKS."); }
   }
 
   async function save(next: Task[], successMessage = "SAVED.") {
     setTasks(next);
     tasksRef.current = next;
     const send = async () => {
-      const response = await fetch("/api/tasks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks: next }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setMessage(data.error || "COULD NOT SAVE.");
-        void load();
-        return;
-      }
-      if (tasksRef.current === next) {
-        tasksRef.current = data.tasks;
-        setTasks(data.tasks);
-        setMessage(successMessage);
-      }
+      try {
+        const response = await fetch("/api/tasks", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tasks: next }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          setMessage(data.error || "COULD NOT SAVE.");
+          return;
+        }
+        if (tasksRef.current === next) {
+          tasksRef.current = data.tasks;
+          setTasks(data.tasks);
+          setMessage(successMessage);
+        }
+      } catch { setMessage("COULD NOT SAVE."); }
     };
     saveQueue.current = saveQueue.current.then(send, send);
     await saveQueue.current;
