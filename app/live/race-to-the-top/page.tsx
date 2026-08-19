@@ -122,13 +122,18 @@ export default function RaceToTheTopPage() {
   const rows = creatorsByTrack.get(activeTrack.id) ?? [];
   const completedCreators = rows.filter((creator) => creator.done === 4).sort((a, b) => (a.completedAt || "9999-12-31").localeCompare(b.completedAt || "9999-12-31") || a.rank - b.rank);
   const firstWinner = completedCreators[0] ?? null;
+  // The Gold-track result has been corrected: Georgia Brooks 20 takes the
+  // winner position, while Libby remains listed as having completed.
+  const goldWinner = activeTrack.id === "gold"
+    ? completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "georgiabrooks20")
+    : null;
   const leanne = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "leanneonlife");
   const ella = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "ellabyrne1904");
   // One-off current-race exception. Every other track remains one winner only.
   const specialBronzeWinners = activeTrack.id === "bronze" && ella && leanne ? [ella, leanne] : [];
-  const winnerRows = specialBronzeWinners.length ? specialBronzeWinners : firstWinner ? [firstWinner] : [];
+  const winnerRows = specialBronzeWinners.length ? specialBronzeWinners : goldWinner ? [goldWinner] : firstWinner ? [firstWinner] : [];
   const leaderboardRows = winnerRows.length ? rows.filter((creator) => !winnerRows.some((winnerRow) => winnerRow.creatorId === creator.creatorId || winnerRow.name === creator.name)) : rows;
-  const winner = firstWinner && winnerRows.length > 1 ? { ...firstWinner, name: winnerRows.map((creator) => creator.name).join(" & ") } : firstWinner;
+  const winner = winnerRows.length > 1 ? { ...winnerRows[0], name: winnerRows.map((creator) => creator.name).join(" & ") } : winnerRows[0] ?? null;
   const foundCreator = useMemo(() => {
     const exactName = submittedQuery.trim().toLocaleLowerCase();
     if (!exactName) return null;
