@@ -125,7 +125,7 @@ export default function RaceToTheTopPage() {
   // The Gold-track result has been corrected: Georgia Brooks 20 takes the
   // winner position, while Libby remains listed as having completed.
   const goldWinner = activeTrack.id === "gold"
-    ? completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "georgiabrooks20")
+    ? completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "georgiabrookss20")
     : null;
   const leanne = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "leanneonlife");
   const ella = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "ellabyrne1904");
