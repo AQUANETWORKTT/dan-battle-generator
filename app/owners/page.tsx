@@ -8,7 +8,7 @@ export default function OwnersPage() {
         <h1 className="mt-4 font-[family-name:var(--font-norwester)] text-5xl uppercase md:text-7xl">Owners <span className="text-yellow-300">Space</span></h1>
         <p className="mt-4 max-w-2xl text-sm font-bold uppercase tracking-wide text-white/55">Poster creation and arranged battles.</p>
         <div className="mt-10 grid gap-5 md:grid-cols-2">
-          <Link href="/generator?owner=1" className="group rounded-2xl border border-yellow-300/45 bg-yellow-300/[.08] p-7 transition hover:border-yellow-200 hover:bg-yellow-300 hover:text-black">
+          <Link href="/generator?mode=team&workspace=posters" className="group rounded-2xl border border-yellow-300/45 bg-yellow-300/[.08] p-7 transition hover:border-yellow-200 hover:bg-yellow-300 hover:text-black">
             <p className="text-xs font-black uppercase tracking-[.2em] text-yellow-200 group-hover:text-black">Create posters</p>
             <h2 className="mt-3 font-[family-name:var(--font-norwester)] text-4xl uppercase">Battle Generator</h2>
             <p className="mt-4 text-xs font-bold uppercase opacity-70">Open the clean generator →</p>
