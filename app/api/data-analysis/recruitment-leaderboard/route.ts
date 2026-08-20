@@ -7,25 +7,29 @@ type Row = Record<string, unknown>;
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; ownerManagers?: string[] };
 const SETTINGS_NAME = "manager-assignment-settings";
 const excludedGroups = new Set(["Recruitment", "Excluded"]);
-const recruitmentExcludedManagerKeys = ["kbon03", "kaybon03"];
+const recruitmentExcludedManagerKeys = ["kjb"];
 
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
 const key = (value: unknown) => text(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-const managerKey = (value: unknown) => { const normalized = key(value); return normalized === "ashwalbridge" || normalized.includes("firstclassagencyash") || normalized.includes("firstcoedensash") ? "ashwalbridge" : normalized; };
+const managerKey = (value: unknown) => {
+  const normalized = key(value);
+  if (/(kaybon03|kbon03)/.test(normalized)) return "kjb";
+  return normalized === "ashwalbridge" || normalized.includes("firstclassagencyash") || normalized.includes("firstcoedensash") ? "ashwalbridge" : normalized;
+};
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
 const creatorKey = (row: Row) => {
   const id = text(row.creator_id || row["Creator ID"]);
   return /^\d{8,}$/.test(id) ? id : key(row.creator_username || row["Creator's username"]);
 };
 const displayName = (raw: string) => {
-  if (/(kaybon03|kbon03)/.test(managerKey(raw))) return "Team KJB";
+  if (managerKey(raw) === "kjb" || /(kaybon03|kbon03)/.test(managerKey(raw))) return "Team KJB";
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim();
   return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : `Team ${raw}`;
 };
 const daysSinceJoining = (row: Row) => Number(text(row.days_since_joining || row["Days since joining"]).replace(/[^\d.-]/g, "")) || 0;
 function inferredGroup(manager: string) {
-  if (/(kaybon03|kbon03)/.test(manager)) return "Team Dan / James";
+  if (manager === "kjb" || /(kaybon03|kbon03)/.test(manager)) return "Team Dan / James";
   if (/(bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990|mikehalesjb)/.test(manager)) return "Team Mike / Indi";
   if (/(cjtokens1237|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|firstclassagencyash|firstclassagencykyran)/.test(manager)) return "Team Dan / James";
   return "";

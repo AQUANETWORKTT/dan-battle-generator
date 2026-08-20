@@ -1579,30 +1579,12 @@ export default function BattleGeneratorPage() {
   }
 
   async function saveTeamPosterTemplate() {
-    const supabase = getPosterSupabaseClient();
-
-    if (!supabase) {
-      setTeamPosterStatus("Supabase env missing. Team Dan template was not saved publicly.");
-      return;
-    }
-
     const nextTemplate = normalizeTeamDanPosterTemplate(teamPosterTemplate);
-    setTeamPosterStatus("Saving Team Dan poster template...");
-
-    const { error } = await supabase
-      .from("poster_templates")
-      .upsert(
-        {
-          name: teamPosterTemplateName,
-          background_url: nextTemplate.backgroundUrl || null,
-          template_json: nextTemplate,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "name" }
-      );
-
-    if (error) {
-      setTeamPosterStatus(`Team Dan template save failed: ${error.message}`);
+    setTeamPosterStatus("Saving team poster template...");
+    const response = await fetch("/api/team-poster-templates", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: teamPosterTemplateName, template: nextTemplate }) });
+    const result = await response.json();
+    if (!response.ok || !result.template) {
+      setTeamPosterStatus(`Template save failed: ${result.error || "Please try again."}`);
       return;
     }
 
@@ -2080,25 +2062,14 @@ export default function BattleGeneratorPage() {
 
   useEffect(() => {
     async function loadTeamPosterTemplate() {
-      const supabase = getPosterSupabaseClient();
-
-      if (!supabase) {
-        setTeamPosterStatus("Supabase env missing. Team Dan poster using default template.");
+      const response = await fetch("/api/team-poster-templates", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) {
+        setTeamPosterStatus(`Team poster template load failed: ${result.error || "Please reload."}`);
         return;
       }
-
-      const { data, error } = await supabase
-        .from("poster_templates")
-        .select("name,template_json")
-        .or(`name.eq.${TEAM_DAN_POSTER_TEMPLATE_NAME},name.like.team-poster-%`)
-        .order("updated_at", { ascending: false });
-
-      if (error) {
-        setTeamPosterStatus(`Team Dan template load failed: ${error.message}`);
-        return;
-      }
-
-      const library = (data || [])
+      const templates = Array.isArray(result.templates) ? result.templates as Array<{ name: string; template_json: TeamPosterTemplate | null }> : [];
+      const library = templates
         .filter((item) => item.template_json && (item.name === TEAM_DAN_POSTER_TEMPLATE_NAME || String(item.name).startsWith("team-poster-")))
         .map((item) => ({ name: String(item.name), template: normalizeTeamDanPosterTemplate(item.template_json as TeamPosterTemplate) }));
 
