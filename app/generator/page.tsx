@@ -1083,17 +1083,16 @@ export default function BattleGeneratorPage() {
     window.localStorage.setItem(storageKey, templateId);
   }
 
-  async function getPublicDefaultTemplateId(supabase: ReturnType<typeof getPosterSupabaseClient>, settingKey = DEFAULT_TEMPLATE_SETTING_KEY) {
-    if (!supabase) return "";
-
-    const { data, error } = await supabase
-      .from("poster_template_defaults")
-      .select("template_id")
-      .eq("setting_key", settingKey)
-      .maybeSingle();
-
-    if (error) return "";
-    return typeof data?.template_id === "string" ? data.template_id : "";
+  async function savePublicDefaultTemplateId(templateId: string, settingKey: string) {
+    const response = await fetch("/api/poster-templates", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settingKey, templateId }),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || "Could not save the public default.");
+    }
   }
 
   async function setCurrentTemplateAsDefault() {
@@ -1110,29 +1109,16 @@ export default function BattleGeneratorPage() {
       window.localStorage.setItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${template.id}`, JSON.stringify(normalize2v2TemplateJson(templateEditorMode === "2v2" ? templateJson : twoVTwoTemplateJson)));
     }
 
-    const supabase = getPosterSupabaseClient();
-    if (!supabase || template.id.startsWith("local-") || template.id === "local-default") {
+    if (template.id.startsWith("local-") || template.id === "local-default") {
       setTemplateStatus(`${template.name} is now your default on this browser.`);
       return;
     }
-
-    const { error } = await supabase
-      .from("poster_template_defaults")
-      .upsert(
-        {
-          setting_key: settingKey,
-          template_id: template.id,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "setting_key" }
-      );
-
-    if (error) {
-      setTemplateStatus(`${template.name} is now your browser default. Public default table is not set up yet.`);
-      return;
+    try {
+      await savePublicDefaultTemplateId(template.id, settingKey);
+      setTemplateStatus(`${template.name} is now the public default template.`);
+    } catch {
+      setTemplateStatus(`${template.name} is now your browser default. The shared default could not be saved.`);
     }
-
-    setTemplateStatus(`${template.name} is now the public default template.`);
   }
   function undoLastTemplateChange() {
     setUndoStack((prev) => {
@@ -1165,26 +1151,10 @@ export default function BattleGeneratorPage() {
   }
 
   async function loadPosterTemplates() {
-    const supabase = getPosterSupabaseClient();
+    const response = await fetch("/api/poster-templates", { cache: "no-store" });
+    const result = await response.json().catch(() => ({}));
 
-    if (!supabase) {
-      const local = createLocalTemplate();
-      setTemplates([local]);
-      setSelectedTemplateId(local.id);
-      setDefaultTemplateId(local.id);
-      setTwoVTwoDefaultTemplateId(local.id);
-      if (!editingTemplateName) setTemplateName(local.name);
-      updateWholeTemplateJson(local.template_json);
-      setTemplateStatus("Supabase env not found. Using local template only.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("poster_templates")
-      .select("id,name,background_url,template_json")
-      .order("created_at", { ascending: true });
-
-    if (error || !data || data.length === 0) {
+    if (!response.ok || !Array.isArray(result.templates) || result.templates.length === 0) {
       const local = createLocalTemplate();
       setTemplates([local]);
       setSelectedTemplateId(local.id);
@@ -1193,24 +1163,19 @@ export default function BattleGeneratorPage() {
       if (!editingTemplateName) setTemplateName(local.name);
       updateWholeTemplateJson(local.template_json);
       setTemplateStatus(
-        error ? `Template load failed: ${error.message}` : "No templates found. Using local default."
+        result.error ? `Template load failed: ${result.error}` : "No templates found. Using local default."
       );
       return;
     }
 
-    const rows = data
-      .filter((row) => {
-        const layout = row.template_json as Record<string, unknown> | null;
-        const isBattlePoster = Boolean(layout?.avatar1 && layout?.avatar2 && layout?.username1 && layout?.username2);
-        return isBattlePoster && row.name !== TEAM_DAN_POSTER_TEMPLATE_NAME && !String(row.name || "").startsWith("team-poster-");
-      })
-      .map((row) => ({
+    const rows = (result.templates as PosterTemplateRow[])
+      .map((row: PosterTemplateRow) => ({
       ...row,
       template_json: normalizeTemplateJson(row.template_json),
       })) as PosterTemplateRow[];
 
-    const publicDefaultId = await getPublicDefaultTemplateId(supabase);
-    const publicTwoVTwoDefaultId = await getPublicDefaultTemplateId(supabase, TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY);
+    const publicDefaultId = typeof result.defaults?.[DEFAULT_TEMPLATE_SETTING_KEY] === "string" ? result.defaults[DEFAULT_TEMPLATE_SETTING_KEY] : "";
+    const publicTwoVTwoDefaultId = typeof result.defaults?.[TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY] === "string" ? result.defaults[TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY] : "";
     const browserDefaultId = getBrowserDefaultTemplateId();
     const browserTwoVTwoDefaultId = getBrowserDefaultTemplateId(TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY);
     const defaultId = publicDefaultId || browserDefaultId;
@@ -1261,7 +1226,6 @@ export default function BattleGeneratorPage() {
   }
 
   async function saveCurrentTemplate() {
-    const supabase = getPosterSupabaseClient();
     const nextJson = normalizeTemplateJson(templateJson);
     if (templateEditorMode === "2v2" && typeof window !== "undefined" && selectedTemplateId) {
       const layout = normalize2v2TemplateJson(nextJson);
@@ -1293,76 +1257,34 @@ export default function BattleGeneratorPage() {
       setTemplateStatus(message);
     };
 
-    if (!supabase) {
-      localFallbackSave("Saved locally only. Supabase env is missing.");
-      return;
-    }
-
     setTemplateStatus("Saving template...");
 
     try {
-      if (selectedTemplateId === "local-default" || selectedTemplateId.startsWith("local-")) {
-        const { data, error } = await supabase
-          .from("poster_templates")
-          .insert({
+      const response = await fetch("/api/poster-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: {
+            id: selectedTemplateId === "local-default" || selectedTemplateId.startsWith("local-") ? undefined : selectedTemplateId,
             name: templateName.trim(),
-            background_url: nextJson.backgroundUrl || null,
             template_json: nextJson,
-          })
-          .select("id,name,background_url,template_json")
-          .single();
-
-        if (error || !data) {
-          setTemplateStatus(`Save failed: ${error?.message || "unknown error"}`);
-          return;
-        }
-
-        const row = {
-          ...data,
-          template_json: normalizeTemplateJson(data.template_json),
-        } as PosterTemplateRow;
-
-        setTemplates((prev) => [
-          ...prev.filter((item) => item.id !== "local-default" && item.id !== selectedTemplateId),
-          row,
-        ]);
-        setSelectedTemplateId(row.id);
-        setTemplateName(row.name);
-        setUndoStack([]);
-        updateWholeTemplateJson(row.template_json);
-        setTemplateStatus("Template saved to Supabase.");
-        return;
-      }
-
-      const { error } = await supabase
-        .from("poster_templates")
-        .update({
-          name: templateName.trim(),
-          background_url: nextJson.backgroundUrl || null,
-          template_json: nextJson,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", selectedTemplateId);
-
-      if (error) {
-        setTemplateStatus(`Save failed: ${error.message}`);
-        return;
-      }
+          },
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.template) throw new Error(result.error || "unknown error");
+      const row = { ...result.template, template_json: normalizeTemplateJson(result.template.template_json) } as PosterTemplateRow;
 
       setTemplates((prev) =>
-        prev.map((item) =>
-          item.id === selectedTemplateId
-            ? {
-                ...item,
-                name: templateName.trim(),
-                background_url: nextJson.backgroundUrl || null,
-                template_json: nextJson,
-              }
-            : item
-        )
+        prev.some((item) => item.id === row.id)
+          ? prev.map((item) => (item.id === row.id ? row : item))
+          : [...prev.filter((item) => item.id !== selectedTemplateId), row]
       );
+      setSelectedTemplateId(row.id);
+      setTemplateName(row.name);
       setUndoStack([]);
-      setTemplateStatus("Template saved to Supabase.");
+      updateWholeTemplateJson(row.template_json);
+      setTemplateStatus("Template saved.");
     } catch (error) {
       console.error("TEMPLATE SAVE ERROR:", error);
       const message = error instanceof Error ? error.message : "unknown error";
@@ -1397,48 +1319,22 @@ export default function BattleGeneratorPage() {
   }
 
   async function duplicateCurrentTemplate() {
-    const supabase = getPosterSupabaseClient();
     const nextJson = normalizeTemplateJson(templateJson);
     const copyName = `${templateName || selectedTemplate.name || "Template"} Copy`;
 
-    if (!supabase) {
-      const localId = `local-${makeId()}`;
-      const nextTemplate: PosterTemplateRow = {
-        id: localId,
-        name: copyName,
-        background_url: nextJson.backgroundUrl || null,
-        template_json: nextJson,
-      };
-
-      setTemplates((prev) => [...prev, nextTemplate]);
-      setSelectedTemplateId(localId);
-      setTemplateName(copyName);
-      updateWholeTemplateJson(nextJson);
-      setTemplateStatus("Template duplicated locally. Supabase env is missing.");
-      return;
-    }
-
     setTemplateStatus("Duplicating template...");
-
-    const { data, error } = await supabase
-      .from("poster_templates")
-      .insert({
-        name: copyName,
-        background_url: nextJson.backgroundUrl || null,
-        template_json: nextJson,
-      })
-      .select("id,name,background_url,template_json")
-      .single();
-
-    if (error || !data) {
-      setTemplateStatus(`Duplicate failed: ${error?.message || "unknown error"}`);
+    const response = await fetch("/api/poster-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ template: { name: copyName, template_json: nextJson } }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.template) {
+      setTemplateStatus(`Duplicate failed: ${result.error || "unknown error"}`);
       return;
     }
 
-    const row = {
-      ...data,
-      template_json: normalizeTemplateJson(data.template_json),
-    } as PosterTemplateRow;
+    const row = { ...result.template, template_json: normalizeTemplateJson(result.template.template_json) } as PosterTemplateRow;
 
     setTemplates((prev) => [...prev, row]);
     setSelectedTemplateId(row.id);
@@ -1456,18 +1352,16 @@ export default function BattleGeneratorPage() {
     const confirmed = window.confirm(`Delete template "${templateName}"?`);
     if (!confirmed) return;
 
-    const supabase = getPosterSupabaseClient();
-
-    if (supabase && !selectedTemplateId.startsWith("local-") && selectedTemplateId !== "local-default") {
+    if (!selectedTemplateId.startsWith("local-") && selectedTemplateId !== "local-default") {
       setTemplateStatus("Deleting template...");
-
-      const { error } = await supabase
-        .from("poster_templates")
-        .delete()
-        .eq("id", selectedTemplateId);
-
-      if (error) {
-        setTemplateStatus(`Delete failed: ${error.message}`);
+      const response = await fetch("/api/poster-templates", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedTemplateId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setTemplateStatus(`Delete failed: ${result.error || "unknown error"}`);
         return;
       }
     }
