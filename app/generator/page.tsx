@@ -2460,6 +2460,20 @@ export default function BattleGeneratorPage() {
     }));
   }
 
+  function swapTwoVTwoSides() {
+    setTwoVTwoBattle((current) => ({
+      ...current,
+      home1: current.away1,
+      home2: current.away2,
+      away1: current.home1,
+      away2: current.home2,
+      image1: current.image3,
+      image2: current.image4,
+      image3: current.image1,
+      image4: current.image2,
+    }));
+  }
+
   async function readTwoVTwoPaste() {
     const parts = twoVTwoPaste.trim().split(/\t+/).map((value) => value.trim());
     if (parts[0]?.toUpperCase() !== "2V2" || parts.length < 12) {
@@ -4537,7 +4551,10 @@ function renderText(
                   <TextInput label="Opponent Username 1" value={twoVTwoBattle.away1} placeholder="OPPONENT 1" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, away1: formatName(value), image3: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image3", twoVTwoBattle.away1)} />
                   <TextInput label="Opponent Username 2" value={twoVTwoBattle.away2} placeholder="OPPONENT 2" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, away2: formatName(value), image4: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image4", twoVTwoBattle.away2)} />
                 </div>
-                <button type="button" onClick={swapTwoVTwoOpponents} className="w-full rounded-lg border border-cyan-300/70 bg-cyan-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-cyan-100 transition hover:bg-cyan-300/20">Swap Home 1 ↔ 2 and Opponent 1 ↔ 2</button>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button type="button" onClick={swapTwoVTwoOpponents} className="rounded-lg border border-cyan-300/70 bg-cyan-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-cyan-100 transition hover:bg-cyan-300/20">Swap 1 ↔ 2 on Both Sides</button>
+                  <button type="button" onClick={swapTwoVTwoSides} className="rounded-lg border border-cyan-300/70 bg-cyan-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-cyan-100 transition hover:bg-cyan-300/20">Swap Home ↔ Opponent</button>
+                </div>
                 <DayMonthDateSelect day={twoVTwoDay} month={twoVTwoMonth} onDayChange={handleTwoVTwoDayChange} onMonthChange={handleTwoVTwoMonthChange} />
                 <TimeSelect label="Time" value={twoVTwoBattle.time} onChange={(time) => setTwoVTwoBattle((current) => ({ ...current, time }))} />
                 <div className="bg-black/30 border border-white/10 rounded-lg p-3"><p className="text-white/45 text-xs uppercase tracking-widest font-black">Selected Date</p><p className="text-yellow-300 font-black mt-1">{twoVTwoBattle.date || "NO DATE SELECTED"}</p></div>
