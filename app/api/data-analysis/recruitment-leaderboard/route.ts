@@ -8,6 +8,7 @@ type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames
 const SETTINGS_NAME = "manager-assignment-settings";
 const excludedGroups = new Set(["Recruitment", "Excluded"]);
 const recruitmentExcludedManagerKeys = ["kjb"];
+const recruiterManagerKeys = ["glenifarr", "glenitar", "jbollins997", "lagsturbo", "resili3recruits", "resilientrecruits", "mattyhorner60"];
 
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
@@ -49,7 +50,8 @@ export async function GET(request: Request) {
     // that management leaderboard only — never on Recruitment.
     const includeKjbForManagerDiamonds = new URL(request.url).searchParams.get("includeKjb") === "1";
     const isRecruitmentExcludedManager = (manager: string) =>
-      !includeKjbForManagerDiamonds && recruitmentExcludedManagerKeys.some((excluded) => managerKey(manager).includes(excluded));
+      recruiterManagerKeys.some((recruiter) => managerKey(manager).includes(recruiter)) ||
+      (!includeKjbForManagerDiamonds && recruitmentExcludedManagerKeys.some((excluded) => managerKey(manager).includes(excluded)));
     const [{ data: latestRow, error: latestError }, { data: settingsRow, error: settingsError }] = await Promise.all([
       submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(),
       submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle(),

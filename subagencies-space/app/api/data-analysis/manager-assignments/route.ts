@@ -23,6 +23,9 @@ function managerName(raw: string) {
 function defaultGroup(row: CreatorStat): Group {
   const manager = key(managerRaw(row));
   const source = `${row.team || ""} ${row.group_name || ""} ${row.agency || ""}`.toLowerCase();
+  // Recruitment accounts are managed by Respawn owners. Their creators must
+  // be available to Respawn's diamond and hours Top 5 posters.
+  if (/(glenifarr|glenitar|jbollins997|lagsturbo|resili3recruits|resilientrecruits|mattyhorner60)/.test(manager)) return "Respawn";
   if (/(trident125gmailcom|trident125mailcom)/.test(manager) || source.includes("trident")) return "Trident";
   if (/(hannakingismail92|stormlive)/.test(manager) || /(storm|strive|horizon)/.test(source)) return "Horizon";
   if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
@@ -69,7 +72,7 @@ export async function GET() {
   const managers = new Map<string, { key: string; name: string; group: Group }>();
   for (const row of rows) {
     const manager = key(managerRaw(row));
-    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
+    if (manager && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: /(glenifarr|glenitar|jbollins997|lagsturbo|resili3recruits|resilientrecruits|mattyhorner60)/.test(manager) ? "Respawn" : assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)) });
   }
   for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group });
   const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
