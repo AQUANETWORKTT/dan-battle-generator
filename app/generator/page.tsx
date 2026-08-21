@@ -2446,6 +2446,20 @@ export default function BattleGeneratorPage() {
     setTwoVTwoPaste("");
   }
 
+  function swapTwoVTwoOpponents() {
+    setTwoVTwoBattle((current) => ({
+      ...current,
+      home1: current.home2,
+      home2: current.home1,
+      away1: current.away2,
+      away2: current.away1,
+      image1: current.image2,
+      image2: current.image1,
+      image3: current.image4,
+      image4: current.image3,
+    }));
+  }
+
   async function readTwoVTwoPaste() {
     const parts = twoVTwoPaste.trim().split(/\t+/).map((value) => value.trim());
     if (parts[0]?.toUpperCase() !== "2V2" || parts.length < 12) {
@@ -4523,6 +4537,7 @@ function renderText(
                   <TextInput label="Opponent Username 1" value={twoVTwoBattle.away1} placeholder="OPPONENT 1" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, away1: formatName(value), image3: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image3", twoVTwoBattle.away1)} />
                   <TextInput label="Opponent Username 2" value={twoVTwoBattle.away2} placeholder="OPPONENT 2" onChange={(value) => setTwoVTwoBattle((current) => ({ ...current, away2: formatName(value), image4: "" }))} onBlur={() => autoFillTwoVTwoAvatar("image4", twoVTwoBattle.away2)} />
                 </div>
+                <button type="button" onClick={swapTwoVTwoOpponents} className="w-full rounded-lg border border-cyan-300/70 bg-cyan-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-cyan-100 transition hover:bg-cyan-300/20">Swap Home 1 ↔ 2 and Opponent 1 ↔ 2</button>
                 <DayMonthDateSelect day={twoVTwoDay} month={twoVTwoMonth} onDayChange={handleTwoVTwoDayChange} onMonthChange={handleTwoVTwoMonthChange} />
                 <TimeSelect label="Time" value={twoVTwoBattle.time} onChange={(time) => setTwoVTwoBattle((current) => ({ ...current, time }))} />
                 <div className="bg-black/30 border border-white/10 rounded-lg p-3"><p className="text-white/45 text-xs uppercase tracking-widest font-black">Selected Date</p><p className="text-yellow-300 font-black mt-1">{twoVTwoBattle.date || "NO DATE SELECTED"}</p></div>
