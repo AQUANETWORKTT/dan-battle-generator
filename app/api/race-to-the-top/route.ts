@@ -18,7 +18,7 @@ const CREATOR_OVERRIDES: Record<string, CreatorOverride> = {
   jacobr015: { validLiveDaysBonus: 1 },
   leanneonlife: { validLiveDaysBonus: 2 },
   poppy_cooper06: { validLiveDaysBonus: 2 },
-  "2026_phyco": { validLiveDaysBonus: 1 },
+  "2026_phyco": { validLiveDaysBonus: 1, liveHoursBonus: 10 },
 };
 type SavedRosterCreator = { creatorId: string; username: string; lastMonthDiamonds: number; track: TrackId; target: number };
 
