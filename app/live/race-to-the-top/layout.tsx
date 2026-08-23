@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-const title = "Race to the Top Leaderboard | First Class";
-const description = "Follow the live Race to the Top leaderboard and creator progress.";
+const title = "Race to the Top — Event Finished | First Class";
+const description = "Race to the Top has finished. The live leaderboard and creator links are no longer available.";
 
 export const metadata: Metadata = {
   title,

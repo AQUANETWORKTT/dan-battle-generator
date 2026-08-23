@@ -1,179 +1,71 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-
-type Target = { label: string; value: string };
-type Track = { id: string; name: string; prize: string; tone: string; glow: string; count: number; targets: Target[] };
-type TrackId = "blue" | "bronze" | "silver" | "gold" | "platinum";
-type RaceCreator = { creatorId: string; username: string; diamonds: number; lastMonthDiamonds: number; validLiveDays: number; liveHours: number; followers: number; track: TrackId; target: number; completedAt?: string };
-type Creator = Omit<RaceCreator, "track"> & { name: string; pct: number; diamondPct: number; done: number; track: Track; rank: number };
-
-const tracks: Track[] = [
-  { id: "blue", name: "Blue", prize: "Flying Jets", tone: "#38bdf8", glow: "rgba(56,189,248,.32)", count: 682, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "8" }, { label: "Live hours", value: "20H" }, { label: "Followers", value: "75" }] },
-  { id: "bronze", name: "Bronze", prize: "Sports Car", tone: "#fb923c", glow: "rgba(251,146,60,.32)", count: 300, targets: [{ label: "Diamonds", value: "100K" }, { label: "Valid days", value: "11" }, { label: "Live hours", value: "30H" }, { label: "Followers", value: "100" }, { label: "Rank goal", value: "Maintain" }] },
-  { id: "silver", name: "Silver", prize: "Interstellar", tone: "#cbd5e1", glow: "rgba(203,213,225,.28)", count: 200, targets: [{ label: "Diamonds", value: "200K" }, { label: "Valid days", value: "15" }, { label: "Live hours", value: "40H" }, { label: "Followers", value: "150" }, { label: "Rank goal", value: "Maintain" }] },
-  { id: "gold", name: "Gold", prize: "Leopard", tone: "#facc15", glow: "rgba(250,204,21,.3)", count: 100, targets: [{ label: "Diamonds", value: "300K" }, { label: "Valid days", value: "18" }, { label: "Live hours", value: "60H" }, { label: "Followers", value: "200" }, { label: "Rank goal", value: "Maintain" }] },
-  { id: "platinum", name: "Platinum", prize: "Thunder Falcon", tone: "#f0abfc", glow: "rgba(240,171,252,.35)", count: 18, targets: [{ label: "Diamonds", value: "Individual Maintain Target" }, { label: "Valid days", value: "22" }, { label: "Live hours", value: "80H" }, { label: "Followers", value: "250" }, { label: "Rank goal", value: "Maintain" }] },
-];
-
-const prizeImageByTrack: Record<string, string> = {
-  blue: "/prize-flying-jets.webp",
-  bronze: "/prize-sports-car.webp",
-  silver: "/prize-interstellar.webp",
-  gold: "/prize-leopard.webp",
-  platinum: "/prize-thunder-falcon.webp",
-};
-
-function CreatorAvatar({ username }: { username: string }) {
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [failed, setFailed] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const rootRef = useRef<HTMLSpanElement | null>(null);
-
-  useEffect(() => {
-    const node = rootRef.current;
-    if (!node) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: "180px" });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
-    let cancelled = false;
-    const localUrl = `/creators/${encodeURIComponent(username.trim().toLowerCase())}.jpg`;
-    const localImage = new window.Image();
-    const loadScrapedAvatar = async () => {
-      try {
-        const response = await fetch("/api/tiktok-avatar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username }) });
-        const data = response.ok ? await response.json() : null;
-        if (!cancelled && data?.avatar) setAvatarUrl(data.avatar);
-        else if (!cancelled) setFailed(true);
-      } catch { if (!cancelled) setFailed(true); }
-    };
-    localImage.onload = () => { if (!cancelled) setAvatarUrl(localUrl); };
-    localImage.onerror = () => { void loadScrapedAvatar(); };
-    localImage.src = localUrl;
-    return () => { cancelled = true; };
-  }, [username, visible]);
-
-  if (avatarUrl && !failed) return <img src={avatarUrl} alt={username} className="h-full w-full object-cover" onError={() => setFailed(true)} />;
-  return <span ref={rootRef} className="grid h-full w-full place-items-center bg-[#130a16] font-black text-[10px] text-white/80">{username.slice(0, 2).toUpperCase()}</span>;
-}
-
-function formatDiamonds(value: number) {
-  if (value >= 1_000_000) return `${value / 1_000_000}M`;
-  if (value >= 1_000) return `${value / 1_000}K`;
-  return String(value);
-}
-
-function buildCreators(track: Track, roster: RaceCreator[]): Creator[] {
-  return roster
-    .filter((creator) => creator.track === track.id)
-    .map((creator) => {
-      const diamondPct = creator.target > 0 ? Math.min(100, (creator.diamonds / creator.target) * 100) : 0;
-      const targetProgress = [
-        diamondPct,
-        Math.min(100, (creator.validLiveDays / Number(track.targets.find((target) => target.label === "Valid days")?.value || 1)) * 100),
-        Math.min(100, (creator.liveHours / Number(track.targets.find((target) => target.label === "Live hours")?.value.replace("H", "") || 1)) * 100),
-        Math.min(100, (creator.followers / Number(track.targets.find((target) => target.label === "Followers")?.value || 1)) * 100),
-      ];
-      // Overall progress is the average of the four measurable targets. The
-      // maintain-rank goal is shown separately because it is pass/fail.
-      const pct = Math.round(targetProgress.reduce((total, value) => total + value, 0) / targetProgress.length);
-      const done = targetProgress.filter((value) => value >= 100).length;
-      return { ...creator, name: creator.username, pct, diamondPct, done, track, rank: 0 };
-    })
-    .sort((a, b) => b.pct - a.pct || b.diamonds - a.diamonds || a.name.localeCompare(b.name))
-    .map((creator, index) => ({ ...creator, rank: index + 1 }));
-}
-
-function ProgressTargets({ creator }: { creator: Creator }) {
-  return <div className="lookup-progress" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px", width: "100%" }}>{creator.track.targets.map((target, index) => {
-    const achieved = target.label === "Diamonds" ? creator.diamondPct
-      : target.label === "Valid days" ? Math.min(100, Math.round((creator.validLiveDays / Number(target.value)) * 100))
-        : target.label === "Live hours" ? Math.min(100, Math.round((creator.liveHours / Number(target.value.replace("H", ""))) * 100))
-          : target.label === "Followers" ? Math.min(100, Math.round((creator.followers / Number(target.value)) * 100))
-            : creator.done >= 4 ? 100 : 0;
-    const targetValue = target.label === "Diamonds"
-      ? `${formatDiamonds(Math.min(creator.diamonds, creator.target))} / ${formatDiamonds(creator.target)}`
-      : target.label === "Valid days"
-        ? `${Math.min(creator.validLiveDays, Number(target.value))} / ${target.value}`
-      : target.label === "Live hours"
-        ? `${Math.min(creator.liveHours, Number(target.value.replace("H", ""))) % 1 === 0 ? Math.min(creator.liveHours, Number(target.value.replace("H", ""))).toFixed(0) : Math.min(creator.liveHours, Number(target.value.replace("H", ""))).toFixed(1)}H / ${target.value}`
-        : target.label === "Followers"
-          ? `${Math.min(creator.followers, Number(target.value))} / ${target.value}`
-        : target.value;
-    return <div key={target.label} className="lookup-metric" style={{ display: "grid", minHeight: 156, padding: 17, border: `1px solid ${creator.track.tone}`, borderRadius: 18, background: "rgba(4, 6, 13, .7)" }}><div className="metric-top" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}><span>{target.label}</span><b>{index === 4 ? (achieved ? "MET" : "IN PROGRESS") : `${Math.round(achieved)}%`}</b></div><div className="metric-rail" style={{ alignSelf: "center", height: 12, margin: "12px 0", overflow: "hidden", borderRadius: 999, background: "rgba(255,255,255,.12)" }}><div className="metric-fill" style={{ display: "block", height: "100%", width: `${achieved}%`, borderRadius: 999, background: `linear-gradient(90deg, ${creator.track.tone}, #ffffff)`, boxShadow: `0 0 16px ${creator.track.glow}` }} /></div><strong className="metric-target"><span>Target</span><b>{targetValue}</b></strong></div>;
-  })}</div>;
-}
+import Image from "next/image";
 
 export default function RaceToTheTopPage() {
-  const [activeId, setActiveId] = useState("blue");
-  const [query, setQuery] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState("");
-  const [expandedCreator, setExpandedCreator] = useState<string | null>(null);
-  const [raceCreators, setRaceCreators] = useState<RaceCreator[]>([]);
-  const [rosterStatus, setRosterStatus] = useState("Loading the Race to the Top roster...");
-  const activeTrack = tracks.find((item) => item.id === activeId) ?? tracks[0];
-  const creatorsByTrack = useMemo(() => new Map(tracks.map((track) => [track.id, buildCreators(track, raceCreators)])), [raceCreators]);
-  const rows = creatorsByTrack.get(activeTrack.id) ?? [];
-  const completedCreators = rows.filter((creator) => creator.done === 4).sort((a, b) => (a.completedAt || "9999-12-31").localeCompare(b.completedAt || "9999-12-31") || a.rank - b.rank);
-  const firstWinner = completedCreators[0] ?? null;
-  // The Gold-track result has been corrected: Georgia Brooks 20 takes the
-  // winner position, while Libby remains listed as having completed.
-  const goldWinner = activeTrack.id === "gold"
-    ? completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "georgiabrookss20")
-    : null;
-  const leanne = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "leanneonlife");
-  const ella = completedCreators.find((creator) => creator.name.replace(/^@/, "").toLowerCase() === "ellabyrne1904");
-  // One-off current-race exception. Every other track remains one winner only.
-  const specialBronzeWinners = activeTrack.id === "bronze" && ella && leanne ? [ella, leanne] : [];
-  const winnerRows = specialBronzeWinners.length ? specialBronzeWinners : goldWinner ? [goldWinner] : firstWinner ? [firstWinner] : [];
-  const leaderboardRows = winnerRows.length ? rows.filter((creator) => !winnerRows.some((winnerRow) => winnerRow.creatorId === creator.creatorId || winnerRow.name === creator.name)) : rows;
-  const winner = winnerRows.length > 1 ? { ...winnerRows[0], name: winnerRows.map((creator) => creator.name).join(" & ") } : winnerRows[0] ?? null;
-  const foundCreator = useMemo(() => {
-    const exactName = submittedQuery.trim().toLocaleLowerCase();
-    if (!exactName) return null;
-    return Array.from(creatorsByTrack.values()).flat().find((creator) => creator.name.toLocaleLowerCase() === exactName) ?? null;
-  }, [creatorsByTrack, submittedQuery]);
-  const hasSearch = Boolean(submittedQuery.trim());
+  return (
+    <main className="finished-event" aria-labelledby="event-finished-title">
+      <section className="finished-event-card">
+        <Image
+          src="/race-to-the-top-logo-transparent.png"
+          alt="Race to the Top"
+          className="finished-event-logo"
+          width={1536}
+          height={1024}
+          priority
+        />
+        <p className="archived-label">Archived event</p>
+        <h1 id="event-finished-title">This event has finished</h1>
+      </section>
 
-  useEffect(() => {
-    async function loadRoster() {
-      try {
-        const response = await fetch("/api/race-to-the-top", { cache: "no-store" });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Could not load the Race to the Top roster.");
-        setRaceCreators(data.creators || []);
-        setRosterStatus(data.hasRaceProgress ? `${(data.creators || []).length} creators loaded with August progress.` : `${(data.creators || []).length} creators sorted from July totals. August progress starts at 0%.`);
-      } catch (error) {
-        setRosterStatus(error instanceof Error ? error.message : "Could not load the Race to the Top roster.");
-      }
-    }
-    void loadRoster();
-  }, []);
+      <style jsx>{`
+        .finished-event {
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          padding: 32px 20px;
+          background:
+            linear-gradient(rgba(9, 10, 15, 0.84), rgba(9, 10, 15, 0.94)),
+            url("/race-to-the-top-background.png") center / cover;
+          color: #e5e7eb;
+        }
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmittedQuery(query);
-  }
+        .finished-event-card {
+          width: min(100%, 600px);
+          padding: 46px 32px;
+          border: 1px solid rgba(203, 213, 225, 0.22);
+          border-radius: 28px;
+          background: rgba(29, 32, 42, 0.82);
+          box-shadow: 0 24px 64px rgba(0, 0, 0, 0.36);
+          text-align: center;
+        }
 
-  return <main className="race-page" style={{ "--track": activeTrack.tone, "--glow": activeTrack.glow } as React.CSSProperties}>
-    <section className="hero"><div className="logo-placeholder" aria-label="Race to the Top logo" /><p>FIRST CLASS · AUGUST 1–31</p><h1>RACE TO THE <span>TOP</span></h1><small>Maintain your track targets to secure your prize.</small></section>
-    <section className="creator-search" aria-label="Creator progress search"><div><p>CREATOR LOOKUP</p><h2>FIND YOUR PROGRESS</h2><small>ENTER YOUR EXACT CREATOR NAME TO SEE YOUR TRACK, POSITION AND TARGET PROGRESS.</small><small className="roster-status">{rosterStatus}</small></div><form onSubmit={submitSearch}><label htmlFor="creator-name">EXACT CREATOR NAME</label><div><input id="creator-name" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="USERNAME" autoComplete="off" /><button type="submit">SEARCH</button></div></form></section>
-    {hasSearch && <section className="lookup-result" style={{ "--lookup-track": foundCreator?.track.tone ?? activeTrack.tone, "--lookup-glow": foundCreator?.track.glow ?? activeTrack.glow } as React.CSSProperties}>{foundCreator ? <><header><div><span>CREATOR FOUND</span><h2>{foundCreator.name}</h2></div><strong>{foundCreator.pct}% COMPLETE</strong></header><div className="lookup-summary"><div><span>TRACK</span><b>{foundCreator.track.name}</b></div><div><span>POSITION</span><b>#{foundCreator.rank}</b></div><div><span>TARGETS HIT</span><b>{foundCreator.done}/4</b></div><div><span>PRIZE</span><b>{foundCreator.track.prize}</b></div></div><ProgressTargets creator={foundCreator} /></> : <div className="no-result"><b>NO EXACT MATCH FOUND</b><span>CHECK THE SPELLING AND ENTER THE FULL CREATOR NAME.</span></div>}</section>}
-    <nav className="track-tabs">{tracks.map((item) => <button key={item.id} onClick={() => setActiveId(item.id)} className={item.id === activeTrack.id ? "active" : ""} style={{ "--tab": item.tone, "--tab-glow": item.glow } as React.CSSProperties}><strong>{item.name}</strong><b>{item.prize}</b><small>VIEW TRACK</small></button>)}</nav>
-    {winner && <section className="winner-card" aria-label="Race winner"><span>WINNER</span><div><strong>{winner.name}</strong></div><small>{activeTrack.name} TRACK · ALL TARGETS HIT</small></section>}
-    <section className="track-shell"><header className="track-header"><div><p>{activeTrack.name} TRACK</p><h2>{activeTrack.name} LEADERBOARD</h2></div><div className="prize"><span>PRIZE</span><strong><span>{activeTrack.prize}</span><img src={prizeImageByTrack[activeTrack.id]} alt="" /></strong></div></header><div className="targets">{activeTrack.targets.map((target) => <div key={target.label} className={target.value === "Individual Maintain Target" ? "long-target" : ""}><span>{target.label}</span><strong>{target.value}</strong><small>TARGET</small></div>)}</div><div className="race-list">{leaderboardRows.map((row) => { const rowKey = row.creatorId || row.name.toLowerCase(); const completedTarget = row.done === 4; return <div key={rowKey} className="creator-entry"><button type="button" className={`race-row ${completedTarget ? "completed-target" : ""} ${expandedCreator === rowKey ? "expanded" : ""}`} onClick={() => setExpandedCreator((current) => current === rowKey ? null : rowKey)} aria-expanded={expandedCreator === rowKey}><b className="rank">#{row.rank}</b><div className="avatar overflow-hidden"><CreatorAvatar username={row.name} /></div><div className="creator"><div><h3>{row.name}</h3><span>{completedTarget ? "COMPLETED TARGET" : `${row.done}/4 TARGETS HIT`}</span></div><div className="rail"><i style={{ width: `${row.pct}%` }} /></div></div><strong className="percent">{row.pct}%</strong><span className="expand-icon">{expandedCreator === rowKey ? "−" : "+"}</span></button>{expandedCreator === rowKey && <section className="creator-dropdown"><header><div><span>{row.track.name} TRACK · POSITION #{row.rank}</span><h3>{row.name}</h3></div><strong>{row.pct}% COMPLETE</strong></header><ProgressTargets creator={row} /></section>}</div>; })}</div><aside className="tie-rule">IN THE CASE THAT THERE ARE MULTIPLE WINNERS ON THE SAME DAY, THEY WILL BATTLE FOR THE HIGHEST SCORE TO TAKE THE PRIZE.</aside></section>
-    <style jsx>{`
-      .race-page{min-height:100vh;padding:20px 14px 56px;color:#fff;font-family:Arial,sans-serif}.hero,.track-shell,.creator-search,.lookup-result{max-width:960px;margin:0 auto;border:1px solid color-mix(in srgb,var(--track) 42%,transparent);background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(0,0,0,.38));box-shadow:0 0 30px var(--glow),inset 0 0 24px rgba(255,255,255,.035);backdrop-filter:blur(16px)}.hero{padding:30px 20px;border-radius:30px;text-align:center}.logo-placeholder{width:min(660px,100%);height:200px;margin:auto;background:url('/race-to-the-top-logo-transparent.png') center/contain no-repeat}.hero p,.track-header p,.creator-search p{margin:18px 0 0;color:#fbcfe8;font-size:10px;font-weight:900;letter-spacing:.25em}.hero h1,.track-header h2,.creator-search h2,.lookup-result h2{margin:7px 0;font-family:var(--font-norwester),Impact,sans-serif;font-size:clamp(38px,8vw,72px);line-height:.9}.hero h1 span{color:#f9a8d4}.hero small,.creator-search small{color:rgba(255,255,255,.68)}.creator-search{display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,.9fr);gap:22px;align-items:end;margin-top:18px;padding:20px;border-radius:24px;border-color:rgba(244,114,182,.6)}.creator-search h2{font-size:clamp(26px,4vw,40px);color:#f0abfc}.creator-search p{margin-top:0}.creator-search form label{display:block;margin-bottom:8px;color:#f5d0fe;font-size:10px;font-weight:900;letter-spacing:.15em}.creator-search form>div{display:flex;gap:8px}.creator-search input{min-width:0;flex:1;border:1px solid rgba(240,171,252,.6);border-radius:12px;background:rgba(0,0,0,.55);padding:13px 14px;color:#fff;font:700 13px inherit;outline:none}.creator-search input:focus{border-color:#fff;box-shadow:0 0 18px rgba(240,171,252,.4)}.creator-search button{border:1px solid #f0abfc;border-radius:12px;background:linear-gradient(135deg,#c026d3,#7e22ce);padding:0 16px;color:#fff;font:900 11px inherit;letter-spacing:.08em;cursor:pointer}.lookup-result{margin-top:14px;padding:18px;border-color:var(--lookup-track);box-shadow:0 0 28px var(--lookup-glow),inset 0 0 20px rgba(255,255,255,.04)}.lookup-result header{display:flex;justify-content:space-between;gap:18px;align-items:center}.lookup-result header span,.lookup-summary span,.lookup-metric span,.lookup-metric small{display:block;color:#cbd5e1;font-size:9px;font-weight:900;letter-spacing:.12em}.lookup-result h2{font-size:clamp(25px,5vw,43px);color:var(--lookup-track)}.lookup-result header>strong{white-space:nowrap;color:var(--lookup-track);font-size:18px}.lookup-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:16px 0}.lookup-summary>div{min-width:0;padding:12px;border:1px solid color-mix(in srgb,var(--lookup-track) 35%,transparent);border-radius:13px;background:rgba(0,0,0,.3)}.lookup-summary b{display:block;margin-top:5px;color:var(--lookup-track);font-size:clamp(14px,2vw,20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lookup-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.lookup-metric{min-width:0;padding:11px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(0,0,0,.34)}.lookup-metric>div{display:flex;justify-content:space-between;gap:6px}.lookup-metric b{color:var(--lookup-track);font-size:10px;white-space:nowrap}.lookup-metric i{display:block;height:7px;margin:8px 0;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.12)}.lookup-metric em{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--lookup-track),#fff)}.no-result{display:grid;gap:7px;text-align:center}.no-result b{color:#f0abfc;font-size:17px}.no-result span{color:#cbd5e1;font-size:11px}.track-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;max-width:960px;margin:18px auto}.track-tabs button{min-width:0;border:1px solid color-mix(in srgb,var(--tab) 45%,transparent);border-radius:16px;padding:13px 7px;background:#08050b;color:#fff;cursor:pointer}.track-tabs button.active{background:linear-gradient(145deg,color-mix(in srgb,var(--tab) 30%,#120711),#08050b);box-shadow:0 0 22px var(--tab-glow)}.track-tabs strong,.track-tabs b,.track-tabs small{display:block}.track-tabs strong{font-size:14px}.track-tabs b{margin:4px 0;color:var(--tab);font-size:18px}.track-tabs small{font-size:9px;color:#bbb}.track-shell{border-radius:26px;padding:18px}.track-header{display:flex;justify-content:space-between;gap:16px;align-items:center}.track-header h2{font-size:clamp(30px,5vw,48px)}.prize{padding:12px 16px;border:1px solid var(--track);border-radius:16px;text-align:center}.prize span,.targets span{display:block;color:#bbb;font-size:9px;font-weight:900;letter-spacing:.12em}.prize strong{display:block;color:var(--track);font-size:28px;text-shadow:0 0 12px var(--glow)}.targets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:18px 0}.targets div{padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(0,0,0,.25)}.targets strong{display:block;margin:6px 0;color:var(--track);font-size:20px}.targets small{font-size:9px;color:#ddd}.race-list{display:grid;gap:9px}.race-row{display:grid;grid-template-columns:48px 54px minmax(0,1fr) 62px;gap:12px;align-items:center;padding:11px;border:1px solid rgba(255,255,255,.1);border-radius:17px;background:rgba(0,0,0,.5)}.rank{color:var(--track);text-align:center;font-size:15px}.avatar{display:grid;place-items:center;width:48px;height:48px;border:4px solid var(--track);border-radius:50%;background:#130a16;color:var(--track);font-size:11px;font-weight:900}.creator{min-width:0}.creator>div:first-child{display:flex;justify-content:space-between;gap:10px;align-items:center}.creator h3{margin:0;overflow:hidden;font-size:18px;text-overflow:ellipsis;white-space:nowrap}.creator span{color:var(--track);font-size:11px;font-weight:800}.rail{height:9px;margin-top:8px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.11)}.rail i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--track),#fff);box-shadow:0 0 12px var(--glow)}.percent{color:var(--track);font-size:20px;text-align:right}@media(max-width:760px){.creator-search{grid-template-columns:1fr}.lookup-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.lookup-progress{grid-template-columns:repeat(2,minmax(0,1fr))}.lookup-metric:last-child{grid-column:span 2}}@media(max-width:680px){.race-page{padding:10px 10px 36px}.hero{padding:20px 12px}.logo-placeholder{height:116px}.track-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.track-tabs button:last-child{grid-column:span 2}.targets{grid-template-columns:repeat(2,minmax(0,1fr))}.targets div:last-child{grid-column:span 2}.race-row{grid-template-columns:52px minmax(0,1fr) 48px;gap:9px;padding:12px}.rank{display:none}.avatar{width:50px;height:50px}.creator h3{font-size:16px}.creator>div:first-child{display:block}.creator span{display:block;margin-top:3px}.percent{font-size:17px}.track-header{align-items:flex-start;flex-direction:column}.prize{width:100%;display:flex;justify-content:space-between;align-items:center}.prize strong{font-size:23px}.lookup-result header{align-items:flex-start;flex-direction:column;gap:9px}.lookup-result header>strong{font-size:15px}.creator-search form>div{display:grid;grid-template-columns:1fr}.creator-search button{min-height:42px}.lookup-summary b{font-size:15px}}
-      .race-row.completed-target{border-color:#fde68a;background:linear-gradient(120deg,rgba(102,61,0,.78),rgba(250,204,21,.28),rgba(70,40,0,.78));box-shadow:inset 0 0 18px rgba(250,204,21,.18),0 0 15px rgba(250,204,21,.16)}.race-row.completed-target .rank,.race-row.completed-target .creator span,.race-row.completed-target .percent{color:#fde68a}.race-row.completed-target .avatar{border-color:#facc15;color:#fde68a}.race-row.completed-target .rail i{background:linear-gradient(90deg,#b77900,#facc15,#fff2ad);box-shadow:0 0 14px rgba(250,204,21,.75)}
-    `}</style>
-    <style jsx>{`
-.tie-rule{margin-top:18px;padding:15px;border:1px solid rgba(255,216,77,.55);border-radius:16px;background:linear-gradient(135deg,rgba(250,204,21,.15),rgba(0,0,0,.32));color:#fef3c7;font-size:13px;font-weight:800;text-align:center}      .winner-card{position:relative;z-index:1;display:grid;gap:5px;max-width:960px;margin:18px auto 0;overflow:hidden;padding:22px 26px;border:1px solid #fde68a;border-radius:24px;background:linear-gradient(120deg,#5d3700 0%,#f8d15b 33%,#fff2ad 50%,#d79515 67%,#4b2a00 100%);box-shadow:0 0 18px #facc15,0 0 55px rgba(250,204,21,.66),inset 0 0 22px rgba(255,255,255,.65);color:#281300;text-align:center;text-shadow:0 1px 0 #fff0a6}.winner-card:before{position:absolute;inset:-35% -70%;content:"";background:linear-gradient(110deg,transparent 42%,rgba(255,255,255,.92) 50%,transparent 58%);animation:winner-shine 2.8s linear infinite;pointer-events:none}.winner-card>*{position:relative}.winner-card>span{font-size:13px;font-weight:1000;letter-spacing:.42em}.winner-card>div{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 16px}.winner-card strong{font-family:var(--font-norwester),Impact,sans-serif;font-size:clamp(30px,5vw,52px);line-height:1}.winner-card small{font-size:10px;font-weight:900;letter-spacing:.15em}@keyframes winner-shine{from{transform:translateX(-55%) rotate(8deg)}to{transform:translateX(55%) rotate(8deg)}}
-    `}</style>
-  </main>;
+        .finished-event-logo {
+          display: block;
+          width: min(100%, 390px);
+          height: auto;
+          margin: 0 auto 24px;
+          filter: grayscale(1) brightness(0.82) opacity(0.68);
+        }
+
+        .archived-label {
+          margin: 0 0 12px;
+          color: #94a3b8;
+          font-size: 0.72rem;
+          font-weight: 800;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+
+        h1 {
+          margin: 0;
+          color: #f1f5f9;
+          font-family: var(--font-norwester), sans-serif;
+          font-size: clamp(1.85rem, 6vw, 3rem);
+          line-height: 1.08;
+          text-transform: uppercase;
+        }
+      `}</style>
+    </main>
+  );
 }
