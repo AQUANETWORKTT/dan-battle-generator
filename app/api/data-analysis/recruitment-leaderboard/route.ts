@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic";
 type Row = Record<string, unknown>;
 type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; ownerManagers?: string[] };
 const SETTINGS_NAME = "manager-assignment-settings";
-const excludedGroups = new Set(["Recruitment", "Excluded"]);
+// Recruitment rankings are for First Class management teams only. Respawn
+// has separate ownership and must not appear in their recruitment totals.
+const excludedGroups = new Set(["Recruitment", "Excluded", "Respawn"]);
 const recruitmentExcludedManagerKeys = ["kjb"];
 const recruiterManagerKeys = ["glenifarr", "glenitar", "jbollins997", "lagsturbo", "resili3recruits", "resilientrecruits", "mattyhorner60"];
 
