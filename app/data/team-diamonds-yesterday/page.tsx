@@ -824,6 +824,7 @@ export default function TeamDiamondsYesterdayPage() {
       ]);
       const [json, exclusions, fallbacks, assignmentsData] = await Promise.all([res.json(), exclusionsResponse.json(), fallbacksResponse.json(), assignmentsResponse.json()]);
       if (!res.ok) throw new Error(json.error || "Could not load daily stats.");
+      if (!fallbacksResponse.ok) throw new Error(fallbacks.error || "Could not load fallback pictures.");
       if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
       const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
       const hiddenUsernames = new Set((exclusions.creators || [])
@@ -852,18 +853,29 @@ export default function TeamDiamondsYesterdayPage() {
       }
       if (failed.length) {
         const existing = (fallbacks.avatars || []) as { username: string; imageUrl: string }[];
-        const existingNames = new Set(existing.map((avatar) => avatar.username));
-        const queuedCreators = failed.filter((username) => !existingNames.has(username)).map((username) => ({ username, imageUrl: "" }));
+        const normalizeFallbackUsername = (value: string) => value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+        const existingNames = new Set(existing.map((avatar) => normalizeFallbackUsername(avatar.username)));
+        const queuedCreators = failed
+          .map(normalizeFallbackUsername)
+          .filter((username, index, values) => username && !existingNames.has(username) && values.indexOf(username) === index)
+          .map((username) => ({ username, imageUrl: "" }));
         if (queuedCreators.length) {
-          await fetch("/api/data-analysis/fallback-avatars", {
+          const saveFallbacksResponse = await fetch("/api/data-analysis/fallback-avatars", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ avatars: [...existing, ...queuedCreators] }),
           });
+          const savedFallbacks = await saveFallbacksResponse.json();
+          if (!saveFallbacksResponse.ok) {
+            throw new Error(savedFallbacks.error || "Could not add creators to Fallback Pictures.");
+          }
         }
       }
       setPictureCheck({ checked: candidateUsernames.length, failed });
-      setMessage(failed.length ? `${failed.length} creator picture${failed.length === 1 ? " needs" : "s need"} a fallback before downloading.` : `All ${candidateUsernames.length} creator pictures are ready.`);
+      const queuedCount = failed.length
+        ? failed.filter((username) => !(fallbacks.avatars || []).some((avatar: { username: string }) => avatar.username.replace(/[^a-z0-9]/gi, "").toLowerCase() === username.replace(/[^a-z0-9]/gi, "").toLowerCase())).length
+        : 0;
+      setMessage(failed.length ? `${failed.length} creator picture${failed.length === 1 ? " needs" : "s need"} a fallback before downloading.${queuedCount ? ` ${queuedCount} creator${queuedCount === 1 ? " was" : "s were"} added to Fallback Pictures.` : ""}` : `All ${candidateUsernames.length} creator pictures are ready.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not check creator pictures.");
     } finally {

@@ -34,11 +34,17 @@ export default function FallbackPicturesPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [creatorList, setCreatorList] = useState("");
   const [message, setMessage] = useState("Loading fallbacks...");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let active = true;
     fetch("/api/data-analysis/fallback-avatars", { cache: "no-store" }).then((r) => r.json()).then((data) => {
-      setAvatars(data.avatars || []); setMessage("");
-    }).catch(() => setMessage("Could not load fallback pictures."));
+      if (!active) return;
+      setAvatars(data.avatars || []); setMessage(""); setLoaded(true);
+    }).catch(() => {
+      if (active) setMessage("Could not load fallback pictures.");
+    });
+    return () => { active = false; };
   }, []);
 
   async function save(next: Avatar[]) {
@@ -51,6 +57,7 @@ export default function FallbackPicturesPage() {
   }
 
   function addCreator() {
+    if (!loaded) return setMessage("Fallback Pictures is still loading — please wait a moment.");
     const clean = normalizeUsername(username);
     if (!clean) return setMessage("Add a username first.");
     const existing = avatars.find((item) => item.username === clean);
@@ -59,6 +66,7 @@ export default function FallbackPicturesPage() {
   }
 
   function addCreatorList() {
+    if (!loaded) return setMessage("Fallback Pictures is still loading — please wait a moment.");
     const usernames = Array.from(new Set(
       creatorList.split(/[\s,]+/).map(normalizeUsername).filter(Boolean)
     ));
