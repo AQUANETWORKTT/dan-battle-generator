@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 const SETTINGS_NAME = "fallback-avatar-settings";
+const ENTRY_PREFIX = "fallback-avatar-entry-";
 type FallbackAvatar = { username: string; imageUrl: string };
 
 function normalize(input: unknown): FallbackAvatar[] {
@@ -19,13 +20,17 @@ function normalize(input: unknown): FallbackAvatar[] {
 }
 
 async function readAvatars() {
-  const { data, error } = await submissionsSupabase
-    .from("poster_templates")
-    .select("template_json")
-    .eq("name", SETTINGS_NAME)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return normalize((data?.template_json as Record<string, unknown> | null)?.avatars);
+  const [{ data: legacyData, error: legacyError }, { data: entryData, error: entryError }] = await Promise.all([
+    submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle(),
+    submissionsSupabase.from("poster_templates").select("name, template_json").like("name", `${ENTRY_PREFIX}%`),
+  ]);
+  if (legacyError || entryError) throw new Error(legacyError?.message || entryError?.message);
+  const avatars = new Map(normalize((legacyData?.template_json as Record<string, unknown> | null)?.avatars).map((avatar) => [avatar.username, avatar]));
+  for (const entry of entryData || []) {
+    const avatar = normalize([(entry.template_json as Record<string, unknown> | null)?.avatar])[0];
+    if (avatar) avatars.set(avatar.username, avatar);
+  }
+  return Array.from(avatars.values()).sort((a, b) => a.username.localeCompare(b.username));
 }
 
 async function saveAvatars(avatars: FallbackAvatar[]) {
@@ -49,17 +54,24 @@ export async function GET() {
   }
 }
 
-// Queue additions merge with the latest shared record, preventing a stale tab
-// from removing creators that Picture Check or another user just added.
+// Queue additions are separate small records. This avoids rewriting the large
+// legacy image list, which can exceed the database statement timeout.
 export async function POST(request: Request) {
   try {
     const incoming = normalize((await request.json())?.avatars);
-    const merged = new Map((await readAvatars()).map((avatar) => [avatar.username, avatar]));
-    for (const avatar of incoming) {
-      const existing = merged.get(avatar.username);
-      merged.set(avatar.username, avatar.imageUrl || existing ? { username: avatar.username, imageUrl: avatar.imageUrl || existing?.imageUrl || "" } : avatar);
+    if (incoming.length) {
+      const { error } = await submissionsSupabase.from("poster_templates").upsert(
+        incoming.map((avatar) => ({
+          name: `${ENTRY_PREFIX}${avatar.username}`,
+          template_json: { avatar },
+          background_url: null,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "name" }
+      );
+      if (error) throw new Error(error.message);
     }
-    return NextResponse.json({ avatars: await saveAvatars(Array.from(merged.values())) });
+    return NextResponse.json({ avatars: await readAvatars() });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not queue fallback pictures." }, { status: 500 });
   }
