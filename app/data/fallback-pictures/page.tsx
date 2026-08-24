@@ -56,13 +56,21 @@ export default function FallbackPicturesPage() {
     setMessage("Saved.");
   }
 
+  async function queue(additions: Avatar[]) {
+    const response = await fetch("/api/data-analysis/fallback-avatars", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatars: additions }) });
+    const data = await response.json();
+    if (!response.ok) return setMessage(data.error || "Could not add creators to the fallback queue.");
+    setAvatars(data.avatars || []);
+    setMessage(`${additions.length} creator${additions.length === 1 ? "" : "s"} added to the fallback queue.`);
+  }
+
   function addCreator() {
     if (!loaded) return setMessage("Fallback Pictures is still loading — please wait a moment.");
     const clean = normalizeUsername(username);
     if (!clean) return setMessage("Add a username first.");
     const existing = avatars.find((item) => item.username === clean);
     setUsername(""); setImageUrl("");
-    void save([...avatars.filter((item) => item.username !== clean), { username: clean, imageUrl: imageUrl || existing?.imageUrl || "" }]);
+    void queue([{ username: clean, imageUrl: imageUrl || existing?.imageUrl || "" }]);
   }
 
   function addCreatorList() {
@@ -75,7 +83,7 @@ export default function FallbackPicturesPage() {
     const additions = usernames.filter((item) => !existingNames.has(item)).map((item) => ({ username: item, imageUrl: "" }));
     setCreatorList("");
     if (!additions.length) return setMessage("Those creators are already in the fallback list.");
-    void save([...avatars, ...additions]);
+    void queue(additions);
   }
 
   function setCreatorPicture(creator: string, file?: File) {

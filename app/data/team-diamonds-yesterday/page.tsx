@@ -861,9 +861,9 @@ export default function TeamDiamondsYesterdayPage() {
           .map((username) => ({ username, imageUrl: "" }));
         if (queuedCreators.length) {
           const saveFallbacksResponse = await fetch("/api/data-analysis/fallback-avatars", {
-            method: "PUT",
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ avatars: [...existing, ...queuedCreators] }),
+            body: JSON.stringify({ avatars: queuedCreators }),
           });
           const savedFallbacks = await saveFallbacksResponse.json();
           if (!saveFallbacksResponse.ok) {
