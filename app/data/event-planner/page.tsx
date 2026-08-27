@@ -1231,14 +1231,7 @@ export default function Page() {
 
                   {draft.setup
                     .socialsPosterUrl && (
-                    <img
-                      src={
-                        draft.setup
-                          .socialsPosterUrl
-                      }
-                      alt="Socials poster"
-                      className="max-h-72 rounded-xl border border-white/10 object-contain"
-                    />
+                    <><img src={draft.setup.socialsPosterUrl} alt="Socials poster" className="max-h-72 rounded-xl border border-white/10 object-contain" /><div className="flex gap-2"><a href={draft.setup.socialsPosterUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">Preview</a><button type="button" onClick={() => updateSetup({ socialsPosterUrl: "" })} className="rounded-lg border border-red-400/50 px-3 py-2 text-xs font-black text-red-200">Remove</button></div></>
                   )}
                 </div>
               ),
@@ -1282,14 +1275,7 @@ export default function Page() {
 
                   {draft.setup
                     .advertUrl && (
-                    <img
-                      src={
-                        draft.setup
-                          .advertUrl
-                      }
-                      alt="Event advert"
-                      className="max-h-72 rounded-xl border border-white/10 object-contain"
-                    />
+                    <><img src={draft.setup.advertUrl} alt="Event advert" className="max-h-72 rounded-xl border border-white/10 object-contain" /><div className="flex gap-2"><a href={draft.setup.advertUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">Preview</a><button type="button" onClick={() => updateSetup({ advertUrl: "" })} className="rounded-lg border border-red-400/50 px-3 py-2 text-xs font-black text-red-200">Remove</button></div></>
                   )}
                 </div>
               ),
