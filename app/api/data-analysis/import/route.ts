@@ -56,6 +56,7 @@ type ParsedRow = {
 
 type MatureCreatorMonthTotal = {
   month: string;
+  creator_id: string | null;
   creator_username: string;
   agency: string;
   team: string;
@@ -530,6 +531,7 @@ export async function POST(req: Request) {
         .filter((row) => row.diamonds >= 200000)
         .map((row) => ({
           month,
+          creator_id: row.creator_id,
           creator_username: row.creator_username,
           agency: row.agency,
           team: row.team,

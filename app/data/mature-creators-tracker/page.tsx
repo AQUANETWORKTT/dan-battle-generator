@@ -7,6 +7,7 @@ import DataAccessGuard from "../../components/DataAccessGuard";
 type CreatorStat = {
   stat_date: string;
   data_period?: string | null;
+  creator_id?: string | null;
   creator_username: string;
   agency: string | null;
   team: string | null;
@@ -24,6 +25,7 @@ type TierBracket = {
 };
 
 type CreatorMonthTotal = {
+  creatorId: string;
   username: string;
   agency: string;
   team: string;
@@ -35,6 +37,7 @@ type CreatorMonthTotal = {
 
 type MatureMonthTotal = {
   month: string;
+  creator_id?: string | null;
   creator_username: string;
   agency: string | null;
   team: string | null;
@@ -114,6 +117,12 @@ function getValidDayValue(row: CreatorStat) {
   return safeNumber(row.live_hours) >= 1 ? 1 : 0;
 }
 
+// TikTok usernames can change. Creator ID is the permanent account identity.
+function creatorIdentity(row: Pick<CreatorStat, "creator_id" | "creator_username">) {
+  const creatorId = String(row.creator_id || "").trim();
+  return creatorId ? `id:${creatorId}` : `username:${String(row.creator_username || "").trim().toLowerCase()}`;
+}
+
 function formatNumber(value: number) {
   return Math.round(value).toLocaleString();
 }
@@ -171,7 +180,7 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
   const map = new Map<string, CreatorMonthTotal>();
 
   for (const row of rows) {
-    const key = String(row.creator_username || "").trim().toLowerCase();
+    const key = creatorIdentity(row);
     if (!key) continue;
 
     const existing = map.get(key);
@@ -180,7 +189,8 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
 
     if (!existing) {
       map.set(key, {
-        username: key,
+        creatorId: key,
+        username: String(row.creator_username || "").trim(),
         agency,
         team,
         diamonds: safeNumber(row.diamonds),
@@ -196,6 +206,7 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
     existing.validDays += getValidDayValue(row);
 
     if (row.stat_date >= existing.latestDate) {
+      existing.username = String(row.creator_username || "").trim() || existing.username;
       existing.agency = agency;
       existing.team = team;
       existing.latestDate = row.stat_date;
@@ -205,15 +216,23 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
   return map;
 }
 
-function matureTotalsByCreator(rows: MatureMonthTotal[]) {
+function matureTotalsByCreator(rows: MatureMonthTotal[], historicRows: CreatorStat[]) {
   const map = new Map<string, CreatorMonthTotal>();
+  const historicIdentityByUsername = new Map(
+    historicRows.map((row) => [String(row.creator_username || "").trim().toLowerCase(), creatorIdentity(row)])
+  );
 
   for (const row of rows) {
-    const key = String(row.creator_username || "").trim().toLowerCase();
+    const username = String(row.creator_username || "").trim();
+    const suppliedCreatorId = String(row.creator_id || "").trim();
+    const key = suppliedCreatorId
+      ? `id:${suppliedCreatorId}`
+      : historicIdentityByUsername.get(username.toLowerCase()) || `username:${username.toLowerCase()}`;
     if (!key) continue;
 
     map.set(key, {
-      username: key,
+      creatorId: key,
+      username,
       agency: String(row.agency || "First Class"),
       team: String(row.team || "Unassigned"),
       diamonds: safeNumber(row.diamonds),
@@ -280,13 +299,13 @@ export default function MatureCreatorsTrackerPage() {
 
   const trackerRows = useMemo<MatureRow[]>(() => {
     const previousByCreator = previousMonthTotals.length
-      ? matureTotalsByCreator(previousMonthTotals)
+      ? matureTotalsByCreator(previousMonthTotals, previousRows)
       : monthlyTotalsByCreator(previousRows);
     const currentByCreator = monthlyTotalsByCreator(currentRows);
 
     return Array.from(previousByCreator.values())
       .map((previous) => {
-        const current = currentByCreator.get(previous.username);
+        const current = currentByCreator.get(previous.creatorId);
         const previousDiamonds = previous.diamonds;
         const currentDiamonds = current?.diamonds || 0;
         const currentLiveHours = current?.liveHours || 0;
@@ -301,7 +320,7 @@ export default function MatureCreatorsTrackerPage() {
         const canRankUp = rankUpNeeded === 0 && daysNeeded === 0 && hoursNeeded === 0;
 
         return {
-          username: previous.username,
+          username: current?.username || previous.username,
           agency: current?.agency || previous.agency,
           team: current?.team || previous.team,
           previousDiamonds,

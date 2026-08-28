@@ -1,5 +1,6 @@
 create table if not exists public.mature_creator_month_totals (
   month text not null,
+  creator_id text,
   creator_username text not null,
   agency text not null default 'First Class',
   team text not null default 'Unassigned',
@@ -8,6 +9,9 @@ create table if not exists public.mature_creator_month_totals (
   uploaded_at timestamptz not null default now(),
   primary key (month, creator_username)
 );
+
+alter table public.mature_creator_month_totals
+  add column if not exists creator_id text;
 
 create index if not exists mature_creator_month_totals_month_idx
   on public.mature_creator_month_totals (month);
