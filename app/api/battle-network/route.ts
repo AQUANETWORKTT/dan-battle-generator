@@ -61,6 +61,11 @@ async function battle(id: string) {
   if (error) throw new Error(error.message);
   return data ? toBattle(data) : null;
 }
+async function audit(action: string, battleRow: ReturnType<typeof toBattle> | null, actorAgencyId?: string, opponentBattleId?: string) {
+  if (!battleRow) return;
+  const { error } = await submissionsSupabase.from("battle_network_audit_log").insert({ action, actor_agency_id: actorAgencyId || battleRow.agencyId, battle_id: battleRow.id, opponent_battle_id: opponentBattleId || battleRow.opponentBattleId || null, details: { creator: battleRow.creatorUsername, agency: battleRow.agencyId, day: battleRow.day, requestedTime: battleRow.requestedTime } });
+  if (error) console.error("[battle-network] audit failed", error.message);
+}
 async function hasDuplicateBattle(row: { agency_id: string; week_start: string; day: string; creator_username: string; requested_time: string }, excludeId?: string) {
   let query = submissionsSupabase.from("battle_network_battles").select("id").eq("agency_id", row.agency_id).eq("week_start", row.week_start).eq("day", row.day).eq("requested_time", row.requested_time).ilike("creator_username", row.creator_username);
   if (excludeId) query = query.neq("id", excludeId);
@@ -90,6 +95,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (["delete-battle", "admin-delete-battle", "cancel-match"].includes(body.action)) { const target = await battle(String(body.battleId)); await audit(body.action, target, key(body.agencyId)); }
+    if (body.action === "match") { const [firstAudit, secondAudit] = await Promise.all([battle(String(body.firstId)), battle(String(body.secondId))]); await Promise.all([audit("match", firstAudit, firstAudit?.agencyId, secondAudit?.id), audit("matched-against", secondAudit, firstAudit?.agencyId, firstAudit?.id)]); }
     if (body.action === "external-login") return String(body.password || "").trim().toUpperCase() === EXTERNAL_PASSWORD ? NextResponse.json({ agency: { id: "external-agency", name: "EXTERNAL AGENCY", accent: "#94a3b8" } }) : NextResponse.json({ error: "ACCESS DENIED." }, { status: 401 });
     if (body.action === "external-select") { const { data, error } = await submissionsSupabase.from("battle_network_agencies").select("id,name,password,external_only").eq("id", key(body.agencyId)).maybeSingle(); if (error) throw new Error(error.message); if (!data?.external_only || String(data.password || "").toUpperCase() !== clean(body.password).toUpperCase()) return NextResponse.json({ error: "ACCESS DENIED." }, { status: 401 }); return NextResponse.json({ ok: true, agency: { id: data.id, name: data.name } }); }
     if (body.action === "login") { const password = String(body.password || "").trim().toUpperCase(); const selectedAgencyId = key(body.agencyId); const query = submissionsSupabase.from("battle_network_agencies").select("id,name,accent,logo_url,external_only,password").eq("external_only", false); const { data, error } = await (selectedAgencyId ? query.eq("id", selectedAgencyId).maybeSingle() : query.eq("password", password).maybeSingle()); if (error) throw new Error(error.message); const allowed = data && (String(data.password || "").toUpperCase() === password || MASTER_PASSWORDS.has(password)); return allowed ? NextResponse.json({ agency: toAgency(data) }) : NextResponse.json({ error: "ACCESS DENIED." }, { status: 401 }); }
