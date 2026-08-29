@@ -24,7 +24,8 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     if (!Array.isArray(body.jobs)) return NextResponse.json({ error: "INVALID JOBS." }, { status: 400 });
-    const jobs = body.jobs.map(clean).filter((job): job is Job => job !== null);
+    const rawJobs: unknown[] = body.jobs;
+    const jobs = rawJobs.map(clean).filter((job): job is Job => job !== null);
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: NAME, template_json: { jobs }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ jobs }, { headers: { "Cache-Control": "no-store" } });
