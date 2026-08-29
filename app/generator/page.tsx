@@ -1700,12 +1700,10 @@ export default function BattleGeneratorPage() {
         } as Record<string, string>)[managerKey];
         if (selectedGroup) return managerGroups[managerKeyNormalized] === selectedGroup;
         if (managerKey === "first-class-all") {
-          // The shared poster is for every direct First Class creator. Manager
-          // assignments are optional metadata, so do not use them as the gate:
-          // creators in "Not in a group" (such as Mike/Indi direct creators)
-          // are still First Class, while sub-agencies have another agency value.
-          const agency = String(row.agency || "").trim().toLowerCase();
-          return agency === "first class";
+          // The whole-agency poster follows the current Manager Assignments
+          // configuration. Agency values can be stale after a creator moves
+          // to another sub-agency, so they must not decide membership here.
+          return ["Team Dan / James", "Team Mike / Indi"].includes(managerGroups[managerKeyNormalized]);
         }
         if (["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKey)) {
           return ["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKeyNormalized);
