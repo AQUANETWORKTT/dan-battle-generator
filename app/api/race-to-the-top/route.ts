@@ -9,6 +9,7 @@ type TrackId = "blue" | "bronze" | "silver" | "gold" | "platinum";
 const RACE_MONTH_START = "2026-08-01";
 const RACE_ROSTER_SETTINGS_NAME = "race-to-the-top-2026-08-roster";
 const EXCLUDED_CREATORS_SETTINGS_NAME = "excluded-creators-settings";
+const RESTORED_CREATOR_USERNAMES = new Set(["kayjb3"]);
 type CreatorOverride = Partial<Pick<SavedRosterCreator, "track" | "target">> & { validLiveDaysBonus?: number; liveHoursBonus?: number };
 const CREATOR_OVERRIDES: Record<string, CreatorOverride> = {
   lucylou449: { target: 700_000 },
@@ -52,6 +53,7 @@ function excludedUsernames(value: unknown) {
     const item = creator as { username?: unknown; excludeFromLeaderboards?: unknown; hiddenFromDownloads?: unknown };
     if (!item || (!item.excludeFromLeaderboards && !item.hiddenFromDownloads)) return [];
     const username = text(item.username).replace(/^@/, "").toLowerCase();
+    if (RESTORED_CREATOR_USERNAMES.has(username.replace(/[^a-z0-9]/g, ""))) return [];
     return username ? [username] : [];
   }));
 }

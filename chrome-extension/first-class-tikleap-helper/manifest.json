@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "First Class TickLeap Helper",
+  "version": "1.0.0",
+  "description": "Sends the public UK TickLeap daily rankings to First Class Data Space.",
+  "permissions": ["tabs"],
+  "host_permissions": ["https://www.tikleap.com/*", "https://firstclassagency.management/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://firstclassagency.management/*"],
+      "js": ["data-space-bridge.js"]
+    },
+    {
+      "matches": ["https://www.tikleap.com/*"],
+      "js": ["tikleap-reader.js"]
+    }
+  ]
+}

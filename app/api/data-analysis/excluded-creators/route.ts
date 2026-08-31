@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 const SETTINGS_NAME = "excluded-creators-settings";
+const RESTORED_CREATOR_USERNAMES = new Set(["kayjb3"]);
 
 type ExcludedCreator = { username: string; excludeFromLeaderboards: boolean; hiddenFromDownloads: boolean };
 
@@ -13,6 +14,9 @@ function normalize(items: unknown): ExcludedCreator[] {
     const value = item as Record<string, unknown>;
     const username = String(value.username || "").replace(/^@/, "").trim().toLowerCase();
     if (!username) continue;
+    // This creator was restored to every leaderboard. Ignore an older saved
+    // visibility entry so it cannot keep reappearing as an exclusion.
+    if (RESTORED_CREATOR_USERNAMES.has(username.replace(/[^a-z0-9]/g, ""))) continue;
     byUsername.set(username, {
       username,
       excludeFromLeaderboards: Boolean(value.excludeFromLeaderboards),

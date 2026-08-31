@@ -104,7 +104,10 @@ export async function GET() {
     // in Manager Assignments. Building it from 30 days of creator rows made
     // the endpoint slow enough to time out, leaving only the hard-coded
     // fallback sources visible.
-    const savedManagerKeys = new Set([...Object.keys(managerAssignments), ...Object.keys(managerNames)]);
+    // A display name on its own is historical metadata, not an active
+    // assignment. Only managers with a current Manager Assignments group are
+    // allowed into the poster/download selector.
+    const savedManagerKeys = new Set(Object.keys(managerAssignments));
     const savedManagers = Array.from(savedManagerKeys)
       .filter((managerKey) => !deletedManagers.has(managerKey) && managerAssignments[managerKey] !== "Recruitment" && managerAssignments[managerKey] !== "Excluded")
       .map((managerKey) => ({ manager_key: managerKey, manager_label: managerNames[managerKey] || getManagerLabel(managerKey, managerAssignments[managerKey] || "Unassigned") }))

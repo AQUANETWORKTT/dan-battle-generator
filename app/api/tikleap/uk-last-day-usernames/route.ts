@@ -6,8 +6,6 @@ const MAX_ROWS = 100;
 
 const COUNTRIES = [
   { code: "gb", label: "UK" },
-  { code: "au", label: "Australia" },
-  { code: "ae", label: "United Arab Emirates" },
 ];
 
 type TikleapRow = {

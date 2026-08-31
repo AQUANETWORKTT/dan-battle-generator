@@ -201,6 +201,15 @@ const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
 // (with a double "l"), so retain both known spellings for Team Gee.
 const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "georgialillyglow", "lisaruss1988"];
 
+function isDownloadableTemplate(template: TeamPosterTemplate, managerGroups: Record<string, string>) {
+  const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
+  // These are agency-wide sources rather than a single manager, so they stay
+  // available independently of an individual Manager Assignments entry.
+  if (managerKey === "team-dan" || managerKey === "combined:lisa-g" || managerKey === "first-class-all" || TEAM_POSTER_GROUP_SOURCES[managerKey]) return true;
+  const group = managerGroups[managerKey.replace(/[^a-z0-9]/g, "")];
+  return Boolean(group && !["Excluded", "Recruitment", "New Managers"].includes(group));
+}
+
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
@@ -572,10 +581,18 @@ export default function TeamDiamondsYesterdayPage() {
     let cancelled = false;
 
     async function loadTemplate() {
-      const [publicTemplate, savedTemplates] = await Promise.all([getPublicSavedTemplate(), getTeamPosterTemplates()]);
+      const [publicTemplate, savedTemplates, assignmentsResponse] = await Promise.all([
+        getPublicSavedTemplate(),
+        getTeamPosterTemplates(),
+        fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
+      ]);
       if (cancelled) return;
+      const assignmentsData = assignmentsResponse.ok ? await assignmentsResponse.json() : {};
+      const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
       if (publicTemplate) setSavedTemplate(publicTemplate);
-      setTemplates(savedTemplates);
+      // A saved layout may outlive its manager. Do not offer downloads for it
+      // after that manager has been removed or excluded from Assignments.
+      setTemplates(savedTemplates.filter((item) => isDownloadableTemplate(item.template, managerGroups)));
     }
 
     loadTemplate();

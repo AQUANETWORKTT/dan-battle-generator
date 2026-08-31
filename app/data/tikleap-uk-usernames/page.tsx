@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 type CountryUsernames = {
@@ -43,11 +43,54 @@ function allCountriesText(countries: CountryUsernames[]) {
     .join("\n\n");
 }
 
+function todayInLondon() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 export default function TikleapUkUsernamesPage() {
   const [countries, setCountries] = useState<CountryUsernames[]>([]);
   const [countryErrors, setCountryErrors] = useState<TikleapResponse["errors"]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savedDate, setSavedDate] = useState("");
+
+  useEffect(() => {
+    function receiveChromeRankings(event: MessageEvent) {
+      if (event.source !== window || !event.data || event.data.source !== "first-class-tikleap-extension") return;
+      if (event.data.type === "uk-rankings-error") {
+        setLoading(false);
+        setMessage(String(event.data.error || "Could not read the UK Tikleap rankings."));
+        return;
+      }
+      if (event.data.type !== "uk-rankings") return;
+      const usernames = Array.isArray(event.data.usernames)
+        ? event.data.usernames.map((username: unknown) => String(username).trim()).filter(Boolean).slice(0, 99)
+        : [];
+      setLoading(false);
+      if (!usernames.length) {
+        setMessage("Chrome could not find the UK rankings on TickLeap.");
+        return;
+      }
+      setCountries([{ code: "gb", label: "UK", usernames, period: "Current public daily rankings", sourceUrl: "https://www.tikleap.com/country/gb" }]);
+      setCountryErrors([]);
+      setMessage(`Loaded ${usernames.length} UK daily-ranking usernames from Chrome.`);
+    }
+    window.addEventListener("message", receiveChromeRankings);
+    return () => window.removeEventListener("message", receiveChromeRankings);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/tikleap/uk-daily-rankings", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((saved: { date?: string; usernames?: string[] }) => {
+        if (!saved.date || !saved.usernames?.length) return;
+        setCountries([{ code: "gb", label: "UK", usernames: saved.usernames, period: `Saved rankings · ${saved.date}`, sourceUrl: "https://www.tikleap.com/country/gb" }]);
+        setSavedDate(saved.date);
+      })
+      .catch(() => {});
+  }, []);
 
   const totalUsernames = useMemo(
     () => countries.reduce((total, country) => total + country.usernames.length, 0),
@@ -83,6 +126,39 @@ export default function TikleapUkUsernamesPage() {
     }
   }
 
+  function pullViaChrome() {
+    setLoading(true);
+    setMessage("Asking Chrome to read the public UK TickLeap rankings...");
+    setCountries([]);
+    setCountryErrors([]);
+    window.postMessage({ source: "first-class-daily-rankings", type: "pull-uk-rankings" }, window.location.origin);
+    window.setTimeout(() => {
+      setLoading((isLoading) => {
+        if (isLoading) setMessage("Chrome did not respond. Make sure the First Class TickLeap helper is installed and Chrome is open.");
+        return false;
+      });
+    }, 15000);
+  }
+
+  async function saveRankings() {
+    const usernames = countries[0]?.usernames || [];
+    if (!usernames.length) return;
+    const date = todayInLondon();
+    setLoading(true);
+    try {
+      const response = await fetch("/api/tikleap/uk-daily-rankings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, usernames }) });
+      const saved = await response.json();
+      if (!response.ok) throw new Error(saved.error || "Could not save the rankings.");
+      setSavedDate(saved.date);
+      setCountries([{ code: "gb", label: "UK", usernames: saved.usernames, period: `Saved rankings · ${saved.date}`, sourceUrl: "https://www.tikleap.com/country/gb" }]);
+      setMessage(`${saved.usernames.length} UK rankings saved for everyone to view.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save the rankings.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function copyCountry(country: CountryUsernames) {
     await navigator.clipboard.writeText(countryText(country));
     setMessage(`Copied ${country.label} with ${country.usernames.length} usernames.`);
@@ -98,10 +174,10 @@ export default function TikleapUkUsernamesPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "tikleap-yesterday-usernames-uk-australia-uae.txt";
+    link.download = "tikleap-yesterday-uk-daily-rankings.txt";
     link.click();
     URL.revokeObjectURL(url);
-    setMessage(`Downloaded ${totalUsernames} usernames across ${countries.length} countries.`);
+    setMessage(`Downloaded ${totalUsernames} UK usernames.`);
   }
 
   return (
@@ -118,7 +194,7 @@ export default function TikleapUkUsernamesPage() {
             <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-200/70">Tikleap</p>
             <h1 className="mt-3 text-4xl font-black uppercase text-cyan-200 md:text-6xl">🏆 Daily Rankings</h1>
             <p className="mt-3 max-w-3xl text-white/60">
-              Pulls the previous day Tikleap Last Day archive for UK, Australia and United Arab Emirates, then splits each country into pasteable Backstage lists.
+              Pulls the previous day Tikleap Last Day archive for the UK, then splits it into pasteable Backstage lists.
             </p>
           </section>
 
@@ -127,16 +203,34 @@ export default function TikleapUkUsernamesPage() {
               <div>
                 <p className="text-xs font-black uppercase text-white/45">Output</p>
                 <p className="mt-2 text-lg font-black text-sky-200">{totalUsernames ? `${totalUsernames} usernames` : "Ready to pull"}</p>
-                <p className="mt-1 text-xs font-bold uppercase text-white/45">UK, Australia, United Arab Emirates</p>
+                <p className="mt-1 text-xs font-bold uppercase text-white/45">United Kingdom only</p>
               </div>
+
+              <button
+                type="button"
+                onClick={pullViaChrome}
+                disabled={loading}
+                className="w-full rounded-xl bg-sky-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {loading ? "Pulling from Chrome..." : "Pull UK Rankings from Chrome"}
+              </button>
 
               <button
                 type="button"
                 onClick={generateUsernames}
                 disabled={loading}
-                className="w-full rounded-xl bg-sky-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-45"
+                className="w-full rounded-xl border border-sky-300/35 bg-black/30 px-5 py-3 text-xs font-black uppercase text-sky-100 hover:bg-black/50 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {loading ? "Pulling..." : "Generate All Countries"}
+                Server fallback
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void saveRankings()}
+                disabled={!countries.length || loading}
+                className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {savedDate ? "Update Saved Rankings" : "Save Today’s Rankings"}
               </button>
 
               <button
