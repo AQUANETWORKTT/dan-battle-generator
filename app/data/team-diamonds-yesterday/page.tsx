@@ -320,7 +320,8 @@ async function getPublicSavedTemplate() {
   return resolveTemplateBackground(template);
 }
 
-type SavedTemplateRow = { name: string; template: TeamPosterTemplate };
+type SavedTemplateRow = { name: string; template: TeamPosterTemplate; label?: string; canDownload?: boolean };
+type AssignedManager = { key: string; name?: string; group?: string };
 
 function isTeamPosterTemplate(name: string) {
   return name === TEAM_DAN_POSTER_TEMPLATE_NAME || name.startsWith("team-poster-");
@@ -338,6 +339,10 @@ function templateSlug(label: string) {
   return `team-poster-${label.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-team"}`;
 }
 
+function templateDisplayLabel(item: SavedTemplateRow) {
+  return item.label || templateLabel(item.name);
+}
+
 const TEAM_POSTER_CATEGORY_LABELS: Record<TeamPosterCategory, string> = {
   dan: "Team Dan + James",
   "mike-indi": "Team Mike + Indi",
@@ -350,6 +355,35 @@ const TEAM_POSTER_CATEGORY_LABELS: Record<TeamPosterCategory, string> = {
 
 function teamPosterCategoryLabel(category: TeamPosterCategory) {
   return TEAM_POSTER_CATEGORY_LABELS[category];
+}
+
+function isDownloadableManagerGroup(group: string | undefined) {
+  return Boolean(group && !["Excluded", "Recruitment", "New Managers"].includes(group));
+}
+
+function categoryForManagerGroup(group: string | undefined): TeamPosterCategory {
+  if (group === "Team Mike / Indi") return "mike-indi";
+  if (group === "Paradise") return "paradise";
+  if (group === "Horizon") return "horizon";
+  if (group === "Trident") return "trident";
+  if (group === "Respawn") return "respawn";
+  if (group === "Team Dan / James") return "dan";
+  return "sub-agencies";
+}
+
+function assignmentTemplate(manager: AssignedManager): SavedTemplateRow {
+  const managerKey = manager.key.trim().toLowerCase();
+  const label = manager.name?.trim() || templateLabel(`team-poster-${managerKey}`);
+  return {
+    name: `team-poster-assignment-${managerKey}`,
+    label,
+    canDownload: false,
+    template: normalizeTemplate({
+      ...createDefaultTemplate(),
+      managerKey,
+      teamSide: categoryForManagerGroup(manager.group),
+    }),
+  };
 }
 
 async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
@@ -592,10 +626,27 @@ export default function TeamDiamondsYesterdayPage() {
       if (cancelled) return;
       const assignmentsData = assignmentsResponse.ok ? await assignmentsResponse.json() : {};
       const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
+      const assignmentNames = assignmentsData.assignments?.managerNames || {};
+      // Assignment settings are the source of truth for download choices. A
+      // manager must not need a separately saved poster preset before their
+      // download button appears.
+      const assignedManagers: AssignedManager[] = Object.entries(managerGroups)
+        .filter(([, group]) => isDownloadableManagerGroup(String(group)))
+        .map(([key, group]) => {
+          const liveManager = (assignmentsData.managers || []).find((manager: AssignedManager) => manager.key === key);
+          return { key, group: String(group), name: liveManager?.name || assignmentNames[key] };
+        });
+      const eligibleSavedTemplates = savedTemplates.filter((item) => isDownloadableTemplate(item.template, managerGroups));
+      const missingAssignmentTemplates = assignedManagers
+        .filter((manager) => !eligibleSavedTemplates.some((item) => {
+          const templateManagerKey = (item.template.managerKey || "").trim();
+          return Boolean(templateManagerKey) && managerKeysMatch(templateManagerKey, manager.key);
+        }))
+        .map(assignmentTemplate);
       if (publicTemplate) setSavedTemplate(publicTemplate);
-      // A saved layout may outlive its manager. Do not offer downloads for it
-      // after that manager has been removed or excluded from Assignments.
-      setTemplates(savedTemplates.filter((item) => isDownloadableTemplate(item.template, managerGroups)));
+      // Saved layouts may outlive their manager, but every active assignment
+      // receives a working default download card until a custom layout exists.
+      setTemplates([...eligibleSavedTemplates, ...missingAssignmentTemplates]);
     }
 
     loadTemplate();
@@ -774,7 +825,8 @@ export default function TeamDiamondsYesterdayPage() {
     const allItems = templates.length
       ? templates
       : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
-    const items = side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
+    const items = (side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems)
+      .filter((item) => item.canDownload !== false);
     if (!items.length) {
       const categoryLabel = side ? teamPosterCategoryLabel(side) : "All Teams";
       setMessage(`No saved presets in ${categoryLabel} yet.`);
@@ -788,7 +840,7 @@ export default function TeamDiamondsYesterdayPage() {
       const skippedPosters: string[] = [];
       for (const [index, item] of items.entries()) {
         try {
-          setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
+          setDownloadProgress({ current: index, total: items.length, label: templateDisplayLabel(item) });
           setSelectedTemplateName(item.name);
           const failedForPoster = await buildPreview(item.template, true);
           if (!failedForPoster) throw new Error("No current creator data.");
@@ -803,11 +855,11 @@ export default function TeamDiamondsYesterdayPage() {
           await waitForImages(node);
           const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
           if (!blob) throw new Error("Could not create image.");
-          zip.file(`${templateLabel(item.name)}.png`, blob);
+          zip.file(`${templateDisplayLabel(item)}.png`, blob);
         } catch {
-          skippedPosters.push(templateLabel(item.name));
+          skippedPosters.push(templateDisplayLabel(item));
         }
-        setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
+        setDownloadProgress({ current: index + 1, total: items.length, label: templateDisplayLabel(item) });
       }
       const sideLabel = side ? teamPosterCategoryLabel(side) : "All teams";
       setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
@@ -827,9 +879,10 @@ export default function TeamDiamondsYesterdayPage() {
   }
 
   async function checkPictures() {
-    const allItems = templates.length
+    const allItems = (templates.length
       ? templates
-      : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+      : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }])
+      .filter((item) => item.canDownload !== false);
     setLoading(true);
     setMessage("");
     setPictureCheck(null);
@@ -918,7 +971,7 @@ export default function TeamDiamondsYesterdayPage() {
     setLoading(true);
     try {
       const failedForPoster = await buildPreview(item.template, true);
-      if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
+      if (!failedForPoster) throw new Error(`No current creator data was found for ${templateDisplayLabel(item)}.`);
       // Keep the standalone route identical to the grouped download route:
       // render this template first, then wait for its own background to paint.
       await waitForBackground(item.template.backgroundUrl);
@@ -928,7 +981,7 @@ export default function TeamDiamondsYesterdayPage() {
       await waitForImages(node);
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
       if (blob) saveAs(blob, `${item.name}-${latestStatDate || getYesterdayDateKey()}.png`);
-      setMessage(`${templateLabel(item.name)} downloaded.`);
+      setMessage(`${templateDisplayLabel(item)} downloaded.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not download this poster.");
     } finally {
@@ -978,9 +1031,9 @@ export default function TeamDiamondsYesterdayPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     {templatesBySide[side].map((item) => (
                 <article key={item.name} className="rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
-                  <p className="text-xs font-black uppercase tracking-widest text-white/45">Saved preset</p>
-                  <h2 className="mt-2 text-2xl font-black uppercase text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
+                  <p className="text-xs font-black uppercase tracking-widest text-white/45">{item.canDownload === false ? "No poster made yet" : "Saved preset"}</p>
+                  <h2 className="mt-2 text-2xl font-black uppercase text-yellow-200">{templateDisplayLabel(item)}</h2>
+                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading || item.canDownload === false} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45 disabled:opacity-100">{item.canDownload === false ? "No Poster Made Yet" : `Download ${templateDisplayLabel(item)}`}</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
