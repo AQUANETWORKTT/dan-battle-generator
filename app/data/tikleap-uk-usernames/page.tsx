@@ -19,6 +19,7 @@ type TikleapResponse = {
 };
 
 const CHUNK_SIZES = [24, 24, 24];
+const TIKLEAP_EXTENSION_UNDER_REVIEW = true;
 
 function splitForBackstage(names: string[]) {
   const chunks: string[][] = [];
@@ -209,11 +210,12 @@ export default function TikleapUkUsernamesPage() {
               <button
                 type="button"
                 onClick={pullViaChrome}
-                disabled={loading}
+                disabled={loading || TIKLEAP_EXTENSION_UNDER_REVIEW}
                 className="w-full rounded-xl bg-sky-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {loading ? "Pulling from Chrome..." : "Pull UK Rankings from Chrome"}
+                {TIKLEAP_EXTENSION_UNDER_REVIEW ? "Chrome Extension Under Review" : loading ? "Pulling from Chrome..." : "Pull UK Rankings from Chrome"}
               </button>
+              {TIKLEAP_EXTENSION_UNDER_REVIEW ? <p className="text-center text-xs font-bold uppercase tracking-wide text-sky-100/65">This button will unlock as soon as Chrome approves the extension.</p> : null}
 
               <button
                 type="button"
