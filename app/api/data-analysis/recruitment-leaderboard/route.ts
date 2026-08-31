@@ -11,6 +11,7 @@ const SETTINGS_NAME = "manager-assignment-settings";
 const excludedGroups = new Set(["Recruitment", "Excluded", "Respawn"]);
 const recruitmentExcludedManagerKeys = ["kjb"];
 const recruiterManagerKeys = ["glenifarr", "glenitar", "jbollins997", "lagsturbo", "resili3recruits", "resilientrecruits", "mattyhorner60"];
+const DAN_MANAGER_KEY = "firstclassagencydanoutlookcom";
 
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
@@ -67,9 +68,15 @@ export async function GET(request: Request) {
     const names = settings.managerNames || {};
     const deleted = new Set((settings.deletedManagers || []).map(managerKey));
     const owners = new Set((settings.ownerManagers || []).map(managerKey));
+    // Dan is an active management leaderboard destination. Keep this address
+    // visible even if a historic assignment was accidentally marked deleted.
+    deleted.delete(DAN_MANAGER_KEY);
+    owners.delete(DAN_MANAGER_KEY);
     const eligible = Object.entries(groups).filter(([manager, group]) => !deleted.has(managerKey(manager)) && !owners.has(managerKey(manager)) && !excludedGroups.has(group));
     const nameFor = (manager: string) => Object.entries(names).find(([raw]) => managerKey(raw) === manager)?.[1] || displayName(manager);
     const managers = new Map(eligible.filter(([manager]) => !isRecruitmentExcludedManager(manager)).map(([manager, group]) => { const canonical = managerKey(manager); return [canonical, { key: canonical, name: nameFor(canonical), group, recruits: 0, diamonds: 0 }]; }));
+    if (includeKjbForManagerDiamonds && !managers.has(DAN_MANAGER_KEY)) managers.set(DAN_MANAGER_KEY, { key: DAN_MANAGER_KEY, name: "Dan", group: "Team Dan / James", recruits: 0, diamonds: 0 });
+    const leaderboardManagerKey = (raw: string) => includeKjbForManagerDiamonds && managerKey(raw) === "kjb" ? DAN_MANAGER_KEY : managerKey(raw);
 
     const rows: Row[] = [];
     for (let from = 0, more = true; more; from += 1000) {
@@ -86,7 +93,7 @@ export async function GET(request: Request) {
     // export managers back in.
     for (const row of rows) {
       const raw = managerRaw(row);
-      const manager = managerKey(raw);
+      const manager = leaderboardManagerKey(raw);
       const group = managers.get(manager)?.group || inferredGroup(manager);
       if (!manager || managers.has(manager) || !group || deleted.has(manager) || owners.has(manager) || isRecruitmentExcludedManager(manager)) continue;
       managers.set(manager, { key: manager, name: nameFor(manager), group, recruits: 0, diamonds: 0 });
@@ -97,7 +104,7 @@ export async function GET(request: Request) {
     const recruits = new Map<string, { managerKey: string; joined: string }>();
     for (const row of rows) {
       const identity = creatorKey(row);
-      const manager = managerKey(managerRaw(row));
+      const manager = leaderboardManagerKey(managerRaw(row));
       const joined = dateForJoin(row);
       if (!identity || !managers.has(manager) || !joined.startsWith(month)) continue;
       const existing = recruits.get(identity);
@@ -108,7 +115,7 @@ export async function GET(request: Request) {
     for (const row of rows) { const identity = creatorKey(row); if (identity) rowsByCreator.set(identity, [...(rowsByCreator.get(identity) || []), row]); }
     for (const creatorRows of rowsByCreator.values()) {
       const latest = [...creatorRows].sort((a, b) => text(a.stat_date).localeCompare(text(b.stat_date))).at(-1);
-      const manager = latest ? managers.get(managerKey(managerRaw(latest))) : undefined;
+      const manager = latest ? managers.get(leaderboardManagerKey(managerRaw(latest))) : undefined;
       if (manager) manager.diamonds += creatorRows.reduce((sum, row) => sum + number(row.diamonds || row.Diamonds), 0);
     }
     const leaderboard = Array.from(managers.values()).sort((a, b) => b.recruits - a.recruits || a.name.localeCompare(b.name));

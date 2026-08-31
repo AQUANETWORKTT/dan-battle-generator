@@ -206,7 +206,10 @@ function isDownloadableTemplate(template: TeamPosterTemplate, managerGroups: Rec
   // These are agency-wide sources rather than a single manager, so they stay
   // available independently of an individual Manager Assignments entry.
   if (managerKey === "team-dan" || managerKey === "combined:lisa-g" || managerKey === "first-class-all" || TEAM_POSTER_GROUP_SOURCES[managerKey]) return true;
-  const group = managerGroups[managerKey.replace(/[^a-z0-9]/g, "")];
+  const normalizedManagerKey = managerKey.replace(/[^a-z0-9]/g, "");
+  // Old presets sometimes saved just a manager's shortened name while
+  // Manager Assignments stores their full username or email identity.
+  const group = managerGroups[normalizedManagerKey] || Object.entries(managerGroups).find(([assignedKey]) => assignedKey.includes(normalizedManagerKey) || normalizedManagerKey.includes(assignedKey))?.[1];
   return Boolean(group && !["Excluded", "Recruitment", "New Managers"].includes(group));
 }
 
