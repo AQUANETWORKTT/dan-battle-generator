@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 type CountryUsernames = {
@@ -56,6 +56,7 @@ export default function TikleapUkUsernamesPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedDate, setSavedDate] = useState("");
+  const saveAfterChromePullRef = useRef(false);
 
   useEffect(() => {
     function receiveChromeRankings(event: MessageEvent) {
@@ -76,6 +77,11 @@ export default function TikleapUkUsernamesPage() {
       }
       setCountries([{ code: "gb", label: "UK", usernames, period: "Current public daily rankings", sourceUrl: "https://www.tikleap.com/country/gb" }]);
       setCountryErrors([]);
+      if (saveAfterChromePullRef.current) {
+        saveAfterChromePullRef.current = false;
+        void saveRankings(usernames);
+        return;
+      }
       setMessage(`Loaded ${usernames.length} UK daily-ranking usernames from Chrome.`);
     }
     window.addEventListener("message", receiveChromeRankings);
@@ -127,22 +133,23 @@ export default function TikleapUkUsernamesPage() {
     }
   }
 
-  function pullViaChrome() {
+  function pullViaChrome(saveAfterPull = false) {
+    saveAfterChromePullRef.current = saveAfterPull;
     setLoading(true);
-    setMessage("Asking Chrome to read the public UK TickLeap rankings...");
+    setMessage(saveAfterPull ? "Re-pulling the UK rankings before updating the shared saved list..." : "Asking Chrome to read the public UK TickLeap rankings...");
     setCountries([]);
     setCountryErrors([]);
     window.postMessage({ source: "first-class-daily-rankings", type: "pull-uk-rankings" }, window.location.origin);
     window.setTimeout(() => {
       setLoading((isLoading) => {
-        if (isLoading) setMessage("Chrome did not respond. Make sure the First Class TickLeap helper is installed and Chrome is open.");
+        if (isLoading) { setMessage("Chrome did not respond. Make sure the First Class TickLeap helper is installed and Chrome is open."); saveAfterChromePullRef.current = false; }
         return false;
       });
     }, 15000);
   }
 
-  async function saveRankings() {
-    const usernames = countries[0]?.usernames || [];
+  async function saveRankings(freshUsernames?: string[]) {
+    const usernames = freshUsernames || countries[0]?.usernames || [];
     if (!usernames.length) return;
     const date = todayInLondon();
     setLoading(true);
@@ -228,11 +235,11 @@ export default function TikleapUkUsernamesPage() {
 
               <button
                 type="button"
-                onClick={() => void saveRankings()}
-                disabled={!countries.length || loading}
+                onClick={() => savedDate ? pullViaChrome(true) : void saveRankings()}
+                disabled={loading || (savedDate ? TIKLEAP_EXTENSION_UNDER_REVIEW : !countries.length)}
                 className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {savedDate ? "Update Saved Rankings" : "Save Today’s Rankings"}
+                {savedDate ? TIKLEAP_EXTENSION_UNDER_REVIEW ? "Re-pull Available After Extension Approval" : "Re-pull & Update Saved Rankings" : "Save Today’s Rankings"}
               </button>
 
               <button

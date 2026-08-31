@@ -18,6 +18,9 @@ const accentStyles: Record<Accent, string> = {
 };
 
 const groups: Array<{ title: string; description: string; accent: Accent; workspaces: Workspace[] }> = [
+  { title: "Our Data Space", description: "A shared place for the team to keep live working notes.", accent: "sky", workspaces: [
+    { href: "/data/notepad", number: "27", label: "Shared live notes", title: "Notepad", description: "One large shared page. Type freely and it saves automatically five seconds after you stop.", accent: "sky" },
+  ] },
   { title: "Data Settings", description: "Controls, creator visibility and reusable daily-poster assets.", accent: "red", workspaces: [
     { href: "/data/excluded-creators", number: "08", label: "Visibility", title: "Excluded Creators", description: "Keep selected creators out of leaderboards, public PNGs and downloads while retaining their intelligence data.", accent: "orange" },
     { href: "/data/fallback-pictures", number: "10", label: "Assets", title: "Fallback Pictures", description: "Upload a reliable profile picture for any creator whose TikTok avatar cannot be retrieved.", accent: "sky" },
@@ -57,7 +60,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
 ];
 
-const order = ["Leaderboards", "Creator/Agency Targets", "Creator Analysis", "Events", "Management", "Data Settings"];
+const order = ["Our Data Space", "Leaderboards", "Creator/Agency Targets", "Creator Analysis", "Events", "Management", "Data Settings"];
 
 export default function DataMenuPage() {
   return <DataAccessGuard><main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8"><div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.16),transparent_27%),radial-gradient(circle_at_0%_100%,rgba(250,204,21,0.12),transparent_30%)]" /><div className="relative mx-auto max-w-7xl">
