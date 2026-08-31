@@ -216,7 +216,7 @@ export default function TikleapUkUsernamesPage() {
 
               <button
                 type="button"
-                onClick={pullViaChrome}
+                onClick={() => pullViaChrome()}
                 disabled={loading || TIKLEAP_EXTENSION_UNDER_REVIEW}
                 className="w-full rounded-xl bg-sky-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-45"
               >
