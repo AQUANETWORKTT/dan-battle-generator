@@ -386,6 +386,28 @@ function assignmentTemplate(manager: AssignedManager): SavedTemplateRow {
   };
 }
 
+function assignmentNameKey(value: string) {
+  return value.toLowerCase()
+    .replace(/^team-poster-/, "")
+    .replace(/^team[-_]?/, "")
+    .replace(/[^a-z0-9]/g, "")
+    .replace(/^firstclassagency/, "")
+    .replace(/(outlook|gmail|mail)com$/, "");
+}
+
+function savedTemplateMatchesManager(item: SavedTemplateRow, manager: AssignedManager) {
+  const configuredManager = (item.template.managerKey || "").trim();
+  // The original Team Dan preset is Dan's poster.
+  if (configuredManager === "team-dan" && assignmentNameKey(manager.key) === "dan") return true;
+  if (configuredManager && managerKeysMatch(configuredManager, manager.key)) return true;
+  const savedName = assignmentNameKey(item.name);
+  const managerName = assignmentNameKey(manager.key);
+  const displayName = assignmentNameKey(manager.name || "");
+  // The early poster builder saved the manager in the preset title but not
+  // always in managerKey. Treat that title as the assignment identity.
+  return Boolean(savedName && (savedName === managerName || savedName === displayName));
+}
+
 async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
   const supabase = getPosterSupabaseClient();
   if (!supabase) return [];
@@ -625,7 +647,10 @@ export default function TeamDiamondsYesterdayPage() {
       ]);
       if (cancelled) return;
       const assignmentsData = assignmentsResponse.ok ? await assignmentsResponse.json() : {};
-      const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
+      // Only this saved assignment list is allowed to create a card. The
+      // top-level managerGroups response also contains inferred managers from
+      // the data upload, which is why Team KJB was wrongly appearing.
+      const managerGroups = assignmentsData.assignments?.managerGroups || {};
       const assignmentNames = assignmentsData.assignments?.managerNames || {};
       // Assignment settings are the source of truth for download choices. A
       // manager must not need a separately saved poster preset before their
@@ -636,17 +661,25 @@ export default function TeamDiamondsYesterdayPage() {
           const liveManager = (assignmentsData.managers || []).find((manager: AssignedManager) => manager.key === key);
           return { key, group: String(group), name: liveManager?.name || assignmentNames[key] };
         });
-      const eligibleSavedTemplates = savedTemplates.filter((item) => isDownloadableTemplate(item.template, managerGroups));
-      const missingAssignmentTemplates = assignedManagers
-        .filter((manager) => !eligibleSavedTemplates.some((item) => {
-          const templateManagerKey = (item.template.managerKey || "").trim();
-          return Boolean(templateManagerKey) && managerKeysMatch(templateManagerKey, manager.key);
-        }))
-        .map(assignmentTemplate);
+      const allSavedTemplates = publicTemplate && !savedTemplates.some((item) => item.name === TEAM_DAN_POSTER_TEMPLATE_NAME)
+        ? [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: publicTemplate }, ...savedTemplates]
+        : savedTemplates;
+      const eligibleSavedTemplates = allSavedTemplates.filter((item) => isDownloadableTemplate(item.template, managerGroups));
+      const assignmentCards = assignedManagers.map((manager) => {
+        const saved = eligibleSavedTemplates.find((item) => savedTemplateMatchesManager(item, manager));
+        if (!saved) return assignmentTemplate(manager);
+        // A few legacy presets stored the manager only in the preset name.
+        // Use the current assignment as its source when downloading it.
+        return {
+          ...saved,
+          label: manager.name?.trim() || saved.label,
+          template: { ...saved.template, managerKey: saved.template.managerKey === "team-dan" ? "team-dan" : manager.key, teamSide: categoryForManagerGroup(manager.group) },
+        };
+      });
       if (publicTemplate) setSavedTemplate(publicTemplate);
-      // Saved layouts may outlive their manager, but every active assignment
-      // receives a working default download card until a custom layout exists.
-      setTemplates([...eligibleSavedTemplates, ...missingAssignmentTemplates]);
+      // The cards are exactly the current Manager Assignments. A manager with
+      // no preset stays visible but has a disabled "No poster made yet" card.
+      setTemplates(assignmentCards);
     }
 
     loadTemplate();
