@@ -1,9 +1,31 @@
 const UK_RANKINGS_URL = "https://www.tikleap.com/country/gb";
-// Only target the lower live leagues: B3–B5, C1–C5 and D1–D5.
-const LEAGUES = ["B3", "B4", "B5", "C1", "C2", "C3", "C4", "C5", "D1", "D2", "D3", "D4", "D5"];
+// Target the requested UK live leagues: A1–A3, B1–B5, C1–C5 and D1–D5.
+const LEAGUES = ["A1", "A2", "A3", "B1", "B2", "B3", "B4", "B5", "C1", "C2", "C3", "C4", "C5", "D1", "D2", "D3", "D4", "D5"];
+const backstageBatchWaiters = new Map();
 
 function sendToDataSpace(tabId, message) {
   if (tabId) chrome.tabs.sendMessage(tabId, message).catch(() => {});
+}
+
+async function insertBackstageText(tabId, text) {
+  const target = { tabId };
+  try {
+    await chrome.debugger.attach(target, "1.3");
+    await chrome.debugger.sendCommand(target, "Input.insertText", { text });
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+async function clickBackstageControl(tabId, point) {
+  const target = { tabId };
+  try {
+    await chrome.debugger.attach(target, "1.3");
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
 }
 
 function waitForTickLeapTab(tabId) {
@@ -33,17 +55,65 @@ function navigateAndWait(tabId, url) {
   });
 }
 
+function waitForBackstageBatch(tabId, creators) {
+  const jobId = crypto.randomUUID();
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => {
+      backstageBatchWaiters.delete(jobId);
+      reject(new Error("Backstage took too long to return this availability batch."));
+    }, 60000);
+    backstageBatchWaiters.set(jobId, { resolve, reject, timer });
+    const message = { type: "check-backstage-batch", jobId, creators };
+    try {
+      await chrome.tabs.sendMessage(tabId, message);
+    } catch (error) {
+      if (!/Receiving end does not exist/i.test(error instanceof Error ? error.message : "")) {
+        clearTimeout(timer);
+        backstageBatchWaiters.delete(jobId);
+        reject(error);
+        return;
+      }
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, files: ["backstage-availability-reader.js"] });
+        await chrome.tabs.sendMessage(tabId, message);
+      } catch (retryError) {
+        clearTimeout(timer);
+        backstageBatchWaiters.delete(jobId);
+        reject(retryError);
+      }
+    }
+  });
+}
+
 async function checkBackstageBatch(tabId, creators) {
-  try {
-    return await chrome.tabs.sendMessage(tabId, { type: "check-backstage-batch", creators });
-  } catch (error) {
-    if (!/Receiving end does not exist/i.test(error instanceof Error ? error.message : "")) throw error;
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["backstage-availability-reader.js"] });
-    return chrome.tabs.sendMessage(tabId, { type: "check-backstage-batch", creators });
-  }
+  return waitForBackstageBatch(tabId, creators);
+}
+
+function resolveBackstageBatch(message) {
+  const waiter = backstageBatchWaiters.get(message.jobId);
+  if (!waiter) return;
+  clearTimeout(waiter.timer);
+  backstageBatchWaiters.delete(message.jobId);
+  waiter.resolve({ results: Array.isArray(message.results) ? message.results : [], error: message.error });
 }
 
 chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type === "backstage-batch-results") {
+    resolveBackstageBatch(message);
+    return;
+  }
+  if (message?.type === "insert-backstage-text" && sender.tab?.id) {
+    insertBackstageText(sender.tab.id, String(message.text || ""))
+      .then(() => sender.tab && chrome.tabs.sendMessage(sender.tab.id, { type: "backstage-text-inserted" }))
+      .catch(() => sender.tab && chrome.tabs.sendMessage(sender.tab.id, { type: "backstage-text-insert-failed" }));
+    return;
+  }
+  if (message?.type === "click-backstage-control" && sender.tab?.id) {
+    clickBackstageControl(sender.tab.id, { x: Number(message.x || 0), y: Number(message.y || 0) })
+      .then(() => sender.tab && chrome.tabs.sendMessage(sender.tab.id, { type: "backstage-control-clicked" }))
+      .catch(() => sender.tab && chrome.tabs.sendMessage(sender.tab.id, { type: "backstage-control-click-failed" }));
+    return;
+  }
   if (message?.type === "uk-rankings-result") {
     sendToDataSpace(message.dataSpaceTabId, message.usernames?.length
       ? { type: "uk-rankings", usernames: message.usernames }
@@ -64,11 +134,25 @@ chrome.runtime.onMessage.addListener((message, sender) => {
         if (!backstage?.id) throw new Error("Open LIVE Backstage in Chrome and sign in first.");
         const allResults = [];
         for (let start = 0; start < creators.length; start += 30) {
-          const batch = creators.slice(start, start + 30);
-          const response = await checkBackstageBatch(backstage.id, batch);
-          if (response?.error) throw new Error(response.error);
-          allResults.push(...(response?.results || []));
-          sendToDataSpace(dataSpaceTabId, { type: "availability-progress", checked: Math.min(start + batch.length, creators.length), total: creators.length, results: allResults });
+          let pending = creators.slice(start, start + 30);
+          let attempts = 0;
+          while (pending.length && attempts < 3) {
+            const response = await checkBackstageBatch(backstage.id, pending);
+            if (response?.error) throw new Error(response.error);
+            const returned = response?.results || [];
+            allResults.push(...returned.filter((result) => !result.retry));
+            pending = returned.filter((result) => result.retry).map(({ retry, ...result }) => result);
+            attempts += 1;
+            if (pending.length) await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
+          if (pending.length) allResults.push(...pending.map((result) => ({ ...result, available: false, invitationType: "", reason: "Backstage network error — could not verify", retry: false })));
+          sendToDataSpace(dataSpaceTabId, {
+            type: "availability-progress",
+            checked: allResults.length,
+            total: creators.length,
+            results: allResults,
+            available: allResults.filter((result) => result.available).length,
+          });
         }
         sendToDataSpace(dataSpaceTabId, { type: "availability-complete", results: allResults });
       } catch (error) { sendToDataSpace(dataSpaceTabId, { type: "availability-error", error: error instanceof Error ? error.message : "Could not check availability." }); }
