@@ -30,9 +30,16 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = data || [];
+  const latestRow = rows[0] as Record<string, unknown> | undefined;
+  const statDate = String(latestRow?.stat_date || "");
+  const daysSinceJoining = Number(latestRow?.days_since_joining || latestRow?.["Days since joining"] || 0);
+  let joinedDate = "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(statDate) && daysSinceJoining >= 1) { const joined = new Date(`${statDate}T12:00:00`); joined.setDate(joined.getDate() - (daysSinceJoining - 1)); joinedDate = joined.toISOString().slice(0, 10); }
   return NextResponse.json({
     creatorId: creatorId || rows.find((row) => row.creator_id)?.creator_id || "",
     username: rows.find((row) => row.creator_username)?.creator_username || username,
+    manager: String(latestRow?.manager_email || latestRow?.creator_network_manager || latestRow?.["Creator Network manager"] || latestRow?.email || ""),
+    joinedDate,
     count: rows.length,
     rows,
   });
