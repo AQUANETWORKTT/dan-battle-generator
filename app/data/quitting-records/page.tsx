@@ -24,6 +24,7 @@ const parseUsernames = (value: string) =>
 
 export default function Page() {
   const [saved, setSaved] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [sort, setSort] = useState<"recent" | "diamonds">("recent");
   const [message, setMessage] = useState("");
@@ -33,6 +34,7 @@ export default function Page() {
   const [savingReason, setSavingReason] = useState(false);
 
   async function loadRecords() {
+    setLoading(true);
     try {
       const r = await fetch("/api/data-analysis/quitting-records", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "backfill-and-save" }) });
       const d = await r.json();
@@ -41,6 +43,8 @@ export default function Page() {
       if (d.detected || d.leaveDetected) setMessage(`History checked from ${d.scannedFrom}. ${d.detected || 0} quitting record${d.detected === 1 ? "" : "s"} and ${d.leaveDetected || 0} leave request${d.leaveDetected === 1 ? "" : "s"} added.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load quitting records.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -294,7 +298,11 @@ export default function Page() {
                 );
               })}
 
-              {!shown.length ? (
+              {loading ? (
+                <p className="rounded-xl border border-sky-300/25 bg-sky-300/[.06] p-5 text-sm font-bold text-sky-100">
+                  Loading quitting records from uploaded history…
+                </p>
+              ) : !sortedShown.length ? (
                 <p className="rounded-xl border border-dashed border-white/15 p-5 text-sm text-white/45">
                   No saved quitting records match these filters.
                 </p>
