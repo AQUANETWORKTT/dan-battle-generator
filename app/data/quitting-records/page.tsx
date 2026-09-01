@@ -55,9 +55,11 @@ export default function Page() {
     void loadRecords();
   }, []);
 
+  const eligibleRecords = useMemo(() => saved.filter((record) => Number(record.daysSinceJoining || 0) < 15), [saved]);
+
   const groups = useMemo(
-    () => [...new Set(saved.filter((r) => Number(r.daysSinceJoining || 0) < 15).flatMap((r) => r.groups || []))].filter(Boolean).sort(),
-    [saved],
+    () => [...new Set(eligibleRecords.flatMap((r) => r.groups || []))].filter(Boolean).sort(),
+    [eligibleRecords],
   );
 
   const managers = useMemo(
@@ -69,13 +71,12 @@ export default function Page() {
 
   const shown = useMemo(
     () =>
-      saved.filter(
+      eligibleRecords.filter(
         (r) =>
-          Number(r.daysSinceJoining || 0) < 15 &&
           (selectedMonth === "ALL" || (r.quitAt || r.createdAt || "").startsWith(selectedMonth)) &&
           (!selectedGroups.length || (r.groups || []).some((name) => selectedGroups.includes(name))),
       ),
-    [saved, selectedGroups, selectedMonth],
+    [eligibleRecords, selectedGroups, selectedMonth],
   );
 
   const sortedShown = useMemo(() => [...shown].sort((a, b) => sort === "diamonds" ? (b.diamonds || 0) - (a.diamonds || 0) : (b.createdAt || "").localeCompare(a.createdAt || "")), [shown, sort]);
@@ -83,9 +84,9 @@ export default function Page() {
   const summaryCounts = useMemo(() =>
     groups.map((name) => ({
       name,
-      count: saved.filter((record) => Number(record.daysSinceJoining || 0) < 15 && (record.groups || []).includes(name)).length,
+      count: shown.filter((record) => (record.groups || []).includes(name)).length,
     })),
-    [groups, saved],
+    [groups, shown],
   );
 
   function toggleGroup(name: string) { setSelectedGroups((current) => current.includes(name) ? current.filter((group) => group !== name) : [...current, name]); }
@@ -189,7 +190,7 @@ export default function Page() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4">
                 <p className="text-[10px] font-black uppercase text-white/55">Recorded quits ever</p>
-                <p className="mt-1 text-3xl font-black text-sky-100">{saved.length}</p>
+                <p className="mt-1 text-3xl font-black text-sky-100">{shown.length}</p>
               </div>
               {summaryCounts.map(({ name, count }) => (
                 <button key={name} onClick={() => toggleGroup(name)} className={`rounded-xl border p-4 text-left ${selectedGroups.includes(name) ? "border-sky-300 bg-sky-300/15" : "border-white/10 bg-white/[.035]"}`}>
