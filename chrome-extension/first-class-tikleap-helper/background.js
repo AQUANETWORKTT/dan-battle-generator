@@ -44,6 +44,26 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     sendToDataSpace(message.dataSpaceTabId, { type: "league-rankings-row", league: message.league, rows: message.rows || [] });
     return;
   }
+  if (message?.type === "check-backstage-availability" && sender.tab?.id) {
+    const dataSpaceTabId = sender.tab.id;
+    const creators = Array.isArray(message.creators) ? message.creators.slice(0, 1500) : [];
+    (async () => {
+      try {
+        const backstage = (await chrome.tabs.query({ url: "https://live-backstage.tiktok.com/*" })).find((tab) => tab.id);
+        if (!backstage?.id) throw new Error("Open LIVE Backstage in Chrome and sign in first.");
+        const allResults = [];
+        for (let start = 0; start < creators.length; start += 30) {
+          const batch = creators.slice(start, start + 30);
+          const response = await chrome.tabs.sendMessage(backstage.id, { type: "check-backstage-batch", creators: batch });
+          if (response?.error) throw new Error(response.error);
+          allResults.push(...(response?.results || []));
+          sendToDataSpace(dataSpaceTabId, { type: "availability-progress", checked: Math.min(start + batch.length, creators.length), total: creators.length, results: allResults });
+        }
+        sendToDataSpace(dataSpaceTabId, { type: "availability-complete", results: allResults });
+      } catch (error) { sendToDataSpace(dataSpaceTabId, { type: "availability-error", error: error instanceof Error ? error.message : "Could not check availability." }); }
+    })();
+    return;
+  }
   if (message?.type === "pull-uk-live-leagues" && sender.tab?.id) {
     const dataSpaceTabId = sender.tab.id;
     const requestedLeagues = Array.isArray(message.leagues)

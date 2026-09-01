@@ -20,6 +20,7 @@ type TikleapResponse = {
 
 type LeagueRow = { rank: number; username: string; diamonds: number; diamondText: string };
 type LeagueRankings = Record<string, LeagueRow[]>;
+type AvailabilityResult = LeagueRow & { league: string; available: boolean; invitationType: string; reason: string };
 
 const CHUNK_SIZES = [24, 24, 24];
 const TIKLEAP_EXTENSION_UNDER_REVIEW = false;
@@ -64,6 +65,9 @@ export default function TikleapUkUsernamesPage() {
   const [leagueLoading, setLeagueLoading] = useState(false);
   const [leagueMessage, setLeagueMessage] = useState("");
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>(LIVE_LEAGUES);
+  const [availabilityResults, setAvailabilityResults] = useState<AvailabilityResult[]>([]);
+  const [availabilityMessage, setAvailabilityMessage] = useState("");
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const saveAfterChromePullRef = useRef(false);
 
   useEffect(() => {
@@ -94,6 +98,22 @@ export default function TikleapUkUsernamesPage() {
     }
     window.addEventListener("message", receiveChromeRankings);
     return () => window.removeEventListener("message", receiveChromeRankings);
+  }, []);
+
+  useEffect(() => {
+    function receiveAvailability(event: MessageEvent) {
+      if (event.source !== window || event.data?.source !== "first-class-tikleap-extension") return;
+      if (event.data.type === "availability-progress" || event.data.type === "availability-complete") {
+        const results = Array.isArray(event.data.results) ? event.data.results as AvailabilityResult[] : [];
+        setAvailabilityResults(results);
+        void fetch("/api/tikleap/live-league-availability", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ results }) });
+        if (event.data.type === "availability-complete") { setAvailabilityLoading(false); setAvailabilityMessage(`Finished. ${results.filter((row) => row.available).length} creators are available.`); }
+        else setAvailabilityMessage(`Checking ${event.data.checked} of ${event.data.total} creators… results are being saved.`);
+      }
+      if (event.data.type === "availability-error") { setAvailabilityLoading(false); setAvailabilityMessage(String(event.data.error || "Could not check availability.")); }
+    }
+    window.addEventListener("message", receiveAvailability);
+    return () => window.removeEventListener("message", receiveAvailability);
   }, []);
 
   useEffect(() => {
@@ -191,6 +211,15 @@ export default function TikleapUkUsernamesPage() {
     }, 120000);
   }
 
+  function checkAvailability() {
+    const creators = Object.entries(leagueRankings).flatMap(([league, rows]) => rows.map((row) => ({ ...row, league })));
+    if (!creators.length) { setAvailabilityMessage("Pull at least one league first."); return; }
+    setAvailabilityResults([]);
+    setAvailabilityLoading(true);
+    setAvailabilityMessage("Checking Backstage availability in groups of 30. No invitations will be sent.");
+    window.postMessage({ source: "first-class-daily-rankings", type: "check-backstage-availability", creators }, window.location.origin);
+  }
+
   async function saveRankings(freshUsernames?: string[]) {
     const usernames = freshUsernames || countries[0]?.usernames || [];
     if (!usernames.length) return;
@@ -266,6 +295,14 @@ export default function TikleapUkUsernamesPage() {
               {LIVE_LEAGUES.map((league) => <button key={league} type="button" onClick={() => setSelectedLeagues((current) => current.includes(league) ? current.filter((value) => value !== league) : [...current, league])} className={`rounded-lg px-3 py-2 text-xs font-black ${selectedLeagues.includes(league) ? "bg-violet-300 text-black" : "border border-white/15 text-white/65 hover:bg-white/10"}`}>{league}</button>)}
             </div>
             {leagueMessage ? <p className="mt-4 rounded-xl border border-violet-200/20 bg-black/20 p-3 text-sm text-violet-100">{leagueMessage}</p> : null}
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button type="button" onClick={checkAvailability} disabled={!Object.keys(leagueRankings).length || availabilityLoading} className="rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:opacity-45">
+                {availabilityLoading ? "Checking availability…" : "Check availability"}
+              </button>
+              <p className="text-xs font-bold uppercase text-white/50">Preview only — it never presses Invite.</p>
+            </div>
+            {availabilityMessage ? <p className="mt-3 rounded-xl border border-green-300/20 bg-green-400/10 p-3 text-sm text-green-100">{availabilityMessage}</p> : null}
+            {availabilityResults.length ? <div className="mt-4 rounded-2xl border border-green-300/20 bg-black/30 p-4"><p className="font-black text-green-200">Available: {availabilityResults.filter((row) => row.available).length} · Regular: {availabilityResults.filter((row) => row.invitationType === "Regular").length} · Premium: {availabilityResults.filter((row) => row.invitationType === "Premium").length}</p><div className="mt-3 max-h-64 overflow-y-auto text-sm">{availabilityResults.filter((row) => row.available).sort((a,b) => b.diamonds - a.diamonds).map((row) => <div key={row.username} className="grid grid-cols-[48px_1fr_auto_auto] gap-2 border-b border-white/5 py-2"><span>{row.league}</span><span className="font-bold">{row.username}</span><span>{row.diamondText}</span><span className="text-green-200">{row.invitationType}</span></div>)}</div></div> : null}
             {Object.keys(leagueRankings).length ? (
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {Object.entries(leagueRankings).sort(([a], [b]) => a.localeCompare(b)).map(([league, rows]) => (
