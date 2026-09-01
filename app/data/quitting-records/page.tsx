@@ -35,10 +35,11 @@ export default function Page() {
 
   async function loadRecords() {
     try {
-      const r = await fetch("/api/data-analysis/quitting-records", { cache: "no-store" });
+      const r = await fetch("/api/data-analysis/quitting-records", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "backfill-and-save" }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not load quitting records.");
       setSaved(d.records || []);
+      if (d.detected || d.leaveDetected) setMessage(`History checked from ${d.scannedFrom}. ${d.detected || 0} quitting record${d.detected === 1 ? "" : "s"} and ${d.leaveDetected || 0} leave request${d.leaveDetected === 1 ? "" : "s"} added.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load quitting records.");
     }
@@ -100,9 +101,30 @@ export default function Page() {
 
       setSaved(d.records || []);
       setPaste("");
-      setMessage(`${usernames.length} quitting record${usernames.length === 1 ? "" : "s"} added/updated and saved.`);
+      setMessage(d.leaveAdded ? `${usernames.length - d.leaveAdded} quitting record${usernames.length - d.leaveAdded === 1 ? "" : "s"} saved; ${d.leaveAdded} moved to Leave Requests (15+ days).` : `${usernames.length} quitting record${usernames.length === 1 ? "" : "s"} added/updated and saved.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not add quitting records.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function detectAndSaveRecords() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const r = await fetch("/api/data-analysis/quitting-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "detect-and-save" }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Could not check the latest upload.");
+      setSaved(d.records || []);
+      const parts = [d.detected ? `${d.detected} added to Quitting Records` : "", d.leaveDetected ? `${d.leaveDetected} added to Leave Requests` : ""].filter(Boolean);
+      setMessage(parts.length ? `${parts.join("; ")}.` : "No newly missing creators found in the latest upload.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not check the latest upload.");
     } finally {
       setBusy(false);
     }
@@ -180,8 +202,8 @@ export default function Page() {
           <h1 className="mt-3 font-[family-name:var(--font-norwester)] text-5xl uppercase">
             Quitting <span className="text-sky-300">Records</span>
           </h1>
-          <p className="mt-4 max-w-3xl text-sm text-white/60">
-            Shared, ongoing quit register. Paste creators in bulk and save their recorded Creator Daily Stats history immediately.
+            <p className="mt-4 max-w-3xl text-sm text-white/60">
+            Shared, ongoing quit register. Paste creators in bulk, or automatically find creators missing from the newest full upload.
           </p>
 
           <section className="mt-7">
@@ -219,6 +241,14 @@ export default function Page() {
                 className="rounded-xl bg-sky-300 px-6 py-3 text-xs font-black uppercase text-black transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {busy ? "Adding & saving…" : "Add & Save Records"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void detectAndSaveRecords()}
+                disabled={busy}
+                className="rounded-xl border border-sky-300/40 bg-black/20 px-6 py-3 text-xs font-black uppercase text-sky-100 transition hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy ? "Checking…" : "Detect From Latest Upload"}
               </button>
               {parseUsernames(paste).length ? (
                 <span className="text-xs font-bold text-white/45">
