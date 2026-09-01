@@ -11,6 +11,7 @@ type Item = {
   groups: string[];
   diamonds: number;
   daysSinceJoining?: number;
+  quitAt?: string;
   reason: string;
   createdAt: string;
   noHistory?: boolean;
@@ -28,6 +29,7 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [loadingNew, setLoadingNew] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState("ALL");
   const [sort, setSort] = useState<"recent" | "diamonds">("recent");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,7 +44,6 @@ export default function Page() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not load quitting records.");
       setSaved(d.records || []);
-      void detectAndSaveRecords();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load quitting records.");
     } finally {
@@ -64,14 +65,17 @@ export default function Page() {
     [saved],
   );
 
+  const months = useMemo(() => [...new Set(saved.map((record) => (record.quitAt || record.createdAt || "").slice(0, 7)).filter(Boolean))].sort().reverse(), [saved]);
+
   const shown = useMemo(
     () =>
       saved.filter(
         (r) =>
           Number(r.daysSinceJoining || 0) < 15 &&
+          (selectedMonth === "ALL" || (r.quitAt || r.createdAt || "").startsWith(selectedMonth)) &&
           (!selectedGroups.length || (r.groups || []).some((name) => selectedGroups.includes(name))),
       ),
-    [saved, selectedGroups],
+    [saved, selectedGroups, selectedMonth],
   );
 
   const sortedShown = useMemo(() => [...shown].sort((a, b) => sort === "diamonds" ? (b.diamonds || 0) - (a.diamonds || 0) : (b.createdAt || "").localeCompare(a.createdAt || "")), [shown, sort]);
@@ -206,7 +210,7 @@ export default function Page() {
                 <h2 className="mt-2 font-[family-name:var(--font-norwester)] text-3xl uppercase">Saved records</h2>
               </div>
 
-              <div className="flex gap-3"><button onClick={() => setSort("recent")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "recent" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most recent</button><button onClick={() => setSort("diamonds")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "diamonds" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most diamonds</button></div>
+              <div className="flex flex-wrap gap-3"><select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className="rounded-xl border border-white/15 bg-black px-4 py-3 text-xs font-black uppercase text-white"><option value="ALL">All months</option>{months.map((month) => <option key={month} value={month}>{new Date(`${month}-01T12:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</option>)}</select><button onClick={() => setSort("recent")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "recent" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most recent</button><button onClick={() => setSort("diamonds")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "diamonds" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most diamonds</button></div>
             </div>
 
             <div className="mt-5 space-y-3">
@@ -219,7 +223,7 @@ export default function Page() {
                       <div className="min-w-0">
                         <strong className="break-all text-lg">@{r.username}</strong>
                         <p className="mt-1 text-xs text-white/45">
-                          Added {r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-GB") : "date not recorded"}
+                          Confirmed quit {r.quitAt ? new Date(`${r.quitAt}T12:00:00`).toLocaleDateString("en-GB") : r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-GB") : "date not recorded"}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-start gap-3">
