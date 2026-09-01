@@ -15,6 +15,7 @@ const displayValue = (value: unknown) => {
 
 export default function CreatorIdLookupPage() {
   const [creatorId, setCreatorId] = useState("");
+  const [username, setUsername] = useState("");
   const [result, setResult] = useState<LookupResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function CreatorIdLookupPage() {
     setResult(null);
 
     try {
-      const response = await fetch(`/api/data-analysis/creator-lookup?creatorId=${encodeURIComponent(creatorId.trim())}`);
+      const response = await fetch(`/api/data-analysis/creator-lookup?creatorId=${encodeURIComponent(creatorId.trim())}&username=${encodeURIComponent(username.trim())}`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not look up that creator.");
       setResult(payload);
@@ -39,8 +40,8 @@ export default function CreatorIdLookupPage() {
 
   return <DataAccessGuard><main className="min-h-screen bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8"><div className="mx-auto max-w-7xl">
     <nav className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5"><Link href="/data/menu" className="font-[family-name:var(--font-norwester)] text-lg uppercase tracking-wide text-yellow-300">← Data Space</Link></nav>
-    <section className="mt-10 max-w-3xl rounded-[28px] border border-sky-300/25 bg-gradient-to-br from-sky-300/15 via-sky-300/[0.04] to-transparent p-6 sm:p-9"><p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-200">Creator Intelligence</p><h1 className="mt-3 font-[family-name:var(--font-norwester)] text-4xl uppercase leading-none sm:text-6xl">Creator ID <span className="text-sky-300">Lookup</span></h1><p className="mt-4 max-w-2xl leading-relaxed text-white/65">Enter a creator ID from a Tmash upload. This searches Supabase and shows the most recent 30 saved daily records for that exact account, even if the username has changed.</p>
-      <form onSubmit={search} className="mt-7 flex flex-col gap-3 sm:flex-row"><input value={creatorId} onChange={(event) => setCreatorId(event.target.value.replace(/\s/g, ""))} inputMode="numeric" placeholder="Creator ID, e.g. 7550710802802704400" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-black/50 px-4 py-3 font-mono text-sm text-white outline-none placeholder:text-white/30 focus:border-sky-300" /><button type="submit" disabled={loading} className="rounded-xl bg-sky-300 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black disabled:opacity-50">{loading ? "Searching…" : "Search"}</button></form>
+    <section className="mt-10 max-w-3xl rounded-[28px] border border-sky-300/25 bg-gradient-to-br from-sky-300/15 via-sky-300/[0.04] to-transparent p-6 sm:p-9"><p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-200">Creator Intelligence</p><h1 className="mt-3 font-[family-name:var(--font-norwester)] text-4xl uppercase leading-none sm:text-6xl">Creator ID <span className="text-sky-300">Lookup</span></h1><p className="mt-4 max-w-2xl leading-relaxed text-white/65">Enter either a username or Creator ID. This searches saved Creator Daily Stats and shows the most recent 30 records for the matching creator.</p>
+      <form onSubmit={search} className="mt-7 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><input value={username} onChange={(event) => setUsername(event.target.value.replace(/^@/, "").trim())} placeholder="Username, e.g. lil_dumps" className="min-w-0 rounded-xl border border-white/15 bg-black/50 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-sky-300" /><input value={creatorId} onChange={(event) => setCreatorId(event.target.value.replace(/\s/g, ""))} inputMode="numeric" placeholder="Creator ID" className="min-w-0 rounded-xl border border-white/15 bg-black/50 px-4 py-3 font-mono text-sm text-white outline-none placeholder:text-white/30 focus:border-sky-300" /><button type="submit" disabled={loading} className="rounded-xl bg-sky-300 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black disabled:opacity-50">{loading ? "Searching…" : "Search"}</button></form>
       {error ? <p className="mt-4 rounded-xl border border-rose-300/35 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
     </section>
     {result ? <section className="mt-7"><div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/45">Matching account</p><h2 className="mt-2 font-[family-name:var(--font-norwester)] text-3xl uppercase text-sky-200">{result.username || "Username unavailable"}</h2><p className="mt-2 font-mono text-sm text-white/60">Creator ID: {result.creatorId}</p></div><p className="rounded-full border border-sky-300/25 bg-sky-300/10 px-4 py-2 text-xs font-black uppercase tracking-wider text-sky-100">{result.count} most recent record{result.count === 1 ? "" : "s"}</p></div>
