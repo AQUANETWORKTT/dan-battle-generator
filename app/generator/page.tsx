@@ -203,6 +203,8 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
 };
 
 function savedFallbackAvatar(username: string, fallbacks: Record<string, string>) {
+  const exact = username.trim().replace(/^@/, "").toLowerCase();
+  if (fallbacks[exact]) return fallbacks[exact];
   const normalized = username.replace(/[^a-z0-9]/gi, "").toLowerCase();
   if (fallbacks[normalized]) return fallbacks[normalized];
   const matches = Object.entries(fallbacks).filter(([candidate, imageUrl]) => {
@@ -594,6 +596,12 @@ function getManagerLeaderboardName(row: ManagerLeaderboardStat) {
 
 function getManagerLeaderboardCreatorKey(row: ManagerLeaderboardStat) {
   return String(row.creator_username || row["Creator's username"] || row.creator_id || row["Creator ID"] || "").trim().toLowerCase();
+}
+
+function getYesterdayDateKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function calendarDateFromParts(dayRaw: string, monthRaw: string) {
@@ -1661,18 +1669,15 @@ export default function BattleGeneratorPage() {
   async function buildTeamPosterFromData() {
     setTeamPosterStatus("Loading creator data for this layout...");
     try {
-      const statusResponse = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
-      const status = await statusResponse.json();
-      const statDate = String(status.latestDate || "");
-      const month = statDate.slice(0, 7);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(statDate)) throw new Error("No Creator Daily Stats upload is available.");
+      const statDate = getYesterdayDateKey();
       const [response, exclusionsResponse, assignmentsResponse] = await Promise.all([
-        fetch(`/api/data-analysis/daily-stats?month=${month}`, { cache: "no-store" }),
+        fetch(`/api/data-analysis/daily-stats?date=${statDate}&t=${Date.now()}`, { cache: "no-store" }),
         fetch("/api/data-analysis/excluded-creators", { cache: "no-store" }),
         fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }),
       ]);
       const [json, exclusions, assignmentsData] = await Promise.all([response.json(), exclusionsResponse.json(), assignmentsResponse.json()]);
       if (!response.ok) throw new Error(json.error || "Could not load Creator Daily Stats.");
+      if (!json.count) throw new Error(`Yesterday's data (${statDate}) is not ready yet. No older data was used.`);
       if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
       const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};

@@ -25,7 +25,7 @@ function readImage(file: File, done: (imageUrl: string) => void) {
 }
 
 function normalizeUsername(value: string) {
-  return value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  return value.trim().replace(/^@/, "").toLowerCase();
 }
 
 export default function FallbackPicturesPage() {

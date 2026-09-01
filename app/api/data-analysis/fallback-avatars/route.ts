@@ -10,7 +10,9 @@ function normalize(input: unknown): FallbackAvatar[] {
   const values = new Map<string, FallbackAvatar>();
   for (const item of input) {
     const row = item as Record<string, unknown>;
-    const username = String(row?.username || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+    // TikTok handles may include underscores and full stops. Preserve the
+    // entered handle so the fallback list links to the exact profile.
+    const username = String(row?.username || "").trim().replace(/^@/, "").toLowerCase();
     const imageUrl = String(row?.imageUrl || "");
     if (username && (!imageUrl || imageUrl.startsWith("data:image/"))) {
       values.set(username, { username, imageUrl });

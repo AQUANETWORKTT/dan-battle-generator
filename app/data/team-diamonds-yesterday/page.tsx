@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { saveAs } from "file-saver";
 import { toBlob } from "html-to-image";
@@ -378,6 +378,8 @@ function getSavedTemplate() {
 }
 
 function fallbackAvatarFor(username: string, fallbackAvatars: Record<string, string> = {}) {
+  const exact = username.trim().replace(/^@/, "").toLowerCase();
+  if (fallbackAvatars[exact]) return fallbackAvatars[exact];
   const normalized = username.replace(/[^a-z0-9]/gi, "").toLowerCase();
   if (fallbackAvatars[normalized]) return fallbackAvatars[normalized];
   const nearMatches = Object.entries(fallbackAvatars).filter(([candidate, imageUrl]) => {
@@ -478,10 +480,11 @@ function waitForBackground(url: string) {
   });
 }
 
-function PosterPreview({ template }: { template: TeamPosterTemplate }) {
+function PosterPreview({ template, renderSignature }: { template: TeamPosterTemplate; renderSignature: string }) {
   return (
     <div
       id="team-dan-poster-preview"
+      data-poster-signature={renderSignature}
       className="relative overflow-hidden bg-black"
       style={{
         width: POSTER_WIDTH,
@@ -545,6 +548,8 @@ export default function TeamDiamondsYesterdayPage() {
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const [pictureCheck, setPictureCheck] = useState<{ checked: number; failed: string[] } | null>(null);
   const [latestStatDate, setLatestStatDate] = useState("");
+  const [posterRenderSignature, setPosterRenderSignature] = useState("");
+  const posterRenderSignatureRef = useRef("");
   const [showSubAgencies, setShowSubAgencies] = useState(false);
 
   const previewScale = 0.42;
@@ -635,8 +640,12 @@ export default function TeamDiamondsYesterdayPage() {
     const response = await fetch("/api/data-analysis/upload-status?latest=true", { cache: "no-store" });
     const status = await response.json();
     const statDate = String(status.latestDate || "");
+    const expectedDate = getYesterdayDateKey();
     if (!response.ok || !/^\d{4}-\d{2}-\d{2}$/.test(statDate)) {
       throw new Error(status.error || "No Creator Daily Stats upload is available.");
+    }
+    if (statDate !== expectedDate) {
+      throw new Error(`Yesterday's data (${expectedDate}) is not ready yet. The newest available upload is ${statDate}, so no posters were downloaded.`);
     }
     setLatestStatDate(statDate);
     return statDate;
@@ -727,7 +736,9 @@ export default function TeamDiamondsYesterdayPage() {
 
       // The poster may be captured immediately after this update. Flush it so
       // images from the preceding download cannot be reused by the next one.
-      flushSync(() => setTemplate(filledTemplate));
+      const renderSignature = `${statDate}:${activeTemplate.managerKey || "team-dan"}:${diamondCreators.map((creator) => creator.username).join(",")}:${hourCreators.map((creator) => creator.username).join(",")}`;
+      flushSync(() => { setTemplate(filledTemplate); setPosterRenderSignature(renderSignature); });
+      posterRenderSignatureRef.current = renderSignature;
       if (!quiet) setMessage(`Preview built from ${(activeTemplate.managerKey || "team-dan")} top 5 diamonds and top 5 hours for ${statDate}.`);
       return failedAvatars;
     } catch (error) {
@@ -788,6 +799,7 @@ export default function TeamDiamondsYesterdayPage() {
           await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
           const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
           if (!node) throw new Error("Could not prepare preview.");
+          if (node.dataset.posterSignature !== posterRenderSignatureRef.current) throw new Error("The current poster preview did not finish refreshing. Please download again.");
           await waitForImages(node);
           const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
           if (!blob) throw new Error("Could not create image.");
@@ -860,7 +872,7 @@ export default function TeamDiamondsYesterdayPage() {
       }
       if (failed.length) {
         const existing = (fallbacks.avatars || []) as { username: string; imageUrl: string }[];
-        const normalizeFallbackUsername = (value: string) => value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+        const normalizeFallbackUsername = (value: string) => value.trim().replace(/^@/, "").toLowerCase();
         const existingNames = new Set(existing.map((avatar) => normalizeFallbackUsername(avatar.username)));
         const queuedCreators = failed
           .map(normalizeFallbackUsername)
@@ -880,7 +892,7 @@ export default function TeamDiamondsYesterdayPage() {
       }
       setPictureCheck({ checked: candidateUsernames.length, failed });
       const queuedCount = failed.length
-        ? failed.filter((username) => !(fallbacks.avatars || []).some((avatar: { username: string }) => avatar.username.replace(/[^a-z0-9]/gi, "").toLowerCase() === username.replace(/[^a-z0-9]/gi, "").toLowerCase())).length
+        ? failed.filter((username) => !(fallbacks.avatars || []).some((avatar: { username: string }) => avatar.username.trim().replace(/^@/, "").toLowerCase() === username.trim().replace(/^@/, "").toLowerCase())).length
         : 0;
       setMessage(failed.length ? `${failed.length} creator picture${failed.length === 1 ? " needs" : "s need"} a fallback before downloading.${queuedCount ? ` ${queuedCount} creator${queuedCount === 1 ? " was" : "s were"} added to Fallback Pictures.` : ""}` : `All ${candidateUsernames.length} creator pictures are ready.`);
     } catch (error) {
@@ -913,6 +925,7 @@ export default function TeamDiamondsYesterdayPage() {
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
       if (!node) throw new Error("Could not prepare the poster.");
+      if (node.dataset.posterSignature !== posterRenderSignatureRef.current) throw new Error("The current poster preview did not finish refreshing. Please download again.");
       await waitForImages(node);
       const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
       if (blob) saveAs(blob, `${item.name}-${latestStatDate || getYesterdayDateKey()}.png`);
@@ -987,7 +1000,7 @@ export default function TeamDiamondsYesterdayPage() {
             <div className="hidden overflow-auto rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
               <div style={{ width: POSTER_WIDTH * previewScale, height: POSTER_HEIGHT * previewScale }}>
                 <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
-                  <PosterPreview template={visibleTemplate} />
+                  <PosterPreview template={visibleTemplate} renderSignature={posterRenderSignature} />
                 </div>
               </div>
             </div>
