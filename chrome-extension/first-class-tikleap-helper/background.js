@@ -33,6 +33,16 @@ function navigateAndWait(tabId, url) {
   });
 }
 
+async function checkBackstageBatch(tabId, creators) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, { type: "check-backstage-batch", creators });
+  } catch (error) {
+    if (!/Receiving end does not exist/i.test(error instanceof Error ? error.message : "")) throw error;
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["backstage-availability-reader.js"] });
+    return chrome.tabs.sendMessage(tabId, { type: "check-backstage-batch", creators });
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === "uk-rankings-result") {
     sendToDataSpace(message.dataSpaceTabId, message.usernames?.length
@@ -49,12 +59,13 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     const creators = Array.isArray(message.creators) ? message.creators.slice(0, 1500) : [];
     (async () => {
       try {
-        const backstage = (await chrome.tabs.query({ url: "https://live-backstage.tiktok.com/*" })).find((tab) => tab.id);
+        const backstageTabs = await chrome.tabs.query({ url: "https://live-backstage.tiktok.com/*" });
+        const backstage = backstageTabs.find((tab) => tab.id && /\/portal\/overview/.test(tab.url || "")) || backstageTabs.find((tab) => tab.id && /\/portal\//.test(tab.url || "")) || backstageTabs.find((tab) => tab.id);
         if (!backstage?.id) throw new Error("Open LIVE Backstage in Chrome and sign in first.");
         const allResults = [];
         for (let start = 0; start < creators.length; start += 30) {
           const batch = creators.slice(start, start + 30);
-          const response = await chrome.tabs.sendMessage(backstage.id, { type: "check-backstage-batch", creators: batch });
+          const response = await checkBackstageBatch(backstage.id, batch);
           if (response?.error) throw new Error(response.error);
           allResults.push(...(response?.results || []));
           sendToDataSpace(dataSpaceTabId, { type: "availability-progress", checked: Math.min(start + batch.length, creators.length), total: creators.length, results: allResults });

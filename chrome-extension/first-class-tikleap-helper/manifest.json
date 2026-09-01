@@ -12,7 +12,7 @@
   "action": {
     "default_title": "First Class TickLeap Helper"
   },
-  "permissions": ["tabs"],
+  "permissions": ["tabs", "scripting"],
   "host_permissions": ["https://www.tikleap.com/*", "https://firstclassagency.management/*", "https://live-backstage.tiktok.com/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
