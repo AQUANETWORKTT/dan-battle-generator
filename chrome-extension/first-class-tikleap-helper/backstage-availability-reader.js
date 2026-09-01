@@ -14,12 +14,9 @@ function buttonByText(root, text) {
 
 function setValue(input, value) {
   input.focus();
-  const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-  if (setter) setter.call(input, value);
-  else input.value = value;
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
+  input.click();
+  document.execCommand("selectAll", false);
+  document.execCommand("insertText", false, value);
 }
 
 async function waitFor(predicate, timeout = 12000) {
