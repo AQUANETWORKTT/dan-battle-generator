@@ -70,12 +70,33 @@ function incompatible(items: Incompatibility[], first: unknown, second: unknown)
   return items.find((item) => (item.first === left && item.second === right) || (item.first === right && item.second === left));
 }
 type CreatorBlock = { creator: string; agencyIds: string[] };
+type VisibilityBlock = { viewerAgencyId: string; targetAgencyId: string };
 function creatorBlocks(value: unknown): CreatorBlock[] {
   const items = (value && typeof value === "object" ? value as Record<string, unknown> : {}).creatorBlocks;
   if (!Array.isArray(items)) return [];
   return items.flatMap((item): CreatorBlock[] => { const row = item && typeof item === "object" ? item as Record<string, unknown> : {}; const creator = creatorKey(row.creator); const agencyIds = Array.isArray(row.agencyIds) ? [...new Set(row.agencyIds.map(key).filter(Boolean))] : []; return creator && agencyIds.length ? [{ creator, agencyIds }] : []; });
 }
 function blockedFromAgency(blocks: CreatorBlock[], creator: unknown, agencyId: unknown) { return blocks.some((block) => block.creator === creatorKey(creator) && block.agencyIds.includes(key(agencyId))); }
+function visibilityBlocks(value: unknown): VisibilityBlock[] {
+  const items = (value && typeof value === "object" ? value as Record<string, unknown> : {}).visibilityBlocks;
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  return items.flatMap((item): VisibilityBlock[] => {
+    const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    const viewerAgencyId = key(row.viewerAgencyId), targetAgencyId = key(row.targetAgencyId);
+    const pair = `${viewerAgencyId}:${targetAgencyId}`;
+    if (!viewerAgencyId || !targetAgencyId || viewerAgencyId === targetAgencyId || seen.has(pair)) return [];
+    seen.add(pair);
+    return [{ viewerAgencyId, targetAgencyId }];
+  });
+}
+async function hasFirstClassAdminPassword(value: unknown) {
+  const password = clean(value).toUpperCase();
+  if (MASTER_PASSWORDS.has(password)) return true;
+  const { data, error } = await submissionsSupabase.from("battle_network_agencies").select("password").eq("id", "first-class-dan-james").maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(password && password === String(data?.password || "").trim().toUpperCase());
+}
 async function saveSettings(next: Record<string, unknown>) {
   // Battles live exclusively in battle_network_battles. Strip the retired
   // settings copy so old schedules cannot bloat or delay the battle page.
@@ -113,7 +134,7 @@ export async function GET(request: Request) {
       submissionsSupabase.from("battle_network_battles").select(BATTLE_COLUMNS).gte("week_start", historyWeekStart(weekStart)).lte("week_start", endWeekStart(weekStart)).not("creator_username", "ilike", "test-%").order("created_at", { ascending: false }), settings(),
     ]);
     if (agencies.error || battles.error) throw new Error(agencies.error?.message || battles.error?.message);
-    const response = NextResponse.json({ agencies: ((agencies.data || []) as unknown as Record<string, unknown>[]).map((agency) => includePasswords ? { ...toAgency(agency), password: String(agency.password || "") } : toAgency(agency)), battles: ((battles.data || []) as unknown as Record<string, unknown>[]).map(toBattle), cardLayout: layout.cardLayout, cardTypography: layout.cardTypography, managerSettings: layout.managerSettings || {}, incompatibilities: incompatibilities(layout), creatorBlocks: creatorBlocks(layout) });
+    const response = NextResponse.json({ agencies: ((agencies.data || []) as unknown as Record<string, unknown>[]).map((agency) => includePasswords ? { ...toAgency(agency), password: String(agency.password || "") } : toAgency(agency)), battles: ((battles.data || []) as unknown as Record<string, unknown>[]).map(toBattle), cardLayout: layout.cardLayout, cardTypography: layout.cardTypography, managerSettings: layout.managerSettings || {}, incompatibilities: incompatibilities(layout), creatorBlocks: creatorBlocks(layout), visibilityBlocks: visibilityBlocks(layout) });
     response.headers.set("Server-Timing", `supabase;dur=${Math.round(performance.now() - startedAt)}`);
     return response;
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "COULD NOT LOAD BATTLE NETWORK." }, { status: 500 }); }
@@ -131,6 +152,7 @@ export async function POST(request: Request) {
     if (body.action === "save-manager-settings") { const current = await settings(); const next = { ...current, managerSettings: body.managerSettings || {} }; await saveSettings(next); return NextResponse.json({ managerSettings: next.managerSettings }); }
     if (body.action === "save-incompatibilities") { const current = await settings(); const next = { ...current, incompatibilities: incompatibilities({ incompatibilities: body.incompatibilities }) }; await saveSettings(next); return NextResponse.json({ incompatibilities: next.incompatibilities }); }
     if (body.action === "save-creator-blocks") { const current = await settings(); const next = { ...current, creatorBlocks: creatorBlocks({ creatorBlocks: body.creatorBlocks }) }; await saveSettings(next); return NextResponse.json({ creatorBlocks: next.creatorBlocks }); }
+    if (body.action === "save-visibility-blocks") { if (!await hasFirstClassAdminPassword(body.adminPassword)) return NextResponse.json({ error: "FIRST CLASS ADMIN PASSWORD REQUIRED." }, { status: 401 }); const current = await settings(); const next = { ...current, visibilityBlocks: visibilityBlocks({ visibilityBlocks: body.visibilityBlocks }) }; await saveSettings(next); return NextResponse.json({ visibilityBlocks: next.visibilityBlocks }); }
     if (body.action === "register" || body.action === "register-external-agency") { const name = clean(body.name).toUpperCase(), id = key(name), external = body.action === "register-external-agency"; if (!id || (!external && !clean(body.password))) return NextResponse.json({ error: "COMPLETE THE AGENCY DETAILS." }, { status: 400 }); const { data, error } = await submissionsSupabase.from("battle_network_agencies").insert({ id, name, accent: body.accent || "#94a3b8", logo_url: body.logoUrl || "", external_only: external, password: clean(body.password).toUpperCase() }).select(AGENCY_COLUMNS).single(); if (error) return NextResponse.json({ error: error.message.includes("duplicate") ? "THAT AGENCY IS ALREADY ON THE LIST." : error.message }, { status: 409 }); return NextResponse.json({ agency: toAgency(data) }); }
     if (body.action === "rename-agency") { const id = key(body.agencyId); const name = clean(body.name).toUpperCase(); if (!id || !name) return NextResponse.json({ error: "COMPLETE THE AGENCY NAME." }, { status: 400 }); const { data, error } = await submissionsSupabase.from("battle_network_agencies").update({ name }).eq("id", id).select(AGENCY_COLUMNS).single(); if (error) throw new Error(error.message); return NextResponse.json({ agency: toAgency(data) }); }
     if (body.action === "save-external-agency" || body.action === "save-agency") { const agency = body.agency || {}; const id = key(agency.id); const { data, error } = await submissionsSupabase.from("battle_network_agencies").update({ name: clean(agency.name).toUpperCase(), accent: agency.accent || "#94a3b8", logo_url: agency.logoUrl || "", password: clean(agency.password).toUpperCase() }).eq("id", id).select(AGENCY_COLUMNS).single(); if (error) throw new Error(error.message); return NextResponse.json({ agency: toAgency(data) }); }
