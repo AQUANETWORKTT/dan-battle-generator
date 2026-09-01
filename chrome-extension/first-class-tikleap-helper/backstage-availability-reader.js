@@ -22,8 +22,9 @@ async function waitFor(predicate, timeout = 12000) {
 }
 
 async function checkAvailability(creators) {
-  const openInvite = buttonByText(document, "Invite creators");
-  if (!openInvite) throw new Error("Open LIVE Backstage and sign in before checking availability.");
+  const openInvite = await waitFor(() => buttonByText(document, "Invite creators"), 30000)
+    .catch(() => null);
+  if (!openInvite) throw new Error("LIVE Backstage is open, but its Invite creators button did not finish loading. Refresh Backstage and try again.");
   openInvite.click();
   const dialog = await waitFor(() => [...document.querySelectorAll('[role="dialog"]')].find((element) => /Add creators/i.test(element.textContent || "")));
   const input = dialog.querySelector('textarea, input[placeholder*="30 creators"]');
