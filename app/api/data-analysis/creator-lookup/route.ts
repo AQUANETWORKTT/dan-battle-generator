@@ -31,19 +31,21 @@ export async function GET(request: Request) {
 
   const rows = data || [];
   const latestRow = rows[0] as Record<string, unknown> | undefined;
-  const statDate = String(latestRow?.stat_date || "");
-  const daysSinceJoining = Number(latestRow?.days_since_joining || latestRow?.["Days since joining"] || 0);
+  const lastManagedRow = rows.find((row) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim()) as Record<string, unknown> | undefined;
+  const attributionRow = lastManagedRow || latestRow;
+  const statDate = String(attributionRow?.stat_date || "");
+  const daysSinceJoining = Number(attributionRow?.days_since_joining || attributionRow?.["Days since joining"] || 0);
   let joinedDate = "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(statDate) && daysSinceJoining >= 0) { const joined = new Date(`${statDate}T12:00:00`); joined.setDate(joined.getDate() - Math.max(0, daysSinceJoining - 1)); joinedDate = joined.toISOString().slice(0, 10); }
-  const team = String(latestRow?.team || "");
-  const rawManager = String(latestRow?.manager_email || latestRow?.creator_network_manager || latestRow?.["Creator Network manager"] || latestRow?.email || "");
+  const team = String(attributionRow?.team || "");
+  const rawManager = String(attributionRow?.manager_email || attributionRow?.creator_network_manager || attributionRow?.["Creator Network manager"] || attributionRow?.email || "");
   const unassignedFirstClass = /unassigned first class/i.test(team);
   const savedCreatorId = rows.map((row) => String(row.creator_id || "").trim()).find((id) => /^\d{10,}$/.test(id)) || "";
   return NextResponse.json({
     creatorId: creatorId || savedCreatorId,
     username: rows.find((row) => row.creator_username)?.creator_username || username,
     manager: rawManager || (unassignedFirstClass ? "Unassigned First Class" : ""),
-    group: unassignedFirstClass ? "First Class" : String(latestRow?.group_name || team || ""),
+    group: unassignedFirstClass ? "First Class" : String(attributionRow?.group_name || team || ""),
     joinedDate,
     count: rows.length,
     rows,
