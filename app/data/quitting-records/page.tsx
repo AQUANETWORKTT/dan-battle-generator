@@ -23,10 +23,9 @@ const parseUsernames = (value: string) =>
   [...new Set(value.split(/[\n,]+/).map(normalizeUsername).filter(Boolean))];
 
 export default function Page() {
-  const [paste, setPaste] = useState("");
   const [saved, setSaved] = useState<Item[]>([]);
-  const [group, setGroup] = useState("ALL");
-  const [manager, setManager] = useState("ALL");
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [sort, setSort] = useState<"recent" | "diamonds">("recent");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [editingReason, setEditingReason] = useState<string | null>(null);
@@ -63,11 +62,12 @@ export default function Page() {
     () =>
       saved.filter(
         (r) =>
-          (group === "ALL" || (r.groups || []).includes(group)) &&
-          (manager === "ALL" || (r.managers || []).includes(manager)),
+          (!selectedGroups.length || (r.groups || []).some((name) => selectedGroups.includes(name))),
       ),
-    [saved, group, manager],
+    [saved, selectedGroups],
   );
+
+  const sortedShown = useMemo(() => [...shown].sort((a, b) => sort === "diamonds" ? (b.diamonds || 0) - (a.diamonds || 0) : (b.createdAt || "").localeCompare(a.createdAt || "")), [shown, sort]);
 
   const summaryCounts = useMemo(() =>
     groups.map((name) => ({
@@ -77,37 +77,7 @@ export default function Page() {
     [groups, saved],
   );
 
-  async function addAndSaveRecords() {
-    const usernames = parseUsernames(paste);
-    if (!usernames.length) {
-      setMessage("Paste at least one creator username.");
-      return;
-    }
-
-    setBusy(true);
-    setMessage("");
-
-    try {
-      const r = await fetch("/api/data-analysis/quitting-records", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "add-and-save",
-          usernames,
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Could not add quitting records.");
-
-      setSaved(d.records || []);
-      setPaste("");
-      setMessage(d.leaveAdded ? `${usernames.length - d.leaveAdded} quitting record${usernames.length - d.leaveAdded === 1 ? "" : "s"} saved; ${d.leaveAdded} moved to Leave Requests (15+ days).` : `${usernames.length} quitting record${usernames.length === 1 ? "" : "s"} added/updated and saved.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not add quitting records.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  function toggleGroup(name: string) { setSelectedGroups((current) => current.includes(name) ? current.filter((group) => group !== name) : [...current, name]); }
 
   async function detectAndSaveRecords() {
     setBusy(true);
@@ -116,13 +86,12 @@ export default function Page() {
       const r = await fetch("/api/data-analysis/quitting-records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "detect-and-save" }),
+        body: JSON.stringify({ action: "backfill-and-save" }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not check the latest upload.");
       setSaved(d.records || []);
-      const parts = [d.detected ? `${d.detected} added to Quitting Records` : "", d.leaveDetected ? `${d.leaveDetected} added to Leave Requests` : ""].filter(Boolean);
-      setMessage(parts.length ? `${parts.join("; ")}.` : "No newly missing creators found in the latest upload.");
+      setMessage(d.detected ? `${d.detected} new quitting record${d.detected === 1 ? "" : "s"} added.` : "No newly missing creators found in the uploaded history.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not check the latest upload.");
     } finally {
@@ -213,34 +182,26 @@ export default function Page() {
                 <p className="mt-1 text-3xl font-black text-sky-100">{saved.length}</p>
               </div>
               {summaryCounts.map(({ name, count }) => (
-                <div key={name} className="rounded-xl border border-white/10 bg-white/[.035] p-4">
+                <button key={name} onClick={() => toggleGroup(name)} className={`rounded-xl border p-4 text-left ${selectedGroups.includes(name) ? "border-sky-300 bg-sky-300/15" : "border-white/10 bg-white/[.035]"}`}>
                   <p className="text-[10px] font-black uppercase text-white/55">{name}</p>
                   <p className="mt-1 text-3xl font-black text-white">{count}</p>
-                </div>
+                </button>
               ))}
             </div>
           </section>
 
           <section className="mt-7 rounded-2xl border border-sky-300/20 bg-sky-300/[.045] p-5">
             <label htmlFor="quit-usernames" className="text-xs font-black uppercase tracking-widest text-sky-100">
-              Add quitting creators
+              Automatic quitting records
             </label>
-            <p className="mt-2 text-xs text-white/45">Paste one username per line or separate usernames with commas.</p>
-            <textarea
-              id="quit-usernames"
-              value={paste}
-              onChange={(e) => setPaste(e.target.value)}
-              placeholder={"creator_one\ncreator_two\ncreator_three"}
-              rows={8}
-              className="mt-4 w-full resize-y rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-sm outline-none placeholder:text-white/25 focus:border-sky-300/60"
-            />
+            <p className="mt-2 text-xs text-white/45">Records are found automatically from uploaded data. Click group tiles above to filter; click again to remove a filter.</p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
-                onClick={() => void addAndSaveRecords()}
-                disabled={busy || !parseUsernames(paste).length}
+                onClick={() => void detectAndSaveRecords()}
+                disabled={busy}
                 className="rounded-xl bg-sky-300 px-6 py-3 text-xs font-black uppercase text-black transition disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {busy ? "Adding & saving…" : "Add & Save Records"}
+                {busy ? "Checking…" : "Check Latest Upload"}
               </button>
               <button
                 type="button"
@@ -250,11 +211,6 @@ export default function Page() {
               >
                 {busy ? "Checking…" : "Detect From Latest Upload"}
               </button>
-              {parseUsernames(paste).length ? (
-                <span className="text-xs font-bold text-white/45">
-                  {parseUsernames(paste).length} unique username{parseUsernames(paste).length === 1 ? "" : "s"}
-                </span>
-              ) : null}
             </div>
           </section>
 
@@ -267,38 +223,11 @@ export default function Page() {
                 <h2 className="mt-2 font-[family-name:var(--font-norwester)] text-3xl uppercase">Saved records</h2>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[620px]">
-                <label className="text-xs font-black uppercase tracking-widest text-white/45">
-                  Group
-                  <select
-                    value={group}
-                    onChange={(e) => setGroup(e.target.value)}
-                    className="mt-2 block w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-medium normal-case tracking-normal text-white"
-                  >
-                    <option value="ALL">All groups</option>
-                    {groups.map((x) => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-xs font-black uppercase tracking-widest text-white/45">
-                  Manager
-                  <select
-                    value={manager}
-                    onChange={(e) => setManager(e.target.value)}
-                    className="mt-2 block w-full rounded-xl border border-white/15 bg-black px-4 py-3 text-sm font-medium normal-case tracking-normal text-white"
-                  >
-                    <option value="ALL">All managers</option>
-                    {managers.map((x) => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <div className="flex gap-3"><button onClick={() => setSort("recent")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "recent" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most recent</button><button onClick={() => setSort("diamonds")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "diamonds" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most diamonds</button></div>
             </div>
 
             <div className="mt-5 space-y-3">
-              {shown.map((r) => {
+              {sortedShown.map((r) => {
                 const key = normalizeUsername(r.username);
                 const isEditing = editingReason === key;
                 return (
