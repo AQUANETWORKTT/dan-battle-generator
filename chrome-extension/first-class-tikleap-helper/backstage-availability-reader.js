@@ -55,6 +55,9 @@ async function checkAvailability(creators) {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "check-backstage-batch") return;
+  // With Workspace embedded in multiple frames, only the frame that owns the
+  // visible Invite creators control should handle this batch.
+  if (!buttonByText(document, "Invite creators")) return;
   checkAvailability(Array.isArray(message.creators) ? message.creators : [])
     .then((results) => sendResponse({ results }))
     .catch((error) => sendResponse({ error: error instanceof Error ? error.message : "Could not check Backstage availability." }));
