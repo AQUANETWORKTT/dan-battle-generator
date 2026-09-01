@@ -18,8 +18,12 @@ type TikleapResponse = {
   error?: string;
 };
 
+type LeagueRow = { rank: number; username: string; diamonds: number; diamondText: string };
+type LeagueRankings = Record<string, LeagueRow[]>;
+
 const CHUNK_SIZES = [24, 24, 24];
 const TIKLEAP_EXTENSION_UNDER_REVIEW = false;
+const LIVE_LEAGUES = ["B3", "B4", "B5", "C1", "C2", "C3", "C4", "C5", "D1", "D2", "D3", "D4", "D5"];
 
 function splitForBackstage(names: string[]) {
   const chunks: string[][] = [];
@@ -56,6 +60,10 @@ export default function TikleapUkUsernamesPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedDate, setSavedDate] = useState("");
+  const [leagueRankings, setLeagueRankings] = useState<LeagueRankings>({});
+  const [leagueLoading, setLeagueLoading] = useState(false);
+  const [leagueMessage, setLeagueMessage] = useState("");
+  const [selectedLeagues, setSelectedLeagues] = useState<string[]>(LIVE_LEAGUES);
   const saveAfterChromePullRef = useRef(false);
 
   useEffect(() => {
@@ -86,6 +94,27 @@ export default function TikleapUkUsernamesPage() {
     }
     window.addEventListener("message", receiveChromeRankings);
     return () => window.removeEventListener("message", receiveChromeRankings);
+  }, []);
+
+  useEffect(() => {
+    function receiveLeagueRankings(event: MessageEvent) {
+      if (event.source !== window || event.data?.source !== "first-class-tikleap-extension") return;
+      if (event.data.type === "league-rankings-row") {
+        const league = String(event.data.league || "").toUpperCase();
+        const rows = Array.isArray(event.data.rows) ? event.data.rows as LeagueRow[] : [];
+        if (league && rows.length) setLeagueRankings((current) => ({ ...current, [league]: rows.sort((a, b) => b.diamonds - a.diamonds) }));
+      }
+      if (event.data.type === "league-rankings-complete") {
+        setLeagueLoading(false);
+        setLeagueMessage("All live leagues are ready. Availability checking is the next step and will only preview creators — it will not send invitations.");
+      }
+      if (event.data.type === "league-rankings-error") {
+        setLeagueLoading(false);
+        setLeagueMessage(String(event.data.error || "Could not read the live leagues."));
+      }
+    }
+    window.addEventListener("message", receiveLeagueRankings);
+    return () => window.removeEventListener("message", receiveLeagueRankings);
   }, []);
 
   useEffect(() => {
@@ -148,6 +177,20 @@ export default function TikleapUkUsernamesPage() {
     }, 15000);
   }
 
+  function pullLiveLeagues() {
+    if (!selectedLeagues.length) { setLeagueMessage("Choose at least one league first."); return; }
+    setLeagueRankings({});
+    setLeagueLoading(true);
+    setLeagueMessage("Reading the top 99 creators from each UK live league in Chrome...");
+    window.postMessage({ source: "first-class-daily-rankings", type: "pull-uk-live-leagues", leagues: selectedLeagues }, window.location.origin);
+    window.setTimeout(() => {
+      setLeagueLoading((isLoading) => {
+        if (isLoading) setLeagueMessage("Chrome did not respond. Reload the First Class TickLeap Helper extension, then try again.");
+        return false;
+      });
+    }, 120000);
+  }
+
   async function saveRankings(freshUsernames?: string[]) {
     const usernames = freshUsernames || countries[0]?.usernames || [];
     if (!usernames.length) return;
@@ -200,10 +243,41 @@ export default function TikleapUkUsernamesPage() {
 
           <section className="rounded-3xl border border-sky-300/25 bg-sky-300/10 p-6">
             <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-200/70">Tikleap</p>
-            <h1 className="mt-3 text-4xl font-black uppercase text-cyan-200 md:text-6xl">🏆 Daily Rankings</h1>
+            <h1 className="mt-3 text-4xl font-black uppercase text-cyan-200 md:text-6xl">🔎 Creator Search</h1>
             <p className="mt-3 max-w-3xl text-white/60">
-              Pulls the previous day Tikleap Last Day archive for the UK, then splits it into pasteable Backstage lists.
+              Pull daily rankings or selected live leagues, then check creator availability in Backstage without sending invitations.
             </p>
+          </section>
+
+          <section className="mt-6 rounded-3xl border border-violet-300/25 bg-violet-300/10 p-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-violet-200/70">UK LIVE LEAGUES</p>
+                <h2 className="mt-2 text-3xl font-black uppercase text-violet-100">League availability list</h2>
+                <p className="mt-2 max-w-3xl text-sm text-white/60">Reads B3–B5, C1–C5 and D1–D5 in Chrome. Each league is kept separate and ordered by diamonds, ready for the Backstage availability preview.</p>
+              </div>
+              <button type="button" onClick={pullLiveLeagues} disabled={leagueLoading || TIKLEAP_EXTENSION_UNDER_REVIEW} className="rounded-xl bg-violet-300 px-5 py-4 text-sm font-black uppercase text-black hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-45">
+                {leagueLoading ? "Reading selected leagues..." : "Pull selected leagues"}
+              </button>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setSelectedLeagues(LIVE_LEAGUES)} className="rounded-lg border border-violet-200/30 px-3 py-2 text-xs font-black uppercase text-violet-100 hover:bg-violet-200/10">All B3–D5</button>
+              <button type="button" onClick={() => setSelectedLeagues([])} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black uppercase text-white/65 hover:bg-white/10">Clear</button>
+              {LIVE_LEAGUES.map((league) => <button key={league} type="button" onClick={() => setSelectedLeagues((current) => current.includes(league) ? current.filter((value) => value !== league) : [...current, league])} className={`rounded-lg px-3 py-2 text-xs font-black ${selectedLeagues.includes(league) ? "bg-violet-300 text-black" : "border border-white/15 text-white/65 hover:bg-white/10"}`}>{league}</button>)}
+            </div>
+            {leagueMessage ? <p className="mt-4 rounded-xl border border-violet-200/20 bg-black/20 p-3 text-sm text-violet-100">{leagueMessage}</p> : null}
+            {Object.keys(leagueRankings).length ? (
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {Object.entries(leagueRankings).sort(([a], [b]) => a.localeCompare(b)).map(([league, rows]) => (
+                  <section key={league} className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                    <div className="mb-3 flex items-center justify-between"><h3 className="text-xl font-black text-violet-100">{league}</h3><span className="text-xs font-bold uppercase text-white/45">{rows.length} creators</span></div>
+                    <div className="max-h-80 overflow-y-auto rounded-xl border border-white/10">
+                      {rows.map((row) => <div key={row.username} className="grid grid-cols-[42px_1fr_auto] gap-2 border-b border-white/5 px-3 py-2 text-sm last:border-0"><span className="text-white/45">#{row.rank}</span><span className="truncate font-bold">{row.username}</span><span className="font-black text-violet-200">{row.diamondText}</span></div>)}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : null}
           </section>
 
           <section className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">

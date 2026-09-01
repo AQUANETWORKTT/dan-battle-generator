@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "First Class TickLeap Helper",
-  "version": "1.0.0",
-  "description": "Sends the public UK TickLeap daily rankings to First Class Data Space.",
+  "version": "1.1.0",
+  "description": "Reads public UK TickLeap daily and live-league rankings for First Class Data Space.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -13,7 +13,7 @@
     "default_title": "First Class TickLeap Helper"
   },
   "permissions": ["tabs"],
-  "host_permissions": ["https://www.tikleap.com/*", "https://firstclassagency.management/*"],
+  "host_permissions": ["https://www.tikleap.com/*", "https://firstclassagency.management/*", "https://live-backstage.tiktok.com/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
