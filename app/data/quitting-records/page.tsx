@@ -26,6 +26,7 @@ const parseUsernames = (value: string) =>
 export default function Page() {
   const [saved, setSaved] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingNew, setLoadingNew] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [sort, setSort] = useState<"recent" | "diamonds">("recent");
   const [message, setMessage] = useState("");
@@ -37,11 +38,11 @@ export default function Page() {
   async function loadRecords() {
     setLoading(true);
     try {
-      const r = await fetch("/api/data-analysis/quitting-records", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "backfill-and-save" }) });
+      const r = await fetch("/api/data-analysis/quitting-records", { cache: "no-store" });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not load quitting records.");
       setSaved(d.records || []);
-      if (d.detected || d.leaveDetected) setMessage(`History checked from ${d.scannedFrom}. ${d.detected || 0} quitting record${d.detected === 1 ? "" : "s"} and ${d.leaveDetected || 0} leave request${d.leaveDetected === 1 ? "" : "s"} added.`);
+      void detectAndSaveRecords();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load quitting records.");
     } finally {
@@ -86,8 +87,7 @@ export default function Page() {
   function toggleGroup(name: string) { setSelectedGroups((current) => current.includes(name) ? current.filter((group) => group !== name) : [...current, name]); }
 
   async function detectAndSaveRecords() {
-    setBusy(true);
-    setMessage("");
+    setLoadingNew(true);
     try {
       const r = await fetch("/api/data-analysis/quitting-records", {
         method: "POST",
@@ -97,11 +97,11 @@ export default function Page() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not check the latest upload.");
       setSaved(d.records || []);
-      setMessage(d.detected ? `${d.detected} new quitting record${d.detected === 1 ? "" : "s"} added.` : "No newly missing creators found in the uploaded history.");
+      if (d.detected) setMessage(`${d.detected} new quitting record${d.detected === 1 ? "" : "s"} added.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not check the latest upload.");
     } finally {
-      setBusy(false);
+      setLoadingNew(false);
     }
   }
 
@@ -197,6 +197,7 @@ export default function Page() {
           </section>
 
           {message ? <p className="mt-4 text-xs font-black uppercase text-yellow-200">{message}</p> : null}
+          {loadingNew ? <p className="mt-4 text-xs font-black uppercase text-sky-200">Loading new records from uploaded history…</p> : null}
 
           <section className="mt-10">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
