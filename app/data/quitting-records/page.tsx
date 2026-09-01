@@ -10,6 +10,7 @@ type Item = {
   managers: string[];
   groups: string[];
   diamonds: number;
+  daysSinceJoining?: number;
   reason: string;
   createdAt: string;
   noHistory?: boolean;
@@ -53,7 +54,7 @@ export default function Page() {
   }, []);
 
   const groups = useMemo(
-    () => [...new Set(saved.flatMap((r) => r.groups || []))].filter(Boolean).sort(),
+    () => [...new Set(saved.filter((r) => Number(r.daysSinceJoining || 0) < 15).flatMap((r) => r.groups || []))].filter(Boolean).sort(),
     [saved],
   );
 
@@ -66,6 +67,7 @@ export default function Page() {
     () =>
       saved.filter(
         (r) =>
+          Number(r.daysSinceJoining || 0) < 15 &&
           (!selectedGroups.length || (r.groups || []).some((name) => selectedGroups.includes(name))),
       ),
     [saved, selectedGroups],
@@ -76,7 +78,7 @@ export default function Page() {
   const summaryCounts = useMemo(() =>
     groups.map((name) => ({
       name,
-      count: saved.filter((record) => (record.groups || []).includes(name)).length,
+      count: saved.filter((record) => Number(record.daysSinceJoining || 0) < 15 && (record.groups || []).includes(name)).length,
     })),
     [groups, saved],
   );
