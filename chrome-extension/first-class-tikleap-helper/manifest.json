@@ -26,7 +26,8 @@
     },
     {
       "matches": ["https://live-backstage.tiktok.com/*"],
-      "js": ["backstage-availability-reader.js"]
+      "js": ["backstage-availability-reader.js"],
+      "all_frames": true
     }
   ]
 }
