@@ -13,9 +13,12 @@ function buttonByText(root, text) {
 }
 
 function setValue(input, value) {
-  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
-  setter?.call(input, value);
-  input.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
+  input.focus();
+  const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+  if (setter) setter.call(input, value);
+  else input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
@@ -37,7 +40,9 @@ async function checkAvailability(creators) {
   const dialog = await waitFor(() => findAll('[role="dialog"]').find((element) => /Add creators/i.test(element.textContent || "")));
   const input = findAll('textarea, input[placeholder*="30 creators"]', dialog)[0];
   if (!input) throw new Error("Backstage did not show the creator entry box.");
-  setValue(input, creators.map((creator) => creator.username).join("\n"));
+  const usernames = creators.map((creator) => creator.username).join("\n");
+  setValue(input, usernames);
+  await waitFor(() => input.value === usernames, 3000);
   const next = buttonByText(dialog, "Next");
   if (!next) throw new Error("Backstage did not show the availability step.");
   next.click();
