@@ -15,17 +15,6 @@ type Item = {
   noHistory?: boolean;
 };
 
-type SummaryKey = "Dan / James" | "Mike / Indi" | "Trident" | "Horizon" | "Paradise" | "Respawn";
-
-const SUMMARY_GROUPS: SummaryKey[] = [
-  "Dan / James",
-  "Mike / Indi",
-  "Trident",
-  "Horizon",
-  "Paradise",
-  "Respawn",
-];
-
 const fmt = new Intl.NumberFormat("en-GB");
 
 const normalizeUsername = (value: string) => value.trim().replace(/^@/, "").toLowerCase();
@@ -79,16 +68,13 @@ export default function Page() {
     [saved, group, manager],
   );
 
-  const summaryCounts = useMemo(() => {
-    const counts = Object.fromEntries(SUMMARY_GROUPS.map((name) => [name, 0])) as Record<SummaryKey, number>;
-    for (const record of saved) {
-      const uniqueGroups = new Set(record.groups || []);
-      for (const name of SUMMARY_GROUPS) {
-        if (uniqueGroups.has(name)) counts[name] += 1;
-      }
-    }
-    return counts;
-  }, [saved]);
+  const summaryCounts = useMemo(() =>
+    groups.map((name) => ({
+      name,
+      count: saved.filter((record) => (record.groups || []).includes(name)).length,
+    })),
+    [groups, saved],
+  );
 
   async function addAndSaveRecords() {
     const usernames = parseUsernames(paste);
@@ -161,6 +147,27 @@ export default function Page() {
     }
   }
 
+  async function deleteRecord(record: Item) {
+    if (!window.confirm(`Remove @${record.username} from the quitting records?`)) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const r = await fetch("/api/data-analysis/quitting-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-record", username: normalizeUsername(record.username) }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Could not remove quitting record.");
+      setSaved(d.records || []);
+      setMessage(`@${record.username} removed from the quitting records.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not remove quitting record.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <DataAccessGuard>
       <main className="min-h-screen bg-[#080806] px-5 py-8 text-white">
@@ -183,10 +190,10 @@ export default function Page() {
                 <p className="text-[10px] font-black uppercase text-white/55">Recorded quits ever</p>
                 <p className="mt-1 text-3xl font-black text-sky-100">{saved.length}</p>
               </div>
-              {SUMMARY_GROUPS.map((name) => (
+              {summaryCounts.map(({ name, count }) => (
                 <div key={name} className="rounded-xl border border-white/10 bg-white/[.035] p-4">
                   <p className="text-[10px] font-black uppercase text-white/55">{name}</p>
-                  <p className="mt-1 text-3xl font-black text-white">{summaryCounts[name]}</p>
+                  <p className="mt-1 text-3xl font-black text-white">{count}</p>
                 </div>
               ))}
             </div>
@@ -282,6 +289,15 @@ export default function Page() {
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-sky-300/30 bg-sky-300/10 text-lg font-black text-sky-100 hover:bg-sky-300/20"
                         >
                           +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteRecord(r)}
+                          disabled={busy}
+                          aria-label={`Remove quitting record for @${r.username}`}
+                          className="flex h-8 items-center justify-center rounded-lg border border-red-300/30 bg-red-300/10 px-2 text-[10px] font-black uppercase text-red-100 hover:bg-red-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Remove
                         </button>
                       </div>
                     </div>
