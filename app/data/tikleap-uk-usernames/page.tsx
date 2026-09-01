@@ -19,7 +19,7 @@ type TikleapResponse = {
 };
 
 const CHUNK_SIZES = [24, 24, 24];
-const TIKLEAP_EXTENSION_UNDER_REVIEW = true;
+const TIKLEAP_EXTENSION_UNDER_REVIEW = false;
 
 function splitForBackstage(names: string[]) {
   const chunks: string[][] = [];

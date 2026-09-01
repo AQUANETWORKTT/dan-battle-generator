@@ -2,125 +2,16 @@ import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 export const dynamic = "force-dynamic";
-
 type Row = Record<string, unknown>;
-type AssignmentSettings = { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; ownerManagers?: string[] };
+type Recruit = { id: string; username: string; joined: string; managerKey: string; manager: string; group: string; diamonds: number; hours: number; dph: number };
 const SETTINGS_NAME = "manager-assignment-settings";
-// Recruitment rankings are for First Class management teams only. Respawn
-// has separate ownership and must not appear in their recruitment totals.
-const excludedGroups = new Set(["Recruitment", "Excluded", "Respawn"]);
-const recruitmentExcludedManagerKeys = ["kjb"];
-const recruiterManagerKeys = ["glenifarr", "glenitar", "jbollins997", "lagsturbo", "resili3recruits", "resilientrecruits", "mattyhorner60"];
-const DAN_MANAGER_KEY = "firstclassagencydanoutlookcom";
-
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
 const key = (value: unknown) => text(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-const managerKey = (value: unknown) => {
-  const normalized = key(value);
-  if (/(kaybon03|kbon03)/.test(normalized)) return "kjb";
-  return normalized === "ashwalbridge" || normalized.includes("firstclassagencyash") || normalized.includes("firstcoedensash") ? "ashwalbridge" : normalized;
-};
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
-const creatorKey = (row: Row) => {
-  const id = text(row.creator_id || row["Creator ID"]);
-  return /^\d{8,}$/.test(id) ? id : key(row.creator_username || row["Creator's username"]);
-};
-const displayName = (raw: string) => {
-  if (managerKey(raw) === "kjb" || /(kaybon03|kbon03)/.test(managerKey(raw))) return "Team KJB";
-  const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim();
-  return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : `Team ${raw}`;
-};
-const daysSinceJoining = (row: Row) => Number(text(row.days_since_joining || row["Days since joining"]).replace(/[^\d.-]/g, "")) || 0;
-function inferredGroup(manager: string) {
-  if (manager === "kjb" || /(kaybon03|kbon03)/.test(manager)) return "Team Dan / James";
-  if (/(bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990|mikehalesjb)/.test(manager)) return "Team Mike / Indi";
-  if (/(cjtokens1237|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|firstclassagencyash|firstclassagencykyran)/.test(manager)) return "Team Dan / James";
-  return "";
-}
-const dateForJoin = (row: Row) => {
-  const statDate = text(row.stat_date);
-  const days = daysSinceJoining(row);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(statDate) || days < 1) return "";
-  const date = new Date(`${statDate}T12:00:00`);
-  date.setDate(date.getDate() - (days - 1));
-  return date.toISOString().slice(0, 10);
-};
-
-export async function GET(request: Request) {
-  try {
-    // The Manager Diamonds page reuses these totals, but Team KJB belongs on
-    // that management leaderboard only — never on Recruitment.
-    const includeKjbForManagerDiamonds = new URL(request.url).searchParams.get("includeKjb") === "1";
-    const isRecruitmentExcludedManager = (manager: string) =>
-      recruiterManagerKeys.some((recruiter) => managerKey(manager).includes(recruiter)) ||
-      (!includeKjbForManagerDiamonds && recruitmentExcludedManagerKeys.some((excluded) => managerKey(manager).includes(excluded)));
-    const [{ data: latestRow, error: latestError }, { data: settingsRow, error: settingsError }] = await Promise.all([
-      submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(),
-      submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle(),
-    ]);
-    if (latestError || settingsError) throw new Error(latestError?.message || settingsError?.message);
-    const latestDate = text(latestRow?.stat_date);
-    if (!latestDate) return NextResponse.json({ month: "", groups: [], managers: [] });
-    const month = latestDate.slice(0, 7);
-    const settings = ((settingsRow?.template_json as { assignments?: AssignmentSettings } | null)?.assignments || {});
-    const groups = settings.managerGroups || {};
-    const names = settings.managerNames || {};
-    const deleted = new Set((settings.deletedManagers || []).map(managerKey));
-    const owners = new Set((settings.ownerManagers || []).map(managerKey));
-    // Dan is an active management leaderboard destination. Keep this address
-    // visible even if a historic assignment was accidentally marked deleted.
-    deleted.delete(DAN_MANAGER_KEY);
-    owners.delete(DAN_MANAGER_KEY);
-    const eligible = Object.entries(groups).filter(([manager, group]) => !deleted.has(managerKey(manager)) && !owners.has(managerKey(manager)) && !excludedGroups.has(group));
-    const nameFor = (manager: string) => Object.entries(names).find(([raw]) => managerKey(raw) === manager)?.[1] || displayName(manager);
-    const managers = new Map(eligible.filter(([manager]) => !isRecruitmentExcludedManager(manager)).map(([manager, group]) => { const canonical = managerKey(manager); return [canonical, { key: canonical, name: nameFor(canonical), group, recruits: 0, diamonds: 0 }]; }));
-    if (includeKjbForManagerDiamonds && !managers.has(DAN_MANAGER_KEY)) managers.set(DAN_MANAGER_KEY, { key: DAN_MANAGER_KEY, name: "Dan", group: "Team Dan / James", recruits: 0, diamonds: 0 });
-    const leaderboardManagerKey = (raw: string) => includeKjbForManagerDiamonds && managerKey(raw) === "kjb" ? DAN_MANAGER_KEY : managerKey(raw);
-
-    const rows: Row[] = [];
-    for (let from = 0, more = true; more; from += 1000) {
-      const { data, error } = await submissionsSupabase.from("creator_daily_stats").select("*").gte("stat_date", `${month}-01`).lte("stat_date", latestDate).order("stat_date", { ascending: true }).range(from, from + 999);
-      if (error) throw new Error(error.message);
-      const batch = (data || []) as Row[];
-      rows.push(...batch);
-      more = batch.length === 1000;
-    }
-
-    // A few existing managers were named in Manager Assignments before their
-    // group was saved there. Keep those recognised Team Dan/James and Team
-    // Mike/Indi managers in this leaderboard, without allowing unrelated raw
-    // export managers back in.
-    for (const row of rows) {
-      const raw = managerRaw(row);
-      const manager = leaderboardManagerKey(raw);
-      const group = managers.get(manager)?.group || inferredGroup(manager);
-      if (!manager || managers.has(manager) || !group || deleted.has(manager) || owners.has(manager) || isRecruitmentExcludedManager(manager)) continue;
-      managers.set(manager, { key: manager, name: nameFor(manager), group, recruits: 0, diamonds: 0 });
-    }
-
-    // Every historical row from this calendar month is considered, so a
-    // recruit remains counted even when they are no longer on today's export.
-    const recruits = new Map<string, { managerKey: string; joined: string }>();
-    for (const row of rows) {
-      const identity = creatorKey(row);
-      const manager = leaderboardManagerKey(managerRaw(row));
-      const joined = dateForJoin(row);
-      if (!identity || !managers.has(manager) || !joined.startsWith(month)) continue;
-      const existing = recruits.get(identity);
-      if (!existing || joined < existing.joined) recruits.set(identity, { managerKey: manager, joined });
-    }
-    for (const recruit of recruits.values()) { const manager = managers.get(recruit.managerKey); if (manager) manager.recruits += 1; }
-    const rowsByCreator = new Map<string, Row[]>();
-    for (const row of rows) { const identity = creatorKey(row); if (identity) rowsByCreator.set(identity, [...(rowsByCreator.get(identity) || []), row]); }
-    for (const creatorRows of rowsByCreator.values()) {
-      const latest = [...creatorRows].sort((a, b) => text(a.stat_date).localeCompare(text(b.stat_date))).at(-1);
-      const manager = latest ? managers.get(leaderboardManagerKey(managerRaw(latest))) : undefined;
-      if (manager) manager.diamonds += creatorRows.reduce((sum, row) => sum + number(row.diamonds || row.Diamonds), 0);
-    }
-    const leaderboard = Array.from(managers.values()).sort((a, b) => b.recruits - a.recruits || a.name.localeCompare(b.name));
-    return NextResponse.json({ month, groups: Array.from(new Set(leaderboard.map((manager) => manager.group))).sort(), managers: leaderboard, totalRecruits: recruits.size });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not build the recruitment leaderboard." }, { status: 500 });
-  }
-}
+const creatorId = (row: Row) => { const id = text(row.creator_id || row["Creator ID"]); return /^\d{8,}$/.test(id) ? id : key(row.creator_username || row["Creator's username"]); };
+const username = (row: Row) => text(row.creator_username || row["Creator's username"] || row.username).replace(/^@/, "");
+const date = (value: Date) => value.toISOString().slice(0, 10);
+const label = (raw: string) => { const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim(); return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : "Unassigned"; };
+async function rowsBetween(start: string, end: string, firstDayOnly = false) { const rows: Row[] = []; for (let from = 0, more = true; more; from += 1000) { let query = submissionsSupabase.from("creator_daily_stats").select("*").gte("stat_date", start).lte("stat_date", end).order("stat_date", { ascending: true }).range(from, from + 999); if (firstDayOnly) query = query.lte("days_since_joining", 1); const { data, error } = await query; if (error) throw new Error(error.message); const batch = (data || []) as Row[]; rows.push(...batch); more = batch.length === 1000; } return rows; }
+export async function GET(request: Request) { try { const period = new URL(request.url).searchParams.get("period") || "7"; const [{ data: latest }, { data: settings, error: settingsError }] = await Promise.all([submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(), submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle()]); if (settingsError) throw new Error(settingsError.message); const endDate = text(latest?.stat_date); if (!endDate) return NextResponse.json({ recruits: [], managers: [], groups: [], startDate: "", endDate: "" }); const end = new Date(`${endDate}T12:00:00`), start = period === "month" ? new Date(end.getFullYear(), end.getMonth(), 1, 12) : new Date(end); if (period !== "month") start.setDate(start.getDate() - (period === "14" ? 13 : 6)); const startDate = date(start); const assignment = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string> } } | null)?.assignments || {}), groups = assignment.managerGroups || {}, names = assignment.managerNames || {}; const [firstDayRows, periodRows] = await Promise.all([rowsBetween(startDate, endDate, true), rowsBetween(startDate, endDate)]); const recruits = new Map<string, Recruit>(); for (const row of firstDayRows) { const id = creatorId(row), joined = text(row.stat_date), managerKey = key(managerRaw(row)); if (!id || !joined || !managerKey) continue; const existing = recruits.get(id); if (existing && existing.joined <= joined) continue; recruits.set(id, { id, username: username(row) || id, joined, managerKey, manager: names[managerKey] || label(managerRaw(row)), group: groups[managerKey] || "Unassigned", diamonds: 0, hours: 0, dph: 0 }); } for (const row of periodRows) { const recruit = recruits.get(creatorId(row)); if (!recruit) continue; recruit.diamonds += number(row.diamonds || row.Diamonds); recruit.hours += number(row.live_hours || row["Live hours"]); } for (const recruit of recruits.values()) recruit.dph = recruit.hours ? Math.round(recruit.diamonds / recruit.hours) : 0; const list = [...recruits.values()].sort((a, b) => b.diamonds - a.diamonds || a.username.localeCompare(b.username)); const managers = new Map<string, { key: string; manager: string; group: string; recruits: number; diamonds: number; hours: number; dph: number }>(); for (const recruit of list) { const current = managers.get(recruit.managerKey) || { key: recruit.managerKey, manager: recruit.manager, group: recruit.group, recruits: 0, diamonds: 0, hours: 0, dph: 0 }; current.recruits += 1; current.diamonds += recruit.diamonds; current.hours += recruit.hours; current.dph = current.hours ? Math.round(current.diamonds / current.hours) : 0; managers.set(recruit.managerKey, current); } const managerList = [...managers.values()].sort((a, b) => b.diamonds - a.diamonds || b.recruits - a.recruits || a.manager.localeCompare(b.manager)); return NextResponse.json({ period, startDate, endDate, recruits: list, managers: managerList, groups: [...new Set(managerList.map((manager) => manager.group))].sort() }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load recruitment quality." }, { status: 500 }); } }

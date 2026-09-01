@@ -1,73 +1,11 @@
 "use client";
-
-import { useEffect, useRef } from "react";
-import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
-
-export default function RecruitmentQualityPage() {
-  const frame = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    const element = frame.current;
-    if (!element) return;
-    let observer: MutationObserver | null = null;
-    let resizer: ResizeObserver | null = null;
-
-    const showOnlyRecruitment = () => {
-      const embeddedDocument = element.contentDocument;
-      if (!embeddedDocument) return;
-      const target = embeddedDocument.getElementById("recruitment-dashboard");
-      if (!target) return;
-
-      let style = embeddedDocument.getElementById("recruitment-quality-only") as HTMLStyleElement | null;
-      if (!style) {
-        style = embeddedDocument.createElement("style");
-        style.id = "recruitment-quality-only";
-        embeddedDocument.head.append(style);
-      }
-      style.textContent = "#recruitment-dashboard { display: block !important; margin: 0 !important; }";
-
-      let current: HTMLElement | null = target;
-      while (current?.parentElement) {
-        const parent: HTMLElement = current.parentElement;
-        (Array.from(parent.children) as HTMLElement[]).forEach((sibling) => {
-          if (sibling !== current && !sibling.contains(target)) sibling.style.setProperty("display", "none", "important");
-        });
-        if (parent.tagName === "MAIN") break;
-        current = parent;
-      }
-
-      const main = embeddedDocument.querySelector("main") as HTMLElement | null;
-      if (main) {
-        main.style.padding = "0";
-        main.style.background = "#f8fafc";
-      }
-
-      window.requestAnimationFrame(() => {
-        element.style.height = `${Math.max(embeddedDocument.body.scrollHeight, embeddedDocument.documentElement.scrollHeight, target.scrollHeight)}px`;
-      });
-    };
-
-    const attach = () => {
-      const embeddedDocument = element.contentDocument;
-      if (!embeddedDocument) return;
-      observer?.disconnect();
-      resizer?.disconnect();
-      observer = new MutationObserver(showOnlyRecruitment);
-      observer.observe(embeddedDocument.body, { childList: true, subtree: true, attributes: true });
-      resizer = new ResizeObserver(showOnlyRecruitment);
-      resizer.observe(embeddedDocument.body);
-      showOnlyRecruitment();
-      [250, 750, 1500, 3000, 6000].forEach((delay) => window.setTimeout(showOnlyRecruitment, delay));
-    };
-
-    element.addEventListener("load", attach);
-    return () => {
-      element.removeEventListener("load", attach);
-      observer?.disconnect();
-      resizer?.disconnect();
-    };
-  }, []);
-
-  return <DataAccessGuard><main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950"><header className="mx-auto mb-8 max-w-6xl text-center"><Image src="/logo.png" alt="First Class Agency" width={520} height={260} priority className="mx-auto h-28 w-auto max-w-full object-contain sm:h-36" /><h1 className="mt-4 text-4xl font-black uppercase text-sky-950 sm:text-6xl">Recruitment Quality</h1></header><iframe ref={frame} title="Recruitment Quality" src="/creator-intelligence?view=recruitment" scrolling="no" className="mx-auto block w-full max-w-6xl border-0 bg-slate-50" /></main></DataAccessGuard>;
-}
+type Recruit = { id: string; username: string; joined: string; managerKey: string; manager: string; group: string; diamonds: number; hours: number; dph: number };
+type Manager = { key: string; manager: string; group: string; recruits: number; diamonds: number; hours: number; dph: number };
+type Data = { startDate: string; endDate: string; recruits: Recruit[]; managers: Manager[]; groups: string[]; error?: string };
+const format = new Intl.NumberFormat("en-GB");
+export default function RecruitmentQualityPage() { const [period, setPeriod] = useState("7"), [data, setData] = useState<Data | null>(null), [group, setGroup] = useState("ALL"), [manager, setManager] = useState("ALL"), [openManager, setOpenManager] = useState(""); useEffect(() => { setData(null); fetch(`/api/data-analysis/recruitment-leaderboard?period=${period}`, { cache: "no-store" }).then(async (response) => setData(await response.json())).catch(() => setData({ startDate: "", endDate: "", recruits: [], managers: [], groups: [], error: "COULD NOT LOAD RECRUITMENT DATA." })); }, [period]); const managers = useMemo(() => (data?.managers || []).filter((item) => group === "ALL" || item.group === group), [data, group]); const recruits = useMemo(() => (data?.recruits || []).filter((item) => (group === "ALL" || item.group === group) && (manager === "ALL" || item.managerKey === manager)), [data, group, manager]); const totals = useMemo(() => ({ diamonds: recruits.reduce((sum, item) => sum + item.diamonds, 0), hours: recruits.reduce((sum, item) => sum + item.hours, 0) }), [recruits]); return <DataAccessGuard><main className="min-h-screen bg-[#07090f] px-4 py-8 text-white sm:px-8"><div className="mx-auto max-w-7xl"><Link href="/data/menu" className="text-xs font-black uppercase tracking-[.18em] text-sky-200">← Back to Data Space</Link><p className="mt-10 text-xs font-black uppercase tracking-[.3em] text-violet-300">Creator analysis</p><h1 className="mt-3 font-[family-name:var(--font-norwester)] text-4xl uppercase sm:text-6xl">Recruitment <span className="text-violet-300">Quality</span></h1><p className="mt-4 max-w-3xl text-sm text-white/60">Recruits are permanently credited to the manager recorded on their first day. Rankings use diamonds added; diamonds per hour is shown as reference only.</p><div className="mt-7 flex flex-wrap gap-2">{[["7", "Last 7 days"], ["14", "Last 14 days"], ["month", "Current calendar month"]].map(([value, label]) => <button key={value} onClick={() => { setPeriod(value); setOpenManager(""); }} className={`rounded-xl px-5 py-3 text-xs font-black uppercase ${period === value ? "bg-violet-300 text-black" : "border border-white/15 bg-white/[.03]"}`}>{label}</button>)}</div>{!data ? <p className="mt-12 text-sm font-black uppercase text-violet-200">Loading recruitment quality…</p> : data.error ? <p className="mt-12 text-sm font-black uppercase text-red-300">{data.error}</p> : <><div className="mt-5 flex flex-wrap gap-3"><select value={group} onChange={(event) => { setGroup(event.target.value); setManager("ALL"); }} className="rounded-xl border border-white/15 bg-black px-4 py-3 text-sm"><option value="ALL">All groups</option>{data.groups.map((item) => <option key={item}>{item}</option>)}</select><select value={manager} onChange={(event) => setManager(event.target.value)} className="rounded-xl border border-white/15 bg-black px-4 py-3 text-sm"><option value="ALL">All managers</option>{managers.map((item) => <option key={item.key} value={item.key}>{item.manager}</option>)}</select><span className="self-center text-xs font-black uppercase text-white/45">{data.startDate} to {data.endDate}</span></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><Metric label="New recruits" value={format.format(recruits.length)} /><Metric label="Diamonds added" value={format.format(totals.diamonds)} /><Metric label="Average reference DPH" value={totals.hours ? format.format(Math.round(totals.diamonds / totals.hours)) : "—"} /></div><section className="mt-8 overflow-hidden rounded-3xl border border-violet-300/25 bg-white/[.035]"><div className="border-b border-white/10 p-5"><h2 className="font-[family-name:var(--font-norwester)] text-2xl uppercase">Manager leaderboard</h2><p className="mt-1 text-xs text-white/50">Ranked by diamonds from new recruits.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-black/30 text-[10px] font-black uppercase tracking-wider text-white/45"><tr><th className="p-4">#</th><th className="p-4">Manager</th><th className="p-4">Group</th><th className="p-4 text-right">Recruits</th><th className="p-4 text-right">Diamonds added</th><th className="p-4 text-right">DPH reference</th><th className="p-4"></th></tr></thead><tbody>{managers.map((item, index) => <><tr key={item.key} className="border-t border-white/10"><td className="p-4 font-black text-violet-200">{index + 1}</td><td className="p-4 font-black">{item.manager}</td><td className="p-4 text-white/60">{item.group}</td><td className="p-4 text-right">{item.recruits}</td><td className="p-4 text-right font-black text-violet-100">{format.format(item.diamonds)}</td><td className="p-4 text-right text-white/60">{item.hours ? format.format(item.dph) : "—"}</td><td className="p-4 text-right"><button onClick={() => setOpenManager(openManager === item.key ? "" : item.key)} className="rounded-lg border border-violet-300/40 px-3 py-2 text-[10px] font-black uppercase text-violet-200">{openManager === item.key ? "Hide creators" : "View creators"}</button></td></tr>{openManager === item.key ? <tr key={`${item.key}-detail`} className="border-t border-white/10 bg-black/20"><td colSpan={7} className="p-4"><CreatorTable recruits={data.recruits.filter((recruit) => recruit.managerKey === item.key)} /></td></tr> : null}</>)}</tbody></table></div></section><section className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-white/[.025]"><div className="p-5"><h2 className="font-[family-name:var(--font-norwester)] text-2xl uppercase">All new recruits</h2></div><CreatorTable recruits={recruits} /></section></>}</div></main></DataAccessGuard>; }
+function Metric({ label, value }: { label: string; value: string }) { return <article className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><p className="text-[10px] font-black uppercase tracking-[.16em] text-white/45">{label}</p><p className="mt-2 text-3xl font-black text-violet-100">{value}</p></article>; }
+function CreatorTable({ recruits }: { recruits: Recruit[] }) { return <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-black/25 text-[10px] font-black uppercase text-white/45"><tr><th className="p-4">Creator</th><th className="p-4">Joined</th><th className="p-4">Original manager</th><th className="p-4 text-right">Diamonds</th><th className="p-4 text-right">Live hours</th><th className="p-4 text-right">DPH reference</th></tr></thead><tbody>{recruits.map((item) => <tr key={item.id} className="border-t border-white/10"><td className="p-4 font-black">@{item.username}</td><td className="p-4 text-white/60">{item.joined}</td><td className="p-4 text-white/70">{item.manager}</td><td className="p-4 text-right font-black text-violet-100">{format.format(item.diamonds)}</td><td className="p-4 text-right text-white/60">{item.hours.toFixed(1)}</td><td className="p-4 text-right text-white/60">{item.hours ? format.format(item.dph) : "—"}</td></tr>)}{!recruits.length ? <tr><td colSpan={6} className="p-6 text-center text-sm text-white/45">No recruits match these filters.</td></tr> : null}</tbody></table></div>; }
