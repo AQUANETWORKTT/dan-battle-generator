@@ -190,30 +190,6 @@ export default function Page() {
             </div>
           </section>
 
-          <section className="mt-7 rounded-2xl border border-sky-300/20 bg-sky-300/[.045] p-5">
-            <label htmlFor="quit-usernames" className="text-xs font-black uppercase tracking-widest text-sky-100">
-              Automatic quitting records
-            </label>
-            <p className="mt-2 text-xs text-white/45">Records are found automatically from uploaded data. Click group tiles above to filter; click again to remove a filter.</p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => void detectAndSaveRecords()}
-                disabled={busy}
-                className="rounded-xl bg-sky-300 px-6 py-3 text-xs font-black uppercase text-black transition disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {busy ? "Checking…" : "Check Latest Upload"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void detectAndSaveRecords()}
-                disabled={busy}
-                className="rounded-xl border border-sky-300/40 bg-black/20 px-6 py-3 text-xs font-black uppercase text-sky-100 transition hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {busy ? "Checking…" : "Detect From Latest Upload"}
-              </button>
-            </div>
-          </section>
-
           {message ? <p className="mt-4 text-xs font-black uppercase text-yellow-200">{message}</p> : null}
 
           <section className="mt-10">
