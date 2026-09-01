@@ -34,11 +34,16 @@ export async function GET(request: Request) {
   const statDate = String(latestRow?.stat_date || "");
   const daysSinceJoining = Number(latestRow?.days_since_joining || latestRow?.["Days since joining"] || 0);
   let joinedDate = "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(statDate) && daysSinceJoining >= 1) { const joined = new Date(`${statDate}T12:00:00`); joined.setDate(joined.getDate() - (daysSinceJoining - 1)); joinedDate = joined.toISOString().slice(0, 10); }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(statDate) && daysSinceJoining >= 0) { const joined = new Date(`${statDate}T12:00:00`); joined.setDate(joined.getDate() - Math.max(0, daysSinceJoining - 1)); joinedDate = joined.toISOString().slice(0, 10); }
+  const team = String(latestRow?.team || "");
+  const rawManager = String(latestRow?.manager_email || latestRow?.creator_network_manager || latestRow?.["Creator Network manager"] || latestRow?.email || "");
+  const unassignedFirstClass = /unassigned first class/i.test(team);
+  const savedCreatorId = rows.map((row) => String(row.creator_id || "").trim()).find((id) => /^\d{10,}$/.test(id)) || "";
   return NextResponse.json({
-    creatorId: creatorId || rows.find((row) => row.creator_id)?.creator_id || "",
+    creatorId: creatorId || savedCreatorId,
     username: rows.find((row) => row.creator_username)?.creator_username || username,
-    manager: String(latestRow?.manager_email || latestRow?.creator_network_manager || latestRow?.["Creator Network manager"] || latestRow?.email || ""),
+    manager: rawManager || (unassignedFirstClass ? "Unassigned First Class" : ""),
+    group: unassignedFirstClass ? "First Class" : String(latestRow?.group_name || team || ""),
     joinedDate,
     count: rows.length,
     rows,
