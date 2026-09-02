@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         const manager = String(item.manager || "").trim().toUpperCase();
         const date = String(item.date || ""); const time = calendarTime(item.time);
         const creator = String(item.creator || "").trim().replace(/^@/, "").toUpperCase(); const opponent = String(item.opponent || "").trim().replace(/^@/, "").toUpperCase();
-        if (manager.replace(/\s/g, "") !== "DF/JD" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !time || !creator || !opponent) return [];
+        if (manager.replace(/[^A-Z]/g, "") !== "DFJD" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !time || !creator || !opponent) return [];
         return [{ id: crypto.randomUUID(), date, time, creator, opponent, manager: "DF/JD", size: String(item.size || "").trim().toUpperCase(), agency: String(item.agency || "").trim().toUpperCase(), type: "ARRANGED BATTLE", notified: [], reminders: {} }];
       });
       const unique = candidates.filter((battle) => !settings.battles.some((saved) => saved.date === battle.date && saved.manager === battle.manager && saved.time === battle.time && saved.creator === battle.creator && saved.opponent === battle.opponent));
@@ -59,5 +59,5 @@ export async function POST(request: Request) {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: chatId, text: "DF/JD BATTLE CALENDAR CONNECTED ✓" }) });
     if (!response.ok) return NextResponse.json({ error: "Telegram could not send the test message." }, { status: 502 });
     return NextResponse.json({ ok: true });
-  } catch { return NextResponse.json({ error: "Could not send the Telegram test." }, { status: 500 }); }
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not save Battle Calendar." }, { status: 500 }); }
 }

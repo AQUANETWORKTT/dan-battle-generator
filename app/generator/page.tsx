@@ -1016,19 +1016,26 @@ export default function BattleGeneratorPage() {
   async function syncDfjdbattlesToCalendar(rows: string[], date: string) {
     if (!date) return;
     const calendarRows = rows.flatMap((row) => {
-      const parts = row.split(/\t+/);
-      const manager = String(parts[1] || "").trim().toUpperCase();
-      const creator = getTikTokUsername(parts[3] || "") || String(parts[0] || "").replace("@", "").trim();
-      const opponent = getTikTokUsername(parts[5] || "");
-      const time = String(parts[6] || "").trim();
-      if (parts.length < 8 || manager.replace(/\s/g, "") !== "DF/JD" || !creator || !opponent || !time) return [];
-      return [{ date, time, creator, opponent, manager, size: String(parts[2] || ""), agency: String(parts[7] || "") }];
+      // Keep empty spreadsheet cells. Splitting on one-or-more tabs shifts
+      // every later column when the battle sheet contains a blank cell.
+      const parts = row.split("\t").map((cell) => cell.trim());
+      const manager = parts.find((cell) => cell.toUpperCase().replace(/[^A-Z]/g, "") === "DFJD") || "";
+      const usernames = parts.map(getTikTokUsername).filter(Boolean);
+      const creator = usernames[0] || String(parts[0] || "").replace(/^@/, "").trim();
+      const opponent = usernames[1] || getTikTokUsername(parts[5] || "");
+      const time = parts.find((cell) => /\b(?:[01]?\d|2[0-3]):[0-5]\d\s*(?:AM|PM)?\b/i.test(cell)) || "";
+      const size = parts.find((cell) => /(?:UNDER|LESS THAN|OVER|MORE THAN)?\s*\d+(?:\.\d+)?\s*K\b/i.test(cell)) || String(parts[2] || "");
+      const agency = String(parts.at(-1) || "");
+      if (!manager || !creator || !opponent || !time) return [];
+      return [{ date, time, creator, opponent, manager, size, agency }];
     });
     if (!calendarRows.length) return;
     try {
-      await fetch("/api/battle-calendar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "import-dfjd-battles", rows: calendarRows }) });
-    } catch {
+      const response = await fetch("/api/battle-calendar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "import-dfjd-battles", rows: calendarRows }) });
+      if (!response.ok) throw new Error("Battle Calendar could not save the generated battles.");
+    } catch (error) {
       // Poster generation stays available even if the calendar is temporarily unreachable.
+      console.error("[battle-calendar] generator sync failed", error);
     }
   }
 
