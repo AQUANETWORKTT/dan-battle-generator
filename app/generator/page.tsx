@@ -1696,7 +1696,8 @@ export default function BattleGeneratorPage() {
       const rows = (json.rows || []).filter((row: Record<string, unknown>) => {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
-        const managerKeyNormalized = manager.replace(/[^a-z0-9]/g, "");
+        const managerKeyNormalizedRaw = manager.replace(/[^a-z0-9]/g, "");
+        const managerKeyNormalized = ["firstclassagencykaydenoutlookcom", "bmwe46320dhotmailcouk"].includes(managerKeyNormalizedRaw) ? "kaydenmads" : managerKeyNormalizedRaw;
         if (managerKey === "team-dan") {
           const directTeamKey = managerKeyNormalized.replace(/(outlook|gmail|mail)com$/, "");
           return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);

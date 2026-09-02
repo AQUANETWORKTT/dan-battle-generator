@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 type CreatorStat = Record<string, unknown> & { stat_date?: string | null };
 type ManagerAssignments = Record<string, string>;
 const SETTINGS_NAME = "manager-assignment-settings";
+const KAYDEN_MADS_KEYS = new Set(["firstclassagencykaydenoutlookcom", "bmwe46320dhotmailcouk"]);
 
 const MANAGER_LABELS: Record<string, string> = {
   "firstclassagency_dan@outlook.com": "Dan",
@@ -39,6 +40,7 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
 
 function cleanText(value: unknown) { return String(value || "").trim(); }
 function normalize(value: string) { return value.toLowerCase().replace(/[^a-z0-9]/g, ""); }
+function canonicalManagerKey(value: string) { const normalized = normalize(value); return KAYDEN_MADS_KEYS.has(normalized) ? "kaydenmads" : normalized; }
 function hasKey(value: string, keys: string[]) { const clean = normalize(value); return keys.some((key) => clean.includes(key)); }
 function titleCase(value: string) { return value.split(/[\s._-]+/).filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase()).join(" "); }
 function getText(row: CreatorStat, keys: string[]) { return keys.map((key) => cleanText(row[key])).find(Boolean) || ""; }
@@ -92,9 +94,9 @@ export async function GET() {
     const savedNames = savedSettings?.managerNames || {};
     const deletedManagers = new Set((savedSettings?.deletedManagers || []).map(normalize));
     const managerAssignments = Object.fromEntries(
-      Object.entries(savedAssignments).map(([manager, group]) => [normalize(manager), group])
+      Object.entries(savedAssignments).map(([manager, group]) => [canonicalManagerKey(manager), group])
     );
-    const managerNames = Object.fromEntries(Object.entries(savedNames).map(([manager, name]) => [normalize(manager), cleanText(name)]));
+    const managerNames = Object.fromEntries(Object.entries(savedNames).map(([manager, name]) => [canonicalManagerKey(manager), cleanText(name)]));
     const { data: newest, error: newestError } = await submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle();
     const latestDate = cleanText(newest?.stat_date);
     if (newestError) return NextResponse.json({ error: newestError.message }, { status: 500 });
@@ -112,6 +114,9 @@ export async function GET() {
       .filter((managerKey) => !deletedManagers.has(managerKey) && managerAssignments[managerKey] !== "Recruitment" && managerAssignments[managerKey] !== "Excluded")
       .map((managerKey) => ({ manager_key: managerKey, manager_label: managerNames[managerKey] || getManagerLabel(managerKey, managerAssignments[managerKey] || "Unassigned") }))
       .sort((a, b) => a.manager_label.localeCompare(b.manager_label));
+    if (!savedManagers.some((item) => item.manager_key === "kaydenmads")) {
+      savedManagers.push({ manager_key: "kaydenmads", manager_label: "Team Kayden & Mads" });
+    }
     return NextResponse.json({ statDate: latestDate, managers: savedManagers });
 
     const latest = new Date(`${latestDate}T12:00:00`);

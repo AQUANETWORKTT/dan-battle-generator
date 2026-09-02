@@ -14,7 +14,7 @@ type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Re
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) {
   const normalized = clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (normalized === "firstclassagencykaydenoutlookcom" || normalized === "bmwe46320dhotmailcoUK".toLowerCase().replace(/[^a-z0-9]/g, "")) return "kaydenmads";
+  if (normalized === "firstclassagencykaydenoutlookcom" || normalized === "bmwe46320dhotmailcouk") return "kaydenmads";
   return normalized;
 }
 function managerRaw(row: CreatorStat) { return clean(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email); }
@@ -91,7 +91,7 @@ export async function GET() {
     if (manager && !deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: /(glenifarr|glenitar|jbollins997|lagsturbo|resili3recruits|resilientrecruits|mattyhorner60)/.test(manager) ? "Respawn" : assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)), email: managerRaw(row) });
   }
   for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group, email: manager });
-  const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const managerList = [...managers.values()].map((manager) => manager.key === "kaydenmads" ? { ...manager, name: "Team Kayden & Mads", email: "firstclassagency_kayden@outlook.com · bmwe46320d@hotmail.co.uk" } : manager).sort((a, b) => a.name.localeCompare(b.name));
   const managerGroups = Object.fromEntries(managerList.map((manager) => [manager.key, manager.group]));
   return NextResponse.json({ statDate, groups: GROUPS, managers: managerList, managerGroups, assignments });
 }
