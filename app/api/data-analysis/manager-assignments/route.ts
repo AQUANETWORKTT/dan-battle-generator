@@ -12,9 +12,14 @@ type CreatorStat = Record<string, unknown>;
 type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string> };
 
 function clean(value: unknown) { return String(value || "").trim(); }
-function key(value: unknown) { return clean(value).toLowerCase().replace(/[^a-z0-9]/g, ""); }
+function key(value: unknown) {
+  const normalized = clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (normalized === "firstclassagencykaydenoutlookcom" || normalized === "bmwe46320dhotmailcoUK".toLowerCase().replace(/[^a-z0-9]/g, "")) return "kaydenmads";
+  return normalized;
+}
 function managerRaw(row: CreatorStat) { return clean(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email); }
 function managerName(raw: string) {
+  if (key(raw) === "kaydenmads") return "Team Kayden & Mads";
   const configuredName = MANAGER_DISPLAY_NAMES[key(raw).replace(/(outlook|gmail|mail)com$/, "")];
   if (configuredName) return `Team ${configuredName}`;
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]?(aquaagency|respawnagency|paradiseagency)$/i, "").replace(/[_.-]+/g, " ").trim();
@@ -29,7 +34,7 @@ function defaultGroup(row: CreatorStat): Group {
   if (/(trident125gmailcom|trident125mailcom)/.test(manager) || source.includes("trident")) return "Trident";
   if (/(hannakingismail92|stormlive)/.test(manager) || /(storm|strive|horizon)/.test(source)) return "Horizon";
   if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
-  if (/(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|candiceaquaagency|firstclassagencykyran|kbon03|kaybon03)/.test(manager)) return "Team Dan / James";
+  if (/(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|candiceaquaagency|firstclassagencykyran|kbon03|kaybon03|kaydenmads)/.test(manager)) return "Team Dan / James";
   if (/(mikehalesjb|bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(manager)) return "Team Mike / Indi";
   if (source.includes("paradise")) return "Paradise";
   if (source.includes("respawn")) return "Respawn";
