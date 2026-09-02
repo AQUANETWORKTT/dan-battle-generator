@@ -88,7 +88,10 @@ export default function FallbackPicturesPage() {
 
   function setCreatorPicture(creator: string, file?: File) {
     if (!file?.type.startsWith("image/")) return setMessage("Please use an image file.");
-    readImage(file, (nextImage) => void save(avatars.map((item) => item.username === creator ? { ...item, imageUrl: nextImage } : item)));
+    // Use the same per-creator route as the add form. Saving the whole list
+    // here can leave the original empty queue entry in place, which makes the
+    // creator reappear in the red section after a refresh.
+    readImage(file, (nextImage) => void queue([{ username: creator, imageUrl: nextImage }]));
   }
 
   function removeAllFallbackPictures() {
