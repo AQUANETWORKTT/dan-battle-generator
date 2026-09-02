@@ -36,16 +36,44 @@ async function readAvatars() {
 }
 
 async function saveAvatars(avatars: FallbackAvatar[]) {
-  const { data, error } = await submissionsSupabase
+  const currentEntries = await submissionsSupabase
     .from("poster_templates")
-    .upsert(
-      { name: SETTINGS_NAME, template_json: { avatars }, background_url: null, updated_at: new Date().toISOString() },
+    .select("name")
+    .like("name", `${ENTRY_PREFIX}%`);
+  if (currentEntries.error) throw new Error(currentEntries.error.message);
+
+  const timestamp = new Date().toISOString();
+  // Image data can be large. Keep each database write small so one new photo
+  // does not make the entire fallback collection time out.
+  for (let start = 0; start < avatars.length; start += 5) {
+    const { error } = await submissionsSupabase.from("poster_templates").upsert(
+      avatars.slice(start, start + 5).map((avatar) => ({
+        name: `${ENTRY_PREFIX}${avatar.username}`,
+        template_json: { avatar },
+        background_url: null,
+        updated_at: timestamp,
+      })),
       { onConflict: "name" }
-    )
-    .select("template_json")
-    .single();
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  const savedNames = new Set(avatars.map((avatar) => `${ENTRY_PREFIX}${avatar.username}`));
+  const staleNames = (currentEntries.data || []).map((entry) => entry.name).filter((name) => !savedNames.has(name));
+  if (staleNames.length) {
+    const { error } = await submissionsSupabase.from("poster_templates").delete().in("name", staleNames);
+    if (error) throw new Error(error.message);
+  }
+
+  // The previous shared record can contain an older blank version of an
+  // avatar. Clear it once per-creator records have been written so it cannot
+  // override a newly dropped picture after a refresh.
+  const { error } = await submissionsSupabase.from("poster_templates").upsert(
+    { name: SETTINGS_NAME, template_json: { avatars: [] }, background_url: null, updated_at: timestamp },
+    { onConflict: "name" }
+  );
   if (error) throw new Error(error.message);
-  return normalize((data?.template_json as Record<string, unknown> | null)?.avatars);
+  return readAvatars();
 }
 
 export async function GET() {
