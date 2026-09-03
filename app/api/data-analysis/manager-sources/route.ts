@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 type CreatorStat = Record<string, unknown> & { stat_date?: string | null };
 type ManagerAssignments = Record<string, string>;
 const SETTINGS_NAME = "manager-assignment-settings";
-const KAYDEN_MADS_KEYS = new Set(["firstclassagencykaydenoutlookcom", "bmwe46320dhotmailcouk"]);
+const LEGACY_KAYDEN_KEY = "kaydenmads";
+const KAYDEN_KEY = "firstclassagencykaydenoutlookcom";
 
 const MANAGER_LABELS: Record<string, string> = {
   "firstclassagency_dan@outlook.com": "Dan",
@@ -29,8 +30,8 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
   brandyfalconer35: { name: "Brandy", group: "Team Dan" }, fearnegurry1: { name: "Fearne", group: "Team Dan" },
   demileawebster7: { name: "Demi", group: "Team Dan" }, louisesquelch: { name: "Louise", group: "Team Dan" },
   ashwalbridge: { name: "Ash", group: "Team Dan" }, candiceaquaagency: { name: "Candice", group: "Team Dan" }, firstclassagencykyran: { name: "Kyran", group: "Team Dan" },
-  bmwe46320d: { name: "Madz", group: "Team Mike / Indi" }, zaliheyoncu: { name: "Zalihe", group: "Team Mike / Indi" },
-  firstclassagencykayden: { name: "Kayden", group: "Team Mike / Indi" }, xaramills17: { name: "Xara", group: "Team Mike / Indi" },
+  firstclassagencykayden: { name: "Kayden", group: "Team Mike / Indi" },
+  zaliheyoncu: { name: "Zalihe", group: "Team Mike / Indi" },
   rachellouise18: { name: "Rach", group: "Team Mike / Indi" }, firstclassagencylauren: { name: "Lauren", group: "Team Mike / Indi" },
   liamproctor04: { name: "Liam", group: "Team Mike / Indi" }, abbidl: { name: "Abbi", group: "Team Mike / Indi" },
   kishaunnolan1: { name: "Kash", group: "Team Mike / Indi" }, calliecrawford14: { name: "Callie", group: "Team Mike / Indi" },
@@ -40,7 +41,10 @@ const FIRST_CLASS_MANAGER_CONFIG: Record<string, { name: string; group: string }
 
 function cleanText(value: unknown) { return String(value || "").trim(); }
 function normalize(value: string) { return value.toLowerCase().replace(/[^a-z0-9]/g, ""); }
-function canonicalManagerKey(value: string) { const normalized = normalize(value); return KAYDEN_MADS_KEYS.has(normalized) ? "kaydenmads" : normalized; }
+function canonicalManagerKey(value: string) {
+  const normalized = normalize(value);
+  return [LEGACY_KAYDEN_KEY, KAYDEN_KEY].includes(normalized) ? KAYDEN_KEY : normalized;
+}
 function hasKey(value: string, keys: string[]) { const clean = normalize(value); return keys.some((key) => clean.includes(key)); }
 function titleCase(value: string) { return value.split(/[\s._-]+/).filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase()).join(" "); }
 function getText(row: CreatorStat, keys: string[]) { return keys.map((key) => cleanText(row[key])).find(Boolean) || ""; }
@@ -114,9 +118,6 @@ export async function GET() {
       .filter((managerKey) => !deletedManagers.has(managerKey) && managerAssignments[managerKey] !== "Recruitment" && managerAssignments[managerKey] !== "Excluded")
       .map((managerKey) => ({ manager_key: managerKey, manager_label: managerNames[managerKey] || getManagerLabel(managerKey, managerAssignments[managerKey] || "Unassigned") }))
       .sort((a, b) => a.manager_label.localeCompare(b.manager_label));
-    if (!savedManagers.some((item) => item.manager_key === "kaydenmads")) {
-      savedManagers.push({ manager_key: "kaydenmads", manager_label: "Team Kayden & Mads" });
-    }
     return NextResponse.json({ statDate: latestDate, managers: savedManagers });
 
     const latest = new Date(`${latestDate}T12:00:00`);

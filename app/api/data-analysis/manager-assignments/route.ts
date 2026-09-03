@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const SETTINGS_NAME = "manager-assignment-settings";
 const GROUPS = ["Team Dan / James", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Recruitment", "New Managers", "Excluded"] as const;
 const PRESET_EXCLUDED_MANAGER_KEYS = ["jamesaquaagency", "teddie1", "teamalf", "firstclassagencyalf", "firstclassagencydan", "teamdan", "firstclassagencyjenson", "firstclassagencyjacob", "teamjacob", "cscott1232005", "trident125", "firstclassindi", "firstclassagencyindi", "teritilcock1994"];
+const RETIRED_MANAGER_KEYS = new Set(["bmwe46320dhotmailcouk"]);
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
@@ -14,12 +15,11 @@ type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Re
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) {
   const normalized = clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (normalized === "firstclassagencykaydenoutlookcom" || normalized === "bmwe46320dhotmailcouk") return "kaydenmads";
-  return normalized;
+  return ["kaydenmads", "firstclassagencykaydenoutlookcom"].includes(normalized) ? "firstclassagencykaydenoutlookcom" : normalized;
 }
 function managerRaw(row: CreatorStat) { return clean(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email); }
 function managerName(raw: string) {
-  if (key(raw) === "kaydenmads") return "Team Kayden & Mads";
+  if (key(raw) === "firstclassagencykaydenoutlookcom") return "Team Kayden";
   const configuredName = MANAGER_DISPLAY_NAMES[key(raw).replace(/(outlook|gmail|mail)com$/, "")];
   if (configuredName) return `Team ${configuredName}`;
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]?(aquaagency|respawnagency|paradiseagency)$/i, "").replace(/[_.-]+/g, " ").trim();
@@ -34,8 +34,8 @@ function defaultGroup(row: CreatorStat): Group {
   if (/(trident125gmailcom|trident125mailcom)/.test(manager) || source.includes("trident")) return "Trident";
   if (/(hannakingismail92|stormlive)/.test(manager) || /(storm|strive|horizon)/.test(source)) return "Horizon";
   if (/(firstclassagencydan|firstclassagencymikeindi|mikeindi)/.test(manager) || source.includes("exempt")) return "Exempt";
-  if (/(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|candiceaquaagency|firstclassagencykyran|kbon03|kaybon03|kaydenmads)/.test(manager)) return "Team Dan / James";
-  if (/(mikehalesjb|bmwe46320d|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(manager)) return "Team Mike / Indi";
+  if (/(cjtokens1237|teamalf|firstclassagencyalf|firstclassagencyabbie|firstclassagencyolivia|sjm20101|firstclassagencypaige|jasminabidzane|connorfirstclass|brandyfalconer35|fearnegurry1|demileawebster7|louisesquelch|ashwalbridge|candiceaquaagency|firstclassagencykyran|kbon03|kaybon03)/.test(manager)) return "Team Dan / James";
+  if (/(mikehalesjb|zaliheyoncu|firstclassagencykayden|xaramills17|rachellouise18|firstclassagencylauren|liamproctor04|abbidl|kishaunnolan1|calliecrawford14|megan25121990)/.test(manager)) return "Team Mike / Indi";
   if (source.includes("paradise")) return "Paradise";
   if (source.includes("respawn")) return "Respawn";
   if (source.includes("aqua")) return "Aqua";
@@ -88,10 +88,11 @@ export async function GET() {
   const managers = new Map<string, { key: string; name: string; group: Group; email: string }>();
   for (const row of rows) {
     const manager = key(managerRaw(row));
+    if (RETIRED_MANAGER_KEYS.has(manager)) continue;
     if (manager && !deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || managerName(managerRaw(row)), group: /(glenifarr|glenitar|jbollins997|lagsturbo|resili3recruits|resilientrecruits|mattyhorner60)/.test(manager) ? "Respawn" : assignments.managerGroups[manager] || (PRESET_EXCLUDED_MANAGER_KEYS.some((excluded) => manager.includes(excluded)) ? "Excluded" : defaultGroup(row)), email: managerRaw(row) });
   }
-  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group, email: manager });
-  const managerList = [...managers.values()].map((manager) => manager.key === "kaydenmads" ? { ...manager, name: "Team Kayden & Mads", email: "firstclassagency_kayden@outlook.com · bmwe46320d@hotmail.co.uk" } : manager).sort((a, b) => a.name.localeCompare(b.name));
+  for (const [manager, group] of Object.entries(assignments.managerGroups)) if (!RETIRED_MANAGER_KEYS.has(manager) && !deleted.has(manager) && !managers.has(manager)) managers.set(manager, { key: manager, name: assignments.managerNames[manager] || `Team ${manager}`, group, email: manager });
+  const managerList = [...managers.values()].sort((a, b) => a.name.localeCompare(b.name));
   const managerGroups = Object.fromEntries(managerList.map((manager) => [manager.key, manager.group]));
   return NextResponse.json({ statDate, groups: GROUPS, managers: managerList, managerGroups, assignments });
 }

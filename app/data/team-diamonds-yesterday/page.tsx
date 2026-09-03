@@ -182,8 +182,16 @@ function getManagerIdentity(value: string) {
 }
 
 function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
-  const normalizedRowKey = rowManagerKey.replace(/[^a-z0-9]/g, "");
-  const normalizedTemplateKey = templateManagerKey.replace(/[^a-z0-9]/g, "");
+  const normalizeManagerKey = (value: string) => {
+    const normalized = value.replace(/[^a-z0-9]/g, "");
+    // Templates saved before the split referred to Kayden as "kaydenmads".
+    // Keep those templates working without ever including BMW E46 / Mads.
+    return ["kaydenmads", "firstclassagencykaydenoutlookcom"].includes(normalized)
+      ? "firstclassagencykaydenoutlookcom"
+      : normalized;
+  };
+  const normalizedRowKey = normalizeManagerKey(rowManagerKey);
+  const normalizedTemplateKey = normalizeManagerKey(templateManagerKey);
   if (normalizedRowKey === normalizedTemplateKey) return true;
   const rowIdentity = getManagerIdentity(rowManagerKey);
   const templateIdentity = getManagerIdentity(templateManagerKey);

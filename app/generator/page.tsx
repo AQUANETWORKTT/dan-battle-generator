@@ -179,7 +179,6 @@ const MANAGER_LEADERBOARD_DISPLAY_NAMES: Record<string, string> = {
   kieran: "Kyran",
   kaybon03: "KJB",
   kbon03: "KJB",
-  bmwe46320d: "Madz",
   zaliheyoncu: "Zalihe",
   firstclassagencykayden: "Kayden",
   xaramills17: "Xara",
@@ -1697,7 +1696,11 @@ export default function BattleGeneratorPage() {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
         const managerKeyNormalizedRaw = manager.replace(/[^a-z0-9]/g, "");
-        const managerKeyNormalized = ["firstclassagencykaydenoutlookcom", "bmwe46320dhotmailcouk"].includes(managerKeyNormalizedRaw) ? "kaydenmads" : managerKeyNormalizedRaw;
+        // Kayden and Mads are separate manager sources. Older templates used
+        // the combined key, but current creator data must stay with Kayden.
+        const managerKeyNormalized = ["kaydenmads", "firstclassagencykaydenoutlookcom"].includes(managerKeyNormalizedRaw)
+          ? "firstclassagencykaydenoutlookcom"
+          : managerKeyNormalizedRaw;
         if (managerKey === "team-dan") {
           const directTeamKey = managerKeyNormalized.replace(/(outlook|gmail|mail)com$/, "");
           return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);
