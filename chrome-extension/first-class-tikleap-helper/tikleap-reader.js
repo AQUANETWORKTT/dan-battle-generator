@@ -30,7 +30,7 @@ function readLeagueRankings() {
       const text = (link.textContent || "").replace(/\s+/g, " ").trim();
       const rank = Number(text.match(/^(\d+)\b/)?.[1] || 0);
       const diamondText = text.match(/(\d+(?:\.\d+)?[KMB]?)\s*$/i)?.[1] || "";
-      return { rank, username, diamonds: diamondsToNumber(diamondText), diamondText };
+      return { rank, username, diamonds: diamondsToNumber(diamondText), diamondText, liveNow: /\blive now\b/i.test(text) };
     })
     .filter((row) => row.rank > 0 && row.rank <= 100 && row.username)
     .sort((a, b) => a.rank - b.rank)

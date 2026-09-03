@@ -18,9 +18,9 @@ type TikleapResponse = {
   error?: string;
 };
 
-type LeagueRow = { rank: number; username: string; diamonds: number; diamondText: string };
+type LeagueRow = { rank: number; username: string; diamonds: number; diamondText: string; liveNow?: boolean };
 type LeagueRankings = Record<string, LeagueRow[]>;
-type AvailabilityResult = LeagueRow & { league: string; available: boolean; invitationType: string; reason: string };
+type AvailabilityResult = LeagueRow & { league: string; available: boolean; invitationType: string; reason: string; ignored?: boolean };
 type AvailabilityFilter = "all" | "Regular" | "Premium" | "multi-account-risk" | "ineligible-other";
 type CopyFormat = "details" | "username" | "username-diamonds" | "username-league";
 
@@ -67,6 +67,7 @@ export default function TikleapUkUsernamesPage() {
   const [leagueLoading, setLeagueLoading] = useState(false);
   const [leagueMessage, setLeagueMessage] = useState("");
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>(LIVE_LEAGUES);
+  const [liveFilter, setLiveFilter] = useState<"all" | "live">("all");
   const [rankingCountry, setRankingCountry] = useState<"gb" | "au">("gb");
   const [availabilityResults, setAvailabilityResults] = useState<AvailabilityResult[]>([]);
   const [availabilityMessage, setAvailabilityMessage] = useState("");
@@ -158,9 +159,10 @@ export default function TikleapUkUsernamesPage() {
   );
   const downloadText = useMemo(() => allCountriesText(countries), [countries]);
   const sortedAvailabilityResults = useMemo(() => availabilityResults
+    .filter((row) => !row.ignored)
     .sort((a, b) => b.diamonds - a.diamonds || a.username.localeCompare(b.username))
   , [availabilityResults]);
-  const multiAccountRisk = (row: AvailabilityResult) => !row.available && /multi[\s-]?account/i.test(row.reason);
+  const multiAccountRisk = (row: AvailabilityResult) => !row.available && /multi(?:ple)?[\s-]?account/i.test(row.reason);
   const filteredAvailabilityResults = useMemo(() => sortedAvailabilityResults.filter((row) => {
     if (availabilityFilter === "all") return row.available;
     if (availabilityFilter === "Regular" || availabilityFilter === "Premium") return row.available && row.invitationType === availabilityFilter;
@@ -233,11 +235,12 @@ export default function TikleapUkUsernamesPage() {
   }
 
   function checkAvailability() {
-    const creators = Object.entries(leagueRankings).flatMap(([league, rows]) => rows.map((row) => ({ ...row, league })));
-    if (!creators.length) { setAvailabilityMessage("Pull at least one league first."); return; }
+    const allCreators = Object.entries(leagueRankings).flatMap(([league, rows]) => rows.map((row) => ({ ...row, league })));
+    const creators = liveFilter === "live" ? allCreators.filter((creator) => creator.liveNow) : allCreators;
+    if (!creators.length) { setAvailabilityMessage(liveFilter === "live" ? "No creators are marked Live Now in these leagues." : "Pull at least one league first."); return; }
     setAvailabilityResults([]);
     setAvailabilityLoading(true);
-    setAvailabilityMessage("Checking Backstage availability in groups of 30. No invitations will be sent.");
+    setAvailabilityMessage(`Checking ${creators.length} ${liveFilter === "live" ? "live " : ""}creators in Backstage. No invitations will be sent.`);
     window.postMessage({ source: "first-class-daily-rankings", type: "check-backstage-availability", creators }, window.location.origin);
   }
 
@@ -326,13 +329,17 @@ export default function TikleapUkUsernamesPage() {
             </div>
             {leagueMessage ? <p className="mt-4 rounded-xl border border-violet-200/20 bg-black/20 p-3 text-sm text-violet-100">{leagueMessage}</p> : null}
             <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="flex overflow-hidden rounded-xl border border-white/15 text-xs font-black uppercase">
+                <button type="button" onClick={() => setLiveFilter("all")} className={`px-4 py-3 ${liveFilter === "all" ? "bg-green-300 text-black" : "bg-black/30 text-white/65"}`}>All creators</button>
+                <button type="button" onClick={() => setLiveFilter("live")} className={`px-4 py-3 ${liveFilter === "live" ? "bg-green-300 text-black" : "bg-black/30 text-white/65"}`}>Live only</button>
+              </div>
               <button type="button" onClick={checkAvailability} disabled={!Object.keys(leagueRankings).length || availabilityLoading} className="rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:opacity-45">
                 {availabilityLoading ? "Checking availability…" : "Check availability"}
               </button>
               <p className="text-xs font-bold uppercase text-white/50">Preview only — it never presses Invite.</p>
             </div>
             {availabilityMessage ? <p className="mt-3 rounded-xl border border-green-300/20 bg-green-400/10 p-3 text-sm text-green-100">{availabilityMessage}</p> : null}
-            {availabilityResults.length ? <div className="mt-4 rounded-2xl border border-green-300/20 bg-black/30 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-black text-green-200">Available: {sortedAvailabilityResults.filter((row) => row.available).length} · Regular: {sortedAvailabilityResults.filter((row) => row.available && row.invitationType === "Regular").length} · Premium: {sortedAvailabilityResults.filter((row) => row.available && row.invitationType === "Premium").length}</p><p className="mt-1 text-xs text-green-100/70">NAR: {sortedAvailabilityResults.filter(multiAccountRisk).length} · Ineligible — other reason: {sortedAvailabilityResults.filter((row) => !row.available && !multiAccountRisk(row)).length}</p></div><button type="button" onClick={copyWhatsAppAvailabilityMessage} disabled={!filteredAvailabilityResults.length} className="rounded-xl bg-green-300 px-4 py-3 text-xs font-black uppercase text-black hover:bg-green-200 disabled:cursor-not-allowed disabled:opacity-45">Copy selected format</button></div><div className="mt-3 flex flex-wrap gap-2">{([{ value: "all", label: "All available" }, { value: "Regular", label: "Regular" }, { value: "Premium", label: "Premium" }, { value: "multi-account-risk", label: "NAR" }, { value: "ineligible-other", label: "Ineligible — other" }] as Array<{ value: AvailabilityFilter; label: string }>).map(({ value, label }) => <button key={value} type="button" onClick={() => setAvailabilityFilter(value)} className={`rounded-lg px-3 py-2 text-xs font-black uppercase ${availabilityFilter === value ? "bg-green-300 text-black" : "border border-white/15 text-white/65 hover:bg-white/10"}`}>{label}</button>)}</div><label className="mt-3 block text-xs font-black uppercase tracking-widest text-white/55">Copy format<select value={copyFormat} onChange={(event) => setCopyFormat(event.target.value as CopyFormat)} className="mt-2 block rounded-lg border border-white/15 bg-black px-3 py-2 text-sm font-normal normal-case text-white"><option value="details">All details (WhatsApp)</option><option value="username">Username only</option><option value="username-diamonds">Username + diamonds</option><option value="username-league">Username + league</option></select></label>{filteredAvailabilityResults.length ? <div className="mt-3 max-h-64 overflow-y-auto text-sm">{filteredAvailabilityResults.map((row) => <div key={row.username} className="grid grid-cols-[48px_1fr_auto_auto] gap-2 border-b border-white/5 py-2"><span>{row.league}</span><span className="font-bold">{row.username}</span><span>{row.diamondText}</span><span className={row.available ? "text-green-200" : "text-rose-200"}>{row.available ? `Available${row.invitationType ? ` · ${row.invitationType}` : ""}` : row.reason || "Ineligible"}</span></div>)}</div> : <p className="mt-3 text-sm text-white/55">No creators match this filter in the scan.</p>}</div> : null}
+            {availabilityResults.length ? <div className="mt-4 rounded-2xl border border-green-300/20 bg-black/30 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-black text-green-200">Available: {sortedAvailabilityResults.filter((row) => row.available).length} · Regular: {sortedAvailabilityResults.filter((row) => row.available && row.invitationType === "Regular").length} · Premium: {sortedAvailabilityResults.filter((row) => row.available && row.invitationType === "Premium").length}</p><p className="mt-1 text-xs text-green-100/70">MAR: {sortedAvailabilityResults.filter(multiAccountRisk).length} · Ineligible — other reason: {sortedAvailabilityResults.filter((row) => !row.available && !multiAccountRisk(row)).length}</p></div><button type="button" onClick={copyWhatsAppAvailabilityMessage} disabled={!filteredAvailabilityResults.length} className="rounded-xl bg-green-300 px-4 py-3 text-xs font-black uppercase text-black hover:bg-green-200 disabled:cursor-not-allowed disabled:opacity-45">Copy selected format</button></div><div className="mt-3 flex flex-wrap gap-2">{([{ value: "all", label: "All available" }, { value: "Regular", label: "Regular" }, { value: "Premium", label: "Premium" }, { value: "multi-account-risk", label: "MAR" }, { value: "ineligible-other", label: "Ineligible — other" }] as Array<{ value: AvailabilityFilter; label: string }>).map(({ value, label }) => <button key={value} type="button" onClick={() => setAvailabilityFilter(value)} className={`rounded-lg px-3 py-2 text-xs font-black uppercase ${availabilityFilter === value ? "bg-green-300 text-black" : "border border-white/15 text-white/65 hover:bg-white/10"}`}>{label}</button>)}</div><label className="mt-3 block text-xs font-black uppercase tracking-widest text-white/55">Copy format<select value={copyFormat} onChange={(event) => setCopyFormat(event.target.value as CopyFormat)} className="mt-2 block rounded-lg border border-white/15 bg-black px-3 py-2 text-sm font-normal normal-case text-white"><option value="details">All details (WhatsApp)</option><option value="username">Username only</option><option value="username-diamonds">Username + diamonds</option><option value="username-league">Username + league</option></select></label>{filteredAvailabilityResults.length ? <div className="mt-3 max-h-64 overflow-y-auto text-sm">{filteredAvailabilityResults.map((row) => <div key={row.username} className="grid grid-cols-[48px_1fr_auto_auto] gap-2 border-b border-white/5 py-2"><span>{row.league}</span><span className="font-bold">{row.username}</span><span>{row.diamondText}</span><span className={row.available ? "text-green-200" : "text-rose-200"}>{row.available ? `Available${row.invitationType ? ` · ${row.invitationType}` : ""}` : row.reason || "Ineligible"}</span></div>)}</div> : <p className="mt-3 text-sm text-white/55">No creators match this filter in the scan.</p>}</div> : null}
             {Object.keys(leagueRankings).length ? (
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {Object.entries(leagueRankings).sort(([a], [b]) => a.localeCompare(b)).map(([league, rows]) => (

@@ -83,10 +83,11 @@ async function checkAvailability(creators) {
   if (!next) throw new Error("Backstage did not show the availability step.");
   await clickThroughChrome(next);
   await pause(4000);
-  const statusPattern = /\b(?:Available|Regular|Premium|Ineligible|Not available|Multi[\s-]?account(?: risk)?|Network error)\b/i;
+  const multiAccountPattern = /\bmulti(?:ple)?[\s-]?account(?: risk)?\b/i;
+  const statusPattern = /\b(?:Available|Regular|Premium|Ineligible|Not available|Multi(?:ple)?[\s-]?account(?: risk)?|Network error)\b/i;
   const resultTextFor = (username) => [...dialog.querySelectorAll("*")]
     .map(visibleText)
-    .filter((text) => text.includes(username) && statusPattern.test(text))
+    .filter((text) => text.toLowerCase().includes(username.toLowerCase()) && statusPattern.test(text))
     .sort((left, right) => left.length - right.length)[0] || "";
   // Backstage fills the result table row by row. Do not read the first result
   // and assume every other row is unavailable; wait until each submitted name
@@ -102,17 +103,24 @@ async function checkAvailability(creators) {
     // Workspace does not always render the word “Available”. Some versions show
     // the creator's Regular or Premium eligibility only. Either tier is a valid
     // availability result, unless the row explicitly says it is ineligible.
-    const explicitlyUnavailable = /\b(?:Ineligible|Not available|Multi[\s-]?account(?: risk)?|Network error)\b/i.test(text);
+    const explicitlyUnavailable = /\b(?:Ineligible|Not available|Multi(?:ple)?[\s-]?account(?: risk)?|Network error)\b/i.test(text);
     const hasInviteTier = /\b(?:Regular|Premium)\b/i.test(text);
     const available = !explicitlyUnavailable && (/\bAvailable\b/i.test(text) || hasInviteTier);
+    const multipleAccountRisk = multiAccountPattern.test(text);
+    const otherReason = /\bineligible\s+other\s+reason\b/i.test(text);
     const reason = retry
       ? "Network error — retrying"
       : available
         ? ""
-        : /multi[\s-]?account/i.test(text)
+        : multipleAccountRisk
           ? "Multi-account risk"
-          : text.match(/Ineligible\s+(.+?)(?:\s+Follow|$)/i)?.[1] || (text ? "Ineligible — other reason" : "Backstage did not return a final status");
-    return { ...creator, available, invitationType: available ? (/\bPremium\b/i.test(text) ? "Premium" : "Regular") : "", reason, retry };
+          : otherReason
+            ? "Other reason"
+            : text.match(/Ineligible\s+(.+?)(?:\s+Follow|$)/i)?.[1] || (text ? "Ineligible — not selected" : "Backstage did not return a final status");
+    // Only the two requested ineligible outcomes belong in Creator Search.
+    // In particular, another Creator Network is intentionally not surfaced.
+    const ignored = !available && !multipleAccountRisk && !otherReason;
+    return { ...creator, available, invitationType: available ? (/\bPremium\b/i.test(text) ? "Premium" : "Regular") : "", reason, retry, ignored };
   });
   const close = findAll('button,[role="button"]', dialog)[0];
   close?.click();
