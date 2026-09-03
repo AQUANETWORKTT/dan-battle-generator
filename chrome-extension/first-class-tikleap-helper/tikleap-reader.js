@@ -28,9 +28,15 @@ function readLeagueRankings() {
     .map((link) => {
       const username = link.href.match(/\/profile\/([^/?#]+)/i)?.[1] || "";
       const text = (link.textContent || "").replace(/\s+/g, " ").trim();
+      // TickLeap sometimes places the red Live Now badge beside the profile
+      // link rather than inside it. Check the small surrounding row/card too,
+      // without walking up to a whole league container.
+      const rowText = [link, link.parentElement, link.parentElement?.parentElement]
+        .map((element) => (element?.innerText || element?.textContent || "").replace(/\s+/g, " ").trim())
+        .find((value) => value.length < 500 && /\blive\s+now\b/i.test(value)) || text;
       const rank = Number(text.match(/^(\d+)\b/)?.[1] || 0);
       const diamondText = text.match(/(\d+(?:\.\d+)?[KMB]?)\s*$/i)?.[1] || "";
-      return { rank, username, diamonds: diamondsToNumber(diamondText), diamondText, liveNow: /\blive now\b/i.test(text) };
+      return { rank, username, diamonds: diamondsToNumber(diamondText), diamondText, liveNow: /\blive\s+now\b/i.test(rowText) };
     })
     .filter((row) => row.rank > 0 && row.rank <= 100 && row.username)
     .sort((a, b) => a.rank - b.rank)

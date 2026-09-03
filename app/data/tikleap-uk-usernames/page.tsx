@@ -157,6 +157,7 @@ export default function TikleapUkUsernamesPage() {
     () => countries.reduce((total, country) => total + country.usernames.length, 0),
     [countries]
   );
+  const liveCreatorCount = useMemo(() => Object.values(leagueRankings).flat().filter((row) => row.liveNow).length, [leagueRankings]);
   const downloadText = useMemo(() => allCountriesText(countries), [countries]);
   const sortedAvailabilityResults = useMemo(() => availabilityResults
     .filter((row) => !row.ignored)
@@ -331,7 +332,7 @@ export default function TikleapUkUsernamesPage() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <div className="flex overflow-hidden rounded-xl border border-white/15 text-xs font-black uppercase">
                 <button type="button" onClick={() => setLiveFilter("all")} className={`px-4 py-3 ${liveFilter === "all" ? "bg-green-300 text-black" : "bg-black/30 text-white/65"}`}>All creators</button>
-                <button type="button" onClick={() => setLiveFilter("live")} className={`px-4 py-3 ${liveFilter === "live" ? "bg-green-300 text-black" : "bg-black/30 text-white/65"}`}>Live only</button>
+                <button type="button" onClick={() => setLiveFilter("live")} className={`px-4 py-3 ${liveFilter === "live" ? "bg-green-300 text-black" : "bg-black/30 text-white/65"}`}>Live only{Object.keys(leagueRankings).length ? ` (${liveCreatorCount})` : ""}</button>
               </div>
               <button type="button" onClick={checkAvailability} disabled={!Object.keys(leagueRankings).length || availabilityLoading} className="rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:cursor-not-allowed disabled:opacity-45">
                 {availabilityLoading ? "Checking availability…" : "Check availability"}
