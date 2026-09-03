@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "First Class TickLeap Helper",
-  "version": "1.2.4",
-  "description": "Reads public UK TickLeap daily and live-league rankings for First Class Data Space.",
+  "version": "1.2.5",
+  "description": "Reads public UK and Australia TickLeap live-league rankings for First Class Data Space.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

@@ -83,7 +83,7 @@ async function checkAvailability(creators) {
   if (!next) throw new Error("Backstage did not show the availability step.");
   await clickThroughChrome(next);
   await pause(4000);
-  const statusPattern = /\b(?:Available|Regular|Premium|Ineligible|Not available|Network error)\b/i;
+  const statusPattern = /\b(?:Available|Regular|Premium|Ineligible|Not available|Multi[\s-]?account(?: risk)?|Network error)\b/i;
   const resultTextFor = (username) => [...dialog.querySelectorAll("*")]
     .map(visibleText)
     .filter((text) => text.includes(username) && statusPattern.test(text))
@@ -102,14 +102,16 @@ async function checkAvailability(creators) {
     // Workspace does not always render the word “Available”. Some versions show
     // the creator's Regular or Premium eligibility only. Either tier is a valid
     // availability result, unless the row explicitly says it is ineligible.
-    const explicitlyUnavailable = /\b(?:Ineligible|Not available|Network error)\b/i.test(text);
+    const explicitlyUnavailable = /\b(?:Ineligible|Not available|Multi[\s-]?account(?: risk)?|Network error)\b/i.test(text);
     const hasInviteTier = /\b(?:Regular|Premium)\b/i.test(text);
     const available = !explicitlyUnavailable && (/\bAvailable\b/i.test(text) || hasInviteTier);
     const reason = retry
       ? "Network error — retrying"
       : available
         ? ""
-        : text.match(/Ineligible\s+(.+?)(?:\s+Follow|$)/i)?.[1] || (text ? "Not available" : "Backstage did not return a final status");
+        : /multi[\s-]?account/i.test(text)
+          ? "Multi-account risk"
+          : text.match(/Ineligible\s+(.+?)(?:\s+Follow|$)/i)?.[1] || (text ? "Ineligible — other reason" : "Backstage did not return a final status");
     return { ...creator, available, invitationType: available ? (/\bPremium\b/i.test(text) ? "Premium" : "Regular") : "", reason, retry };
   });
   const close = findAll('button,[role="button"]', dialog)[0];
