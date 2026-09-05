@@ -8,6 +8,11 @@ const SETTINGS_NAME = "manager-assignment-settings";
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
 const key = (value: unknown) => text(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+// Manager Assignments can contain an agency address while the daily export
+// contains the same manager's Gmail or Outlook address. Their local identity
+// is stable, so use it to join the two sources.
+const managerIdentity = (value: unknown) => key(value).replace(/(outlook|gmail|mail)com$/, "");
+const isExcludedManager = (value: unknown) => managerIdentity(value) === "mikehalesjb";
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
 const date = (value: Date) => value.toISOString().slice(0, 10);
 const label = (raw: string) => {
@@ -37,15 +42,27 @@ export async function GET() {
     const end = new Date(`${endDate}T12:00:00`);
     const startDate = date(new Date(end.getFullYear(), end.getMonth(), 1, 12));
     const assignments = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[] } } | null)?.assignments || {});
-    const groups = assignments.managerGroups || {}, names = assignments.managerNames || {};
-    const deleted = new Set((assignments.deletedManagers || []).map(key));
+    const savedGroups = assignments.managerGroups || {};
+    const savedNames = assignments.managerNames || {};
+    const groupForManager = (manager: string) => Object.entries(savedGroups).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "Unassigned";
+    const nameForManager = (manager: string) => Object.entries(savedNames).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "";
+    const deleted = new Set((assignments.deletedManagers || []).map(managerIdentity));
     const managers = new Map<string, { key: string; name: string; group: string; diamonds: number }>();
+
+    // Begin with Manager Assignments so group filters always offer the full
+    // current roster, including a manager with no diamonds yet this month.
+    for (const [savedManager, group] of Object.entries(savedGroups)) {
+      const managerKey = managerIdentity(savedManager);
+      if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey) || group === "Recruitment" || group === "Excluded") continue;
+      managers.set(managerKey, { key: managerKey, name: nameForManager(savedManager) || label(savedManager), group, diamonds: 0 });
+    }
+
     for (const row of await rowsBetween(startDate, endDate)) {
-      const raw = managerRaw(row), managerKey = key(raw);
-      if (!managerKey || deleted.has(managerKey)) continue;
-      const group = groups[managerKey] || "Unassigned";
+      const raw = managerRaw(row), managerKey = managerIdentity(raw);
+      if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey)) continue;
+      const group = groupForManager(managerKey);
       if (group === "Recruitment" || group === "Excluded") continue;
-      const current = managers.get(managerKey) || { key: managerKey, name: names[managerKey] || label(raw), group, diamonds: 0 };
+      const current = managers.get(managerKey) || { key: managerKey, name: nameForManager(managerKey) || label(raw), group, diamonds: 0 };
       current.diamonds += number(row.diamonds || row.Diamonds);
       managers.set(managerKey, current);
     }
