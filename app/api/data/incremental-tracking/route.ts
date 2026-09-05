@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
-const SETTINGS_NAME = "incremental-data-tracking-2026-08";
+const SETTINGS_NAME = "incremental-data-tracking-2026-09";
 
 type Entry = {
   day: number;
@@ -19,7 +19,7 @@ function normalize(input: unknown): Entry[] {
     const day = Number(row.day);
     const diamonds = Number(row.diamonds);
     const prediction = Number(row.prediction);
-    if (!Number.isInteger(day) || day < 1 || day > 31 || !Number.isFinite(diamonds) || diamonds < 0 || !Number.isFinite(prediction)) continue;
+    if (!Number.isInteger(day) || day < 1 || day > 30 || !Number.isFinite(diamonds) || diamonds < 0 || !Number.isFinite(prediction)) continue;
     byDay.set(day, { day, diamonds, prediction, targetLabel: String(row.targetLabel || ""), savedAt: String(row.savedAt || new Date().toISOString()) });
   }
   return [...byDay.values()].sort((a, b) => a.day - b.day);
