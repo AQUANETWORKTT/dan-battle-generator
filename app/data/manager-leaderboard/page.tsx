@@ -19,7 +19,7 @@ export default function ManagerLeaderboardPage() {
 
   async function load() {
     setStatus("LOADING MANAGER TOTALS...");
-    const response = await fetch("/api/data-analysis/recruitment-leaderboard?includeKjb=1", { cache: "no-store" });
+    const response = await fetch("/api/data-analysis/manager-leaderboard", { cache: "no-store" });
     const result = await response.json();
     if (!response.ok) return setStatus(result.error || "COULD NOT LOAD MANAGER TOTALS.");
     setData({ month: result.month, groups: result.groups, managers: (result.managers || []).sort((first: Manager, second: Manager) => second.diamonds - first.diamonds || first.name.localeCompare(second.name)) });
