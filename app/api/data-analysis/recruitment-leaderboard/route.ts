@@ -9,7 +9,10 @@ const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
 const key = (value: unknown) => text(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 const managerIdentity = (value: unknown) => key(value).replace(/(outlook|gmail|mail)com$/, "");
-const isExcludedManager = (value: unknown) => managerIdentity(value) === "mikehalesjb";
+// KJB remains assigned to Team Dan / James elsewhere, but is not part of the
+// recruitment leaderboard or its recruitment totals.
+const RECRUITMENT_EXCLUDED_MANAGER_KEYS = new Set(["mikehalesjb", "kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"]);
+const isExcludedManager = (value: unknown) => RECRUITMENT_EXCLUDED_MANAGER_KEYS.has(managerIdentity(value));
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
 const creatorId = (row: Row) => { const id = text(row.creator_id || row["Creator ID"]); return /^\d{8,}$/.test(id) ? id : key(row.creator_username || row["Creator's username"]); };
 const username = (row: Row) => text(row.creator_username || row["Creator's username"] || row.username).replace(/^@/, "");

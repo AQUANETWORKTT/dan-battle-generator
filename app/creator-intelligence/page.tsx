@@ -393,6 +393,9 @@ const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "terit
 const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
 const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
 const TEAM_DAN_CREATOR_KEYS = ["kayjb3"];
+// These managers remain part of Team Dan / James across the wider dashboard,
+// but their recruitment activity is intentionally not ranked or counted here.
+const RECRUITMENT_EXCLUDED_MANAGER_KEYS = ["kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"];
 const EXCLUDED_LEADERBOARD_CREATOR_KEYS = ["allannahunknown444", "lucylou449", "lucyliu449"];
 const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
 
@@ -2952,7 +2955,12 @@ export default function CreatorIntelligencePage() {
   const recruitmentCreators = useMemo(
     () =>
       aquaSummaries
-        .filter((creator) => creator.daysSinceJoining > 0 && creator.daysSinceJoining <= 14)
+        .filter(
+          (creator) =>
+            creator.daysSinceJoining > 0 &&
+            creator.daysSinceJoining <= 14 &&
+            !hasManagerKey(creator.managerRaw, RECRUITMENT_EXCLUDED_MANAGER_KEYS)
+        )
         .sort((a, b) => b.diamonds - a.diamonds),
     [aquaSummaries]
   );
