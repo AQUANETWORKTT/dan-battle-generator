@@ -12,6 +12,15 @@ const key = (value: unknown) => text(value).toLowerCase().replace(/[^a-z0-9]/g, 
 // contains the same manager's Gmail or Outlook address. Their local identity
 // is stable, so use it to join the two sources.
 const managerIdentity = (value: unknown) => key(value).replace(/(outlook|gmail|mail)com$/, "");
+// KJB is part of the Dan & James management team. Keep their diamonds in the
+// team's total rather than rendering a second, standalone manager row.
+const KJB_MANAGER_IDENTITIES = new Set(["kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"]);
+// This is the normalised key for firstclassagency_dan@outlook.com, which is
+// the existing Dan / James row displayed on Manager Diamonds.
+const KJB_TEAM_KEY = "firstclassagencydan";
+const KJB_TEAM_NAME = "Dan / James";
+const KJB_TEAM_GROUP = "Team Dan / James";
+const isKjbManager = (value: unknown) => KJB_MANAGER_IDENTITIES.has(managerIdentity(value));
 const isExcludedManager = (value: unknown) => managerIdentity(value) === "mikehalesjb";
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
 const date = (value: Date) => value.toISOString().slice(0, 10);
@@ -53,16 +62,23 @@ export async function GET() {
     // current roster, including a manager with no diamonds yet this month.
     for (const [savedManager, group] of Object.entries(savedGroups)) {
       const managerKey = managerIdentity(savedManager);
-      if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey) || group === "Recruitment" || group === "Excluded") continue;
+      if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey) || isKjbManager(managerKey) || group === "Recruitment" || group === "Excluded") continue;
       managers.set(managerKey, { key: managerKey, name: nameForManager(savedManager) || label(savedManager), group, diamonds: 0 });
     }
 
     for (const row of await rowsBetween(startDate, endDate)) {
-      const raw = managerRaw(row), managerKey = managerIdentity(raw);
-      if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey)) continue;
-      const group = groupForManager(managerKey);
+      const raw = managerRaw(row);
+      const sourceManagerKey = managerIdentity(raw);
+      if (!sourceManagerKey || deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)) continue;
+      const managerKey = isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
+      const group = isKjbManager(sourceManagerKey) ? KJB_TEAM_GROUP : groupForManager(sourceManagerKey);
       if (group === "Recruitment" || group === "Excluded") continue;
-      const current = managers.get(managerKey) || { key: managerKey, name: nameForManager(managerKey) || label(raw), group, diamonds: 0 };
+      const current = managers.get(managerKey) || {
+        key: managerKey,
+        name: isKjbManager(sourceManagerKey) ? KJB_TEAM_NAME : nameForManager(sourceManagerKey) || label(raw),
+        group,
+        diamonds: 0,
+      };
       current.diamonds += number(row.diamonds || row.Diamonds);
       managers.set(managerKey, current);
     }

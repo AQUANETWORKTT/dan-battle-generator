@@ -393,9 +393,11 @@ const EXCLUDED_MANAGER_KEYS = ["rhiannonslaterjohnson", "harringtonzak1", "terit
 const EXCLUDED_DATA_MANAGER_KEYS = ["cscott1232005"];
 const NO_MANAGER_ON_BACKSTAGE_KEYS = ["firstclassagencyjacob"];
 const TEAM_DAN_CREATOR_KEYS = ["kayjb3"];
-// These managers remain part of Team Dan / James across the wider dashboard,
-// but their recruitment activity is intentionally not ranked or counted here.
-const RECRUITMENT_EXCLUDED_MANAGER_KEYS = ["kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"];
+// KJB is reported under the Dan & James team in recruitment views rather than
+// as a separate manager. Keep the historical aliases for older exports.
+const KJB_RECRUITMENT_MANAGER_KEYS = ["kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"];
+const KJB_RECRUITMENT_TEAM_KEY = "team-dan-james";
+const KJB_RECRUITMENT_TEAM_NAME = "Dan & James";
 const EXCLUDED_LEADERBOARD_CREATOR_KEYS = ["allannahunknown444", "lucylou449", "lucyliu449"];
 const LEGACY_EXCLUDED_MANAGER_LABELS = ["mikeindi", "firstclassdan"];
 
@@ -406,6 +408,10 @@ function normalizeManagerKey(value: string) {
 function hasManagerKey(value: string, keys: string[]) {
   const normalized = normalizeManagerKey(value);
   return keys.some((key) => normalized.includes(key));
+}
+
+function isKjbRecruitmentManager(value: string) {
+  return hasManagerKey(value, KJB_RECRUITMENT_MANAGER_KEYS);
 }
 
 function getFirstClassManagerDetails(
@@ -2955,12 +2961,7 @@ export default function CreatorIntelligencePage() {
   const recruitmentCreators = useMemo(
     () =>
       aquaSummaries
-        .filter(
-          (creator) =>
-            creator.daysSinceJoining > 0 &&
-            creator.daysSinceJoining <= 14 &&
-            !hasManagerKey(creator.managerRaw, RECRUITMENT_EXCLUDED_MANAGER_KEYS)
-        )
+        .filter((creator) => creator.daysSinceJoining > 0 && creator.daysSinceJoining <= 14)
         .sort((a, b) => b.diamonds - a.diamonds),
     [aquaSummaries]
   );
@@ -2972,8 +2973,8 @@ export default function CreatorIntelligencePage() {
       grouped.set(key, [...(grouped.get(key) || []), creator]);
     }
     const excludedGroups = new Set(["Excluded", "Recruitment", "New Managers"]);
-    return assignedManagers
-      .filter((manager) => !excludedGroups.has(manager.group))
+    const managerRows = assignedManagers
+      .filter((manager) => !excludedGroups.has(manager.group) && !isKjbRecruitmentManager(manager.key))
       .map((manager) => {
         const creators = grouped.get(manager.key) || [];
         const diamonds = creators.reduce((total, creator) => total + creator.diamonds, 0);
@@ -2986,8 +2987,21 @@ export default function CreatorIntelligencePage() {
           diamonds,
           averageDph: hours > 0 ? diamonds / hours : 0,
         };
-      })
-      .sort((a, b) => b.averageDph - a.averageDph || b.recruits - a.recruits);
+      });
+    const kjbCreators = recruitmentCreators.filter((creator) => isKjbRecruitmentManager(creator.managerRaw));
+    if (kjbCreators.length) {
+      const diamonds = kjbCreators.reduce((total, creator) => total + creator.diamonds, 0);
+      const hours = kjbCreators.reduce((total, creator) => total + creator.liveHours, 0);
+      managerRows.push({
+        key: KJB_RECRUITMENT_TEAM_KEY,
+        manager: KJB_RECRUITMENT_TEAM_NAME,
+        group: "Team Dan / James",
+        recruits: kjbCreators.length,
+        diamonds,
+        averageDph: hours > 0 ? diamonds / hours : 0,
+      });
+    }
+    return managerRows.sort((a, b) => b.averageDph - a.averageDph || b.recruits - a.recruits);
   }, [assignedManagers, managerNames, recruitmentCreators]);
 
   const recruitmentAgencyQuality = useMemo(() => {
@@ -3026,7 +3040,12 @@ export default function CreatorIntelligencePage() {
   );
 
   const expandedRecruitmentCreators = useMemo(
-    () => recruitmentCreators.filter((creator) => normalizeManagerKey(creator.managerRaw) === expandedRecruitmentManager),
+    () =>
+      recruitmentCreators.filter((creator) =>
+        expandedRecruitmentManager === KJB_RECRUITMENT_TEAM_KEY
+          ? isKjbRecruitmentManager(creator.managerRaw)
+          : normalizeManagerKey(creator.managerRaw) === expandedRecruitmentManager
+      ),
     [expandedRecruitmentManager, recruitmentCreators]
   );
 
