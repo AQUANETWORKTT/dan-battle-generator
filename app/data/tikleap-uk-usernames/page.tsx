@@ -327,7 +327,7 @@ export default function TikleapUkUsernamesPage() {
 
           <section className="rounded-3xl border border-sky-300/25 bg-sky-300/10 p-6">
             <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-200/70">Tikleap</p>
-            <h1 className="mt-3 text-4xl font-black uppercase text-cyan-200 md:text-6xl">🔎 Creator Search</h1>
+            <h1 className="mt-3 text-4xl font-black uppercase text-cyan-200 md:text-6xl">🔎 League Checker</h1>
             <p className="mt-3 max-w-3xl text-white/60">
               Pull daily rankings or selected live leagues, then check creator availability in Backstage without sending invitations.
             </p>

@@ -43,8 +43,11 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
     { href: "/data/recruitment-quality", number: "19", label: "Recruitment", title: "Recruitment Quality", description: "Review 14-day recruitment quality by agency, manager and creator DPH.", accent: "purple" },
     { href: "/data/sub-agency-metrics", number: "20", label: "Agency reporting", title: "Agency Diamond Metrics", description: "See month-to-date diamonds, recruitment contribution and growth across First Class and each sub-agency.", accent: "yellow" },
   ] },
+  { title: "Creator Recruitment", description: "Find and review potential creators from Tikleap rankings without leaving Data Space.", accent: "sky", workspaces: [
+    { href: "/daily-rankings", number: "06", label: "Tikleap", title: "League Checker", description: "Use the original Tikleap daily-ranking and live-league checker.", accent: "sky" },
+    { href: "/data/creator-recruitment", number: "29", label: "Tikleap", title: "Rankings Checker", description: "Browse Tikleap rankings or live leagues, then check eligibility without leaving Data Space.", accent: "sky" },
+  ] },
   { title: "Leaderboards", description: "Daily posters and manager performance leaderboards.", accent: "yellow", workspaces: [
-    { href: "/daily-rankings", number: "06", label: "Tikleap", title: "Daily Rankings", description: "Pull yesterday's UK Tikleap rankings, then copy or download the usernames.", accent: "sky" },
     { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Posters", description: "Build and download yesterday's top diamonds and live-hours posters.", accent: "yellow" },
     { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Leaderboard", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
     { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
@@ -61,7 +64,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
 ];
 
-const order = ["Our Data Space", "Leaderboards", "Creator/Agency Targets", "Creator Analysis", "Events", "Management", "Data Settings"];
+const order = ["Our Data Space", "Leaderboards", "Creator Recruitment", "Creator/Agency Targets", "Creator Analysis", "Events", "Management", "Data Settings"];
 
 export default function DataMenuPage() {
   return <DataAccessGuard><main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8"><div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.16),transparent_27%),radial-gradient(circle_at_0%_100%,rgba(250,204,21,0.12),transparent_30%)]" /><div className="relative mx-auto max-w-7xl">
