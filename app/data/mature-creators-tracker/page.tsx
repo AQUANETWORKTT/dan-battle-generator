@@ -29,10 +29,16 @@ type CreatorMonthTotal = {
   username: string;
   agency: string;
   team: string;
+  managerEmail: string;
   diamonds: number;
   liveHours: number;
   validDays: number;
   latestDate: string;
+};
+
+type ManagerAssignmentsResponse = {
+  managerGroups?: Record<string, string>;
+  managers?: Array<{ key: string; group: string }>;
 };
 
 type MatureMonthTotal = {
@@ -123,6 +129,17 @@ function creatorIdentity(row: Pick<CreatorStat, "creator_id" | "creator_username
   return creatorId ? `id:${creatorId}` : `username:${String(row.creator_username || "").trim().toLowerCase()}`;
 }
 
+function managerKey(value: unknown) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function assignedAgencyGroups(data: ManagerAssignmentsResponse | null) {
+  const excluded = new Set(["Recruitment", "Exempt", "Excluded", "New Managers"]);
+  return Array.from(new Set((data?.managers || [])
+    .map((manager) => manager.group)
+    .filter((group) => group && !excluded.has(group)))).sort();
+}
+
 function formatNumber(value: number) {
   return Math.round(value).toLocaleString();
 }
@@ -193,6 +210,7 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
         username: String(row.creator_username || "").trim(),
         agency,
         team,
+        managerEmail: String(row.manager_email || "").trim(),
         diamonds: safeNumber(row.diamonds),
         liveHours: safeNumber(row.live_hours),
         validDays: getValidDayValue(row),
@@ -209,6 +227,7 @@ function monthlyTotalsByCreator(rows: CreatorStat[]) {
       existing.username = String(row.creator_username || "").trim() || existing.username;
       existing.agency = agency;
       existing.team = team;
+      existing.managerEmail = String(row.manager_email || "").trim() || existing.managerEmail;
       existing.latestDate = row.stat_date;
     }
   }
@@ -235,6 +254,7 @@ function matureTotalsByCreator(rows: MatureMonthTotal[], historicRows: CreatorSt
       username,
       agency: String(row.agency || "First Class"),
       team: String(row.team || "Unassigned"),
+      managerEmail: "",
       diamonds: safeNumber(row.diamonds),
       liveHours: 0,
       validDays: 0,
@@ -253,6 +273,7 @@ export default function MatureCreatorsTrackerPage() {
   const [previousRows, setPreviousRows] = useState<CreatorStat[]>([]);
   const [previousMonthTotals, setPreviousMonthTotals] = useState<MatureMonthTotal[]>([]);
   const [currentRows, setCurrentRows] = useState<CreatorStat[]>([]);
+  const [managerAssignments, setManagerAssignments] = useState<ManagerAssignmentsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingPreviousMonth, setUploadingPreviousMonth] = useState(false);
   const [message, setMessage] = useState("");
@@ -271,18 +292,22 @@ export default function MatureCreatorsTrackerPage() {
       setMessage("");
 
       try {
-        const [previousData, currentData, matureTotals] = await Promise.all([
+        const [previousData, currentData, matureTotals, assignmentsData] = await Promise.all([
           fetchMonthRows(previousMonth),
           fetchMonthRows(month),
           fetchMatureMonthTotals(previousMonth).catch((error) => {
             console.error(error);
             return [] as MatureMonthTotal[];
           }),
+          fetch("/api/data-analysis/manager-assignments", { cache: "no-store" })
+            .then(async (response) => response.ok ? response.json() as Promise<ManagerAssignmentsResponse> : null)
+            .catch(() => null),
         ]);
 
         setPreviousRows(previousData);
         setCurrentRows(currentData);
         setPreviousMonthTotals(matureTotals);
+        setManagerAssignments(assignmentsData);
       } catch (error) {
         console.error(error);
         setPreviousRows([]);
@@ -319,9 +344,12 @@ export default function MatureCreatorsTrackerPage() {
         const canMaintain = maintainNeeded === 0 && daysNeeded === 0 && hoursNeeded === 0;
         const canRankUp = rankUpNeeded === 0 && daysNeeded === 0 && hoursNeeded === 0;
 
+        const assignedGroup = managerAssignments?.managerGroups?.[managerKey(current?.managerEmail || previous.managerEmail)];
         return {
           username: current?.username || previous.username,
-          agency: current?.agency || previous.agency,
+          // Manager Assignments is the authoritative agency classification.
+          // Uploaded agency labels can be stale after a creator moves teams.
+          agency: assignedGroup || current?.agency || previous.agency,
           team: current?.team || previous.team,
           previousDiamonds,
           currentDiamonds,
@@ -354,12 +382,12 @@ export default function MatureCreatorsTrackerPage() {
       })
       .filter((row) => row.previousDiamonds >= MATURE_ENTRY_DIAMONDS)
       .sort((a, b) => b.progressPercent - a.progressPercent || b.currentDiamonds - a.currentDiamonds);
-  }, [currentRows, previousMonthTotals, previousRows, remainingDays]);
+  }, [currentRows, managerAssignments, previousMonthTotals, previousRows, remainingDays]);
 
   const agencies = useMemo(() => {
-    const values = Array.from(new Set(trackerRows.map((row) => row.agency))).sort();
+    const values = assignedAgencyGroups(managerAssignments);
     return ["All Agencies", ...values];
-  }, [trackerRows]);
+  }, [managerAssignments]);
 
   const filteredRows = useMemo(() => {
     return trackerRows.filter((row) => agency === "All Agencies" || row.agency === agency);
