@@ -84,7 +84,7 @@ async function checkAvailability(creators) {
   await clickThroughChrome(next);
   await pause(4000);
   const multiAccountPattern = /\bmulti(?:ple)?[\s-]?account(?: risk)?\b/i;
-  const statusPattern = /\b(?:Available|Regular|Premium|Ineligible|Not available|Multi(?:ple)?[\s-]?account(?: risk)?|Network error)\b/i;
+  const statusPattern = /\b(?:Available|Regular|Premium|Ineligible|Not available|Unsupported?\s+region|Region\s+not\s+supported|Multi(?:ple)?[\s-]?account(?: risk)?|Network error)\b/i;
   const resultTextFor = (username) => [...dialog.querySelectorAll("*")]
     .map(visibleText)
     .filter((text) => text.toLowerCase().includes(username.toLowerCase()) && statusPattern.test(text))
@@ -103,7 +103,7 @@ async function checkAvailability(creators) {
     // Workspace does not always render the word “Available”. Some versions show
     // the creator's Regular or Premium eligibility only. Either tier is a valid
     // availability result, unless the row explicitly says it is ineligible.
-    const explicitlyUnavailable = /\b(?:Ineligible|Not available|Multi(?:ple)?[\s-]?account(?: risk)?|Network error)\b/i.test(text);
+    const explicitlyUnavailable = /\b(?:Ineligible|Not available|Unsupported?\s+region|Region\s+not\s+supported|Multi(?:ple)?[\s-]?account(?: risk)?|Network error)\b/i.test(text);
     const hasInviteTier = /\b(?:Regular|Premium)\b/i.test(text);
     const available = !explicitlyUnavailable && (/\bAvailable\b/i.test(text) || hasInviteTier);
     const multipleAccountRisk = multiAccountPattern.test(text);
