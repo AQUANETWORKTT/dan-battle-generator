@@ -39,9 +39,16 @@ function readLeagueRankings() {
   const rows = [...document.querySelectorAll('a[href*="/profile/"]')]
     .map((link) => {
       const username = link.href.match(/\/profile\/([^/?#]+)/i)?.[1] || "";
-      const text = (link.textContent || "").replace(/\s+/g, " ").trim();
+      let card = link;
+      for (let depth = 0; card && depth < 5; depth += 1, card = card.parentElement) {
+        const candidate = (card.innerText || card.textContent || "").replace(/\s+/g, " ").trim();
+        if (candidate.length > 450) break;
+        if (/\d/.test(candidate)) { link.__leagueCardText = candidate; break; }
+      }
+      const text = (link.__leagueCardText || link.textContent || "").replace(/\s+/g, " ").trim();
       const rank = Number(text.match(/^(\d+)\b/)?.[1] || 0);
-      const diamondText = text.match(/(\d+(?:\.\d+)?[KMB]?)\s*$/i)?.[1] || "";
+      const numericValues = [...text.matchAll(/(?:^|\s)(\d[\d,]*(?:\.\d+)?[KMB]?)\s*$/gi)];
+      const diamondText = numericValues.at(-1)?.[1]?.replace(/,/g, "") || "";
       return { rank, username, diamonds: diamondsToNumber(diamondText), diamondText, liveNow: isLiveNow(link) };
     })
     .filter((row) => row.rank > 0 && row.rank <= 100 && row.username)

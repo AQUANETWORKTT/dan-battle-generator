@@ -10,7 +10,7 @@ const RETIRED_MANAGER_KEYS = new Set(["bmwe46320dhotmailcouk"]);
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
-type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string> };
+type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string>; recruitmentAdjustments: Record<string, number> };
 
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) {
@@ -60,7 +60,12 @@ function normalize(input: unknown): SavedAssignments {
     const savedTimestamp = clean(timestamp);
     if (savedTimestamp) assignedAt[key(manager)] = savedTimestamp;
   }
-  return { managerGroups, managerNames, deletedManagers, ownerManagers, assignedAt };
+  const recruitmentAdjustments: Record<string, number> = {};
+  for (const [manager, adjustment] of Object.entries(value.recruitmentAdjustments as Record<string, unknown> || {})) {
+    const amount = Number(adjustment);
+    if (Number.isInteger(amount) && amount !== 0) recruitmentAdjustments[key(manager)] = amount;
+  }
+  return { managerGroups, managerNames, deletedManagers, ownerManagers, assignedAt, recruitmentAdjustments };
 }
 
 export async function GET() {

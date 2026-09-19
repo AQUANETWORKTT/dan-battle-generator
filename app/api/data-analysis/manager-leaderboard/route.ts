@@ -22,6 +22,12 @@ const KJB_TEAM_NAME = "Dan / James";
 const KJB_TEAM_GROUP = "Team Dan / James";
 const isKjbManager = (value: unknown) => KJB_MANAGER_IDENTITIES.has(managerIdentity(value));
 const isExcludedManager = (value: unknown) => managerIdentity(value) === "mikehalesjb";
+// Brandy has left the agency. Keep all of her existing monthly credit with
+// Team Kyran instead of dropping it because Brandy is now excluded.
+const BRANDY_IDENTITIES = new Set(["brandyfalconer33", "brandyfalconer35"]);
+const KYRAN_MANAGER_KEY = "firstclassagencykyran";
+const KYRAN_MANAGER_NAME = "Team Kyran";
+const isBrandyManager = (value: unknown) => BRANDY_IDENTITIES.has(managerIdentity(value));
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
 const date = (value: Date) => value.toISOString().slice(0, 10);
 const label = (raw: string) => {
@@ -69,13 +75,13 @@ export async function GET() {
     for (const row of await rowsBetween(startDate, endDate)) {
       const raw = managerRaw(row);
       const sourceManagerKey = managerIdentity(raw);
-      if (!sourceManagerKey || deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)) continue;
-      const managerKey = isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
-      const group = isKjbManager(sourceManagerKey) ? KJB_TEAM_GROUP : groupForManager(sourceManagerKey);
+      if (!sourceManagerKey || (!isBrandyManager(sourceManagerKey) && (deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)))) continue;
+      const managerKey = isBrandyManager(sourceManagerKey) ? KYRAN_MANAGER_KEY : isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
+      const group = isBrandyManager(sourceManagerKey) ? groupForManager(KYRAN_MANAGER_KEY) : isKjbManager(sourceManagerKey) ? KJB_TEAM_GROUP : groupForManager(sourceManagerKey);
       if (group === "Recruitment" || group === "Excluded") continue;
       const current = managers.get(managerKey) || {
         key: managerKey,
-        name: isKjbManager(sourceManagerKey) ? KJB_TEAM_NAME : nameForManager(sourceManagerKey) || label(raw),
+        name: isBrandyManager(sourceManagerKey) ? KYRAN_MANAGER_NAME : isKjbManager(sourceManagerKey) ? KJB_TEAM_NAME : nameForManager(sourceManagerKey) || label(raw),
         group,
         diamonds: 0,
       };

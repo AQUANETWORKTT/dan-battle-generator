@@ -208,25 +208,32 @@ const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
 // The upload currently identifies Georgia as georgialilly.glow@gmail.com
 // (with a double "l"), so retain both known spellings for Team Gee.
 const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "georgialillyglow", "lisaruss1988"];
+const BRANDY_MANAGER_KEYS = ["brandyfalconer33", "brandyfalconer35"];
+const KYRAN_MANAGER_KEY = "firstclassagencykyranoutlookcom";
+
+function effectiveManagerKey(row: CreatorStat) {
+  const raw = getManagerKey(row).replace(/[^a-z0-9]/g, "");
+  return BRANDY_MANAGER_KEYS.some((key) => raw.includes(key)) ? KYRAN_MANAGER_KEY : raw;
+}
 
 function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
   const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
   if (managerKey === "team-dan") return isTeamDanRow(row);
   if (managerKey === "combined:lisa-g") {
-    const rowManagerKey = getManagerKey(row).replace(/[^a-z0-9]/g, "");
+    const rowManagerKey = effectiveManagerKey(row);
     return TEAM_LISA_G_MANAGER_KEYS.some((key) => rowManagerKey.includes(key));
   }
   const selectedGroup = TEAM_POSTER_GROUP_SOURCES[managerKey];
   if (selectedGroup) {
-    return managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")] === selectedGroup;
+    return managerGroups[effectiveManagerKey(row)] === selectedGroup;
   }
   if (managerKey === "first-class-all") {
     // The whole-agency poster follows the current Manager Assignments
     // configuration, rather than a possibly stale agency value on the row.
-    const group = managerGroups[getManagerKey(row).replace(/[^a-z0-9]/g, "")];
+    const group = managerGroups[effectiveManagerKey(row)];
     return group === "Team Dan / James" || group === "Team Mike / Indi";
   }
-  return managerKeysMatch(getManagerKey(row), managerKey);
+  return managerKeysMatch(effectiveManagerKey(row), managerKey);
 }
 
 function createDefaultTemplate(): TeamPosterTemplate {
