@@ -8,6 +8,7 @@ const LEADERBOARD_SETTINGS = "new-creator-diamonds-leaderboard-settings";
 const clean = (value: unknown) => String(value || "").trim();
 const key = (value: unknown) => clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 const managerIdentity = (value: unknown) => key(value).replace(/(outlook|gmail|mail)com$/, "");
+const KJB_MANAGER_IDENTITIES = new Set(["kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"]);
 const label = (raw: string) => {
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim();
   return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : "Unassigned";
@@ -30,9 +31,9 @@ export async function GET() {
     const diamonds = ((leaderboardRow?.template_json as LeaderboardSettings | null)?.diamonds || {});
     const managers = Object.entries(groups)
       .map(([rawManager, group]) => ({ key: managerIdentity(rawManager), name: names[key(rawManager)] || label(rawManager), group }))
-      .filter((manager) => manager.key && !deleted.has(manager.key) && manager.group !== "Recruitment" && manager.group !== "Excluded")
+      .filter((manager) => manager.key && !KJB_MANAGER_IDENTITIES.has(manager.key) && !deleted.has(manager.key) && manager.group !== "Recruitment" && manager.group !== "Excluded")
       .map((manager) => ({ ...manager, diamonds: Math.max(0, Number(diamonds[manager.key]) || 0) }))
-      .sort((a, b) => b.diamonds - a.diamonds || a.name.localeCompare(b.name));
+      .sort((a, b) => a.name.localeCompare(b.name));
     return NextResponse.json({ groups: [...new Set(managers.map((manager) => manager.group))].sort(), managers });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load the new creator diamonds leaderboard." }, { status: 500 });

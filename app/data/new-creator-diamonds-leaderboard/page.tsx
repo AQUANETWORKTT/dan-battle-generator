@@ -16,7 +16,7 @@ export default function NewCreatorDiamondsLeaderboardPage() {
   const [status, setStatus] = useState("LOADING MANAGERS...");
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState("");
-  const managers = useMemo(() => data.managers.map((manager) => ({ ...manager, diamonds: Number(draftDiamonds[manager.key]) || 0 })).filter((manager) => !selected.length || selected.includes(manager.group)).sort((a, b) => b.diamonds - a.diamonds || a.name.localeCompare(b.name)), [data.managers, draftDiamonds, selected]);
+  const managers = useMemo(() => data.managers.map((manager) => ({ ...manager, diamonds: Number(draftDiamonds[manager.key]) || 0 })).filter((manager) => !selected.length || selected.includes(manager.group)).sort((a, b) => a.name.localeCompare(b.name)), [data.managers, draftDiamonds, selected]);
   const rows = useMemo(() => managers.map((manager) => ({ name: manager.name, value: Math.round(manager.diamonds).toLocaleString() })), [managers]);
 
   async function load() {
