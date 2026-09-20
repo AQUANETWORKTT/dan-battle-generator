@@ -9,6 +9,7 @@ const clean = (value: unknown) => String(value || "").trim();
 const key = (value: unknown) => clean(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 const managerIdentity = (value: unknown) => key(value).replace(/(outlook|gmail|mail)com$/, "");
 const KJB_MANAGER_IDENTITIES = new Set(["kaybon03", "kaybon03icloudcom", "kbon03", "kban03icloudcom"]);
+const MIKE_HALES_IDENTITY = "mikehalesjb";
 const label = (raw: string) => {
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim();
   return local ? `Team ${local.split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ")}` : "Unassigned";
@@ -30,8 +31,11 @@ export async function GET() {
     const deleted = new Set((assignments.deletedManagers || []).map(managerIdentity));
     const diamonds = ((leaderboardRow?.template_json as LeaderboardSettings | null)?.diamonds || {});
     const managers = Object.entries(groups)
-      .map(([rawManager, group]) => ({ key: managerIdentity(rawManager), name: names[key(rawManager)] || label(rawManager), group }))
-      .filter((manager) => manager.key && !KJB_MANAGER_IDENTITIES.has(manager.key) && !deleted.has(manager.key) && manager.group !== "Recruitment" && manager.group !== "Excluded")
+      .map(([rawManager, group]) => {
+        const managerKey = managerIdentity(rawManager);
+        return { key: managerKey, name: managerKey === MIKE_HALES_IDENTITY ? "Team Mike / Indi" : names[key(rawManager)] || label(rawManager), group };
+      })
+      .filter((manager) => manager.key && manager.key !== MIKE_HALES_IDENTITY && !KJB_MANAGER_IDENTITIES.has(manager.key) && !deleted.has(manager.key) && manager.group !== "Recruitment" && manager.group !== "Excluded")
       .map((manager) => ({ ...manager, diamonds: Math.max(0, Number(diamonds[manager.key]) || 0) }))
       .sort((a, b) => a.name.localeCompare(b.name));
     return NextResponse.json({ groups: [...new Set(managers.map((manager) => manager.group))].sort(), managers });
