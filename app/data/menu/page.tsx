@@ -50,6 +50,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   { title: "Leaderboards", description: "Daily posters and manager performance leaderboards.", accent: "yellow", workspaces: [
     { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Posters", description: "Build and download yesterday's top diamonds and live-hours posters.", accent: "yellow" },
     { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Leaderboard", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
+    { href: "/data/new-creator-diamonds-leaderboard", number: "30", label: "Manual totals", title: "Diamonds for New Creators", description: "Enter and save manual diamond totals for every manager, then download the matching leaderboard PNG.", accent: "emerald" },
     { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
   ] },
   { title: "Events", description: "Plan agency events and keep every campaign task in one place.", accent: "pink", workspaces: [
