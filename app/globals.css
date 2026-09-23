@@ -546,6 +546,38 @@ input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity
 input[type="date"] { cursor: pointer; }
 
 /* Clear, high-contrast onboarding checkboxes on the dark workspace. */
+
+/* Each onboarding task keeps its own height when a neighbouring detail panel opens. */
+.bg-\[\#13091f\] article .mt-6.grid {
+  align-items: start;
+}
+
+/* Onboarding task cards: a consistent, compact two-column control grid. */
+.bg-\[\#13091f\] article .mt-6.grid > * {
+  min-height: 64px;
+}
+
+/* Avoid the oversized pill treatment on the day and diamond read-outs. */
+.bg-\[\#13091f\] article > header > div:last-child {
+  align-items: flex-start;
+}
+
+.bg-\[\#13091f\] article > header > div:last-child > span {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  border: 1px solid rgba(216, 180, 254, .48);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: rgba(167, 139, 250, .12);
+}
+
+/* Onboarding detail controls are deliberately vivid and distinct from tasks. */
+.bg-\[\#13091f\] article .relative > div:first-child > button:last-child {
+  border-color: #c4b5fd;
+  background: #c4b5fd;
+  color: #090611;
+}
 input[type="checkbox"] { appearance: none; width: 19px; height: 19px; flex: 0 0 19px; border: 2px solid #fff; border-radius: 4px; background: #080806; cursor: pointer; }
 input[type="checkbox"]:checked { border-color: #facc15; background-color: #facc15; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4 4L19 6' fill='none' stroke='%23080806' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-position: center; background-repeat: no-repeat; background-size: 15px; }
 

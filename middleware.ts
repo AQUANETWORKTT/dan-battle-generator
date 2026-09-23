@@ -72,6 +72,15 @@ export function middleware(req: NextRequest) {
   // login cookie.
   const publicRoutes = ["/login", "/battle-network", "/api/login", "/api/battle-network", "/api/data-analysis/manager-assignments", "/api/management-onboarding", "/api/management-onboarding-upload", "/api/battle-calendar/reminders"];
 
+  const onboardingRoute = path === "/onboarding" || path.startsWith("/api/onboarding") || path.startsWith("/api/tiktok-avatar");
+  if (onboardingRoute && req.cookies.get("first-class-onboarding-auth")?.value === "true") {
+    return NextResponse.next();
+  }
+
+  if (path === "/onboarding") {
+    return NextResponse.redirect(new URL("/login/onboarding", req.url));
+  }
+
   if (path.startsWith("/management") && req.cookies.get("first-class-management-auth")?.value !== "true") {
     return NextResponse.redirect(new URL("/login/management", req.url));
   }

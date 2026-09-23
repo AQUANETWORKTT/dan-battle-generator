@@ -8,6 +8,7 @@ const cards = [
   { href: "/login/leadership", eyebrow: "FIRST CLASS", title: "LEADERSHIP", description: <>FOR OWNERS, HEAD OF OPERATIONS<br />AND SENIOR LEADERSHIP.</>, tone: "border-yellow-300/55 bg-yellow-300/15 hover:bg-yellow-300/25", label: "text-yellow-100" },
   { href: "/login/management", eyebrow: "FIRST CLASS", title: "CREATOR MANAGERS", description: <>TEAM POSTERS, ONBOARDING<br />AND TEAM HEALTH.</>, tone: "border-white/30 bg-black/65 hover:border-yellow-300/60 hover:bg-black/75", label: "text-yellow-100" },
   { href: "https://firstclassbattles.space", eyebrow: "AGENCY NETWORK", title: "BATTLE NETWORK", description: <>BATTLE SHEETS, MATCHING<br />AND POSTER DOWNLOADS.</>, tone: "border-sky-300/45 bg-sky-950/25 hover:border-sky-200 hover:bg-sky-900/30", label: "text-sky-100" },
+  { href: "/login/onboarding", eyebrow: "FIRST CLASS", title: "ONBOARDING", description: <>Onboarding new creators for the first 14 days of joining.</>, tone: "border-violet-300/45 bg-violet-950/30 hover:border-violet-200 hover:bg-violet-900/35", label: "text-violet-100" },
 ];
 
 export default function LoginPage() {
@@ -31,7 +32,7 @@ function LoginPageContent() {
           <p className="font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-wide text-white">FIRST CLASS <span className="text-yellow-300">SPACE</span></p>
           <p className="mt-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-100/60">AGENCY ACCESS</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {cards.map((card) => (
             <Link key={card.href} href={card.href} className={`flex min-h-[260px] flex-col rounded-2xl border p-7 text-white shadow-lg shadow-black/30 transition hover:-translate-y-1 ${card.tone}`}>
               <p className="text-xs font-black uppercase tracking-[.22em] text-yellow-200">{card.eyebrow}</p>

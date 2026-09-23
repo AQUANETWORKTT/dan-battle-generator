@@ -3,6 +3,19 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   const { password, area } = await req.json();
 
+  if (area === "onboarding") {
+    if (String(password || "").trim().toLowerCase() !== "ash1") return NextResponse.json({ success: false }, { status: 401 });
+
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("first-class-onboarding-auth", "true", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+    return response;
+  }
+
   if (area === "management") {
     if (password !== "CM123") return NextResponse.json({ success: false }, { status: 401 });
 
