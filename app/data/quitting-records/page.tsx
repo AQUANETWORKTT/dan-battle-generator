@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { jsPDF } from "jspdf";
 import DataAccessGuard from "../../components/DataAccessGuard";
 
 type Item = {
@@ -26,6 +27,7 @@ const parseUsernames = (value: string) =>
 
 export default function Page() {
   const [saved, setSaved] = useState<Item[]>([]);
+  const [managerNames, setManagerNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingNew, setLoadingNew] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -40,10 +42,11 @@ export default function Page() {
   async function loadRecords() {
     setLoading(true);
     try {
-      const r = await fetch("/api/data-analysis/quitting-records", { cache: "no-store" });
+      const [r, assignments] = await Promise.all([fetch("/api/data-analysis/quitting-records", { cache: "no-store" }), fetch("/api/data-analysis/manager-assignments", { cache: "no-store" })]);
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not load quitting records.");
       setSaved(d.records || []);
+      if (assignments.ok) { const data = await assignments.json(); setManagerNames(data.assignments?.managerNames || {}); }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load quitting records.");
     } finally {
@@ -90,6 +93,9 @@ export default function Page() {
   );
 
   function toggleGroup(name: string) { setSelectedGroups((current) => current.includes(name) ? current.filter((group) => group !== name) : [...current, name]); }
+  const managerLabel = (value: string) => managerNames[value.toLowerCase().replace(/[^a-z0-9]/g, "")] || value.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ");
+
+  function createQuitRecordPdf() { const pdf = new jsPDF({ unit: "pt", format: "a4" }); const byMonth = sortedShown.reduce<Record<string, Item[]>>((all, record) => { const month = (record.quitAt || record.createdAt).slice(0, 7); (all[month] ||= []).push(record); return all; }, {}); const page = () => { pdf.setFillColor(8, 7, 5); pdf.rect(0, 0, 595, 842, "F"); }; const drawMonth = (month: string, continuation = false) => { page(); pdf.setTextColor(244, 198, 91); pdf.setFontSize(10); pdf.text("FIRST CLASS AGENCY - MANAGEMENT", 42, 48); pdf.setTextColor(255, 255, 255); pdf.setFontSize(26); pdf.text(`${new Date(`${month}-01T12:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" }).toUpperCase()} QUIT RECORD${continuation ? " - CONTINUED" : ""}`, 42, 82); pdf.setTextColor(190, 168, 112); pdf.setFontSize(10); pdf.text("Early leavers only - creators who left before day 15", 42, 105); }; const line = (text: string, x: number, y: number, size = 9, color: [number, number, number] = [245, 241, 229]) => { pdf.setTextColor(...color); pdf.setFontSize(size); pdf.text(text, x, y); }; let firstPage = true; for (const month of Object.keys(byMonth).sort().reverse()) { if (!firstPage) pdf.addPage(); firstPage = false; drawMonth(month); let y = 140; const managers = Object.values(byMonth[month].reduce<Record<string, Item[]>>((all, record) => { const manager = managerLabel((record.managers || []).at(-1) || "Unassigned"); (all[manager] ||= []).push(record); return all; }, {})).sort((a, b) => String(b[0].quitAt || b[0].createdAt).localeCompare(String(a[0].quitAt || a[0].createdAt))); for (const records of managers) { records.sort((a, b) => String(b.quitAt || b.createdAt).localeCompare(String(a.quitAt || a.createdAt))); if (y > 710) { pdf.addPage(); drawMonth(month, true); y = 140; } const manager = managerLabel((records[0].managers || []).at(-1) || "Unassigned"); const diamonds = records.reduce((sum, record) => sum + (record.diamonds || 0), 0); pdf.setFillColor(49, 37, 15); pdf.rect(38, y - 16, 520, 23, "F"); line(`${manager.toUpperCase()} - ${records.length} QUIT${records.length === 1 ? "" : "S"} - ${fmt.format(diamonds)} DIAMONDS LOST`, 44, y, 9, [244, 198, 91]); y += 27; for (const record of records) { if (y > 780) { pdf.addPage(); drawMonth(month, true); y = 140; } line(`@${record.username}`, 44, y, 9); line(`Day ${record.daysSinceJoining || 0}`, 290, y, 9); line(`${fmt.format(record.diamonds || 0)} diamonds`, 360, y, 9); line((record.quitAt || record.createdAt).slice(0, 10), 485, y, 8, [190, 168, 112]); y += 22; } y += 12; } } pdf.save(`FIRST-CLASS-QUIT-RECORD-${selectedMonth === "ALL" ? "ALL-MONTHS" : selectedMonth}.pdf`); }
 
   async function detectAndSaveRecords() {
     setLoadingNew(true);
@@ -97,7 +103,7 @@ export default function Page() {
       const r = await fetch("/api/data-analysis/quitting-records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-and-save" }),
+        body: JSON.stringify({ action: "detect-and-save" }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not check the latest upload.");
@@ -178,9 +184,9 @@ export default function Page() {
             ← Data Space
           </Link>
 
-          <p className="mt-10 text-xs font-black uppercase tracking-[.25em] text-sky-200">Management</p>
+          <p className="mt-10 text-xs font-black uppercase tracking-[.25em] text-yellow-200">Management</p>
           <h1 className="mt-3 font-[family-name:var(--font-norwester)] text-5xl uppercase">
-            Quitting <span className="text-sky-300">Records</span>
+            Quitting <span className="text-yellow-300">Records</span>
           </h1>
             <p className="mt-4 max-w-3xl text-sm text-white/60">
             Shared, ongoing quit register. Paste creators in bulk, or automatically find creators missing from the newest full upload.
@@ -188,12 +194,12 @@ export default function Page() {
 
           <section className="mt-7">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-              <div className="rounded-xl border border-sky-300/25 bg-sky-300/10 p-4">
+              <div className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-4">
                 <p className="text-[10px] font-black uppercase text-white/55">Recorded quits ever</p>
-                <p className="mt-1 text-3xl font-black text-sky-100">{shown.length}</p>
+                <p className="mt-1 text-3xl font-black text-yellow-100">{shown.length}</p>
               </div>
               {summaryCounts.map(({ name, count }) => (
-                <button key={name} onClick={() => toggleGroup(name)} className={`rounded-xl border p-4 text-left ${selectedGroups.includes(name) ? "border-sky-300 bg-sky-300/15" : "border-white/10 bg-white/[.035]"}`}>
+                <button key={name} onClick={() => toggleGroup(name)} className={`rounded-xl border p-4 text-left ${selectedGroups.includes(name) ? "border-yellow-300 bg-yellow-300/15" : "border-white/10 bg-white/[.035]"}`}>
                   <p className="text-[10px] font-black uppercase text-white/55">{name}</p>
                   <p className="mt-1 text-3xl font-black text-white">{count}</p>
                 </button>
@@ -202,7 +208,7 @@ export default function Page() {
           </section>
 
           {message ? <p className="mt-4 text-xs font-black uppercase text-yellow-200">{message}</p> : null}
-          {loadingNew ? <p className="mt-4 text-xs font-black uppercase text-sky-200">Loading new records from uploaded history…</p> : null}
+          {loadingNew ? <p className="mt-4 text-xs font-black uppercase text-yellow-200">Loading new records from uploaded history…</p> : null}
 
           <section className="mt-10">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -211,7 +217,7 @@ export default function Page() {
                 <h2 className="mt-2 font-[family-name:var(--font-norwester)] text-3xl uppercase">Saved records</h2>
               </div>
 
-              <div className="flex flex-wrap gap-3"><select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className="rounded-xl border border-white/15 bg-black px-4 py-3 text-xs font-black uppercase text-white"><option value="ALL">All months</option>{months.map((month) => <option key={month} value={month}>{new Date(`${month}-01T12:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</option>)}</select><button onClick={() => setSort("recent")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "recent" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most recent</button><button onClick={() => setSort("diamonds")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "diamonds" ? "bg-sky-300 text-black" : "border border-white/15"}`}>Most diamonds</button></div>
+              <div className="flex flex-wrap gap-3"><button onClick={() => void detectAndSaveRecords()} disabled={loadingNew} className="rounded-xl bg-yellow-300 px-4 py-3 text-xs font-black uppercase text-black disabled:opacity-50">{loadingNew ? "Checking…" : "Find early quits"}</button><button onClick={createQuitRecordPdf} disabled={!sortedShown.length} className="rounded-xl border border-yellow-300/50 px-4 py-3 text-xs font-black uppercase text-yellow-100 disabled:opacity-50">Create Quit Record PDF</button><select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className="rounded-xl border border-white/15 bg-black px-4 py-3 text-xs font-black uppercase text-white"><option value="ALL">All months</option>{months.map((month) => <option key={month} value={month}>{new Date(`${month}-01T12:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</option>)}</select><button onClick={() => setSort("recent")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "recent" ? "bg-yellow-300 text-black" : "border border-white/15"}`}>Most recent</button><button onClick={() => setSort("diamonds")} className={`rounded-xl px-4 py-3 text-xs font-black uppercase ${sort === "diamonds" ? "bg-yellow-300 text-black" : "border border-white/15"}`}>Most diamonds</button></div>
             </div>
 
             <div className="mt-5 space-y-3">
@@ -228,12 +234,12 @@ export default function Page() {
                         </p>
                       </div>
                       <div className="flex shrink-0 items-start gap-3">
-                        <strong className="hidden text-right text-sm text-sky-200 sm:block">{fmt.format(r.diamonds || 0)} diamonds</strong>
+                        <strong className="hidden text-right text-sm text-yellow-200 sm:block">{fmt.format(r.diamonds || 0)} diamonds</strong>
                         <button
                           type="button"
                           onClick={() => openReasonEditor(r)}
                           aria-label={`${r.reason ? "Edit" : "Add"} quit reason for @${r.username}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-sky-300/30 bg-sky-300/10 text-lg font-black text-sky-100 hover:bg-sky-300/20"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-yellow-300/30 bg-yellow-300/10 text-lg font-black text-yellow-100 hover:bg-yellow-300/20"
                         >
                           +
                         </button>
@@ -269,7 +275,7 @@ export default function Page() {
                         </div>
                         <div className="rounded-xl bg-black/25 p-3">
                           <p className="text-[10px] font-black uppercase text-white/35">Recorded diamonds</p>
-                          <p className="mt-1 text-sm font-bold text-sky-200">{fmt.format(r.diamonds || 0)}</p>
+                          <p className="mt-1 text-sm font-bold text-yellow-200">{fmt.format(r.diamonds || 0)}</p>
                         </div>
                       </div>
                     )}
@@ -290,7 +296,7 @@ export default function Page() {
                             }
                           }}
                           placeholder="Quit reason (optional)"
-                          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-sky-300/60"
+                          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-sm outline-none focus:border-yellow-300/60"
                         />
                         <button
                           type="button"
@@ -307,7 +313,7 @@ export default function Page() {
               })}
 
               {loading ? (
-                <p className="rounded-xl border border-sky-300/25 bg-sky-300/[.06] p-5 text-sm font-bold text-sky-100">
+                <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/[.06] p-5 text-sm font-bold text-yellow-100">
                   Loading quitting records from uploaded history…
                 </p>
               ) : !sortedShown.length ? (
