@@ -1,5 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import LeaderboardClient from "./LeaderboardClient";
+
+// Keep the public leaderboard in its desktop composition on phones. Mobile
+// browsers scale the 1200px canvas down, while visitors can still pinch-zoom.
+export const viewport: Viewport = { width: 1200, themeColor: "#070608" };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://firstclassagency.space"),

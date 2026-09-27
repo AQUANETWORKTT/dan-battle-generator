@@ -1,4 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+
+// Match the leaderboard's fixed desktop composition on phone browsers.
+export const viewport: Viewport = { width: 1200, themeColor: "#070608" };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://firstclassagency.space"),
