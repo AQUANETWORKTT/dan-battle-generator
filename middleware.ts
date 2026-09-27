@@ -51,17 +51,27 @@ export function middleware(req: NextRequest) {
 
   const isEventsSpace = process.env.SITE_MODE === "events";
 
-  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/");
-  const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
-  const isManagementHost = host === "firstclassagency.management" || host === "www.firstclassagency.management";
+  if (isEventsSpace) {
+    const isCreatorRoute =
+      path === "/" ||
+      path.startsWith("/events") ||
+      path.startsWith("/live/") ||
+      path.startsWith("/api/events/") ||
+      path.startsWith("/api/race-to-the-top") ||
+      path.startsWith("/api/tiktok-avatar");
 
-  // Recruitment is a creator-facing First Class Space page. Always send
-  // management-domain links to the public space rather than its Leadership
-  // home, and keep its session limited to this one leaderboard.
-  if (isRecruitmentLeaderboard && isManagementHost) {
-    return NextResponse.redirect(new URL(`https://firstclassagency.space${path}${req.nextUrl.search}`, req.url));
+    if (!isCreatorRoute) {
+      return NextResponse.redirect(new URL("/events", req.url));
+    }
+
+    return NextResponse.next();
   }
 
+  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/");
+  const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
+
+  // This is a self-contained, manager-only page on the Management host. Its
+  // access cookie never unlocks the rest of the Management site.
   if (path === "/recruitment-leaderboard/access") {
     return NextResponse.next();
   }
@@ -72,21 +82,14 @@ export function middleware(req: NextRequest) {
       : NextResponse.redirect(new URL("/recruitment-leaderboard/access", req.url));
   }
 
-  if (isEventsSpace) {
-    const isCreatorRoute =
-      path === "/" ||
-      path.startsWith("/events") ||
-      path.startsWith("/live/") ||
-      path.startsWith("/api/events/") ||
-      path.startsWith("/api/race-to-the-top") ||
-      path === "/api/login" ||
-      path.startsWith("/api/tiktok-avatar");
+  const isRecruitmentOnlySession = req.cookies.get("first-class-recruitment-leaderboard-auth")?.value === "true";
+  const hasManagementSession = req.cookies.get("first-class-space-auth")?.value === "true" || req.cookies.get("first-class-management-auth")?.value === "true";
 
-    if (!isCreatorRoute) {
-      return NextResponse.redirect(new URL("/events", req.url));
-    }
-
-    return NextResponse.next();
+  // A visitor who has only entered the recruitment password must not be able
+  // to use browser history or a typed URL to reach the wider site. Their only
+  // valid destinations are the password screen and the leaderboard itself.
+  if (isRecruitmentOnlySession && !hasManagementSession) {
+    return new NextResponse("Not found", { status: 404 });
   }
 
   // The reminder route is still protected by CRON_SECRET inside the route
