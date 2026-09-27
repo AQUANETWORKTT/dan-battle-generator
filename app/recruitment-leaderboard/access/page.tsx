@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 
 export default function RecruitmentLeaderboardAccessPage() {
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +47,12 @@ export default function RecruitmentLeaderboardAccessPage() {
         </div>
         <label className="mt-8 block text-[11px] font-black uppercase tracking-[.18em] text-white/55">
           Enter access password
-          <input autoFocus required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="ENTER PASSWORD" className="mt-3 w-full rounded-xl border border-white/15 bg-black px-4 py-4 text-base text-white outline-none transition focus:border-[#f5ca62]" />
+          <div className="relative mt-3">
+            <input autoFocus required type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="ENTER PASSWORD" className="w-full rounded-xl border border-white/15 bg-black py-4 pl-4 pr-14 text-base text-white outline-none transition focus:border-[#f5ca62]" />
+            <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 flex w-14 items-center justify-center text-[#f5ca62]/75 transition hover:text-[#ffe39b]">
+              {showPassword ? <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-none stroke-current stroke-2"><path d="m3 3 18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c5.5 0 9.3 4.6 10 8-0.3 1.4-1.2 3-2.6 4.3M6.3 6.3C4.2 7.8 2.6 10 2 12c0.8 3.4 4.5 8 10 8 1.3 0 2.5-.2 3.5-.7" /></svg> : <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-none stroke-current stroke-2"><path d="M2 12s3.7-8 10-8 10 8 10 8-3.7 8-10 8S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>}
+            </button>
+          </div>
         </label>
         <button disabled={loading} className="mt-4 w-full rounded-xl bg-[#f5ca62] py-4 text-xs font-black uppercase tracking-[.18em] text-black transition hover:bg-[#ffe39b] disabled:opacity-50">{loading ? "Opening…" : "View leaderboard"}</button>
         {error ? <p className="mt-4 text-center text-xs font-black uppercase text-red-300">{error}</p> : null}
