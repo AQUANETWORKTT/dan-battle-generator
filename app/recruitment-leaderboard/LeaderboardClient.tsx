@@ -11,9 +11,16 @@ const displayName = (name: string) => name.replace(/^team\s+/i, "");
 export default function LeaderboardClient() {
   const [data, setData] = useState<Data>({ endDate: "", managers: [] });
   const [error, setError] = useState("");
+  const [hasTabAccess, setHasTabAccess] = useState(false);
   const managers = useMemo(() => data.managers.filter((manager) => eligibleGroups.has(manager.group) && !["teamdanjames", "firstclassagencydan", "firstclassagencyjames"].includes(manager.key) && manager.manager !== "Team Dan / James").sort((a, b) => b.recruits - a.recruits || b.diamonds - a.diamonds || a.manager.localeCompare(b.manager)), [data.managers]);
 
   useEffect(() => {
+    if (window.sessionStorage.getItem("first-class-recruitment-leaderboard-access") !== "true") {
+      window.location.replace("/recruitment-leaderboard/access");
+      return;
+    }
+
+    setHasTabAccess(true);
     fetch("/api/data-analysis/recruitment-leaderboard?period=month", { cache: "no-store" })
       .then(async (response) => {
         const result = await response.json() as Data;
@@ -22,6 +29,10 @@ export default function LeaderboardClient() {
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not load the leaderboard."));
   }, []);
+
+  if (!hasTabAccess) {
+    return <main className="min-h-screen bg-[#070608]" aria-label="Checking recruitment access" />;
+  }
 
   return <main className="min-h-screen bg-[#070608] bg-cover bg-fixed bg-center px-4 py-8 text-white sm:px-8 sm:py-12" style={{ backgroundImage: "linear-gradient(rgba(5,4,7,.88), rgba(5,4,7,.94)), url('/branding/first-class-data-bg.jpg')" }}>
     <div className="mx-auto max-w-5xl">

@@ -22,6 +22,9 @@ export default function RecruitmentLeaderboardAccessPage() {
         setError("INCORRECT PASSWORD");
         return;
       }
+      // Keep approval only in this browser tab. Opening the shared link in a
+      // new tab (or after closing the browser) always asks again.
+      window.sessionStorage.setItem("first-class-recruitment-leaderboard-access", "true");
       window.location.assign("/recruitment-leaderboard");
     } catch {
       setError("COULD NOT OPEN THE LEADERBOARD");

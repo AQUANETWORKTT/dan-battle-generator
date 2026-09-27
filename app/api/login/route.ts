@@ -30,7 +30,8 @@ export async function POST(req: Request) {
   }
 
   if (area === "recruitment-leaderboard") {
-    if (String(password || "").trim().toLowerCase() !== "fc26!") return NextResponse.json({ success: false }, { status: 401 });
+    const recruitmentPassword = String(password || "").trim().toLowerCase().replace(/\s+/g, "");
+    if (recruitmentPassword !== "fc26!") return NextResponse.json({ success: false }, { status: 401 });
 
     const response = NextResponse.json({ success: true });
     response.cookies.set("first-class-recruitment-leaderboard-auth", "true", {
@@ -38,7 +39,6 @@ export async function POST(req: Request) {
       // cookie must reach that route too. It is only accepted by the
       // recruitment leaderboard proxy checks, not the wider management site.
       path: "/",
-      maxAge: 60 * 60 * 24 * 30,
       httpOnly: true,
       sameSite: "lax",
     });
