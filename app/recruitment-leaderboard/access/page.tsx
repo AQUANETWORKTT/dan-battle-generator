@@ -14,10 +14,10 @@ export default function RecruitmentLeaderboardAccessPage() {
     setError("");
     setLoading(true);
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/recruitment-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, area: "recruitment-leaderboard" }),
+        body: JSON.stringify({ password }),
       });
       if (!response.ok) {
         setError("INCORRECT PASSWORD");

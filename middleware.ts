@@ -84,6 +84,7 @@ export function middleware(req: NextRequest) {
       path.startsWith("/api/events/") ||
       path.startsWith("/api/race-to-the-top") ||
       path === "/api/login" ||
+      path === "/api/recruitment-login" ||
       path.startsWith("/api/tiktok-avatar");
 
     if (!isCreatorRoute) {
