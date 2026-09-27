@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   }
 
   if (area === "recruitment-leaderboard") {
-    if (String(password || "").trim().toLowerCase() !== "fc 26!") return NextResponse.json({ success: false }, { status: 401 });
+    if (String(password || "").trim().toLowerCase() !== "fc26!") return NextResponse.json({ success: false }, { status: 401 });
 
     const response = NextResponse.json({ success: true });
     response.cookies.set("first-class-recruitment-leaderboard-auth", "true", {
