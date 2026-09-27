@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LeaderboardClient from "./LeaderboardClient";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://firstclassagency.management"),
+  metadataBase: new URL("https://firstclassagency.space"),
   title: "Recruitment Leaderboard | First Class Recruitment",
   description: "See your manager's monthly recruits and recruitment diamonds on the First Class Recruitment Leaderboard.",
   openGraph: {

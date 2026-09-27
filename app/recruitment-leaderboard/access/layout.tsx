@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://firstclassagency.management"),
+  metadataBase: new URL("https://firstclassagency.space"),
   title: "Recruitment Leaderboard | First Class Recruitment",
   description: "View your manager's monthly recruits and recruitment diamonds.",
   openGraph: {
