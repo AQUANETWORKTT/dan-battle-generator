@@ -29,6 +29,19 @@ export async function POST(req: Request) {
     return response;
   }
 
+  if (area === "recruitment-leaderboard") {
+    if (String(password || "").trim().toLowerCase() !== "fc 26!") return NextResponse.json({ success: false }, { status: 401 });
+
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("first-class-recruitment-leaderboard-auth", "true", {
+      path: "/recruitment-leaderboard",
+      maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+    return response;
+  }
+
   if (password !== "Dan44") {
     return NextResponse.json(
       { success: false },

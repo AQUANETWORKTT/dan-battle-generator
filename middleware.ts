@@ -85,6 +85,17 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login/management", req.url));
   }
 
+  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/");
+  const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
+  if (path === "/recruitment-leaderboard/access") {
+    return NextResponse.next();
+  }
+  if ((isRecruitmentLeaderboard || isRecruitmentLeaderboardApi) && req.cookies.get("first-class-recruitment-leaderboard-auth")?.value !== "true") {
+    return isRecruitmentLeaderboardApi
+      ? NextResponse.json({ error: "Recruitment leaderboard access required." }, { status: 401 })
+      : NextResponse.redirect(new URL("/recruitment-leaderboard/access", req.url));
+  }
+
   const isPublic = publicRoutes.some((route) => path.startsWith(route));
 
   if (isPublic) {
