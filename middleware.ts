@@ -51,6 +51,27 @@ export function middleware(req: NextRequest) {
 
   const isEventsSpace = process.env.SITE_MODE === "events";
 
+  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/");
+  const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
+  const isManagementHost = host === "firstclassagency.management" || host === "www.firstclassagency.management";
+
+  // Recruitment is a creator-facing First Class Space page. Always send
+  // management-domain links to the public space rather than its Leadership
+  // home, and keep its session limited to this one leaderboard.
+  if (isRecruitmentLeaderboard && isManagementHost) {
+    return NextResponse.redirect(new URL(`https://firstclassagency.space${path}${req.nextUrl.search}`, req.url));
+  }
+
+  if (path === "/recruitment-leaderboard/access") {
+    return NextResponse.next();
+  }
+
+  if ((isRecruitmentLeaderboard || isRecruitmentLeaderboardApi) && req.cookies.get("first-class-recruitment-leaderboard-auth")?.value !== "true") {
+    return isRecruitmentLeaderboardApi
+      ? NextResponse.json({ error: "Recruitment leaderboard access required." }, { status: 401 })
+      : NextResponse.redirect(new URL("/recruitment-leaderboard/access", req.url));
+  }
+
   if (isEventsSpace) {
     const isCreatorRoute =
       path === "/" ||
@@ -58,6 +79,7 @@ export function middleware(req: NextRequest) {
       path.startsWith("/live/") ||
       path.startsWith("/api/events/") ||
       path.startsWith("/api/race-to-the-top") ||
+      path === "/api/login" ||
       path.startsWith("/api/tiktok-avatar");
 
     if (!isCreatorRoute) {
@@ -83,17 +105,6 @@ export function middleware(req: NextRequest) {
 
   if (path.startsWith("/management") && req.cookies.get("first-class-management-auth")?.value !== "true") {
     return NextResponse.redirect(new URL("/login/management", req.url));
-  }
-
-  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/");
-  const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
-  if (path === "/recruitment-leaderboard/access") {
-    return NextResponse.next();
-  }
-  if ((isRecruitmentLeaderboard || isRecruitmentLeaderboardApi) && req.cookies.get("first-class-recruitment-leaderboard-auth")?.value !== "true") {
-    return isRecruitmentLeaderboardApi
-      ? NextResponse.json({ error: "Recruitment leaderboard access required." }, { status: 401 })
-      : NextResponse.redirect(new URL("/recruitment-leaderboard/access", req.url));
   }
 
   const isPublic = publicRoutes.some((route) => path.startsWith(route));

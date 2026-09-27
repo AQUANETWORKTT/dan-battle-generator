@@ -34,7 +34,10 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({ success: true });
     response.cookies.set("first-class-recruitment-leaderboard-auth", "true", {
-      path: "/recruitment-leaderboard",
+      // The leaderboard fetches its own protected data from /api, so this
+      // cookie must reach that route too. It is only accepted by the
+      // recruitment leaderboard proxy checks, not the wider management site.
+      path: "/",
       maxAge: 60 * 60 * 24 * 30,
       httpOnly: true,
       sameSite: "lax",

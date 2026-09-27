@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import LeaderboardClient from "./LeaderboardClient";
 
+const recruitmentDomain = process.env.SITE_MODE === "events" ? "https://firstclassagency.space" : "https://firstclassagency.management";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://firstclassagency.management"),
+  metadataBase: new URL(recruitmentDomain),
   title: "Recruitment Leaderboard | First Class Recruitment",
   description: "See your manager's monthly recruits and recruitment diamonds on the First Class Recruitment Leaderboard.",
   openGraph: {
