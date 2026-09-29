@@ -15,10 +15,12 @@ type EventCard = {
   finished?: boolean;
 };
 
-const currentEvents: EventCard[] = [];
+const currentEvents: EventCard[] = [
+  { name: "Race to the Top", status: "Reactivated · August", logo: "/race-to-the-top-logo-transparent.png", leaderboardHref: "/live/race-to-the-top", creatorHref: "/live/race-to-the-top", tone: "pink" },
+  { name: "Race to the Top October", status: "1–31 October", logo: "/race-to-the-top-october-logo-clean.png", leaderboardHref: "/live/race-to-the-top-october", creatorHref: "/live/race-to-the-top-october", tone: "yellow" },
+];
 
 const previousEvents: EventCard[] = [
-  { name: "Race to the Top", status: "Event finished", logo: "/race-to-the-top-logo-transparent.png", tone: "pink", finished: true },
   { name: "Crew Showdown", status: "Previous Event", logo: "/first-class/crew-showdown-logo.png", leaderboardHref: "/live/7xq9v2-first-class", creatorHref: "/live/7xq9v2-first-class", tone: "yellow" },
   { name: "Sunset Showdown", status: "Previous Event", logo: "/sunset-showdown/logo.png", leaderboardHref: "/live/8f3k2j9m-sunset", creatorHref: "/live/8f3k2j9m-sunset", tone: "yellow" },
   { name: "World Cup 2026", status: "Previous Event", logo: "/world-cup-2026/logo.png", leaderboardHref: "/live/world-cup-2026", creatorHref: "/live/world-cup-2026", tone: "emerald" },

@@ -5,6 +5,7 @@ type Event = { name: string; logo: string; detail: string; leaderboard: string; 
 
 const currentEvents: Event[] = [
   { name: "Race to the Top", logo: "/race-to-the-top-logo-transparent.png", detail: "Current creator maintenance-tier race and public progress page.", leaderboard: "/live/race-to-the-top" },
+  { name: "Race to the Top October", logo: "/race-to-the-top-october-logo-clean.png", detail: "October event design with Bronze, Silver, Gold and Platinum prize tiers.", leaderboard: "/live/race-to-the-top-october" },
 ];
 
 const previousEvents: Event[] = [
