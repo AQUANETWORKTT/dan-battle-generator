@@ -4,10 +4,10 @@ import { useState } from "react";
 
 type Tier = { name: string; range: string; prize: string; color: string; targets: string[]; note?: string };
 const tiers: Tier[] = [
-  { name: "Bronze", range: "0 – 199,999 September diamonds", prize: "£50", color: "#e08b4c", targets: ["100,000 diamonds", "11 valid live days", "30 live hours", "100 followers"] },
-  { name: "Silver", range: "200,000 – 299,999 September diamonds", prize: "£75", color: "#e4e8ef", targets: ["200,000 diamonds", "15 valid live days", "40 live hours", "150 followers"] },
-  { name: "Gold", range: "300,000 – 499,999 September diamonds", prize: "£125", color: "#f6bd37", targets: ["300,000 diamonds", "18 valid live days", "60 live hours", "200 followers"] },
-  { name: "Platinum", range: "Maintained creators", prize: "£250", color: "#dbb7ff", targets: ["Individual maintain target", "22 valid live days", "80 live hours", "250 followers"], note: "Maintained-creator list to be added." },
+  { name: "Bronze", range: "Under 100,000 September diamonds", prize: "£50", color: "#e08b4c", targets: ["100,000 diamonds", "8 valid live days", "20 live hours", "75 followers"] },
+  { name: "Silver", range: "100,000 – 199,999 September diamonds", prize: "£75", color: "#e4e8ef", targets: ["100,000 diamonds", "11 valid live days", "30 live hours", "100 followers"] },
+  { name: "Gold", range: "200,000 – 499,999 September diamonds", prize: "£125", color: "#f6bd37", targets: ["300,000 diamonds", "18 valid live days", "60 live hours", "200 followers"] },
+  { name: "Platinum", range: "500,000+ September diamonds · Maintain target", prize: "£250", color: "#dbb7ff", targets: ["Individual maintain target", "22 valid live days", "80 live hours", "250 followers"], note: "Maintained-creator list to be added." },
 ];
 
 export default function RaceToTheTopOctoberPage() {
