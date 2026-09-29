@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://firstclassagency.space"),
   title,
   description,
-  openGraph: { title: "Race to the Top — October", description, siteName: "First Class Event Space", images: [{ url: "/race-to-the-top-october-logo-clean.png", alt: "Race to the Top" }] },
-  twitter: { card: "summary_large_image", title: "Race to the Top — October", description, images: ["/race-to-the-top-october-logo-clean.png"] },
+  openGraph: { title: "Race to the Top — October", description, siteName: "First Class Event Space" },
+  twitter: { card: "summary_large_image", title: "Race to the Top — October", description },
 };
 
 export default function Layout({ children }: Readonly<{ children: React.ReactNode }>) { return children; }
