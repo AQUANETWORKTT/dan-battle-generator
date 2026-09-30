@@ -4,10 +4,11 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 export const dynamic = "force-dynamic";
 
 const RACE_START = "2026-10-01";
+const TIER_PERIOD_START = "2026-09-01";
 const EXCLUDED_USERNAMES = new Set(["kayjb_3"]);
 const TARGET_OVERRIDES: Record<string, number> = {
   tkzx: 1_600_000, tkaysx: 1_600_000, lucylou449: 1_000_000, xomarky: 1_000_000,
-  sambaileysingerofficial: 700_000, sam252410: 700_000, arch: 700_000,
+  sambaileysingerofficial: 700_000, arch: 700_000, harryjonesey: 1_000_000,
 };
 
 type CreatorStat = Record<string, unknown>;
@@ -24,7 +25,7 @@ const creatorIdFor = (row: CreatorStat) => {
   const creatorId = text(row.creator_id);
   return /^\d+$/.test(creatorId) ? creatorId : "";
 };
-const identityFor = (row: CreatorStat) => creatorIdFor(row) || usernameFor(row).toLowerCase();
+const identityFor = (row: CreatorStat) => usernameFor(row).toLowerCase();
 
 function platinumTarget(diamonds: number) {
   if (diamonds >= 1_600_000) return 1_600_000;
@@ -81,7 +82,8 @@ export async function GET() {
     }
 
     const statColumns = "creator_id, creator_username, diamonds, valid_live_days, live_hours, new_followers, stat_date";
-    const startingRows = await loadRows(baseQuery(statColumns).eq("stat_date", startingDate));
+    const startingRows = await loadRows(baseQuery(statColumns).gte("stat_date", TIER_PERIOD_START).lte("stat_date", startingDate));
+    const latestSeptemberRows = await loadRows(baseQuery(statColumns).eq("stat_date", startingDate));
     const hasRaceProgress = latestDate >= RACE_START;
     const progressRows = hasRaceProgress ? await loadRows(baseQuery(statColumns).gte("stat_date", RACE_START).lte("stat_date", latestDate)) : [];
 
@@ -108,12 +110,22 @@ export async function GET() {
       });
     }
 
-    const startingRoster = new Map<string, { username: string; diamonds: number }>();
+    const startingDailyRows = new Map<string, CreatorStat>();
+    const activeSeptemberCreators = new Set(latestSeptemberRows.flatMap((row) => {
+      const username = usernameFor(row).toLowerCase();
+      return username && !EXCLUDED_USERNAMES.has(username) ? [username] : [];
+    }));
     for (const row of startingRows) {
       const username = usernameFor(row), identity = identityFor(row);
-      if (!username || !identity || EXCLUDED_USERNAMES.has(username.toLowerCase())) continue;
-      const existing = startingRoster.get(identity);
-      if (!existing || number(row.diamonds) > existing.diamonds) startingRoster.set(identity, { username, diamonds: number(row.diamonds) });
+      if (!username || !identity || !activeSeptemberCreators.has(identity) || EXCLUDED_USERNAMES.has(username.toLowerCase())) continue;
+      const key = `${text(row.stat_date)}:${identity}`;
+      const existing = startingDailyRows.get(key);
+      if (!existing || number(row.diamonds) > number(existing.diamonds)) startingDailyRows.set(key, row);
+    }
+    const startingRoster = new Map<string, { username: string; diamonds: number }>();
+    for (const row of startingDailyRows.values()) {
+      const identity = identityFor(row), username = usernameFor(row), previous = startingRoster.get(identity);
+      startingRoster.set(identity, { username, diamonds: number(previous?.diamonds) + number(row.diamonds) });
     }
     if (!startingRoster.size) return NextResponse.json({ error: "September First Class daily data is not available yet." }, { status: 500 });
 
