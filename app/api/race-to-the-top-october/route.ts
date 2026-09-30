@@ -13,6 +13,7 @@ const TARGET_OVERRIDES: Record<string, number> = {
   tkzx: 1_600_000, tkaysx: 1_600_000, lucylou449: 1_000_000, xomarky: 1_000_000,
   sambaileysingerofficial: 700_000, arch: 700_000,
 };
+const SILVER_OVERRIDES = new Set(["kaizer9025", "davegasparmusic", "goldengun62"]);
 
 type CreatorStat = Record<string, unknown>;
 type SnapshotRow = { "Creator's username"?: unknown; Diamonds?: unknown };
@@ -39,6 +40,7 @@ function platinumTarget(diamonds: number) {
 }
 
 function tierFor(lastMonthDiamonds: number, username: string): { track: Track; target: number } {
+  if (SILVER_OVERRIDES.has(username.toLowerCase())) return { track: "silver", target: 200_000 };
   const override = TARGET_OVERRIDES[username.toLowerCase()];
   if (override) return { track: "platinum", target: override };
   if (lastMonthDiamonds < 200_000) return { track: "bronze", target: 100_000 };

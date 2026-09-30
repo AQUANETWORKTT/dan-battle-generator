@@ -4,11 +4,11 @@ import DataAccessGuard from "../../components/DataAccessGuard";
 type Event = { name: string; logo: string; detail: string; leaderboard: string; download?: string; admin?: string };
 
 const currentEvents: Event[] = [
-  { name: "Race to the Top", logo: "/race-to-the-top-logo-transparent.png", detail: "Current creator maintenance-tier race and public progress page.", leaderboard: "/live/race-to-the-top" },
   { name: "Race to the Top October", logo: "/race-to-the-top-october-logo-clean.png", detail: "October event design with Bronze, Silver, Gold and Platinum prize tiers.", leaderboard: "/live/race-to-the-top-october" },
 ];
 
 const previousEvents: Event[] = [
+  { name: "Race to the Top", logo: "/race-to-the-top-logo-transparent.png", detail: "Previous August maintenance-tier race.", leaderboard: "/live/race-to-the-top" },
   { name: "Crew Showdown", logo: "/first-class/crew-showdown-logo.png", detail: "Archived Top 20 leaderboard and downloadable board.", leaderboard: "/live/7xq9v2-first-class", download: "/crew-showdown-download" },
   { name: "Sunset Showdown", logo: "/sunset-showdown/logo.png", detail: "Archived leaderboard and score administration.", leaderboard: "/live/8f3k2j9m-sunset", admin: "/events/sunset-showdown/admin" },
   { name: "World Cup 2026", logo: "/world-cup-2026/logo.png", detail: "Archived leaderboard and score administration.", leaderboard: "/live/world-cup-2026", admin: "/events/world-cup-2026/admin" },
