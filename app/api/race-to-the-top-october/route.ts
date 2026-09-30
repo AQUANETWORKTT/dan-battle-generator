@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
+import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +11,11 @@ const TIER_PERIOD_START = "2026-09-01";
 const EXCLUDED_USERNAMES = new Set(["kayjb_3"]);
 const TARGET_OVERRIDES: Record<string, number> = {
   tkzx: 1_600_000, tkaysx: 1_600_000, lucylou449: 1_000_000, xomarky: 1_000_000,
-  sambaileysingerofficial: 700_000, arch: 700_000, harryjonesey: 1_000_000,
+  sambaileysingerofficial: 700_000, arch: 700_000,
 };
 
 type CreatorStat = Record<string, unknown>;
+type SnapshotRow = { "Creator's username"?: unknown; Diamonds?: unknown };
 type Track = "bronze" | "silver" | "gold" | "platinum";
 type Progress = { creatorId: string; username: string; diamonds: number; liveDays: number; liveHours: number; followers: number };
 
@@ -50,6 +54,35 @@ function requirements(track: Track) {
         : { days: 22, hours: 80, followers: 250 };
 }
 
+async function eventRoster() {
+  const workbook = XLSX.read(await readFile(join(process.cwd(), "public", "race-to-the-top-october-roster.xlsx")), { type: "buffer" });
+  const rows = XLSX.utils.sheet_to_json<SnapshotRow>(workbook.Sheets[workbook.SheetNames[0]]);
+  const roster = new Map<string, { username: string; diamonds: number }>();
+  for (const row of rows) {
+    const username = text(row["Creator's username"]).replace(/^@/, "").toLowerCase();
+    if (!username || EXCLUDED_USERNAMES.has(username)) continue;
+    const existing = roster.get(username);
+    if (!existing || number(row.Diamonds) > existing.diamonds) roster.set(username, { username, diamonds: number(row.Diamonds) });
+  }
+  return roster;
+}
+
+async function excludedUsernames() {
+  const { data, error } = await submissionsSupabase
+    .from("poster_templates")
+    .select("template_json")
+    .eq("name", "excluded-creators-settings")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const creators = (data?.template_json as { creators?: unknown[] } | null)?.creators;
+  return new Set((Array.isArray(creators) ? creators : []).flatMap((creator) => {
+    const item = creator as { username?: unknown; excludeFromLeaderboards?: unknown; hiddenFromDownloads?: unknown };
+    if (!item?.excludeFromLeaderboards && !item?.hiddenFromDownloads) return [];
+    const username = text(item.username).replace(/^@/, "").toLowerCase();
+    return username ? [username] : [];
+  }));
+}
+
 export async function GET() {
   try {
     const baseQuery = (columns: string) => submissionsSupabase.from("creator_daily_stats")
@@ -60,14 +93,7 @@ export async function GET() {
     const latestDate = text((latestDates as { stat_date?: unknown }[] | null)?.[0]?.stat_date);
     if (latestError || !latestDate) return NextResponse.json({ error: latestError?.message || "No First Class daily data is available yet." }, { status: 500 });
 
-    // The final September daily upload locks every creator's tier. Before the
-    // 30th is imported, use the latest available September upload as a preview.
-    const { data: startingDates, error: startingError } = await baseQuery("stat_date")
-      .lt("stat_date", RACE_START)
-      .order("stat_date", { ascending: false })
-      .limit(1);
-    const startingDate = text((startingDates as { stat_date?: unknown }[] | null)?.[0]?.stat_date);
-    if (startingError || !startingDate) return NextResponse.json({ error: startingError?.message || "A September tier snapshot is not available yet." }, { status: 500 });
+    const [sourceRoster, excluded] = await Promise.all([eventRoster(), excludedUsernames()]);
 
     async function loadRows(query: any) {
       const rows: CreatorStat[] = [];
@@ -82,8 +108,6 @@ export async function GET() {
     }
 
     const statColumns = "creator_id, creator_username, diamonds, valid_live_days, live_hours, new_followers, stat_date";
-    const startingRows = await loadRows(baseQuery(statColumns).gte("stat_date", TIER_PERIOD_START).lte("stat_date", startingDate));
-    const latestSeptemberRows = await loadRows(baseQuery(statColumns).eq("stat_date", startingDate));
     const hasRaceProgress = latestDate >= RACE_START;
     const progressRows = hasRaceProgress ? await loadRows(baseQuery(statColumns).gte("stat_date", RACE_START).lte("stat_date", latestDate)) : [];
 
@@ -110,23 +134,8 @@ export async function GET() {
       });
     }
 
-    const startingDailyRows = new Map<string, CreatorStat>();
-    const activeSeptemberCreators = new Set(latestSeptemberRows.flatMap((row) => {
-      const username = usernameFor(row).toLowerCase();
-      return username && !EXCLUDED_USERNAMES.has(username) ? [username] : [];
-    }));
-    for (const row of startingRows) {
-      const username = usernameFor(row), identity = identityFor(row);
-      if (!username || !identity || !activeSeptemberCreators.has(identity) || EXCLUDED_USERNAMES.has(username.toLowerCase())) continue;
-      const key = `${text(row.stat_date)}:${identity}`;
-      const existing = startingDailyRows.get(key);
-      if (!existing || number(row.diamonds) > number(existing.diamonds)) startingDailyRows.set(key, row);
-    }
     const startingRoster = new Map<string, { username: string; diamonds: number }>();
-    for (const row of startingDailyRows.values()) {
-      const identity = identityFor(row), username = usernameFor(row), previous = startingRoster.get(identity);
-      startingRoster.set(identity, { username, diamonds: number(previous?.diamonds) + number(row.diamonds) });
-    }
+    for (const [username, creator] of sourceRoster) if (!excluded.has(username)) startingRoster.set(username, creator);
     if (!startingRoster.size) return NextResponse.json({ error: "September First Class daily data is not available yet." }, { status: 500 });
 
     function completionDateFor(identity: string, track: Track, target: number) {
@@ -145,15 +154,7 @@ export async function GET() {
       return { id: identity, username: progress?.username || username, diamonds: number(progress?.diamonds), liveDays: number(progress?.liveDays), liveHours: number(progress?.liveHours), followers: number(progress?.followers), track: tier.track, target: tier.target, completedAt: completionDateFor(identity, tier.track, tier.target) };
     });
 
-    // Someone joining during October starts at zero in Bronze on their first
-    // daily upload, matching the original event's new-creator behaviour.
-    for (const [identity, progress] of progressByIdentity) {
-      if (startingRoster.has(identity) || EXCLUDED_USERNAMES.has(progress.username.toLowerCase())) continue;
-      const tier = tierFor(0, progress.username);
-      creators.push({ id: identity, username: progress.username, diamonds: progress.diamonds, liveDays: progress.liveDays, liveHours: progress.liveHours, followers: progress.followers, track: tier.track, target: tier.target, completedAt: completionDateFor(identity, tier.track, tier.target) });
-    }
-
-    return NextResponse.json({ creators, startingDate, statDate: latestDate, hasRaceProgress }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ creators, statDate: latestDate, hasRaceProgress }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "October leaderboard data is unavailable." }, { status: 500 });
   }
