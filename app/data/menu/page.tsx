@@ -40,6 +40,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
   { title: "Creator Analysis", description: "Performance analysis, creator health and agency intelligence.", accent: "purple", workspaces: [
     { href: "/creator-intelligence", number: "02", label: "Creator health", title: "New Health Score System", description: "Creator health scoring, manager groups, reports and performance trends in one place.", accent: "sky" },
+    { href: "/data/creator-performance-review", number: "32", label: "Creator review", title: "Performance Review", description: "Review two months of activity, quality and recency for First Class Agency_Dan or the wider Team Dan / James group.", accent: "purple" },
     { href: "/data/recruitment-quality", number: "19", label: "Recruitment", title: "Recruitment Quality", description: "Review 14-day recruitment quality by agency, manager and creator DPH.", accent: "purple" },
     { href: "/data/sub-agency-metrics", number: "20", label: "Agency reporting", title: "Agency Diamond Metrics", description: "See month-to-date diamonds, recruitment contribution and growth across First Class and each sub-agency.", accent: "yellow" },
   ] },
