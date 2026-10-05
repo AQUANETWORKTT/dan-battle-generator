@@ -6,6 +6,7 @@ import DataAccessGuard from "../../components/DataAccessGuard";
 
 type DayFileMap = Record<number, File | null>;
 type ExistingDayMap = Record<number, number>;
+type StarlightUpload = { date: string; creators: number };
 
 const MONTHS = [
   { value: "2026-01", label: "January 2026", days: 31 },
@@ -44,7 +45,9 @@ export default function DataAnalysisUploadPage() {
   const [month, setMonth] = useState(MONTHS[0].value);
   const monthManuallySelectedRef = useRef(false);
   const [files, setFiles] = useState<DayFileMap>({});
+  const [starlightFiles, setStarlightFiles] = useState<DayFileMap>({});
   const [existingDays, setExistingDays] = useState<ExistingDayMap>({});
+  const [existingStarlightDays, setExistingStarlightDays] = useState<ExistingDayMap>({});
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -92,6 +95,7 @@ export default function DataAnalysisUploadPage() {
   function handleMonthChange(nextMonth: string) {
     monthManuallySelectedRef.current = true;
     setFiles({});
+    setStarlightFiles({});
     setMessage("");
     setMonth(nextMonth);
   }
@@ -100,14 +104,11 @@ export default function DataAnalysisUploadPage() {
     setStatusLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/data-analysis/upload-status?month=${month}&t=${Date.now()}`,
-        {
-          cache: "no-store",
-        }
-      );
-
-      const json = await res.json();
+      const [res, starlightResponse] = await Promise.all([
+        fetch(`/api/data-analysis/upload-status?month=${month}&t=${Date.now()}`, { cache: "no-store" }),
+        fetch("/api/data/starlight-creators", { cache: "no-store" }),
+      ]);
+      const [json, starlight] = await Promise.all([res.json(), starlightResponse.json()]);
 
       if (!res.ok) {
         setExistingDays({});
@@ -116,10 +117,16 @@ export default function DataAnalysisUploadPage() {
       }
 
       setExistingDays(json.days || {});
+      const starlightDays = (starlightResponse.ok ? starlight.uploads || [] : []).reduce((all: ExistingDayMap, upload: StarlightUpload) => {
+        if (String(upload.date || "").startsWith(month)) all[Number(String(upload.date).slice(-2))] = Number(upload.creators || 0);
+        return all;
+      }, {});
+      setExistingStarlightDays(starlightDays);
       setStatusLoading(false);
     } catch (error) {
       console.error(error);
       setExistingDays({});
+      setExistingStarlightDays({});
       setStatusLoading(false);
     }
   }
@@ -129,6 +136,10 @@ export default function DataAnalysisUploadPage() {
       ...prev,
       [day]: file,
     }));
+  }
+
+  function setStarlightDayFile(day: number, file: File | null) {
+    setStarlightFiles((prev) => ({ ...prev, [day]: file }));
   }
 
   async function removeUploadedDay(day: number) {
@@ -222,6 +233,29 @@ export default function DataAnalysisUploadPage() {
     );
   }
 
+  async function handleStarlightImport() {
+    setLoading(true);
+    setMessage("");
+    const selectedDays = days.filter((day) => starlightFiles[day]);
+    if (!selectedDays.length) { setLoading(false); setMessage("Please upload at least one Starlight Excel file."); return; }
+    try {
+      let totalRows = 0;
+      for (const day of selectedDays) {
+        const formData = new FormData();
+        formData.append("date", `${month}-${String(day).padStart(2, "0")}`);
+        formData.append("file", starlightFiles[day]!);
+        const response = await fetch("/api/data/starlight-creators", { method: "POST", body: formData, cache: "no-store" });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error || `Could not import Starlight day ${day}.`);
+        totalRows += Number(json.creators || 0);
+      }
+      setStarlightFiles({});
+      await loadExistingDays();
+      setMessage(`Imported ${totalRows} Starlight creator results across ${selectedDays.length} day${selectedDays.length === 1 ? "" : "s"}.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not import Starlight data."); }
+    finally { setLoading(false); }
+  }
+
   return (
     <DataAccessGuard>
     <main className="min-h-screen bg-[#070707] px-4 py-8 text-white">
@@ -238,6 +272,12 @@ export default function DataAnalysisUploadPage() {
             className="inline-flex rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-5 py-3 font-black uppercase text-yellow-200 transition hover:bg-yellow-300/20"
           >
             Back to Data
+          </Link>
+          <Link
+            href="/data/starlight-creators"
+            className="inline-flex rounded-xl border border-orange-300/25 bg-orange-300/10 px-5 py-3 font-black uppercase text-orange-200 transition hover:bg-orange-300/20"
+          >
+            View Starlight Creators
           </Link>
           <Link
             href="/"
@@ -258,7 +298,7 @@ export default function DataAnalysisUploadPage() {
           </p>
         </div>
 
-        <div className="mb-6 grid gap-4 rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-3">
+        <div className="mb-6 grid gap-4 rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-5">
           <div>
             <label className="text-xs font-black uppercase text-white/50">
               Month
@@ -275,6 +315,16 @@ export default function DataAnalysisUploadPage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <p className="text-sm font-black uppercase text-white/50">Starlight files selected</p>
+            <p className="mt-2 text-3xl font-black text-orange-300">{days.filter((day) => starlightFiles[day]).length}/{selectedMonth.days}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-black uppercase text-white/50">Starlight days saved</p>
+            <p className="mt-2 text-3xl font-black text-orange-200">{statusLoading ? "..." : `${Object.keys(existingStarlightDays).length}/${selectedMonth.days}`}</p>
           </div>
 
           <div>
@@ -314,6 +364,13 @@ export default function DataAnalysisUploadPage() {
           >
             {loading ? "Importing..." : "Import Selected Files"}
           </button>
+          <button
+            onClick={handleStarlightImport}
+            disabled={loading}
+            className="rounded-xl bg-orange-300 px-6 py-3 font-black uppercase text-black disabled:opacity-40"
+          >
+            {loading ? "Importing..." : "Import Selected Starlight"}
+          </button>
         </div>
 
         {message && (
@@ -327,6 +384,8 @@ export default function DataAnalysisUploadPage() {
             const file = files[day];
             const existingRowCount = Number(existingDays[day] || 0);
             const hasExistingUpload = existingRowCount > 0;
+            const starlightFile = starlightFiles[day];
+            const existingStarlightCount = Number(existingStarlightDays[day] || 0);
 
             return (
               <div
@@ -411,6 +470,19 @@ export default function DataAnalysisUploadPage() {
                     </>
                   )}
                 </label>
+
+                <div className="mt-4 border-t border-orange-300/15 pt-4">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[.14em] text-orange-200">Starlight Creator export</p>
+                  <label
+                    className="flex min-h-[100px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-orange-300/35 bg-orange-300/[0.04] p-3 text-center hover:border-orange-300/75"
+                    onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                    onDrop={(event) => { event.preventDefault(); event.stopPropagation(); setStarlightDayFile(day, event.dataTransfer.files?.[0] || null); }}
+                  >
+                    <input key={`starlight-${month}-${day}-${starlightFile?.name || "empty"}`} type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => setStarlightDayFile(day, event.target.files?.[0] || null)} />
+                    {starlightFile ? <><p className="break-all text-xs font-bold text-white">{starlightFile.name}</p><p className="mt-2 text-[10px] text-white/40">Click to replace</p></> : existingStarlightCount ? <><p className="text-xs font-bold text-orange-100">{existingStarlightCount} Starlight results saved</p><p className="mt-2 text-[10px] text-orange-100/60">Drop a replacement here</p></> : <><p className="text-xs font-bold text-orange-100">Drop Starlight export here</p><p className="mt-2 text-[10px] text-white/40">or click to choose</p></>}
+                  </label>
+                  {starlightFile ? <button type="button" onClick={() => setStarlightDayFile(day, null)} className="mt-3 w-full rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-black uppercase text-red-300">Remove Starlight File</button> : null}
+                </div>
 
                 {file && (
                   <button
