@@ -57,7 +57,7 @@ export function middleware(req: NextRequest) {
 
   // Recruitment is a deliberately hidden, manager-only route on First Class
   // Space. It bypasses the Event Space redirect but is never linked from it.
-  if (path === "/recruitment-leaderboard/access") {
+  if (path === "/recruitment-leaderboard/access" || path === "/api/recruitment-login") {
     return NextResponse.next();
   }
 

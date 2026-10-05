@@ -4,7 +4,7 @@ import { submissionsSupabase } from "@/lib/submissions-supabase";
 const SETTINGS_NAME = "excluded-creators-settings";
 const RESTORED_CREATOR_USERNAMES = new Set(["kayjb3"]);
 
-type ExcludedCreator = { username: string; excludeFromLeaderboards: boolean; hiddenFromDownloads: boolean };
+type ExcludedCreator = { username: string; excludeFromLeaderboards: boolean; hiddenFromDownloads: boolean; excludeFromEvents: boolean };
 
 function normalize(items: unknown): ExcludedCreator[] {
   if (!Array.isArray(items)) return [];
@@ -21,6 +21,8 @@ function normalize(items: unknown): ExcludedCreator[] {
       username,
       excludeFromLeaderboards: Boolean(value.excludeFromLeaderboards),
       hiddenFromDownloads: Boolean(value.hiddenFromDownloads),
+      // Existing exclusions retain their event exclusion until explicitly unticked.
+      excludeFromEvents: value.excludeFromEvents === undefined ? Boolean(value.excludeFromLeaderboards || value.hiddenFromDownloads) : Boolean(value.excludeFromEvents),
     });
   }
   return Array.from(byUsername.values()).sort((a, b) => a.username.localeCompare(b.username));

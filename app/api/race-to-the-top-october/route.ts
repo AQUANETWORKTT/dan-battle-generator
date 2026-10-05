@@ -78,8 +78,9 @@ async function excludedUsernames() {
   if (error) throw new Error(error.message);
   const creators = (data?.template_json as { creators?: unknown[] } | null)?.creators;
   return new Set((Array.isArray(creators) ? creators : []).flatMap((creator) => {
-    const item = creator as { username?: unknown; excludeFromLeaderboards?: unknown; hiddenFromDownloads?: unknown };
-    if (!item?.excludeFromLeaderboards && !item?.hiddenFromDownloads) return [];
+    const item = creator as { username?: unknown; excludeFromLeaderboards?: unknown; hiddenFromDownloads?: unknown; excludeFromEvents?: unknown };
+    const legacyEventExclusion = item?.excludeFromEvents === undefined && Boolean(item?.excludeFromLeaderboards || item?.hiddenFromDownloads);
+    if (!item?.excludeFromEvents && !legacyEventExclusion) return [];
     const username = text(item.username).replace(/^@/, "").toLowerCase();
     return username ? [username] : [];
   }));
