@@ -16,7 +16,18 @@ async function saved() { const { data, error } = await submissionsSupabase.from(
 async function save(records: ReturnType<typeof clean>[]) { const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS, template_json: { records }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" }); if (error) throw new Error(error.message); return records; }
 async function rowsSince(start: string) { const all: Row[] = []; for (let from = 0; ; from += 1000) { const { data, error } = await submissionsSupabase.from("creator_daily_stats").select("*").gte("stat_date", start).or("data_period.is.null,data_period.neq.mature_month_total").order("stat_date", { ascending: true }).range(from, from + 999); if (error) throw new Error(error.message); all.push(...((data || []) as Row[])); if (!data || data.length < 1000) return all; } }
 
-export async function GET() { try { return NextResponse.json({ records: await saved() }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load quitting records." }, { status: 500 }); } }
+export async function GET() { try {
+  const [records, latest] = await Promise.all([
+    saved(),
+    submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (latest.error) throw Error(latest.error.message);
+  // Keep the newest uploaded month in the filter even when nobody has quit
+  // yet. Previously the UI built its choices solely from saved quit records.
+  const currentMonth = text(latest.data?.stat_date).slice(0, 7);
+  const availableMonths = [...new Set([...records.map((record) => (record.quitAt || record.createdAt || "").slice(0, 7)), currentMonth].filter(Boolean))].sort().reverse();
+  return NextResponse.json({ records, availableMonths });
+} catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load quitting records." }, { status: 500 }); } }
 export async function POST(request: Request) { try {
   const input = await request.json();
   if (input.action === "delete-record") { const records = (await saved()).filter((record) => record.username.toLowerCase() !== text(input.username).replace(/^@/, "").toLowerCase()); return NextResponse.json({ records: await save(records) }); }

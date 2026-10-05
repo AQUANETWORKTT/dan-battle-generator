@@ -27,6 +27,7 @@ const parseUsernames = (value: string) =>
 
 export default function Page() {
   const [saved, setSaved] = useState<Item[]>([]);
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [managerNames, setManagerNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingNew, setLoadingNew] = useState(false);
@@ -46,6 +47,7 @@ export default function Page() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not load quitting records.");
       setSaved(d.records || []);
+      setAvailableMonths(d.availableMonths || []);
       if (assignments.ok) { const data = await assignments.json(); setManagerNames(data.assignments?.managerNames || {}); }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load quitting records.");
@@ -70,7 +72,10 @@ export default function Page() {
     [saved],
   );
 
-  const months = useMemo(() => [...new Set(saved.map((record) => (record.quitAt || record.createdAt || "").slice(0, 7)).filter(Boolean))].sort().reverse(), [saved]);
+  const months = useMemo(
+    () => [...new Set([...availableMonths, ...saved.map((record) => (record.quitAt || record.createdAt || "").slice(0, 7))].filter(Boolean))].sort().reverse(),
+    [availableMonths, saved],
+  );
 
   const shown = useMemo(
     () =>
@@ -108,7 +113,8 @@ export default function Page() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Could not check the latest upload.");
       setSaved(d.records || []);
-      if (d.detected) setMessage(`${d.detected} new quitting record${d.detected === 1 ? "" : "s"} added.`);
+      setAvailableMonths((current) => [...new Set([...current, String(d.latestDate || "").slice(0, 7)].filter(Boolean))].sort().reverse());
+      setMessage(d.detected ? `${d.detected} new quitting record${d.detected === 1 ? "" : "s"} added.` : "No new early quits were found in the latest full upload.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not check the latest upload.");
     } finally {
