@@ -54,6 +54,13 @@ export function middleware(req: NextRequest) {
   const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
   const hasRecruitmentAccess = req.cookies.get("first-class-recruitment-leaderboard-auth")?.value === "true";
   const hasManagementSession = req.cookies.get("first-class-space-auth")?.value === "true" || req.cookies.get("first-class-management-auth")?.value === "true";
+  const isPublicEventRoute =
+    path === "/" ||
+    path.startsWith("/events") ||
+    path.startsWith("/live/") ||
+    path.startsWith("/api/events/") ||
+    path.startsWith("/api/race-to-the-top") ||
+    path.startsWith("/api/tiktok-avatar");
 
   // Recruitment is a deliberately hidden, manager-only route on First Class
   // Space. It bypasses the Event Space redirect but is never linked from it.
@@ -70,22 +77,17 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // A recruitment-only visit cannot use browser history or a typed URL to
-  // reach the rest of the Event or Management experiences.
-  if (hasRecruitmentAccess && !hasManagementSession) {
+  // Recruitment access never grants access to the Management space. The
+  // public Events experience remains reachable at the normal site address.
+  if (hasRecruitmentAccess && !hasManagementSession && !isPublicEventRoute) {
     return new NextResponse("Not found", { status: 404 });
   }
 
   if (isEventsSpace) {
     const isCreatorRoute =
-      path === "/" ||
-      path.startsWith("/events") ||
-      path.startsWith("/live/") ||
-      path.startsWith("/api/events/") ||
-      path.startsWith("/api/race-to-the-top") ||
+      isPublicEventRoute ||
       path === "/api/login" ||
-      path === "/api/recruitment-login" ||
-      path.startsWith("/api/tiktok-avatar");
+      path === "/api/recruitment-login";
 
     if (!isCreatorRoute) {
       return NextResponse.redirect(new URL("/events", req.url));

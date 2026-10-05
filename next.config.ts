@@ -4,7 +4,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/events",
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/events/:path*",
         headers: [
           {
             key: "Cache-Control",
