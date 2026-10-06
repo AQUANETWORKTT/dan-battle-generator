@@ -33,7 +33,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
   { title: "Creator/Agency Targets", description: "Track creator progress, graduation and mature-creator retention.", accent: "emerald", workspaces: [
     { href: "/graduation-tracker", number: "03", label: "Progress", title: "Graduation Tracker", description: "Track creator progress towards 200,000 diamonds and graduation milestones.", accent: "emerald" },
-    { href: "/data/mature-creators-tracker", number: "04", label: "Retention", title: "Mature Creators", description: "Keep 200,000+ diamond creators visible, supported and moving forward.", accent: "orange" },
+    { href: "/data/fifty-percent-mature-creators", number: "04", label: "Retention", title: "50% Mature Creators", description: "Track 200,000+ creators from last month and predict who will maintain or rank up.", accent: "orange" },
     { href: "/data/incremental-data-tracking", number: "17", label: "Monthly pace", title: "Incremental Data Tracking", description: "Enter month-to-date diamonds and see the nearest daily incremental target prediction.", accent: "yellow" },
     { href: "/data/team-dan-target-tracker", number: "22", label: "Team targets", title: "Target Tracker", description: "Set editable day, hour and diamond targets for First Class Agency_Dan creators and track monthly progress.", accent: "emerald" },
     { href: "/data/focus-target-tracker", number: "23", label: "Focus targets", title: "Manager Target Tracker", description: "Specific creators from Team Dan / James managers to track monthly progress.", accent: "emerald" },

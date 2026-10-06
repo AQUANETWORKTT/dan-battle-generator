@@ -6,6 +6,7 @@ const SETTINGS_NAME = "team-dan-target-tracker-settings";
 type Settings = {
   targets?: Record<string, { level?: number; days?: number; hours?: number; diamonds?: number }>;
   deleted?: string[];
+  tierSyncedMonths?: string[];
 };
 
 function clean(settings: unknown): Settings {
@@ -16,7 +17,7 @@ function clean(settings: unknown): Settings {
     hours: Math.max(0, Number(target?.hours) || 0),
     diamonds: Math.max(0, Number(target?.diamonds) || 0),
   }]));
-  return { targets, deleted: Array.isArray(input.deleted) ? input.deleted.map(String) : [] };
+  return { targets, deleted: Array.isArray(input.deleted) ? input.deleted.map(String) : [], tierSyncedMonths: Array.isArray(input.tierSyncedMonths) ? input.tierSyncedMonths.map(String).filter((month) => /^\d{4}-\d{2}$/.test(month)) : [] };
 }
 
 export async function GET() {

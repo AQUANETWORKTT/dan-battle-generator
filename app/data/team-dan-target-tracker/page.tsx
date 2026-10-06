@@ -6,12 +6,12 @@ import DataAccessGuard from "../../components/DataAccessGuard";
 
 type Row = { creator_id?: string; creator_username?: string; "Creator's username"?: string; creator_network_manager?: string; manager_email?: string; stat_date?: string; data_period?: string; diamonds?: number; live_hours?: number; live_duration?: string; valid_days?: number; valid_live_days?: number };
 type Target = { level: number; days: number; hours: number; diamonds: number };
-type Stored = { targets: Record<string, Partial<Target>>; deleted: string[] };
+type Stored = { targets: Record<string, Partial<Target>>; deleted: string[]; tierSyncedMonths?: string[] };
 type Creator = { id: string; username: string; days: number; hours: number; diamonds: number };
 
 const LEVELS = [{ level: 1, days: 8, hours: 20 }, { level: 2, days: 11, hours: 30 }, { level: 3, days: 15, hours: 40 }, { level: 4, days: 18, hours: 60 }, { level: 5, days: 22, hours: 80 }] as const;
 const DEFAULT: Target = { ...LEVELS[2], diamonds: 75000 };
-const TIER_MINIMUMS = [1, 100000, 200000, 300000, 500000, 700000, 1000000, 1600000, 2500000, 5000000];
+const TIER_MINIMUMS = [100000, 200000, 300000, 500000, 700000, 1000000, 1600000, 2500000, 5000000];
 const KEY = "fc-dan-target-tracker-v1";
 const currentMonth = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`; };
 const number = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -20,6 +20,7 @@ const creatorId = (row: Row) => String(row.creator_id || username(row)).trim().t
 const liveHours = (row: Row) => row.live_hours != null ? number(row.live_hours) : number(String(row.live_duration || "").match(/(\d+(?:\.\d+)?)\s*h/i)?.[1]) + number(String(row.live_duration || "").match(/(\d+(?:\.\d+)?)\s*m/i)?.[1]) / 60;
 const isDan = (row: Row) => ["firstclassagencydan", "firstclassagencyjames"].some(manager => [row.creator_network_manager, row.manager_email].join("").toLowerCase().replace(/[^a-z0-9]/g, "").includes(manager));
 const isMonthTotal = (row: Row) => { const period = String(row.data_period || ""); return /^\d{4}-\d{2}-\d{2}\s*~\s*\d{4}-\d{2}-\d{2}$/.test(period) && period.slice(0, 10) !== period.slice(-10); };
+const tierTarget = (diamonds: number) => [...TIER_MINIMUMS].reverse().find((tier) => diamonds >= tier) || (diamonds >= 50000 ? 100000 : Math.ceil(diamonds * 1.2));
 const paceClass = (pace: number) => pace >= 0.75 ? "border-emerald-300 bg-emerald-400/[.20]" : pace >= 0.5 ? "border-orange-400 bg-orange-500/[.20]" : "border-red-400 bg-red-500/[.18]";
 const paceColour = (pace: number) => pace >= 0.75 ? "bg-emerald-300" : pace >= 0.5 ? "bg-orange-400" : "bg-red-400";
 
@@ -44,14 +45,14 @@ export default function Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [stored, setStored] = useState<Stored>({ targets: {}, deleted: [] });
+  const [stored, setStored] = useState<Stored>({ targets: {}, deleted: [], tierSyncedMonths: [] });
   const [sharedLoaded, setSharedLoaded] = useState(false);
   const [previousRows, setPreviousRows] = useState<Row[]>([]);
   const diamondTimers = useRef<Record<string, number>>({});
   const pendingDiamondKeys = useRef(new Set<string>());
   const storedRef = useRef(stored);
 
-  useEffect(() => { let active = true; let local: Stored = { targets: {}, deleted: [] }; try { const saved = JSON.parse(localStorage.getItem(KEY) || "{}"); local = { targets: saved.targets || {}, deleted: Array.isArray(saved.deleted) ? saved.deleted : [] }; } catch {} fetch("/api/data/team-target-tracker", { cache: "no-store" }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load shared targets."); if (body.settings) return body.settings as Stored; await fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(local) }); return local; }).then(settings => { if (active) setStored(settings); }).catch(e => active && setError(e.message)).finally(() => active && setSharedLoaded(true)); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; let local: Stored = { targets: {}, deleted: [], tierSyncedMonths: [] }; try { const saved = JSON.parse(localStorage.getItem(KEY) || "{}"); local = { targets: saved.targets || {}, deleted: Array.isArray(saved.deleted) ? saved.deleted : [], tierSyncedMonths: Array.isArray(saved.tierSyncedMonths) ? saved.tierSyncedMonths : [] }; } catch {} fetch("/api/data/team-target-tracker", { cache: "no-store" }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not load shared targets."); if (body.settings) return body.settings as Stored; await fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(local) }); return local; }).then(settings => { if (active) setStored(settings); }).catch(e => active && setError(e.message)).finally(() => active && setSharedLoaded(true)); return () => { active = false; }; }, []);
   useEffect(() => localStorage.setItem(KEY, JSON.stringify(stored)), [stored]);
   useEffect(() => { storedRef.current = stored; }, [stored]);
   useEffect(() => {
@@ -99,8 +100,32 @@ export default function Page() {
     }));
   }, [previousRows]);
 
-  const target = (name: string): Target => { const saved = stored.targets[`${month}:${name}`] || {}; const level = LEVELS.find(item => item.level === Number(saved.level)) || LEVELS[2]; return { level: level.level, days: level.days, hours: level.hours, diamonds: Math.max(0, number(saved.diamonds || DEFAULT.diamonds)) }; };
-  const ranked = useMemo(() => creators.map(creator => { const t = target(creator.username); const dayPace = monthProgress ? creator.days / (t.days * monthProgress) : 0; const hourPace = monthProgress ? creator.hours / (t.hours * monthProgress) : 0; const diamondPace = monthProgress ? creator.diamonds / (t.diamonds * monthProgress) : 0; const priorTotal = previousDiamonds.get(creator.id) || 0; const tierIndex = TIER_MINIMUMS.reduce((current, minimum, index) => priorTotal >= minimum ? index : current, -1); const maintenance = priorTotal >= 100000 && tierIndex >= 0 ? TIER_MINIMUMS[tierIndex] : null; const rankUp = priorTotal >= 100000 ? (tierIndex < TIER_MINIMUMS.length - 1 ? TIER_MINIMUMS[tierIndex + 1] : null) : 100000; return { ...creator, t, dayPace, hourPace, diamondPace, pace: (dayPace + hourPace + diamondPace) / 3, maintenance, rankUp }; }).sort((a, b) => b.diamonds - a.diamonds), [creators, stored, month, monthProgress, previousDiamonds]);
+  // At the start of a month, set each existing creator's shared Diamond Target
+  // to the lower edge of the tier they reached in the previous full month.
+  // This is written back to the tracker settings so every device sees it.
+  useEffect(() => {
+    if (!sharedLoaded || !creators.length || !previousDiamonds.size || (stored.tierSyncedMonths || []).includes(month)) return;
+    let changed = false;
+    const targets = { ...stored.targets };
+    for (const creator of creators) {
+      const priorTotal = previousDiamonds.get(creator.id) || 0;
+      if (!priorTotal) continue;
+      const key = `${month}:${creator.username}`;
+      const current = targets[key] || {};
+      // Values imported from the target sheet are deliberate, including a
+      // numeric zero. Only fill creators with no Diamond Target at all.
+      if (Object.prototype.hasOwnProperty.call(current, "diamonds")) continue;
+      const diamondTarget = tierTarget(priorTotal);
+      if (Number(current.diamonds) !== diamondTarget) { targets[key] = { ...current, diamonds: diamondTarget }; changed = true; }
+    }
+    const next: Stored = { ...stored, targets, tierSyncedMonths: [...new Set([...(stored.tierSyncedMonths || []), month])] };
+    if (!changed && (stored.tierSyncedMonths || []).includes(month)) return;
+    setStored(next); localStorage.setItem(KEY, JSON.stringify(next));
+    fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not sync tier targets."); return body.settings as Stored; }).then(settings => setStored(settings)).catch(e => setError(e.message));
+  }, [creators, month, previousDiamonds, sharedLoaded, stored]);
+
+  const target = (name: string, priorTotal = 0): Target => { const saved = stored.targets[`${month}:${name}`] || {}; const level = LEVELS.find(item => item.level === Number(saved.level)) || LEVELS[2]; const hasDiamondTarget = Object.prototype.hasOwnProperty.call(saved, "diamonds"); return { level: level.level, days: level.days, hours: level.hours, diamonds: hasDiamondTarget ? Math.max(0, number(saved.diamonds)) : priorTotal ? tierTarget(priorTotal) : DEFAULT.diamonds }; };
+  const ranked = useMemo(() => creators.map(creator => { const priorTotal = previousDiamonds.get(creator.id) || 0; const t = target(creator.username, priorTotal); const dayPace = monthProgress ? creator.days / (t.days * monthProgress) : 0; const hourPace = monthProgress ? creator.hours / (t.hours * monthProgress) : 0; const diamondPace = monthProgress ? creator.diamonds / (t.diamonds * monthProgress) : 0; const tierIndex = TIER_MINIMUMS.reduce((current, minimum, index) => priorTotal >= minimum ? index : current, -1); const maintenance = priorTotal >= 100000 && tierIndex >= 0 ? TIER_MINIMUMS[tierIndex] : null; const rankUp = priorTotal >= 100000 ? (tierIndex < TIER_MINIMUMS.length - 1 ? TIER_MINIMUMS[tierIndex + 1] : null) : 100000; return { ...creator, t, dayPace, hourPace, diamondPace, pace: (dayPace + hourPace + diamondPace) / 3, maintenance, rankUp }; }).sort((a, b) => b.diamonds - a.diamonds), [creators, stored, month, monthProgress, previousDiamonds]);
   const saveShared = (next: Stored) => { setStored(next); localStorage.setItem(KEY, JSON.stringify(next)); if (!sharedLoaded) return; fetch("/api/data/team-target-tracker", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }).then(async response => { const body = await response.json(); if (!response.ok) throw Error(body.error || "Could not save shared targets."); return body.settings as Stored; }).then(settings => setStored(settings)).catch(e => setError(e.message)); };
   const setLevel = (name: string, level: number) => { const preset = LEVELS.find(item => item.level === level) || LEVELS[2]; saveShared({ ...stored, targets: { ...stored.targets, [`${month}:${name}`]: { ...target(name), level: preset.level, days: preset.days, hours: preset.hours } } }); };
   const setDiamonds = (name: string, diamonds: string) => {
