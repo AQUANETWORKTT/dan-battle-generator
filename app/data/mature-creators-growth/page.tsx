@@ -183,7 +183,7 @@ export default function Page() {
                   October is ahead or behind August and September.
                 </p>
                 <div className="mt-5 h-[360px]">
-                  <AgencyChart series={data.agency} />
+                  <AgencyChart series={data.agency.filter((entry) => displayMonths.includes(entry.month))} />
                 </div>
               </section>
               <section className="mt-6 rounded-[2rem] border border-red-300/20 bg-red-500/[.055] p-5 sm:p-7">
@@ -280,6 +280,17 @@ export default function Page() {
                     </h2>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <div className="flex overflow-hidden rounded-xl border border-white/15 bg-black/30">
+                      {data.months.map((month) => (
+                        <button
+                          key={month}
+                          onClick={() => toggleMonth(month)}
+                          className={`px-3 py-3 text-[10px] font-black uppercase tracking-wide ${selectedMonths.includes(month) ? "bg-yellow-300 text-black" : "text-white/45 hover:text-white"}`}
+                        >
+                          {labelMonth(month)}
+                        </button>
+                      ))}
+                    </div>
                     <input
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
@@ -312,7 +323,7 @@ export default function Page() {
                     <CreatorChart
                       key={creator.id}
                       creator={creator}
-                      months={data.months}
+                      months={displayMonths}
                       currentDays={data.currentDays}
                       onSelect={() => setSelected(creator)}
                     />
@@ -327,7 +338,7 @@ export default function Page() {
         {selected && (
           <CreatorDetail
             creator={selected}
-            months={data?.months || []}
+            months={displayMonths}
             onClose={() => setSelected(null)}
           />
         )}
@@ -357,15 +368,23 @@ function Metric({
 }
 
 function AgencyChart({ series }: { series: MonthSeries[] }) {
-  const max = Math.max(1, ...series.flatMap((entry) => entry.diamonds));
+  // This is deliberately based on every creator record in the selected months,
+  // rather than only the mature-creator cards shown below.
+  const max = diamondScale(
+    Math.max(1, ...series.flatMap((entry) => entry.diamonds)),
+  );
   const width = 1100,
     height = 330,
-    pad = 34;
+    padLeft = 82,
+    padRight = 34,
+    padY = 34;
+  const chartWidth = width - padLeft - padRight;
+  const chartHeight = height - padY * 2;
   const path = (values: number[]) =>
     values
       .map(
         (amount, index) =>
-          `${index ? "L" : "M"}${pad + (index * (width - pad * 2)) / 30},${height - pad - (amount / max) * (height - pad * 2)}`,
+          `${index ? "L" : "M"}${padLeft + (index * chartWidth) / 30},${height - padY - (amount / max) * chartHeight}`,
       )
       .join(" ");
   return (
@@ -377,13 +396,24 @@ function AgencyChart({ series }: { series: MonthSeries[] }) {
     >
       <g stroke="rgba(255,255,255,.13)" strokeWidth="1">
         {[0, 0.25, 0.5, 0.75, 1].map((level) => (
-          <line
-            key={level}
-            x1={pad}
-            x2={width - pad}
-            y1={height - pad - level * (height - pad * 2)}
-            y2={height - pad - level * (height - pad * 2)}
-          />
+          <g key={level}>
+            <line
+              x1={padLeft}
+              x2={width - padRight}
+              y1={height - padY - level * chartHeight}
+              y2={height - padY - level * chartHeight}
+            />
+            <text
+              x={padLeft - 10}
+              y={height - padY - level * chartHeight + 4}
+              textAnchor="end"
+              fill="#a8a29e"
+              fontSize="11"
+              stroke="none"
+            >
+              {money(max * level)}
+            </text>
+          </g>
         ))}
       </g>
       {series.map((entry, index) => (
@@ -401,7 +431,7 @@ function AgencyChart({ series }: { series: MonthSeries[] }) {
         {[1, 6, 12, 18, 24, 31].map((day) => (
           <text
             key={day}
-            x={pad + ((day - 1) * (width - pad * 2)) / 30}
+            x={padLeft + ((day - 1) * chartWidth) / 30}
             y={height - 8}
             textAnchor="middle"
           >
@@ -411,7 +441,7 @@ function AgencyChart({ series }: { series: MonthSeries[] }) {
       </g>
       <g>
         {series.map((entry, index) => (
-          <g key={entry.month} transform={`translate(${pad + index * 135},16)`}>
+          <g key={entry.month} transform={`translate(${padLeft + index * 135},16)`}>
             <circle r="5" fill={palette[index]} />
             <text x="10" y="4" fill="#f5f5f4" fontSize="12" fontWeight="700">
               {labelMonth(entry.month)}
@@ -632,11 +662,14 @@ function CreatorInsight({
       })),
     )
     .filter((day) => day.hours > 0);
-  const averageHours =
+  const totalStreams = rows.reduce((total, day) => total + day.streams, 0);
+  const averageStreamLength =
     rows.reduce((total, day) => total + day.hours, 0) /
-    Math.max(rows.length, 1);
-  const longer = rows.filter((day) => day.hours >= averageHours);
-  const shorter = rows.filter((day) => day.hours < averageHours);
+    Math.max(totalStreams, 1);
+  const streamLength = (day: (typeof rows)[number]) =>
+    day.hours / Math.max(day.streams, 1);
+  const longer = rows.filter((day) => streamLength(day) >= averageStreamLength);
+  const shorter = rows.filter((day) => streamLength(day) < averageStreamLength);
   const averageRate = (items: typeof rows) =>
     items.reduce(
       (total, day) => total + (day.hours ? day.diamonds / day.hours : 0),
@@ -648,9 +681,9 @@ function CreatorInsight({
   const effect =
     longer.length && shorter.length
       ? longerRate > shorterRate * 1.1
-        ? `Longer lives are currently more efficient: ${money(longerRate)} diamonds per hour on ${longer.length} longer lives, versus ${money(shorterRate)} on ${shorter.length} shorter lives.`
+        ? `Longer average streams are currently more efficient: ${money(longerRate)} diamonds per hour on ${longer.reduce((total, day) => total + day.streams, 0)} streams, versus ${money(shorterRate)} on ${shorter.reduce((total, day) => total + day.streams, 0)} shorter streams.`
         : shorterRate > longerRate * 1.1
-          ? `Shorter lives are currently more efficient: ${money(shorterRate)} diamonds per hour on ${shorter.length} shorter lives, versus ${money(longerRate)} on ${longer.length} longer lives.`
+          ? `Shorter average streams are currently more efficient: ${money(shorterRate)} diamonds per hour on ${shorter.reduce((total, day) => total + day.streams, 0)} streams, versus ${money(longerRate)} on ${longer.reduce((total, day) => total + day.streams, 0)} longer streams.`
           : `Live length is not showing a strong difference yet: longer and shorter lives are returning a similar diamonds-per-hour rate.`
       : "There is not enough live-time variation yet to judge whether longer lives are helping.";
   return (
@@ -661,8 +694,8 @@ function CreatorInsight({
       <div className="mt-3 grid gap-3 xl:grid-cols-3">
         <p className="text-sm leading-relaxed text-white/70">
           <strong className="text-white">Consistency:</strong> {rows.length}{" "}
-          recorded live days, averaging {averageHours.toFixed(1)} live hours
-          each.
+          recorded live days across {totalStreams} streams, averaging{" "}
+          {averageStreamLength.toFixed(1)} hours per stream.
         </p>
         <p className="text-sm leading-relaxed text-white/70">
           <strong className="text-white">Hours effect:</strong> {effect}
@@ -694,6 +727,7 @@ function CreatorDetail({
         month,
         day: index + 1,
         rate: day.hours ? day.diamonds / day.hours : 0,
+        streamLength: day.hours / Math.max(day.streams, 1),
       })),
     )
     .filter((day) => day.diamonds > 0 || day.hours > 0);
@@ -713,11 +747,14 @@ function CreatorDetail({
     [5, Infinity, "5+ HOURS"],
   ].map(([minimum, maximum, label]) => {
     const matched = days.filter(
-      (day) => day.hours >= Number(minimum) && day.hours < Number(maximum),
+      (day) =>
+        day.streamLength >= Number(minimum) &&
+        day.streamLength < Number(maximum),
     );
     return {
       label: String(label),
       days: matched.length,
+      streams: matched.reduce((total, day) => total + day.streams, 0),
       avgDiamonds: matched.length
         ? matched.reduce((total, day) => total + day.diamonds, 0) /
           matched.length
@@ -766,11 +803,11 @@ function CreatorDetail({
         </div>
         <section className="mt-7 grid gap-4 md:grid-cols-3">
           <DetailMetric
-            label="Most reliable live-length band"
+            label="Most reliable average stream-length band"
             value={bestBucket?.label || "No live hours"}
             detail={
               bestBucket
-                ? `${bestBucket.days} live days · ${money(bestBucket.avgRate)} diamonds per hour`
+                ? `${bestBucket.streams} streams · ${money(bestBucket.avgRate)} diamonds per hour`
                 : ""
             }
           />
@@ -814,9 +851,10 @@ function CreatorDetail({
             @{creator.username}
           </h3>
           <p className="mt-2 max-w-3xl text-sm text-white/60">
-            Your guide is weighted towards the hour bands you have used most
-            often. One unusually high battle day cannot outweigh a pattern
-            backed by many recorded lives.
+            This groups each day by its average hours per stream. The guide is
+            weighted towards the stream lengths you have used most often, so
+            one unusually high battle day cannot outweigh a pattern backed by
+            many streams.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {buckets.map((bucket) => (
@@ -835,7 +873,7 @@ function CreatorDetail({
                 </p>
                 <div className="mt-4 flex items-end justify-between">
                   <span className="text-sm font-bold text-white">
-                    {bucket.days} live{bucket.days === 1 ? "" : "s"}
+                    {bucket.streams} stream{bucket.streams === 1 ? "" : "s"}
                   </span>
                   <span className="text-xs text-white/45">
                     {money(bucket.avgDiamonds)} avg diamonds
