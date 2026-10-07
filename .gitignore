@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+# Generated exports can contain their own package install. Never commit it.
+**/node_modules/
+outputs/**/*.inspect.ndjson
 /.pnp
 .pnp.*
 .yarn/*
