@@ -65,12 +65,14 @@ export async function GET(request: Request) {
     const start = period === "month" ? new Date(end.getFullYear(), end.getMonth(), 1, 12) : new Date(end);
     if (period !== "month") start.setDate(start.getDate() - (maxDays - 1));
     const startDate = date(start);
-    const assignment = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[] } } | null)?.assignments || {});
+    const assignment = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; recruitmentAdjustments?: Record<string, number> } } | null)?.assignments || {});
     const groups = assignment.managerGroups || {};
     const names = assignment.managerNames || {};
+    const recruitmentAdjustments = assignment.recruitmentAdjustments || {};
     const deleted = new Set((assignment.deletedManagers || []).map(managerIdentity));
     const groupForManager = (manager: string) => Object.entries(groups).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "Unassigned";
     const nameForManager = (manager: string) => Object.entries(names).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "";
+    const recruitmentAdjustmentForManager = (manager: string) => Object.entries(recruitmentAdjustments).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || 0;
 
     // Every upload in the period is used. This means a creator who leaves later
     // still contributes the diamonds they earned before disappearing.
@@ -129,6 +131,13 @@ export async function GET(request: Request) {
       current.hours += recruit.hours;
       current.dph = current.hours ? Math.round(current.diamonds / current.hours) : 0;
       managers.set(recruit.managerKey, current);
+    }
+    // These are intentional manual recruitment credits, kept separate from
+    // creator rows so they do not alter the uploaded source data.
+    for (const [managerKey, manager] of managers) {
+      const adjustment = Number(recruitmentAdjustmentForManager(managerKey)) || 0;
+      manager.recruits = Math.max(0, manager.recruits + adjustment);
+      managers.set(managerKey, manager);
     }
     const managerList = [...managers.values()].sort((a, b) => b.recruits - a.recruits || a.manager.localeCompare(b.manager));
     return NextResponse.json({ period, startDate, endDate, recruits, managers: managerList, groups: [...new Set(managerList.map((manager) => manager.group))].sort() });
