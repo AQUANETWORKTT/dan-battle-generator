@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import styles from "./start-your-journey.module.css";
+import ApplicationForm from "./ApplicationForm";
 
 export const metadata: Metadata = {
   title: "Start Your Journey | First Class Agency",
@@ -24,8 +25,17 @@ function Placeholder({ label, kind = "photo", className = "" }: { label: string;
   </div>;
 }
 
+function Photo({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+  return <div className={`${styles.photo} ${className}`}><img src={src} alt={alt} /></div>;
+}
+
 function GoldButton({ children, outline = false }: { children: ReactNode; outline?: boolean }) {
   return <button type="button" className={`${styles.button} ${outline ? styles.buttonOutline : ""}`}>{children}<span aria-hidden>→</span></button>;
+}
+
+function GoldLink({ children, href, outline = false }: { children: ReactNode; href: string; outline?: boolean }) {
+  const external = href.startsWith("http");
+  return <a className={`${styles.button} ${outline ? styles.buttonOutline : ""}`} href={href} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>{children}<span aria-hidden>→</span></a>;
 }
 
 export default function StartYourJourneyPage() {
@@ -34,19 +44,19 @@ export default function StartYourJourneyPage() {
       <div className={styles.heroGlow} />
       <header className={styles.nav}>
         <img className={styles.logo} src="/branding/first-class-logo.png" alt="First Class Agency" />
-        <button type="button" aria-label="Open menu" className={styles.menu}><i /><i /><i /></button>
       </header>
       <div className={styles.heroContent}>
-        <Placeholder label="Hero creator photo" className={styles.heroMedia} />
+        <Photo src="/branding/journey-hero-creator.png" alt="Creator in a First Class style studio" className={styles.heroMedia} />
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>First Class Agency</p>
           <h1>Your journey <em>starts here.</em></h1>
           <p className={styles.lead}>Create. Connect. Grow.</p>
-          <p className={styles.copy}>Join a community of TikTok LIVE creators and unlock new opportunities with free management, support and exciting events.</p>
-          <div className={styles.actions}><GoldButton>Apply to join</GoldButton><GoldButton outline>Visit our TikTok</GoldButton></div>
+          <p className={styles.copy}>Thousands of creators are earning from their phone — whenever and wherever they choose. With completely free management, expert support and real opportunities, you can build something bigger too.</p>
+          <div className={styles.actions}><GoldLink href="#application">Start your application</GoldLink><GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Visit our TikTok</GoldLink></div>
+          <p className={styles.heroNote}>No TikTok account yet? You can still apply — a username is optional.</p>
         </div>
       </div>
-      <div className={styles.stats}><span><b>500+</b> creators</span><span><b>10M+</b> audience reach</span><span><b>Global</b> opportunities</span></div>
+      <div className={styles.stats}><span><b>1,500+</b> creators</span><span><b>10M+</b> audience reach</span><span><b>Global</b> opportunities</span></div>
     </section>
 
     <section className={styles.section}>
@@ -57,7 +67,7 @@ export default function StartYourJourneyPage() {
           <p className={styles.copy}>First Class Agency is built for creators, by a team that understands the platform. We provide free management, guidance, networking and real opportunities to help you grow and achieve your goals.</p>
           <div className={styles.benefits}>{benefits.map(([icon, title, text]) => <article className={styles.benefit} key={title}><span>{icon}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
         </div>
-        <Placeholder label="First Class studio photo" className={styles.studioMedia} />
+        <Photo src="/branding/journey-community-event.png" alt="First Class creator networking event" className={styles.studioMedia} />
       </div>
     </section>
 
@@ -65,7 +75,7 @@ export default function StartYourJourneyPage() {
       <div className={styles.eyebrow}>Our community</div>
       <h2>Meet the faces<br />of First Class.</h2>
       <p className={styles.copy}>A community of talented creators, all on their own unique journeys. This could be you.</p>
-      <div className={styles.creatorGrid}>{creators.map((creator) => <article className={styles.creatorCard} key={creator}><Placeholder label={creator} /><p>@username</p><span>♪</span></article>)}</div>
+      <div className={styles.creatorGrid}>{creators.map((creator, index) => <article className={styles.creatorCard} key={creator}><Photo src={index % 2 ? "/branding/journey-community-event.png" : "/branding/journey-hero-creator.png"} alt={`${creator} placeholder`} /><p>@username</p><span>♪</span></article>)}</div>
       <div className={styles.center}><GoldButton outline>View more creators</GoldButton></div>
     </section>
 
@@ -81,24 +91,16 @@ export default function StartYourJourneyPage() {
       <div className={styles.eyebrow}>TikTok highlights</div>
       <h2>Watch our creators<br />in action.</h2>
       <div className={styles.highlightGrid}><Placeholder label="TikTok highlight one" kind="video" /><Placeholder label="TikTok highlight two" kind="video" /><Placeholder label="TikTok highlight three" kind="video" /></div>
-      <div className={styles.center}><GoldButton outline>Follow us on TikTok</GoldButton></div>
+      <div className={styles.center}><GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Follow us on TikTok</GoldLink></div>
     </section>
 
-    <section className={styles.apply}>
-      <div className={styles.applyMedia}><Placeholder label="Team event photo" /></div>
+    <section className={styles.apply} id="application">
+      <div className={styles.applyMedia}><Photo src="/branding/journey-community-event.png" alt="Creators at a First Class event" /></div>
       <div className={styles.applyForm}>
         <div className={styles.eyebrow}>Apply now</div>
         <h2>Ready to go live?</h2>
         <p className={styles.copy}>Take the first step and join First Class Agency. It only takes a minute to apply.</p>
-        <form>
-          <input aria-label="TikTok username" placeholder="TikTok Username" />
-          <input aria-label="Your name" placeholder="Your Name" />
-          <input aria-label="Email address" placeholder="Email Address" type="email" />
-          <select aria-label="Your age" defaultValue=""><option value="" disabled>Your Age</option><option>18–24</option><option>25–34</option><option>35+</option></select>
-          <GoldButton>Submit application</GoldButton>
-        </form>
-        <div className={styles.or}>or</div>
-        <GoldButton outline>Message us on TikTok</GoldButton>
+        <ApplicationForm />
       </div>
     </section>
 
