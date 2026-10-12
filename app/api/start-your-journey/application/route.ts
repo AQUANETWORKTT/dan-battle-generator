@@ -16,11 +16,12 @@ export async function POST(request: Request) {
   const name = clean(body.name, 80);
   const tiktokUsername = clean(body.tiktokUsername, 80);
   const phoneNumber = clean(body.phoneNumber, 40);
-  const age = clean(body.age, 2);
-  if (!name || !phoneNumber || !/^\d{1,2}$/.test(age)) return NextResponse.json({ error: "Please enter your name, phone number and a valid age." }, { status: 400 });
+  const countryCode = clean(body.countryCode, 4);
+  if (!/^[a-zA-Z\s]+$/.test(name) || !/^\+\d{1,3}$/.test(countryCode) || !/^\d{6,15}$/.test(phoneNumber)) return NextResponse.json({ error: "Please enter your name and a valid phone number." }, { status: 400 });
 
-  const applicationText = ["NEW FIRST CLASS APPLICATION", "", `Name: ${name}`, `TikTok: ${tiktokUsername ? `@${tiktokUsername.replace(/^@+/, "")}` : "Not provided"}`, `Phone: ${phoneNumber}`, `Age: ${age}`].join("\n");
-  const application = { name, tiktokUsername: tiktokUsername.replace(/^@+/, ""), phoneNumber, age: Number(age), createdAt: new Date().toISOString() };
+  const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+  const applicationText = ["NEW FIRST CLASS APPLICATION", "", `Name: ${name}`, `TikTok: ${tiktokUsername ? `@${tiktokUsername.replace(/^@+/, "")}` : "Not provided"}`, `Phone: ${fullPhoneNumber}`].join("\n");
+  const application = { name, tiktokUsername: tiktokUsername.replace(/^@+/, ""), phoneNumber: fullPhoneNumber, createdAt: new Date().toISOString() };
   const { data: saved } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", "start-your-journey-applications").maybeSingle();
   const existing = Array.isArray((saved?.template_json as { applications?: unknown[] } | null)?.applications) ? (saved!.template_json as { applications: unknown[] }).applications : [];
   const { error: saveError } = await submissionsSupabase.from("poster_templates").upsert({ name: "start-your-journey-applications", template_json: { applications: [application, ...existing].slice(0, 500) }, background_url: null, updated_at: application.createdAt }, { onConflict: "name" });

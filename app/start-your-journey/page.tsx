@@ -53,7 +53,6 @@ export default function StartYourJourneyPage() {
           <p className={styles.lead}>Create. Connect. Grow.</p>
           <p className={styles.copy}>Thousands of creators are earning from their phone — whenever and wherever they choose. With completely free management, expert support and real opportunities, you can build something bigger too.</p>
           <div className={styles.actions}><GoldLink href="#application">Start your application</GoldLink><GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Visit our TikTok</GoldLink></div>
-          <p className={styles.heroNote}>No TikTok account yet? You can still apply — a username is optional.</p>
         </div>
       </div>
       <div className={styles.stats}><span><b>1,500+</b> creators</span><span><b>10M+</b> audience reach</span><span><b>Global</b> opportunities</span></div>
