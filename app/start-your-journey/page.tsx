@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import styles from "./start-your-journey.module.css";
 import ApplicationForm from "./ApplicationForm";
+import ApplicationJumpLink from "./ApplicationJumpLink";
 
 export const metadata: Metadata = {
   title: "Start Your Journey | First Class Agency",
@@ -9,9 +10,9 @@ export const metadata: Metadata = {
 };
 
 const benefits = [
-  ["◎", "Free management", "Full support at no cost to you."],
-  ["↗", "Creator support", "Guidance, tips and 1:1 support."],
-  ["✦", "Exclusive events", "Invites to battles, meet-ups and more."],
+  ["Free management", "Full support at no cost to you."],
+  ["Creator support", "Guidance, tips and 1:1 support."],
+  ["Exclusive events", "Battles, TikTok HQ and London meet-ups."],
 ];
 
 const creators = ["Creator one", "Creator two", "Creator three", "Creator four"];
@@ -48,11 +49,10 @@ export default function StartYourJourneyPage() {
       <div className={styles.heroContent}>
         <Photo src="/branding/journey-hero-creator.png" alt="Creator in a First Class style studio" className={styles.heroMedia} />
         <div className={styles.heroCopy}>
-          <p className={styles.kicker}>First Class Agency</p>
           <h1>Your journey <em>starts here.</em></h1>
           <p className={styles.lead}>Create. Connect. Grow.</p>
           <p className={styles.copy}>Thousands of creators are earning from their phone — whenever and wherever they choose. With completely free management, expert support and real opportunities, you can build something bigger too.</p>
-          <div className={styles.actions}><GoldLink href="#application">Start your application</GoldLink><GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Visit our TikTok</GoldLink></div>
+          <div className={styles.actions}><ApplicationJumpLink /> <GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Visit our TikTok</GoldLink></div>
         </div>
       </div>
       <div className={styles.stats}><span><b>1,500+</b> creators</span><span><b>10M+</b> audience reach</span><span><b>Global</b> opportunities</span></div>
@@ -64,7 +64,7 @@ export default function StartYourJourneyPage() {
         <div>
           <h2>More than<br />just an agency.</h2>
           <p className={styles.copy}>First Class Agency is built for creators, by a team that understands the platform. We provide free management, guidance, networking and real opportunities to help you grow and achieve your goals.</p>
-          <div className={styles.benefits}>{benefits.map(([icon, title, text]) => <article className={styles.benefit} key={title}><span>{icon}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
+          <div className={styles.benefits}>{benefits.map(([title, text]) => <article className={styles.benefit} key={title}><h3>{title}</h3><p>{text}</p></article>)}</div>
         </div>
         <Photo src="/branding/journey-community-event.png" alt="First Class creator networking event" className={styles.studioMedia} />
       </div>
@@ -97,7 +97,7 @@ export default function StartYourJourneyPage() {
       <div className={styles.applyMedia}><Photo src="/branding/journey-community-event.png" alt="Creators at a First Class event" /></div>
       <div className={styles.applyForm}>
         <div className={styles.eyebrow}>Apply now</div>
-        <h2>Ready to go live?</h2>
+        <h2>Ready to get started?</h2>
         <p className={styles.copy}>Take the first step and join First Class Agency. It only takes a minute to apply.</p>
         <ApplicationForm />
       </div>
