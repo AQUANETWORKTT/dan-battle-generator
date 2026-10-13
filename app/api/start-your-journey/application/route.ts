@@ -17,6 +17,26 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 }
 
+function normalisePhoneNumber(countryCode: string, value: string) {
+  const callingCode = countryCode.slice(1);
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith(`00${callingCode}`)) digits = digits.slice(callingCode.length + 2);
+  else if (digits.startsWith(callingCode)) digits = digits.slice(callingCode.length);
+
+  if (countryCode === "+44") {
+    if (/^07\d{9}$/.test(digits)) return `+44${digits.slice(1)}`;
+    if (/^7\d{9}$/.test(digits)) return `+44${digits}`;
+    return null;
+  }
+
+  if (countryCode === "+353") {
+    if (!/^0?8[3-9]\d{7}$/.test(digits)) return null;
+    return `+353${digits.replace(/^0/, "")}`;
+  }
+
+  return /^\d{6,15}$/.test(digits) ? `${countryCode}${digits}` : null;
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body || clean(body.website, 100)) return NextResponse.json({ error: "Unable to send this application." }, { status: 400 });
@@ -25,9 +45,15 @@ export async function POST(request: Request) {
   const tiktokUsername = clean(body.tiktokUsername, 80);
   const phoneNumber = clean(body.phoneNumber, 40);
   const countryCode = clean(body.countryCode, 4);
-  if (!/^[a-zA-Z\s]+$/.test(name) || !/^\+\d{1,3}$/.test(countryCode) || !/^\d{6,15}$/.test(phoneNumber)) return NextResponse.json({ error: "Please enter your name and a valid phone number." }, { status: 400 });
+  const fullPhoneNumber = /^\+\d{1,3}$/.test(countryCode) ? normalisePhoneNumber(countryCode, phoneNumber) : null;
+  if (!/^[a-zA-Z\s]+$/.test(name) || !fullPhoneNumber) return NextResponse.json({ error: "Please enter your name and a valid mobile number." }, { status: 400 });
 
-  const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+  // Never fall back to a different bot: an application is only successful when
+  // the dedicated application bot and its group have both been configured.
+  const telegramToken = process.env.APPLICATION_TELEGRAM_BOT_TOKEN;
+  const telegramChatId = process.env.APPLICATION_TELEGRAM_CHAT_ID;
+  if (!telegramToken || !telegramChatId) return NextResponse.json({ error: "Applications are not configured to send yet. Please try again shortly." }, { status: 503 });
+
   const username = tiktokUsername.replace(/^@+/, "").replace(/[^a-zA-Z0-9._-]/g, "");
   const plainApplicationText = ["NEW START YOUR JOURNEY APPLICATION", "", `Name: ${name}`, `TikTok: ${username ? `tiktok.com/@${username}` : "Not provided"}`, `Phone: ${fullPhoneNumber}`].join("\n");
   const telegramText = [
@@ -43,12 +69,13 @@ export async function POST(request: Request) {
   const { error: saveError } = await submissionsAdmin.from("poster_templates").upsert({ name: "start-your-journey-applications", template_json: { applications: [application, ...existing].slice(0, 500) }, background_url: null, updated_at: application.createdAt }, { onConflict: "name" });
   if (saveError) return NextResponse.json({ error: "We could not save your application. Please try again." }, { status: 502 });
 
-  const telegramToken = process.env.APPLICATION_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-  const telegramChatId = process.env.APPLICATION_TELEGRAM_CHAT_ID || process.env.BATTLE_CALENDAR_TELEGRAM_CHAT_ID || process.env.BATTLE_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
-
-  if (telegramToken && telegramChatId) await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+  const telegramResponse = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: telegramChatId, text: telegramText, parse_mode: "HTML", link_preview_options: { is_disabled: true } }),
-  }).catch(() => undefined);
+  }).catch(() => null);
+  if (!telegramResponse?.ok) {
+    console.error("Start Your Journey Telegram notification failed", telegramResponse?.status);
+    return NextResponse.json({ error: "We could not send your application just now. Please try again shortly." }, { status: 502 });
+  }
 
   const resendKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.RESEND_FROM_EMAIL;
