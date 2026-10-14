@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./start-your-journey.module.css";
 type Clip = { src: string; label: string; poster?: string; type?: string };
-export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[]; autoplay?: boolean }) {
+export default function VideoCarousel({ clips, autoplay = true, showSoundPrompt = true }: { clips: Clip[]; autoplay?: boolean; showSoundPrompt?: boolean }) {
   const [active, setActive] = useState(0);
   const [visible, setVisible] = useState(false);
   const [started, setStarted] = useState(autoplay);
@@ -63,6 +63,6 @@ export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[
       </div>;
     })}</div>
     <div className={styles.carouselControls}><div className={styles.carouselDots}>{clips.map((clip,index) => <button key={clip.src} aria-label={`Show video ${index + 1}`} aria-pressed={active === index} onClick={() => { enableSound(); setActive(index); }} />)}</div></div>
-    {!soundEnabled && <button className={styles.soundPrompt} onClick={enableSound}>Tap for sound</button>}
+    {showSoundPrompt && !soundEnabled && <button className={styles.soundPrompt} onClick={enableSound}>Tap for sound</button>}
   </div>;
 }

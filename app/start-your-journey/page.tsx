@@ -92,7 +92,7 @@ export default function StartYourJourneyPage() {
     <section className={`${styles.section} ${styles.highlights}`}>
       <div className={styles.eyebrow}>TikTok highlights</div>
       <h2>Watch our creators<br />in action.</h2>
-      <VideoCarousel autoplay clips={[
+      <VideoCarousel autoplay showSoundPrompt={false} clips={[
         { src: "/branding/journey-highlight-1.mp4", label: "First Class creator highlight", poster: "/branding/journey-highlight-1-poster.jpg" },
         { src: "/branding/journey-highlight-2.mp4", label: "First Class creator gifting highlight", poster: "/branding/journey-highlight-2-poster.jpg" },
       ]} />
