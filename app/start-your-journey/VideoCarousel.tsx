@@ -11,13 +11,21 @@ export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[
   const root = useRef<HTMLDivElement>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
   const touchX = useRef<number | null>(null);
+  const manuallyMuted = useRef(false);
   const previousPlayback = useRef({ visible: false, active: -1 });
   const enableSound = () => {
     setStarted(true);
     const video = videos.current[active];
     if (video) { video.volume = 1; video.muted = false; void video.play().then(() => setSoundEnabled(true)).catch(() => { setSoundEnabled(false); video.muted = true; void video.play().catch(() => undefined); }); }
   };
-  const move = (step: number) => { enableSound(); setActive(index => (index + step + clips.length) % clips.length); };
+  const move = (step: number) => { if (!manuallyMuted.current) enableSound(); setActive(index => (index + step + clips.length) % clips.length); };
+  const toggleSound = () => {
+    if (soundEnabled) {
+      manuallyMuted.current = true;
+      videos.current.forEach(video => { if (video) video.muted = true; });
+      setSoundEnabled(false);
+    } else { manuallyMuted.current = false; enableSound(); }
+  };
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.35 });
     if (root.current) observer.observe(root.current);
@@ -27,6 +35,7 @@ export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[
   // clip's audio, rather than requiring a horizontal swipe to the next clip.
   useEffect(() => {
     const unlockVisibleVideo = () => {
+      if (manuallyMuted.current) return;
       const bounds = root.current?.getBoundingClientRect();
       if (!bounds || bounds.bottom <= 0 || bounds.top >= window.innerHeight || !visible) return;
       enableSound();
@@ -47,12 +56,13 @@ export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[
       else if (started) {
         if (restart || video.ended) video.currentTime = 0;
         video.volume = 1;
-        video.muted = false;
-        void video.play().then(() => setSoundEnabled(true)).catch(() => { setSoundEnabled(false); video.muted = true; void video.play().catch(() => undefined); });
+        video.muted = manuallyMuted.current;
+        void video.play().then(() => setSoundEnabled(!video.muted)).catch(() => { setSoundEnabled(false); video.muted = true; void video.play().catch(() => undefined); });
       }
     });
   }, [active, visible, started]);
   return <div ref={root} className={styles.videoCarousel} aria-label="Creator videos" onTouchStart={e => { touchX.current = e.touches[0].clientX; }} onTouchEnd={e => { if (touchX.current === null) return; const distance = e.changedTouches[0].clientX - touchX.current; if (Math.abs(distance) > 45) move(distance < 0 ? 1 : -1); touchX.current = null; }}>
+    <button type="button" className={styles.soundText} aria-pressed={soundEnabled} onClick={e => { e.stopPropagation(); toggleSound(); }} onTouchEnd={e => e.stopPropagation()}>👆 {soundEnabled ? "Tap to mute" : "Tap for sound"}</button>
     <div className={styles.carouselStage}>{clips.map((clip, index) => {
       const offset = (index - active + clips.length) % clips.length;
       const position = offset === 0 ? "centre" : offset === clips.length - 1 ? "left" : "right";
@@ -63,6 +73,6 @@ export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[
         {failed.includes(clip.src) && <p className={styles.videoError}>Video couldn’t load. <a href={clip.src}>Open video</a></p>}
       </div>;
     })}</div>
-    <div className={styles.carouselControls}><div className={styles.carouselDots}>{clips.map((clip,index) => <button key={clip.src} aria-label={`Show video ${index + 1}`} aria-pressed={active === index} onClick={() => { enableSound(); setActive(index); }} />)}</div></div>
+    <div className={styles.carouselControls}><div className={styles.carouselDots}>{clips.map((clip,index) => <button key={clip.src} aria-label={`Show video ${index + 1}`} aria-pressed={active === index} onClick={() => { if (!manuallyMuted.current) enableSound(); setActive(index); }} />)}</div></div>
   </div>;
 }

@@ -49,6 +49,8 @@
 .carouselStage{position:relative;width:100%;height:clamp(380px,42vw,590px);perspective:1200px}
 .carouselSlide{position:absolute;top:0;left:50%;width:min(64%,340px);height:100%;transform:translateX(-50%);transition:transform .65s ease,opacity .65s ease;overflow:hidden;border:1px solid rgba(239,194,82,.38);border-radius:20px;background:#080806}
 .carouselSlide video{display:block;width:100%;height:100%;object-fit:cover}
+.carouselSlide video[src="/branding/journey-creator-story-1.mp4"]{transform:scale(1.065)}
+@media(max-width:760px){.applyMedia .photo img{transform:scale(1.025);transform-origin:center}}
 .carouselSlide[data-position=centre]{z-index:3;opacity:1;transform:translateX(-50%) scale(1)}
 .carouselSlide[data-position=left]{z-index:1;opacity:.5;transform:translateX(-155%) scale(.86) rotateY(12deg);pointer-events:none}
 .carouselSlide[data-position=right]{z-index:1;opacity:.5;transform:translateX(55%) scale(.86) rotateY(-12deg);pointer-events:none}
@@ -57,6 +59,9 @@
 .carouselDots{display:flex;gap:10px}.carouselDots button{width:9px;height:9px;border-radius:50%;background:#66583a}.carouselDots button[aria-pressed=true]{background:#f2c562}
 .videoError{position:absolute;inset:auto 10px 65px;background:#15130e;padding:12px;font-size:12px}.videoError a{text-decoration:underline;color:#f2c562}
 .soundPrompt{display:block;margin:14px auto 0;border:0;background:transparent;color:#efc35b;font-size:12px;cursor:pointer}
+.soundText{display:block;margin:0 auto 18px;padding:8px 12px;border:0;background:transparent;color:#efc35b;font-size:14px;cursor:pointer;animation:soundPulse 2s ease-in-out infinite}
+@keyframes soundPulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media(prefers-reduced-motion:reduce){.soundText{animation:none}}
 @media(max-width:760px){.logo{transform:scale(2.04)}}
 @media(max-width:760px){.videoCarousel{margin-inline:-22px}.carouselStage{height:min(112vw,560px)}.carouselSlide{width:72%}}
 @media(prefers-reduced-motion:reduce){.creatorCard[href],.carouselSlide{transition:none}}
