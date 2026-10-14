@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
+import { ONBOARDING_CHECKLIST_LENGTH } from "@/lib/onboarding-checklist";
 
 export const dynamic = "force-dynamic";
 
 const RECORD = "first-class-onboarding-workspace";
 const TESTING_START = "2026-09-20";
 type Row = Record<string, unknown>;
-type Entry = { id: string; username: string; manager: string; group: string; days: number; diamonds: number; joinedDate: string; checklist: boolean[]; status: "pending" | "onboarded" | "complete"; onboardedAt?: string; completedAt?: string };
+type Entry = { id: string; username: string; manager: string; group: string; days: number; diamonds: number; joinedDate: string; checklist: boolean[]; status: "pending" | "onboarded" | "complete"; onboardedAt?: string; completedAt?: string; notes?: string; startDate?: string };
 const text = (value: unknown) => String(value || "").trim();
 const number = (value: unknown) => Number(String(value ?? "").replace(/[^\d.-]/g, "")) || 0;
 const identity = (value: unknown) => text(value).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -18,7 +19,7 @@ const diamonds = (row: Row) => number(row.diamonds || row.Diamonds);
 const date = (value: Date) => value.toISOString().slice(0, 10);
 const joinedDate = (snapshot: string, days: number) => { const value = new Date(`${snapshot}T12:00:00`); value.setDate(value.getDate() - Math.max(0, days)); return date(value); };
 const isQuit = (row: Row) => JSON.stringify(row).toLowerCase().includes("creator has quit the network");
-const CHECKLIST_LENGTH = 23;
+const CHECKLIST_LENGTH = ONBOARDING_CHECKLIST_LENGTH;
 const emptyChecklist = () => Array.from({ length: CHECKLIST_LENGTH }, () => false);
 
 function readEntries(value: unknown): Record<string, Entry> {
@@ -26,7 +27,7 @@ function readEntries(value: unknown): Record<string, Entry> {
   if (!entries || typeof entries !== "object") return {};
   return Object.fromEntries(Object.entries(entries as Record<string, Partial<Entry>>).flatMap(([id, entry]) => {
     if (!entry || !text(entry.username)) return [];
-    return [[id, { id, username: text(entry.username), manager: text(entry.manager), group: text(entry.group), days: number(entry.days), diamonds: number(entry.diamonds), joinedDate: text(entry.joinedDate), checklist: Array.from({ length: CHECKLIST_LENGTH }, (_, index) => Boolean(entry.checklist?.[index])), status: entry.status === "complete" ? "complete" : entry.status === "onboarded" ? "onboarded" : "pending", onboardedAt: text(entry.onboardedAt), completedAt: text(entry.completedAt) }]];
+    return [[id, { id, username: text(entry.username), manager: text(entry.manager), group: text(entry.group), days: number(entry.days), diamonds: number(entry.diamonds), joinedDate: text(entry.joinedDate), checklist: Array.from({ length: CHECKLIST_LENGTH }, (_, index) => Boolean(entry.checklist?.[index])), status: entry.status === "complete" ? "complete" : entry.status === "onboarded" ? "onboarded" : "pending", onboardedAt: text(entry.onboardedAt), completedAt: text(entry.completedAt), notes: text(entry.notes), startDate: text(entry.startDate) }]];
   }));
 }
 
@@ -73,23 +74,34 @@ export async function GET() {
     const latestRowsResult = await submissionsSupabase.from("creator_daily_stats").select("*").eq("stat_date", latestDate);
     if (latestRowsResult.error) throw new Error(latestRowsResult.error.message);
     const latestRows = ((latestRowsResult.data || []) as Row[]).filter((row) => firstClass(row, groups));
-    // Daily uploads contain daily values: sum the latest upload's calendar month.
-    const monthTotals = new Map<string, number>();
-    const monthStart = `${latestDate.slice(0, 7)}-01`;
+    // Fetch daily history for tracked creators and new onboarding candidates only.
+    const history = new Map<string, Row[]>();
+    const candidates = latestRows.filter((row) => dayCount(row) <= 14 || entries[creatorId(row)]);
+    const trackedIds = [...new Set([...candidates.map(creatorId), ...Object.keys(entries)])];
+    const monthStart = [...candidates.map((row) => joinedDate(latestDate, dayCount(row))), ...Object.values(entries).map((entry) => entry.joinedDate)].filter(Boolean).sort()[0] || `${latestDate.slice(0, 7)}-01`;
     for (let offset = 0; ; offset += 1000) {
       const { data, error } = await submissionsSupabase.from("creator_daily_stats")
-        .select("creator_id,creator_username,diamonds,stat_date")
+        .select("creator_id,creator_username,diamonds,stat_date,live_hours,valid_live_days,matches")
+        .in("creator_id", trackedIds.length ? trackedIds : ["no-onboarding-creators"])
         .gte("stat_date", monthStart).lte("stat_date", latestDate)
         .order("stat_date").order("creator_id").range(offset, offset + 999);
       if (error) throw new Error(error.message);
       const rows = (data || []) as Row[];
       for (const row of rows) {
         const id = creatorId(row);
-        monthTotals.set(id, (monthTotals.get(id) || 0) + diamonds(row));
+        history.set(id, [...(history.get(id) || []), row]);
       }
       if (rows.length < 1000) break;
     }
-    const withMonthTotal = (entry: Entry): Entry => ({ ...entry, diamonds: monthTotals.get(entry.id) || 0 });
+    const weekStart = new Date(`${latestDate}T12:00:00Z`);
+    weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+    const withMonthTotal = (entry: Entry) => {
+      const rows = (history.get(entry.id) || []).filter((row) => text(row.stat_date) >= entry.joinedDate);
+      const daily = rows.map((row) => ({ date: text(row.stat_date), diamonds: diamonds(row), hours: number(row.live_hours), liveDays: number(row.valid_live_days), matches: number(row.matches) }));
+      const total = (items: typeof daily) => items.reduce((sum, row) => ({ diamonds: sum.diamonds + row.diamonds, hours: sum.hours + row.hours, liveDays: sum.liveDays + row.liveDays, matches: sum.matches + row.matches }), { diamonds: 0, hours: 0, liveDays: 0, matches: 0 });
+      const weekly = daily.filter((row) => row.date >= date(weekStart));
+      return { ...entry, ...total(daily), weekly: total(weekly), daily: weekly, reportStart: date(weekStart), reportEnd: latestDate };
+    };
     const liveCreators = new Map(latestRows.map((row) => { const item = creator(row, latestDate, groups, names); return [item.id, item]; }));
     const statusQuit = latestRows.filter(isQuit).map((row) => creator(row, latestDate, groups, names));
     const quit = [...new Map(statusQuit.map((item) => [item.id, item])).values()].sort((a, b) => a.days - b.days);
@@ -100,7 +112,7 @@ export async function GET() {
       const isNewCreator = item.days <= 14 && item.joinedDate >= TESTING_START && (!saved || saved.status === "pending");
       const wasMovedBack = saved?.status === "pending";
       return (isNewCreator || wasMovedBack) && !quit.some((record) => record.id === item.id);
-    }).map((item) => ({ ...item, ...(normalizedEntries[item.id] || {}), status: "pending" as const })).sort((a, b) => b.days - a.days);
+    }).map((item) => ({ ...(normalizedEntries[item.id] || {}), ...item, checklist: normalizedEntries[item.id]?.checklist || item.checklist, notes: normalizedEntries[item.id]?.notes, startDate: normalizedEntries[item.id]?.startDate, status: "pending" as const })).sort((a, b) => b.days - a.days);
     const active = merged.filter((item) => item.status === "onboarded" && !isDanJamesRecord(item) && !quit.some((record) => record.id === item.id)).sort((a, b) => b.days - a.days);
     const previous = merged.filter((item) => item.status === "complete" && !isDanJamesRecord(item)).sort((a, b) => b.diamonds - a.diamonds);
     return NextResponse.json({ latestDate, testingStart: TESTING_START,
