@@ -81,9 +81,7 @@ export default function CreatorRotator() {
     {creators.map((creator, index) => <a
       className={`${styles.creatorCard} ${changing === index ? styles.creatorChanging : ""}`}
       key={index}
-      href={`https://www.tiktok.com/${creator.username}`}
-      target="_blank"
-      rel="noreferrer"
+      href={`https://www.tiktok.com/@${creator.username.replace(/^@/, "").toLowerCase()}`}
       aria-label={`Open ${creator.username} on TikTok`}
     >
       <div className={styles.creatorPhoto}><img src={creator.image} alt={creator.alt} /></div>
