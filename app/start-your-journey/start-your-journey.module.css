@@ -56,6 +56,7 @@
 .carouselControls>button{border:1px solid #b98f3f;border-radius:50%;width:38px;height:38px;color:#efc35b;background:#141109}
 .carouselDots{display:flex;gap:10px}.carouselDots button{width:9px;height:9px;border-radius:50%;background:#66583a}.carouselDots button[aria-pressed=true]{background:#f2c562}
 .videoError{position:absolute;inset:auto 10px 65px;background:#15130e;padding:12px;font-size:12px}.videoError a{text-decoration:underline;color:#f2c562}
+.soundPrompt{display:block;margin:14px auto 0;border:0;background:transparent;color:#efc35b;font-size:12px;cursor:pointer}
 @media(max-width:760px){.videoCarousel{margin-inline:-22px}.carouselStage{height:min(112vw,560px)}.carouselSlide{width:72%}}
 @media(prefers-reduced-motion:reduce){.creatorCard[href],.carouselSlide{transition:none}}
 
