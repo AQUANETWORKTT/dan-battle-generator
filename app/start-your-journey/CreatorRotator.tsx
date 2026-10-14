@@ -36,9 +36,18 @@ export default function CreatorRotator() {
   const nextSlot = useRef(0);
 
   useEffect(() => {
+    const loaded = new Map(initialCreators.map(creator => {
+      const image = new Image();
+      image.src = creator.image;
+      return [creator.image, image.decode().catch(() => undefined)] as const;
+    }));
+    let cancelled = false;
+    let rotating = false;
     let swapTimeout: number | undefined;
     let fadeTimeout: number | undefined;
-    const rotate = () => {
+    const rotate = async () => {
+      if (rotating) return;
+      rotating = true;
       const slot = nextSlot.current;
       nextSlot.current = (nextSlot.current + 1) % 4;
       const isWomanSlot = slot % 2 === 0;
@@ -46,6 +55,8 @@ export default function CreatorRotator() {
       const incomingIndex = isWomanSlot ? nextWomanIndex.current : nextManIndex.current;
       const incomingCreator = queue[incomingIndex % queue.length];
       if (!incomingCreator) return;
+      await loaded.get(incomingCreator.image);
+      if (cancelled) return;
       if (isWomanSlot) nextWomanIndex.current += 1;
       else nextManIndex.current += 1;
       setChanging(slot);
@@ -54,11 +65,12 @@ export default function CreatorRotator() {
         next[slot] = incomingCreator;
         return next;
       }), 800);
-      fadeTimeout = window.setTimeout(() => setChanging(null), 1700);
+      fadeTimeout = window.setTimeout(() => { setChanging(null); rotating = false; }, 1000);
     };
 
     const interval = window.setInterval(rotate, 4000);
     return () => {
+      cancelled = true;
       window.clearInterval(interval);
       window.clearTimeout(swapTimeout);
       window.clearTimeout(fadeTimeout);

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import styles from "./start-your-journey.module.css";
 import ApplicationForm from "./ApplicationForm";
 import ApplicationJumpLink from "./ApplicationJumpLink";
-import ManagedVideo from "./ManagedVideo";
+import VideoCarousel from "./VideoCarousel";
 import CreatorRotator from "./CreatorRotator";
 
 export const metadata: Metadata = {
@@ -86,17 +86,16 @@ export default function StartYourJourneyPage() {
       <div className={styles.eyebrow}>Success stories</div>
       <h2>Real people.<br />Real opportunities.</h2>
       <p className={styles.copy}>Hear from our creators and see how First Class Agency has helped them grow.</p>
-      <div className={styles.storyGrid}>{stories.map((story) => <article className={styles.story} key={story.src}><ManagedVideo className={styles.storyVideo} label={story.label} src={story.src} type={story.type} poster={story.poster} /></article>)}</div>
+      <VideoCarousel clips={stories.map((story, index) => ({ ...story, poster: `/branding/journey-creator-story-${index + 1}-poster.jpg` }))} />
     </section>
 
     <section className={`${styles.section} ${styles.highlights}`}>
       <div className={styles.eyebrow}>TikTok highlights</div>
       <h2>Watch our creators<br />in action.</h2>
-      <div className={styles.highlightGrid}>
-        <ManagedVideo className={styles.highlightVideo} label="First Class creator highlight" src="/branding/journey-highlight-1.mp4" type="video/mp4" autoPlayWhenVisible playlist="creator-highlights" />
-        <ManagedVideo className={styles.highlightVideo} label="First Class creator gifting highlight" src="/branding/journey-highlight-2.mp4" type="video/mp4" playlist="creator-highlights" />
-        <Placeholder label="TikTok highlight three" kind="video" />
-      </div>
+      <VideoCarousel autoplay clips={[
+        { src: "/branding/journey-highlight-1.mp4", label: "First Class creator highlight", poster: "/branding/journey-highlight-1-poster.jpg" },
+        { src: "/branding/journey-highlight-2.mp4", label: "First Class creator gifting highlight", poster: "/branding/journey-highlight-2-poster.jpg" },
+      ]} />
       <div className={styles.center}><GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Follow us on TikTok</GoldLink></div>
     </section>
 

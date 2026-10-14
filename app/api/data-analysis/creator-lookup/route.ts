@@ -1,56 +1,36 @@
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
-
+import { buildCreatorHistory } from "@/lib/creator-history";
 export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const creatorId = url.searchParams.get("creatorId")?.trim() || "";
-  const username = (url.searchParams.get("username") || "").trim()
-    .replace(/^https?:\/\/(?:www\.)?tiktok\.com\/@/i, "")
-    .split(/[/?#]/)[0].replace(/^@+/, "").toLowerCase();
-
-  if (!creatorId && !username) {
-    return NextResponse.json({ error: "Enter a Creator ID or username." }, { status: 400 });
+ try {
+  const params = new URL(request.url).searchParams;
+  let creatorId = (params.get("creatorId") || "").trim();
+  const username = (params.get("username") || "").trim().replace(/^https?:\/\/(?:www\.)?tiktok\.com\/@/i, "").split(/[/?#]/)[0].replace(/^@+/, "").toLowerCase();
+  if (!creatorId && !username) return NextResponse.json({error:"Enter a Creator ID or username."},{status:400});
+  if (creatorId && !/^\d{10,}$/.test(creatorId)) return NextResponse.json({error:"Creator ID must be numeric."},{status:400});
+  if (!creatorId && !/^[a-z0-9._-]+$/i.test(username)) return NextResponse.json({error:"Enter a valid username."},{status:400});
+  if (!creatorId) {
+   const pattern = username.replace(/_/g, "\\_");
+   const ids = new Map<string,string>();
+   for (let offset=0;;offset+=1000) {
+    const {data,error}=await submissionsSupabase.from("creator_daily_stats").select("creator_id,creator_username,stat_date").or(`creator_username.ilike.${pattern},creator_username.ilike.@${pattern}`).order("stat_date",{ascending:false}).order("creator_id").range(offset,offset+999);
+    if(error) throw Error(error.message);
+    for(const row of data||[]) { const id=String(row.creator_id||""); if(/^\d{10,}$/.test(id)) ids.set(id,String(row.creator_username||username)); }
+    if((data||[]).length<1000)break;
+   }
+   if(ids.size>1) return NextResponse.json({accounts:[...ids].map(([creatorId,username])=>({creatorId,username})),message:"This username appears against multiple Creator IDs. Choose an account to view its history."});
+   creatorId=[...ids.keys()][0]||"";
+   if(!creatorId)return NextResponse.json({error:"No saved account with a Creator ID was found for that username."},{status:404});
   }
-  if (creatorId && !/^\d{10,}$/.test(creatorId)) {
-    return NextResponse.json({ error: "Creator ID must be numeric." }, { status: 400 });
+  const rows:Record<string,unknown>[]=[];
+  for(let offset=0;;offset+=1000){
+   const {data,error}=await submissionsSupabase.from("creator_daily_stats").select("*").eq("creator_id",creatorId).or("data_period.is.null,data_period.neq.mature_month_total").order("stat_date").order("id").range(offset,offset+999);
+   if(error)throw Error(error.message);
+   rows.push(...(data||[]));
+   if((data||[]).length<1000)break;
   }
-  if (username && !/^[a-z0-9._-]+$/i.test(username)) {
-    return NextResponse.json({ error: "Enter a valid username." }, { status: 400 });
-  }
-
-  let query = submissionsSupabase
-    .from("creator_daily_stats")
-    .select("*")
-    .or("data_period.is.null,data_period.neq.mature_month_total")
-    .order("stat_date", { ascending: false })
-    .limit(30);
-  const exactUsername = username.replace(/_/g, "\\_");
-  query = creatorId ? query.eq("creator_id", creatorId) : query.or(`creator_username.ilike.${exactUsername},creator_username.ilike.@${exactUsername}`);
-  const { data, error } = await query;
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const rows = data || [];
-  const latestRow = rows[0] as Record<string, unknown> | undefined;
-  const lastManagedRow = rows.find((row) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email || "").trim()) as Record<string, unknown> | undefined;
-  const attributionRow = lastManagedRow || latestRow;
-  const statDate = String(attributionRow?.stat_date || "");
-  const daysSinceJoining = Number(attributionRow?.days_since_joining || attributionRow?.["Days since joining"] || 0);
-  let joinedDate = "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(statDate) && daysSinceJoining >= 0) { const joined = new Date(`${statDate}T12:00:00`); joined.setDate(joined.getDate() - Math.max(0, daysSinceJoining - 1)); joinedDate = joined.toISOString().slice(0, 10); }
-  const team = String(attributionRow?.team || "");
-  const rawManager = String(attributionRow?.manager_email || attributionRow?.creator_network_manager || attributionRow?.["Creator Network manager"] || attributionRow?.email || "");
-  const unassignedFirstClass = /unassigned first class/i.test(team);
-  const savedCreatorId = rows.map((row) => String(row.creator_id || "").trim()).find((id) => /^\d{10,}$/.test(id)) || "";
-  return NextResponse.json({
-    creatorId: creatorId || savedCreatorId,
-    username: rows.find((row) => row.creator_username)?.creator_username || username,
-    manager: rawManager || (unassignedFirstClass ? "Unassigned First Class" : ""),
-    group: unassignedFirstClass ? "First Class" : String(attributionRow?.group_name || team || ""),
-    joinedDate,
-    count: rows.length,
-    rows,
-  });
+  const history=buildCreatorHistory(rows);
+  return NextResponse.json({creatorId,...history,count:rows.length});
+ }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Could not load creator history."},{status:500});}
 }

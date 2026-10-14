@@ -43,6 +43,21 @@
 .split{align-items:start}
 .studioMedia{width:100%;min-height:0;height:auto;align-self:start;border-radius:24px;background:transparent}
 .studioMedia img{width:100%;height:auto;object-fit:contain;border-radius:inherit}
+.creatorCard{transition:opacity .75s ease,transform .25s,box-shadow .25s}
+.creatorChanging{animation:none;opacity:0}
+.videoCarousel{margin-top:34px;overflow:hidden;touch-action:pan-y}
+.carouselStage{position:relative;width:100%;height:clamp(380px,42vw,590px);perspective:1200px}
+.carouselSlide{position:absolute;top:0;left:50%;width:min(64%,340px);height:100%;transform:translateX(-50%);transition:transform .65s ease,opacity .65s ease;overflow:hidden;border:1px solid rgba(239,194,82,.38);border-radius:20px;background:#080806}
+.carouselSlide video{display:block;width:100%;height:100%;object-fit:cover}
+.carouselSlide[data-position=centre]{z-index:3;opacity:1;transform:translateX(-50%) scale(1)}
+.carouselSlide[data-position=left]{z-index:1;opacity:.5;transform:translateX(-155%) scale(.86) rotateY(12deg);pointer-events:none}
+.carouselSlide[data-position=right]{z-index:1;opacity:.5;transform:translateX(55%) scale(.86) rotateY(-12deg);pointer-events:none}
+.carouselControls{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:22px}
+.carouselControls>button{border:1px solid #b98f3f;border-radius:50%;width:38px;height:38px;color:#efc35b;background:#141109}
+.carouselDots{display:flex;gap:10px}.carouselDots button{width:9px;height:9px;border-radius:50%;background:#66583a}.carouselDots button[aria-pressed=true]{background:#f2c562}
+.videoError{position:absolute;inset:auto 10px 65px;background:#15130e;padding:12px;font-size:12px}.videoError a{text-decoration:underline;color:#f2c562}
+@media(max-width:760px){.videoCarousel{margin-inline:-22px}.carouselStage{height:min(112vw,560px)}.carouselSlide{width:72%}}
+@media(prefers-reduced-motion:reduce){.creatorCard,.carouselSlide{transition:none}}
 
 /* Creator handles always stay inside their card, including longer usernames. */
 .creatorCard p{max-width:100%;font-size:clamp(10px,1vw,15px);letter-spacing:.035em;line-height:1.1;overflow-wrap:anywhere;word-break:break-word}
