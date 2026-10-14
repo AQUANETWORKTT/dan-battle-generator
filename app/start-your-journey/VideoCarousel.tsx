@@ -34,6 +34,6 @@ export default function VideoCarousel({ clips, autoplay = false }: { clips: Clip
         {failed.includes(clip.src) && <p className={styles.videoError}>Video couldn’t load. <a href={clip.src}>Open video</a></p>}
       </div>;
     })}</div>
-    <div className={styles.carouselControls}><button aria-label="Previous video" onClick={() => move(-1)}>←</button><div className={styles.carouselDots}>{clips.map((clip,index) => <button key={clip.src} aria-label={`Show video ${index + 1}`} aria-pressed={active === index} onClick={() => setActive(index)} />)}</div><button aria-label="Next video" onClick={() => move(1)}>→</button></div>
+    <div className={styles.carouselControls}><div className={styles.carouselDots}>{clips.map((clip,index) => <button key={clip.src} aria-label={`Show video ${index + 1}`} aria-pressed={active === index} onClick={() => setActive(index)} />)}</div></div>
   </div>;
 }
