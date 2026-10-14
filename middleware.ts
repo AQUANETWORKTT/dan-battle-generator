@@ -57,6 +57,7 @@ export function middleware(req: NextRequest) {
   const isPublicEventRoute =
     path === "/" ||
     path === "/start-your-journey" ||
+    path.startsWith("/start-your-journey/") ||
     path.startsWith("/api/start-your-journey/") ||
     path.startsWith("/events") ||
     path.startsWith("/live/") ||

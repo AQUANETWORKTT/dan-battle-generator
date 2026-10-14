@@ -18,7 +18,7 @@ const diamonds = (row: Row) => number(row.diamonds || row.Diamonds);
 const date = (value: Date) => value.toISOString().slice(0, 10);
 const joinedDate = (snapshot: string, days: number) => { const value = new Date(`${snapshot}T12:00:00`); value.setDate(value.getDate() - Math.max(0, days)); return date(value); };
 const isQuit = (row: Row) => JSON.stringify(row).toLowerCase().includes("creator has quit the network");
-const CHECKLIST_LENGTH = 21;
+const CHECKLIST_LENGTH = 23;
 const emptyChecklist = () => Array.from({ length: CHECKLIST_LENGTH }, () => false);
 
 function readEntries(value: unknown): Record<string, Entry> {
@@ -73,15 +73,40 @@ export async function GET() {
     const latestRowsResult = await submissionsSupabase.from("creator_daily_stats").select("*").eq("stat_date", latestDate);
     if (latestRowsResult.error) throw new Error(latestRowsResult.error.message);
     const latestRows = ((latestRowsResult.data || []) as Row[]).filter((row) => firstClass(row, groups));
+    // Daily uploads contain daily values: sum the latest upload's calendar month.
+    const monthTotals = new Map<string, number>();
+    const monthStart = `${latestDate.slice(0, 7)}-01`;
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await submissionsSupabase.from("creator_daily_stats")
+        .select("creator_id,creator_username,diamonds,stat_date")
+        .gte("stat_date", monthStart).lte("stat_date", latestDate)
+        .order("stat_date").order("creator_id").range(offset, offset + 999);
+      if (error) throw new Error(error.message);
+      const rows = (data || []) as Row[];
+      for (const row of rows) {
+        const id = creatorId(row);
+        monthTotals.set(id, (monthTotals.get(id) || 0) + diamonds(row));
+      }
+      if (rows.length < 1000) break;
+    }
+    const withMonthTotal = (entry: Entry): Entry => ({ ...entry, diamonds: monthTotals.get(entry.id) || 0 });
     const liveCreators = new Map(latestRows.map((row) => { const item = creator(row, latestDate, groups, names); return [item.id, item]; }));
     const statusQuit = latestRows.filter(isQuit).map((row) => creator(row, latestDate, groups, names));
     const quit = [...new Map(statusQuit.map((item) => [item.id, item])).values()].sort((a, b) => a.days - b.days);
     const normalizedEntries = Object.fromEntries(Object.entries(entries).map(([id, entry]) => [id, entry.status === "onboarded" && !entry.onboardedAt ? { ...entry, status: "pending" as const } : entry]));
     const merged = Object.values(normalizedEntries).map((entry) => ({ ...entry, ...(liveCreators.get(entry.id) || {}), checklist: entry.checklist, status: entry.status, onboardedAt: entry.onboardedAt, completedAt: entry.completedAt }));
-    const pending = [...liveCreators.values()].filter((item) => item.days <= 14 && item.joinedDate >= TESTING_START && (!normalizedEntries[item.id] || normalizedEntries[item.id].status === "pending") && !quit.some((record) => record.id === item.id)).map((item) => ({ ...item, ...(normalizedEntries[item.id] || {}), status: "pending" as const })).sort((a, b) => b.days - a.days);
+    const pending = [...liveCreators.values()].filter((item) => {
+      const saved = normalizedEntries[item.id];
+      const isNewCreator = item.days <= 14 && item.joinedDate >= TESTING_START && (!saved || saved.status === "pending");
+      const wasMovedBack = saved?.status === "pending";
+      return (isNewCreator || wasMovedBack) && !quit.some((record) => record.id === item.id);
+    }).map((item) => ({ ...item, ...(normalizedEntries[item.id] || {}), status: "pending" as const })).sort((a, b) => b.days - a.days);
     const active = merged.filter((item) => item.status === "onboarded" && !isDanJamesRecord(item) && !quit.some((record) => record.id === item.id)).sort((a, b) => b.days - a.days);
     const previous = merged.filter((item) => item.status === "complete" && !isDanJamesRecord(item)).sort((a, b) => b.diamonds - a.diamonds);
-    return NextResponse.json({ latestDate, testingStart: TESTING_START, pending, active, previous, quit });
+    return NextResponse.json({ latestDate, testingStart: TESTING_START,
+      pending: pending.map(withMonthTotal), active: active.map(withMonthTotal),
+      previous: previous.map(withMonthTotal).sort((a, b) => b.diamonds - a.diamonds),
+      quit: quit.map(withMonthTotal) });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load onboarding workspace." }, { status: 500 });
   }
@@ -89,15 +114,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { creator?: Entry; action?: "onboard" | "complete" | "checklist"; checklist?: boolean[] };
+    const body = await request.json() as { creator?: Entry; action?: "onboard" | "complete" | "unboard" | "checklist"; checklist?: boolean[] };
     const creator = body.creator;
     if (!creator?.id || !creator.username || !body.action) return NextResponse.json({ error: "Creator and action are required." }, { status: 400 });
     const entries = await savedEntries();
     const saved = entries[creator.id];
     const current = saved?.status === "onboarded" && !saved.onboardedAt ? { ...saved, status: "pending" as const } : saved || creator;
-    const next: Entry = { ...current, ...creator, checklist: body.checklist ? Array.from({ length: CHECKLIST_LENGTH }, (_, index) => Boolean(body.checklist?.[index])) : current.checklist || emptyChecklist(), status: body.action === "complete" ? "complete" : body.action === "onboard" ? "onboarded" : current.status || "pending" };
+    const next: Entry = { ...current, ...creator, checklist: body.action === "unboard" ? emptyChecklist() : body.checklist ? Array.from({ length: CHECKLIST_LENGTH }, (_, index) => Boolean(body.checklist?.[index])) : current.checklist || emptyChecklist(), status: body.action === "complete" ? "complete" : body.action === "onboard" ? "onboarded" : body.action === "unboard" ? "pending" : current.status || "pending" };
     if (body.action === "onboard") next.onboardedAt = current.onboardedAt || new Date().toISOString();
     if (body.action === "complete") next.completedAt = new Date().toISOString();
+    if (body.action === "unboard") { next.onboardedAt = ""; next.completedAt = ""; }
     entries[creator.id] = next;
     await saveEntries(entries);
     return NextResponse.json({ entry: next });

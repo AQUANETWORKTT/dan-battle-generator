@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import styles from "./start-your-journey.module.css";
 import ApplicationForm from "./ApplicationForm";
 import ApplicationJumpLink from "./ApplicationJumpLink";
+import ManagedVideo from "./ManagedVideo";
+import CreatorRotator from "./CreatorRotator";
 
 export const metadata: Metadata = {
   title: "Start Your Journey | First Class Agency",
@@ -15,12 +17,6 @@ const benefits = [
   ["🎟️", "Exclusive events", "Battles, TikTok HQ and London meet-ups."],
 ];
 
-const creators = [
-  { username: "@dan.bradley", href: "https://www.tiktok.com/@dan.bradley", image: "/branding/journey-hero-creator.png", alt: "Dan Bradley" },
-  { username: "@username", image: "/branding/journey-community-event.png", alt: "Creator two placeholder" },
-  { username: "@username", image: "/branding/journey-hero-creator.png", alt: "Creator three placeholder" },
-  { username: "@username", image: "/branding/journey-community-event.png", alt: "Creator four placeholder" },
-];
 const stories: Array<{ label: string; src: string; type: string; poster?: string }> = [
   { label: "Creator success story one", src: "/branding/journey-creator-story-1.mp4", type: "video/mp4" },
   { label: "Creator success story two", src: "/branding/journey-creator-story-2.mp4", type: "video/mp4" },
@@ -72,10 +68,10 @@ export default function StartYourJourneyPage() {
       <div className={styles.split}>
         <div>
           <h2>More than<br />just an agency.</h2>
-          <p className={styles.copy}>First Class Agency is built for creators, by a team that understands the platform. We provide free management, guidance, networking and real opportunities to help you grow and achieve your goals.</p>
+          <p className={styles.copy}>First Class Agency is built for creators, by a team that understands the platform. Alongside free management, guidance and real opportunities, you&apos;ll be part of a community with London visits, nights out and exclusive experiences that bring creators together.</p>
           <div className={styles.benefits}>{benefits.map(([icon, title, text]) => <article className={styles.benefit} key={title}><span aria-hidden="true">{icon}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div>
         </div>
-        <Photo src="/branding/journey-agency-team-cropped.png" alt="First Class Agency team at TikTok HQ" className={styles.studioMedia} />
+        <Photo src="/branding/journey-agency-night-out.png" alt="First Class Agency creators on a night out" className={styles.studioMedia} />
       </div>
     </section>
 
@@ -83,26 +79,30 @@ export default function StartYourJourneyPage() {
       <div className={styles.eyebrow}>Our community</div>
       <h2>Meet the creators<br />of First Class.</h2>
       <p className={styles.copy}>A community of talented creators, all on their own unique journeys. This could be you.</p>
-      <div className={styles.creatorGrid}>{creators.map((creator) => creator.href ? <a className={styles.creatorCard} key={creator.username} href={creator.href} target="_blank" rel="noreferrer" aria-label={`Open ${creator.username} on TikTok`}><Photo src={creator.image} alt={creator.alt} /><p>{creator.username}</p></a> : <article className={styles.creatorCard} key={creator.alt}><Photo src={creator.image} alt={creator.alt} /><p>{creator.username}</p></article>)}</div>
+      <CreatorRotator />
     </section>
 
     <section className={`${styles.section} ${styles.stories}`}>
       <div className={styles.eyebrow}>Success stories</div>
       <h2>Real people.<br />Real opportunities.</h2>
       <p className={styles.copy}>Hear from our creators and see how First Class Agency has helped them grow.</p>
-      <div className={styles.storyGrid}>{stories.map((story) => <article className={styles.story} key={story.src}><video className={styles.storyVideo} controls playsInline preload="metadata" aria-label={story.label} poster={story.poster}><source src={story.src} type={story.type} />Your browser does not support video playback.</video></article>)}</div>
+      <div className={styles.storyGrid}>{stories.map((story) => <article className={styles.story} key={story.src}><ManagedVideo className={styles.storyVideo} label={story.label} src={story.src} type={story.type} poster={story.poster} /></article>)}</div>
     </section>
 
     <section className={`${styles.section} ${styles.highlights}`}>
       <div className={styles.eyebrow}>TikTok highlights</div>
       <h2>Watch our creators<br />in action.</h2>
-      <div className={styles.highlightGrid}><Placeholder label="TikTok highlight one" kind="video" /><Placeholder label="TikTok highlight two" kind="video" /><Placeholder label="TikTok highlight three" kind="video" /></div>
+      <div className={styles.highlightGrid}>
+        <ManagedVideo className={styles.highlightVideo} label="First Class creator highlight" src="/branding/journey-highlight-1.mp4" type="video/mp4" autoPlayWhenVisible playlist="creator-highlights" />
+        <ManagedVideo className={styles.highlightVideo} label="First Class creator gifting highlight" src="/branding/journey-highlight-2.mp4" type="video/mp4" playlist="creator-highlights" />
+        <Placeholder label="TikTok highlight three" kind="video" />
+      </div>
       <div className={styles.center}><GoldLink href="https://www.tiktok.com/@firstclassagency_uk" outline>Follow us on TikTok</GoldLink></div>
     </section>
 
-    <section className={styles.apply} id="application">
-        <div className={styles.applyMedia}><Photo src="/branding/journey-application-creators.png" alt="First Class creators at an event" /></div>
-      <div className={styles.applyForm}>
+    <section className={styles.apply}>
+        <div className={styles.applyMedia}><Photo src="/branding/journey-application-team.png" alt="First Class Agency team at TikTok HQ" /></div>
+      <div className={styles.applyForm} id="application">
         <div className={styles.eyebrow}>Apply now</div>
         <h2>Ready to get started?</h2>
         <p className={styles.copy}>Take the first step and join First Class Agency. It only takes a minute to apply.</p>
