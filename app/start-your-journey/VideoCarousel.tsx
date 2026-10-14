@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./start-your-journey.module.css";
 type Clip = { src: string; label: string; poster?: string; type?: string };
-export default function VideoCarousel({ clips, autoplay = true, showSoundPrompt = true }: { clips: Clip[]; autoplay?: boolean; showSoundPrompt?: boolean }) {
+export default function VideoCarousel({ clips, autoplay = true }: { clips: Clip[]; autoplay?: boolean }) {
   const [active, setActive] = useState(0);
   const [visible, setVisible] = useState(false);
   const [started, setStarted] = useState(autoplay);
@@ -15,7 +15,7 @@ export default function VideoCarousel({ clips, autoplay = true, showSoundPrompt 
   const enableSound = () => {
     setStarted(true);
     const video = videos.current[active];
-    if (video) { video.muted = false; void video.play().then(() => setSoundEnabled(true)).catch(() => { setSoundEnabled(false); video.muted = true; void video.play().catch(() => undefined); }); }
+    if (video) { video.volume = 1; video.muted = false; void video.play().then(() => setSoundEnabled(true)).catch(() => { setSoundEnabled(false); video.muted = true; void video.play().catch(() => undefined); }); }
   };
   const move = (step: number) => { enableSound(); setActive(index => (index + step + clips.length) % clips.length); };
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function VideoCarousel({ clips, autoplay = true, showSoundPrompt 
       if (index !== active || !visible) video.pause();
       else if (started) {
         if (restart || video.ended) video.currentTime = 0;
+        video.volume = 1;
         video.muted = false;
         void video.play().then(() => setSoundEnabled(true)).catch(() => { setSoundEnabled(false); video.muted = true; void video.play().catch(() => undefined); });
       }
@@ -63,6 +64,5 @@ export default function VideoCarousel({ clips, autoplay = true, showSoundPrompt 
       </div>;
     })}</div>
     <div className={styles.carouselControls}><div className={styles.carouselDots}>{clips.map((clip,index) => <button key={clip.src} aria-label={`Show video ${index + 1}`} aria-pressed={active === index} onClick={() => { enableSound(); setActive(index); }} />)}</div></div>
-    {showSoundPrompt && !soundEnabled && <button className={styles.soundPrompt} onClick={enableSound}>Tap for sound</button>}
   </div>;
 }
