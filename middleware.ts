@@ -57,6 +57,7 @@ export function middleware(req: NextRequest) {
   const isPublicEventRoute =
     path === "/" ||
     path === "/start-your-journey" ||
+    path.startsWith("/api/start-your-journey/") ||
     path.startsWith("/events") ||
     path.startsWith("/live/") ||
     path.startsWith("/api/events/") ||
@@ -100,7 +101,7 @@ export function middleware(req: NextRequest) {
   // The reminder route is still protected by CRON_SECRET inside the route
   // handler, but must be reachable by the external scheduler without a web
   // login cookie.
-  const publicRoutes = ["/login", "/start-your-journey", "/battle-network", "/api/login", "/api/recruitment-login", "/api/battle-network", "/api/data-analysis/manager-assignments", "/api/management-onboarding", "/api/management-onboarding-upload", "/api/battle-calendar/reminders"];
+  const publicRoutes = ["/login", "/start-your-journey", "/api/start-your-journey", "/battle-network", "/api/login", "/api/recruitment-login", "/api/battle-network", "/api/data-analysis/manager-assignments", "/api/management-onboarding", "/api/management-onboarding-upload", "/api/battle-calendar/reminders"];
 
   const onboardingRoute = path === "/onboarding" || path.startsWith("/api/onboarding") || path.startsWith("/api/tiktok-avatar");
   if (onboardingRoute && req.cookies.get("first-class-onboarding-auth")?.value === "true") {

@@ -10,13 +10,22 @@ export const metadata: Metadata = {
 };
 
 const benefits = [
-  ["Free management", "Full support at no cost to you."],
-  ["Creator support", "Guidance, tips and 1:1 support."],
-  ["Exclusive events", "Battles, TikTok HQ and London meet-ups."],
+  ["✨", "Free management", "Full support at no cost to you."],
+  ["🤝", "Creator support", "Guidance, tips and 1:1 support."],
+  ["🎟️", "Exclusive events", "Battles, TikTok HQ and London meet-ups."],
 ];
 
-const creators = ["Creator one", "Creator two", "Creator three", "Creator four"];
-const stories = ["Creator story one", "Creator story two", "Creator story three"];
+const creators = [
+  { username: "@dan.bradley", href: "https://www.tiktok.com/@dan.bradley", image: "/branding/journey-hero-creator.png", alt: "Dan Bradley" },
+  { username: "@username", image: "/branding/journey-community-event.png", alt: "Creator two placeholder" },
+  { username: "@username", image: "/branding/journey-hero-creator.png", alt: "Creator three placeholder" },
+  { username: "@username", image: "/branding/journey-community-event.png", alt: "Creator four placeholder" },
+];
+const stories: Array<{ label: string; src: string; type: string; poster?: string }> = [
+  { label: "Creator success story one", src: "/branding/journey-creator-story-1.mp4", type: "video/mp4" },
+  { label: "Creator success story two", src: "/branding/journey-creator-story-2.mp4", type: "video/mp4" },
+  { label: "Creator success story three", src: "/branding/journey-creator-story-3.mp4", type: "video/mp4" },
+];
 
 function Placeholder({ label, kind = "photo", className = "" }: { label: string; kind?: "photo" | "video"; className?: string }) {
   return <div className={`${styles.placeholder} ${styles[kind]} ${className}`} aria-label={`${label} placeholder`}>
@@ -64,26 +73,24 @@ export default function StartYourJourneyPage() {
         <div>
           <h2>More than<br />just an agency.</h2>
           <p className={styles.copy}>First Class Agency is built for creators, by a team that understands the platform. We provide free management, guidance, networking and real opportunities to help you grow and achieve your goals.</p>
-          <div className={styles.benefits}>{benefits.map(([title, text]) => <article className={styles.benefit} key={title}><h3>{title}</h3><p>{text}</p></article>)}</div>
+          <div className={styles.benefits}>{benefits.map(([icon, title, text]) => <article className={styles.benefit} key={title}><span aria-hidden="true">{icon}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div>
         </div>
-        <Photo src="/branding/journey-community-event.png" alt="First Class creator networking event" className={styles.studioMedia} />
+        <Photo src="/branding/journey-agency-team-cropped.png" alt="First Class Agency team at TikTok HQ" className={styles.studioMedia} />
       </div>
     </section>
 
     <section className={`${styles.section} ${styles.community}`}>
       <div className={styles.eyebrow}>Our community</div>
-      <h2>Meet the faces<br />of First Class.</h2>
+      <h2>Meet the creators<br />of First Class.</h2>
       <p className={styles.copy}>A community of talented creators, all on their own unique journeys. This could be you.</p>
-      <div className={styles.creatorGrid}>{creators.map((creator, index) => <article className={styles.creatorCard} key={creator}><Photo src={index % 2 ? "/branding/journey-community-event.png" : "/branding/journey-hero-creator.png"} alt={`${creator} placeholder`} /><p>@username</p><span>♪</span></article>)}</div>
-      <div className={styles.center}><GoldButton outline>View more creators</GoldButton></div>
+      <div className={styles.creatorGrid}>{creators.map((creator) => creator.href ? <a className={styles.creatorCard} key={creator.username} href={creator.href} target="_blank" rel="noreferrer" aria-label={`Open ${creator.username} on TikTok`}><Photo src={creator.image} alt={creator.alt} /><p>{creator.username}</p></a> : <article className={styles.creatorCard} key={creator.alt}><Photo src={creator.image} alt={creator.alt} /><p>{creator.username}</p></article>)}</div>
     </section>
 
     <section className={`${styles.section} ${styles.stories}`}>
       <div className={styles.eyebrow}>Success stories</div>
       <h2>Real people.<br />Real opportunities.</h2>
       <p className={styles.copy}>Hear from our creators and see how First Class Agency has helped them grow.</p>
-      <div className={styles.storyGrid}>{stories.map((story, index) => <article className={styles.story} key={story}><Placeholder label={story} kind="video" /><p>“A place for a short creator quote about their First Class journey.”</p><b>@creator_{index + 1}</b></article>)}</div>
-      <div className={styles.dots}><i /><i className={styles.activeDot} /><i /><i /></div>
+      <div className={styles.storyGrid}>{stories.map((story) => <article className={styles.story} key={story.src}><video className={styles.storyVideo} controls playsInline preload="metadata" aria-label={story.label} poster={story.poster}><source src={story.src} type={story.type} />Your browser does not support video playback.</video></article>)}</div>
     </section>
 
     <section className={`${styles.section} ${styles.highlights}`}>
@@ -94,7 +101,7 @@ export default function StartYourJourneyPage() {
     </section>
 
     <section className={styles.apply} id="application">
-      <div className={styles.applyMedia}><Photo src="/branding/journey-community-event.png" alt="Creators at a First Class event" /></div>
+        <div className={styles.applyMedia}><Photo src="/branding/journey-application-creators.png" alt="First Class creators at an event" /></div>
       <div className={styles.applyForm}>
         <div className={styles.eyebrow}>Apply now</div>
         <h2>Ready to get started?</h2>
