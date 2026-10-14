@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const creatorId = url.searchParams.get("creatorId")?.trim() || "";
-  const username = url.searchParams.get("username")?.trim().replace(/^@/, "") || "";
+  const username = (url.searchParams.get("username") || "").trim()
+    .replace(/^https?:\/\/(?:www\.)?tiktok\.com\/@/i, "")
+    .split(/[/?#]/)[0].replace(/^@+/, "").toLowerCase();
 
   if (!creatorId && !username) {
     return NextResponse.json({ error: "Enter a Creator ID or username." }, { status: 400 });
@@ -24,7 +26,8 @@ export async function GET(request: Request) {
     .or("data_period.is.null,data_period.neq.mature_month_total")
     .order("stat_date", { ascending: false })
     .limit(30);
-  query = creatorId ? query.eq("creator_id", creatorId) : query.ilike("creator_username", username);
+  const exactUsername = username.replace(/_/g, "\\_");
+  query = creatorId ? query.eq("creator_id", creatorId) : query.or(`creator_username.ilike.${exactUsername},creator_username.ilike.@${exactUsername}`);
   const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
