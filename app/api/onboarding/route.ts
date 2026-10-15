@@ -142,7 +142,7 @@ export async function GET() {
     const visiblePending = pending.filter(item => !backlog.some(old => old.id === item.id));
     const noChat = merged.filter(item => item.status === "no-chat" && !quit.some(record => record.id === item.id));
     const active = merged.filter((item) => item.status === "onboarded" && !quit.some((record) => record.id === item.id)).sort((a, b) => b.days - a.days);
-    const previous = merged.filter((item) => item.status === "complete").sort((a, b) => b.diamonds - a.diamonds);
+    const previous = [...merged.filter((item) => item.status === "complete"), ...hidden].sort((a, b) => b.diamonds - a.diamonds);
     return NextResponse.json({ latestDate, notes, testingStart: TESTING_START,
       pending: visiblePending.map(withMonthTotal), noChat: noChat.map(withMonthTotal), hidden: hidden.map(withMonthTotal), active: active.map(withMonthTotal),
       previous: previous.map(withMonthTotal).sort((a, b) => b.diamonds - a.diamonds),
