@@ -1,0 +1,14 @@
+const fs=require('fs');const {createClient}=require('@supabase/supabase-js');
+const source=fs.readFileSync('lib/submissions-supabase.ts','utf8');
+const client=createClient(process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL||source.match(/https:\/\/[^"\s]+/)[0],process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY||source.match(/eyJ[^"\s]+/)[0]);
+const clean=v=>String(v||'').trim();const identity=v=>clean(v).toLowerCase().replace(/[^a-z0-9]/g,'');
+(async()=>{
+ const {data:latest,error:le}=await client.from('creator_daily_stats').select('stat_date').order('stat_date',{ascending:false}).limit(1).maybeSingle();if(le)throw le;
+ const {data:settings,error:se}=await client.from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle();if(se)throw se;
+ const {data:workspace,error:we}=await client.from('poster_templates').select('template_json').eq('name','first-class-onboarding-workspace').maybeSingle();if(we)throw we;
+ const groups=settings?.template_json?.assignments?.managerGroups||{},entries=workspace?.template_json?.entries||{};
+ const rows=[];for(let offset=0;;offset+=1000){const {data,error}=await client.from('creator_daily_stats').select('id,creator_id,creator_username,days_since_joining,manager_email,email,group_name,team,agency').eq('stat_date',latest.stat_date).or('data_period.is.null,data_period.neq.mature_month_total').order('creator_id').order('id').range(offset,offset+999);if(error)throw error;rows.push(...data);if(data.length<1000)break;}
+ const classified=rows.map((row,index)=>{const manager=clean(row.manager_email||row.email);const group=Object.entries(groups).find(([k])=>identity(k)===identity(manager))?.[1]||'';const included=/^(team (dan|james|mike|indi|andy)|first class)/i.test(group)||/^(firstclassagency|mikehalesjb)/.test(identity(manager));return {...row,index,group,included,days:Number(row.days_since_joining),savedStatus:entries[row.creator_id]?.status||''}});
+ const recent=classified.filter(r=>r.days<=14);
+ console.log(JSON.stringify({latestDate:latest.stat_date,totalRows:rows.length,recentCount:recent.length,includedRecent:recent.filter(r=>r.included).length,recentBeyondFirstPage:recent.filter(r=>r.included&&r.index>=1000).map(r=>({username:r.creator_username,days:r.days,manager:r.manager_email})),excludedRecent:recent.filter(r=>!r.included).map(r=>({username:r.creator_username,days:r.days,manager:r.manager_email,group:r.group,rawGroup:r.group_name,team:r.team,agency:r.agency})),savedMissingFromLatest:Object.values(entries).filter(e=>!rows.some(r=>r.creator_id===e.id)).map(e=>({username:e.username,status:e.status,days:e.days})),includedRecentSummary:recent.filter(r=>r.included).map(r=>({username:r.creator_username,days:r.days,status:r.savedStatus,group:r.group}))},null,2));
+})().catch(e=>{console.error(e.message||e);process.exitCode=1});

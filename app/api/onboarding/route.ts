@@ -34,11 +34,10 @@ function readEntries(value: unknown): Record<string, Entry> {
 function firstClass(row: Row, groups: Record<string, string>) {
   const manager = managerRaw(row);
   const group = Object.entries(groups).find(([key]) => identity(key) === identity(manager))?.[1] || "";
-  if (/^team dan( \/ james)?$/i.test(group) || /^(firstclassagency(dan|james)|teamdan|teamjames)$/.test(identity(manager))) return false;
-  return /^(team (dan|james|mike|indi|andy)|first class)/i.test(group) || /^(firstclassagencydan|mikehalesjb|firstclassagency.*(james|andy|mike|indi))/.test(identity(manager));
+  if (/^excluded$/i.test(group)) return false;
+  return /^(team (dan|james|mike|indi|andy)|first class)/i.test(group) || /^(firstclassagency|mikehalesjb)/.test(identity(manager));
 }
 
-const isDanJamesRecord = (entry: Entry) => /^team dan( \/ james)?$/i.test(entry.group) || /^(firstclassagency(dan|james)|teamdan|teamjames)$/.test(identity(entry.manager));
 
 function creator(row: Row, snapshot: string, groups: Record<string, string>, names: Record<string, string>): Entry {
   const manager = managerRaw(row);
@@ -71,12 +70,19 @@ export async function GET() {
     const entries = await savedEntries();
     if (!latestDate) return NextResponse.json({ latestDate: "", pending: [], active: [], previous: Object.values(entries).filter((entry) => entry.status === "complete"), quit: [] });
 
-    const latestRowsResult = await submissionsSupabase.from("creator_daily_stats").select("*").eq("stat_date", latestDate);
-    if (latestRowsResult.error) throw new Error(latestRowsResult.error.message);
-    const latestRows = ((latestRowsResult.data || []) as Row[]).filter((row) => firstClass(row, groups));
+    const allLatestRows: Row[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await submissionsSupabase.from("creator_daily_stats").select("*")
+        .eq("stat_date", latestDate).or("data_period.is.null,data_period.neq.mature_month_total")
+        .order("creator_id").order("id").range(offset, offset + 999);
+      if (error) throw Error(error.message);
+      allLatestRows.push(...(data || []));
+      if ((data || []).length < 1000) break;
+    }
+    const latestRows = allLatestRows.filter((row) => firstClass(row, groups));
     // Fetch daily history for tracked creators and new onboarding candidates only.
     const history = new Map<string, Row[]>();
-    const candidates = latestRows.filter((row) => dayCount(row) <= 14 || entries[creatorId(row)]);
+    const candidates = latestRows.filter((row) => joinedDate(latestDate, dayCount(row)) >= TESTING_START || entries[creatorId(row)]);
     const trackedIds = [...new Set([...candidates.map(creatorId), ...Object.keys(entries)])];
     const monthStart = [...candidates.map((row) => joinedDate(latestDate, dayCount(row))), ...Object.values(entries).map((entry) => entry.joinedDate)].filter(Boolean).sort()[0] || `${latestDate.slice(0, 7)}-01`;
     for (let offset = 0; ; offset += 1000) {
@@ -107,14 +113,17 @@ export async function GET() {
     const quit = [...new Map(statusQuit.map((item) => [item.id, item])).values()].sort((a, b) => a.days - b.days);
     const normalizedEntries = Object.fromEntries(Object.entries(entries).map(([id, entry]) => [id, entry.status === "onboarded" && !entry.onboardedAt ? { ...entry, status: "pending" as const } : entry]));
     const merged = Object.values(normalizedEntries).map((entry) => ({ ...entry, ...(liveCreators.get(entry.id) || {}), checklist: entry.checklist, status: entry.status, onboardedAt: entry.onboardedAt, completedAt: entry.completedAt }));
-    const pending = [...liveCreators.values()].filter((item) => {
+    const pending: Entry[] = [...liveCreators.values()].filter((item) => {
       const saved = normalizedEntries[item.id];
-      const isNewCreator = item.days <= 14 && item.joinedDate >= TESTING_START && (!saved || saved.status === "pending");
+      const isNewCreator = item.joinedDate >= TESTING_START && (!saved || saved.status === "pending");
       const wasMovedBack = saved?.status === "pending";
       return (isNewCreator || wasMovedBack) && !quit.some((record) => record.id === item.id);
     }).map((item) => ({ ...(normalizedEntries[item.id] || {}), ...item, checklist: normalizedEntries[item.id]?.checklist || item.checklist, notes: normalizedEntries[item.id]?.notes, startDate: normalizedEntries[item.id]?.startDate, status: "pending" as const })).sort((a, b) => b.days - a.days);
-    const active = merged.filter((item) => item.status === "onboarded" && !isDanJamesRecord(item) && !quit.some((record) => record.id === item.id)).sort((a, b) => b.days - a.days);
-    const previous = merged.filter((item) => item.status === "complete" && !isDanJamesRecord(item)).sort((a, b) => b.diamonds - a.diamonds);
+    // Preserve saved pending work even when a creator is absent from an upload.
+    pending.push(...merged.filter((item) => item.status === "pending" && !liveCreators.has(item.id) && !quit.some((record) => record.id === item.id)).map((item) => ({ ...item, status: "pending" as const })));
+    pending.sort((a, b) => b.days - a.days);
+    const active = merged.filter((item) => item.status === "onboarded" && !quit.some((record) => record.id === item.id)).sort((a, b) => b.days - a.days);
+    const previous = merged.filter((item) => item.status === "complete").sort((a, b) => b.diamonds - a.diamonds);
     return NextResponse.json({ latestDate, testingStart: TESTING_START,
       pending: pending.map(withMonthTotal), active: active.map(withMonthTotal),
       previous: previous.map(withMonthTotal).sort((a, b) => b.diamonds - a.diamonds),
