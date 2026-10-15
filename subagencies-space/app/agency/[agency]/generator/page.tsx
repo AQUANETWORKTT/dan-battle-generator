@@ -469,10 +469,10 @@ function formatTime(raw: string) {
   return `${hour}:${minute}${period.toUpperCase()}`;
 }
 
-function getTimeOptions() {
+function getTimeOptions(increment = 15) {
   const options: string[] = [];
 
-  for (let minutes = 18 * 60; minutes <= 24 * 60; minutes += 15) {
+  for (let minutes = 18 * 60; minutes <= 24 * 60; minutes += increment) {
     const hour24 = Math.floor(minutes / 60);
     const minute = minutes % 60;
 
@@ -810,7 +810,8 @@ function TimeSelect({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const options = getTimeOptions();
+  const params = useParams<{ agency: string }>();
+  const options = getTimeOptions(params.agency?.toLowerCase() === "respawn" ? 5 : 15);
 
   return (
     <label className="block">
