@@ -137,7 +137,7 @@ export async function GET() {
     pending.sort((a, b) => b.days - a.days);
     // One-time backlog cutoff: creators already over day 16 on the 14 October upload.
     // Later cohorts remain visible if they become overdue. Returned cards bypass it.
-    const backlog = pending.filter(item => item.joinedDate <= "2026-09-28" && entries[item.id]?.status !== "returned");
+    const backlog = pending.filter(item => item.joinedDate <= "2026-09-28" && !item.startDate && entries[item.id]?.status !== "returned");
     const hidden = [...backlog, ...merged.filter(item => item.status === "hidden")];
     const visiblePending = pending.filter(item => !backlog.some(old => old.id === item.id));
     const noChat = merged.filter(item => item.status === "no-chat" && !quit.some(record => record.id === item.id));
@@ -162,6 +162,7 @@ export async function POST(request: Request) {
     }
     const creator = body.creator;
     if (!creator?.id || !creator.username || !body.action) return NextResponse.json({ error: "Creator and action are required." }, { status: 400 });
+    if (creator.startDate && (!/^\d{4}-\d{2}-\d{2}$/.test(creator.startDate) || !Number.isFinite(Date.parse(`${creator.startDate}T00:00:00Z`)))) return NextResponse.json({ error: "Choose a valid onboarding start date." }, { status: 400 });
     const entries = await savedEntries();
     const saved = entries[creator.id];
     const current = saved?.status === "onboarded" && !saved.onboardedAt ? { ...saved, status: "pending" as const } : saved || creator;
