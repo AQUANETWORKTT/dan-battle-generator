@@ -1,81 +1,41 @@
 "use client";
-
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DataAccessGuard from "../../components/DataAccessGuard";
-
-type Group = "Team Dan" | "Team Mike / Indi" | "Exempt" | "Trident" | "Horizon" | "Paradise" | "Aqua" | "Respawn" | "Recruitment" | "New Managers" | "Excluded";
-type Manager = { key: string; name: string; group: Group; email?: string };
-type Assignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string> };
-
-export default function ManagerAssignmentsPage() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
-  const [assignments, setAssignments] = useState<Assignments>({ managerGroups: {}, managerNames: {}, deletedManagers: [], ownerManagers: [], assignedAt: {} });
-  const [status, setStatus] = useState("Loading the latest Creator Intelligence managers...");
-  const [saving, setSaving] = useState(false);
-  const [moving, setMoving] = useState<Manager | null>(null);
-  const [destination, setDestination] = useState<Group | "">("");
-  const assignedManagers = useMemo(
-    () => managers.filter((manager) => !assignments.deletedManagers.includes(manager.key)).map((manager) => ({ ...manager, group: assignments.managerGroups[manager.key] || manager.group })),
-    [assignments.deletedManagers, assignments.managerGroups, managers]
-  );
-
-  useEffect(() => { void load(); }, []);
-
-  async function load() {
-    const response = await fetch("/api/data-analysis/manager-assignments", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok) { setStatus(data.error || "Could not load assignments."); return; }
-    setGroups(data.groups);
-    setManagers(data.managers);
-    setAssignments(data.assignments);
-    setStatus(`Latest upload: ${data.statDate}. Drag managers into the correct group or rename them.`);
-  }
-
-  async function save(next: Assignments) {
-    setAssignments(next);
-    setSaving(true);
-    setStatus("Saving assignments...");
-    const response = await fetch("/api/data-analysis/manager-assignments", {
-      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assignments: next }),
-    });
-    const data = await response.json();
-    setSaving(false);
-    setStatus(response.ok ? "Assignments and display names saved." : data.error || "Could not save assignments.");
-  }
-
-  function onDrop(event: React.DragEvent, group: Group) {
-    event.preventDefault();
-    const [type, key] = event.dataTransfer.getData("text/plain").split(":");
-    if (type === "manager" && key) void save({ ...assignments, managerGroups: { ...assignments.managerGroups, [key]: group }, ownerManagers: assignments.ownerManagers.filter((ownerKey) => ownerKey !== key), assignedAt: { ...assignments.assignedAt, [key]: assignments.assignedAt[key] || new Date().toISOString() } });
-  }
-
-  function renameManager(manager: Manager) {
-    const name = window.prompt("Manager display name", assignments.managerNames[manager.key] || manager.name);
-    if (name === null) return;
-    const displayName = name.trim();
-    void save({ ...assignments, managerNames: { ...assignments.managerNames, ...(displayName ? { [manager.key]: displayName } : {}) } });
-  }
-  function deleteManager(manager: Manager) { if (window.confirm(`Remove ${assignments.managerNames[manager.key] || manager.name} from Manager Assignments?`)) void save({ ...assignments, deletedManagers: [...new Set([...assignments.deletedManagers, manager.key]) ] }); }
-
-  return <DataAccessGuard><main className="min-h-screen bg-[#080806] px-5 py-8 text-white sm:px-8"><div className="mx-auto max-w-[1700px]">
-    <Link href="/data/menu" className="text-xs font-black uppercase tracking-[0.18em] text-yellow-200">Back to Data Space</Link>
-    <p className="mt-10 text-xs font-black uppercase tracking-[0.3em] text-sky-200/75">Data settings</p>
-    <h1 className="mt-4 font-[family-name:var(--font-norwester)] text-5xl uppercase sm:text-6xl">Manager <span className="text-yellow-300">Assignments</span></h1>
-    <p className="mt-4 max-w-3xl text-white/60">Drag a team card into its correct group, or tap Move to choose a group. Use Rename to change its display name.</p>
-    <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-yellow-100">{status}</p>
-    <div className="mt-8 grid gap-5 xl:grid-cols-3">{groups.map((group) => <section key={group} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, group)} className="min-h-44 rounded-3xl border border-white/10 bg-white/[0.035] p-4">
-      <h2 className="font-[family-name:var(--font-norwester)] text-2xl uppercase text-yellow-200">{group}</h2>
-      <div onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const [, key] = event.dataTransfer.getData("text/plain").split(":"); if (key) void save({ ...assignments, ownerManagers: [...new Set([...assignments.ownerManagers, key])], managerGroups: { ...assignments.managerGroups, [key]: group }, assignedAt: { ...assignments.assignedAt, [key]: assignments.assignedAt[key] || new Date().toISOString() } }); }} className="mt-3 rounded-xl border border-dashed border-yellow-300/35 bg-yellow-300/5 p-3 text-xs font-black uppercase text-yellow-100">Owner Slot — drag a {group} manager here{assignedManagers.filter((manager) => manager.group === group && assignments.ownerManagers.includes(manager.key)).map((manager) => <article key={manager.key} draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", `manager:${manager.key}`)} className="mt-2 flex cursor-grab items-center gap-2 rounded-lg bg-yellow-300/15 px-3 py-2 text-white"><span className="min-w-0 flex-1">{assignments.managerNames[manager.key] || manager.name}</span><button type="button" onClick={() => renameManager(manager)} className="rounded border border-white/25 px-2 py-1 text-[9px]">Rename</button><button type="button" onClick={() => { setMoving(manager); setDestination(""); }} className="rounded border border-white/25 px-2 py-1 text-[9px]">Move</button><button type="button" onClick={() => void save({ ...assignments, ownerManagers: assignments.ownerManagers.filter((ownerKey) => ownerKey !== manager.key) })} className="rounded border border-white/25 px-2 py-1 text-[9px]">Remove Owner</button></article>)}</div>
-      <div className="mt-4 space-y-2">{assignedManagers.filter((manager) => manager.group === group && !assignments.ownerManagers.includes(manager.key)).map((manager) => <article key={manager.key} draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", `manager:${manager.key}`)} className="group flex cursor-grab items-center gap-3 rounded-xl border border-sky-200/20 bg-black/35 px-4 py-3 font-black uppercase text-white active:cursor-grabbing">
-        <span className="min-w-0 flex-1"><span className="block">{assignments.managerNames[manager.key] || manager.name}</span><span className="mt-1 hidden break-all text-[9px] normal-case tracking-normal text-sky-100/80 group-hover:block">{manager.email || manager.key}</span></span>
-        <button type="button" draggable={false} onClick={() => renameManager(manager)} className="rounded-lg border border-white/20 px-2 py-1 text-[10px] tracking-widest text-yellow-200 hover:border-yellow-300">Rename</button>
-        <button type="button" draggable={false} onClick={() => { setMoving(manager); setDestination(""); }} className="rounded-lg border border-white/20 px-2 py-1 text-[10px] tracking-widest text-yellow-200 hover:border-yellow-300">Move</button>
-        <button type="button" draggable={false} onClick={() => deleteManager(manager)} className="rounded-lg border border-rose-300/30 px-2 py-1 text-[10px] tracking-widest text-rose-200 hover:border-rose-300">Delete</button>
-      </article>)}{!assignedManagers.some((manager) => manager.group === group) && <p className="rounded-xl border border-dashed border-white/15 p-4 text-sm text-white/35">Drop a manager here</p>}</div>
-    </section>)}</div>
-    {moving && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5"><section role="dialog" aria-modal="true" aria-label="Move manager" className="w-full max-w-sm rounded-2xl border border-yellow-200/30 bg-[#14130e] p-5"><h2 className="text-xl font-bold">Move {assignments.managerNames[moving.key] || moving.name}</h2><select aria-label="Destination group" value={destination} onChange={e => setDestination(e.target.value as Group)} className="mt-4 w-full rounded-xl border border-white/20 bg-black p-3"><option value="">Choose group</option>{groups.filter(group => group !== moving.group).map(group => <option key={group} value={group}>{group}</option>)}</select><div className="mt-4 flex gap-3"><button disabled={!destination || saving} onClick={() => { if (!destination) return; void save({ ...assignments, managerGroups: { ...assignments.managerGroups, [moving.key]: destination }, ownerManagers: assignments.ownerManagers.filter(key => key !== moving.key), assignedAt: { ...assignments.assignedAt, [moving.key]: assignments.assignedAt[moving.key] || new Date().toISOString() } }); setMoving(null); }} className="rounded-lg bg-yellow-300 px-4 py-2 font-bold text-black disabled:opacity-40">Move</button><button onClick={() => setMoving(null)} className="px-4 py-2">Cancel</button></div></section></div>}
-    <p className="mt-5 text-xs text-white/40">{saving ? "Saving..." : "Changes save immediately."}</p>
-  </div></main></DataAccessGuard>;
+type Manager={key:string;name:string;group:string;email?:string};
+type Assignments={managerGroups:Record<string,string>;managerNames:Record<string,string>;deletedManagers:string[];ownerManagers:string[];assignedAt:Record<string,string>;bTierManagers:string[];managerParents:Record<string,string>};
+const removed=new Set(["Exempt","Trident","Aqua"]);
+const displayGroup=(group:string)=>removed.has(group)?"New Managers":group;
+export default function Page(){
+ const[managers,setManagers]=useState<Manager[]>([]),[groups,setGroups]=useState<string[]>([]),[status,setStatus]=useState("Loading managers…"),[saving,setSaving]=useState(false);
+ const[a,setA]=useState<Assignments>({managerGroups:{},managerNames:{},deletedManagers:[],ownerManagers:[],assignedAt:{},bTierManagers:[],managerParents:{}});
+ const current=useRef(a);const queue=useRef(Promise.resolve());
+ const[moving,setMoving]=useState<Manager|null>(null),[destination,setDestination]=useState(""),[parent,setParent]=useState("");
+ useEffect(()=>{fetch("/api/data-analysis/manager-assignments",{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error);setManagers(j.managers);setGroups(["New Managers",...j.groups.filter((g:string)=>g!=="New Managers"&&!removed.has(g))]);const initial={...j.assignments,bTierManagers:j.assignments.bTierManagers||[],managerParents:j.assignments.managerParents||{}};current.current=initial;setA(initial);setStatus("Drag managers into groups or onto another manager to make them a junior. Move also works on phones.")}).catch(e=>setStatus(e.message))},[]);
+ const save=(next:Assignments)=>{current.current=next;setA(next);setSaving(true);setStatus("Saving…");const job=queue.current.then(async()=>{const r=await fetch("/api/data-analysis/manager-assignments",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({assignments:next})});if(!r.ok)throw Error("Could not save assignments. Please retry.");setStatus("Assignments saved.")});queue.current=job.catch(e=>setStatus(e.message)).finally(()=>setSaving(false))};
+ const name=(m:Manager)=>a.managerNames[m.key]||m.name;
+ const groupOf=(m:Manager)=>displayGroup(a.managerGroups[m.key]||m.group);
+ const visible=managers.filter(m=>!a.deletedManagers.includes(m.key));
+ const children=(key:string)=>visible.filter(m=>a.managerParents[m.key]===key);
+ const isDescendant=(candidate:string,child:string)=>{let p=candidate;const seen=new Set<string>();while(p){if(p===child)return true;if(seen.has(p))return true;seen.add(p);p=a.managerParents[p]}return false};
+ const relocate=(manager:Manager,group:string,newParent:string)=>{
+  if(newParent&&isDescendant(newParent,manager.key)){setStatus("A manager cannot be placed under themselves or their own junior.");return}
+  const next={...current.current,managerGroups:{...current.current.managerGroups},managerParents:{...current.current.managerParents},ownerManagers:[...current.current.ownerManagers],assignedAt:{...current.current.assignedAt}};
+  const affected=[manager.key];for(let i=0;i<affected.length;i++)for(const c of visible)if(next.managerParents[c.key]===affected[i]&&!affected.includes(c.key))affected.push(c.key);
+  affected.forEach(key=>{next.managerGroups[key]=group;next.assignedAt[key]=next.assignedAt[key]||new Date().toISOString()});
+  if(newParent)next.managerParents[manager.key]=newParent;else delete next.managerParents[manager.key];
+  next.ownerManagers=next.ownerManagers.filter(k=>k!==manager.key);
+  save(next);setMoving(null);
+ };
+ const drop=(e:React.DragEvent,group:string,target?:Manager,owner=false)=>{e.preventDefault();e.stopPropagation();const[type,key]=e.dataTransfer.getData("text/plain").split(":");const m=visible.find(m=>m.key===key);if(type!=="manager"||!m)return;if(owner){const next={...current.current,managerParents:{...current.current.managerParents},managerGroups:{...current.current.managerGroups,[key]:group},ownerManagers:[...new Set([...current.current.ownerManagers,key])]};delete next.managerParents[key];save(next)}else relocate(m,group,target?.key||"")};
+ const card=(m:Manager,path:string[]=[]):React.ReactNode=>{
+  if(path.includes(m.key))return null;
+  const blue=a.bTierManagers.includes(m.key),junior=!!a.managerParents[m.key];
+  return <div key={m.key}><article draggable onDragStart={e=>{e.stopPropagation();e.dataTransfer.setData("text/plain","manager:"+m.key)}} onDragOver={e=>{e.preventDefault();e.stopPropagation()}} onDrop={e=>drop(e,groupOf(m),m)} className={`rounded-xl border p-3 ${blue?"border-blue-400 bg-blue-500/15 text-blue-100":"border-white/20 bg-black/30 text-white"}`}>
+   <div className="flex flex-wrap items-center gap-2"><span className="min-w-0 flex-1 break-words font-bold">{name(m)} {junior&&<small className="text-[10px] font-normal text-white/40">junior</small>}</span><button aria-label={`B tier for ${name(m)}`} aria-pressed={blue} onClick={()=>{const next=current.current;save({...next,bTierManagers:blue?next.bTierManagers.filter(k=>k!==m.key):[...next.bTierManagers,m.key]})}} className={`h-9 w-9 rounded-lg border font-black ${blue?"border-blue-300 bg-blue-500 text-white":"border-blue-400/50 text-blue-400"}`}>B</button></div>
+   <div className="mt-2 flex flex-wrap gap-2 text-[11px]"><button onClick={()=>{const n=window.prompt("Manager display name",name(m));if(n?.trim())save({...current.current,managerNames:{...current.current.managerNames,[m.key]:n.trim()}})}} className="rounded-lg border border-white/20 px-3 py-2">Rename</button><button onClick={()=>{setMoving(m);setDestination(groupOf(m));setParent(a.managerParents[m.key]||"")}} className="rounded-lg border border-white/20 px-3 py-2">Move</button>{a.ownerManagers.includes(m.key)&&<button onClick={()=>save({...current.current,ownerManagers:current.current.ownerManagers.filter(k=>k!==m.key)})} className="rounded-lg border border-white/20 px-3 py-2">Remove owner</button>}<button onClick={()=>{if(window.confirm("Remove "+name(m)+" from assignments?")){const next={...current.current,managerParents:{...current.current.managerParents},deletedManagers:[...current.current.deletedManagers,m.key]};Object.keys(next.managerParents).forEach(k=>{if(k===m.key||next.managerParents[k]===m.key)delete next.managerParents[k]});save(next)}}} className="rounded-lg border border-red-300/25 px-3 py-2 text-red-200">Delete</button></div><p className="mt-2 break-all text-[10px] text-white/35">{m.email||m.key}</p>
+  </article>{children(m.key).length>0&&<div className="ml-4 mt-2 space-y-2 border-l border-white/25 pl-4">{children(m.key).map(child=>card(child,[...path,m.key]))}</div>}</div>
+ };
+ return <DataAccessGuard><main className="min-h-screen bg-[#080806] p-5 text-white sm:p-8"><div className="mx-auto max-w-[1700px]"><Link href="/data/menu" className="text-sm text-yellow-200">← Data Space</Link><h1 className="mt-8 text-4xl font-bold">Manager Assignments</h1><p className="mt-4 text-sm text-white/60">{status}</p><div className="mt-4 flex flex-wrap gap-4 text-sm text-yellow-200"><Link href="/recruitment-leaderboard">Universal leaderboard ↗</Link><Link href="/recruitment-leaderboard-b">Second leaderboard ↗</Link></div><div className="mt-6 grid gap-5 xl:grid-cols-3">{groups.map(group=><section key={group} onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,group)} className={`rounded-3xl border border-white/15 bg-white/[.03] p-4 ${group==="New Managers"?"xl:col-span-3":""}`}><h2 className="mb-4 text-2xl font-bold text-yellow-200">{group}</h2>{group!=="New Managers"&&<div onDragOver={e=>e.preventDefault()} onDrop={e=>drop(e,group,undefined,true)} className="mb-4 rounded-xl border border-dashed border-yellow-300/30 p-3"><p className="mb-2 text-xs text-yellow-200/60">Owner slot</p><div className="space-y-2">{visible.filter(m=>groupOf(m)===group&&a.ownerManagers.includes(m.key)&&!a.managerParents[m.key]).map(m=>card(m))}</div></div>}<div className={group==="New Managers"?"grid gap-3 md:grid-cols-2 xl:grid-cols-3":"space-y-3"}>{visible.filter(m=>groupOf(m)===group&&!a.ownerManagers.includes(m.key)&&(!a.managerParents[m.key]||!visible.some(p=>p.key===a.managerParents[m.key]))).map(m=>card(m))}</div></section>)}</div>
+ {moving&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5"><section role="dialog" aria-modal="true" aria-label="Move manager" className="w-full max-w-md rounded-2xl border border-yellow-200/25 bg-[#15140d] p-5"><h2 className="text-xl font-bold">Move {name(moving)}</h2><label className="mt-4 block text-sm">Group<select value={destination} onChange={e=>{setDestination(e.target.value);setParent("")}} className="mt-2 w-full rounded-xl bg-black p-3">{groups.map(g=><option key={g}>{g}</option>)}</select></label><label className="mt-4 block text-sm">Reports to<select value={parent} onChange={e=>setParent(e.target.value)} className="mt-2 w-full rounded-xl bg-black p-3"><option value="">No parent manager</option>{visible.filter(m=>groupOf(m)===destination&&!isDescendant(m.key,moving.key)).map(m=><option key={m.key} value={m.key}>{name(m)}</option>)}</select></label><div className="mt-4 flex gap-4"><button disabled={saving} onClick={()=>relocate(moving,destination,parent)} className="rounded-xl bg-yellow-300 px-5 py-3 font-bold text-black">Move</button><button onClick={()=>setMoving(null)}>Cancel</button></div></section></div>}</div></main></DataAccessGuard>
 }

@@ -50,7 +50,8 @@ export function middleware(req: NextRequest) {
   }
 
   const isEventsSpace = process.env.SITE_MODE === "events";
-  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/");
+  const isBLeaderboard = path === "/recruitment-leaderboard-b" || path.startsWith("/recruitment-leaderboard-b/");
+  const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/") || isBLeaderboard;
   const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";
   const hasRecruitmentAccess = req.cookies.get("first-class-recruitment-leaderboard-auth")?.value === "true";
   const hasManagementSession = req.cookies.get("first-class-space-auth")?.value === "true" || req.cookies.get("first-class-management-auth")?.value === "true";
@@ -67,7 +68,7 @@ export function middleware(req: NextRequest) {
 
   // Recruitment is a deliberately hidden, manager-only route on First Class
   // Space. It bypasses the Event Space redirect but is never linked from it.
-  if (path === "/recruitment-leaderboard/access" || path === "/api/recruitment-login") {
+  if (path === "/recruitment-leaderboard/access" || path === "/recruitment-leaderboard-b/access" || path === "/api/recruitment-login") {
     return NextResponse.next();
   }
 
@@ -75,7 +76,7 @@ export function middleware(req: NextRequest) {
     if (!hasRecruitmentAccess) {
       return isRecruitmentLeaderboardApi
         ? NextResponse.json({ error: "Recruitment leaderboard access required." }, { status: 401 })
-        : NextResponse.redirect(new URL("/recruitment-leaderboard/access", req.url));
+        : NextResponse.redirect(new URL(isBLeaderboard ? "/recruitment-leaderboard-b/access" : "/recruitment-leaderboard/access", req.url));
     }
     return NextResponse.next();
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
+import { KYRAN_ASH_KEY, recruitmentManagerIdentity } from "@/lib/recruitment-manager-aliases";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ async function rowsBetween(start: string, end: string) {
 export async function GET(request: Request) {
   try {
     const period = new URL(request.url).searchParams.get("period") || "month";
+    const requestedTier = new URL(request.url).searchParams.get("tier");
     const maxDays = period === "14" ? 14 : period === "month" ? 31 : 7;
     const [{ data: latest }, { data: settings, error: settingsError }] = await Promise.all([
       submissionsSupabase.from("creator_daily_stats").select("stat_date").order("stat_date", { ascending: false }).limit(1).maybeSingle(),
@@ -65,14 +67,16 @@ export async function GET(request: Request) {
     const start = period === "month" ? new Date(end.getFullYear(), end.getMonth(), 1, 12) : new Date(end);
     if (period !== "month") start.setDate(start.getDate() - (maxDays - 1));
     const startDate = date(start);
-    const assignment = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; recruitmentAdjustments?: Record<string, number> } } | null)?.assignments || {});
+    const assignment = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; recruitmentAdjustments?: Record<string, number>; bTierManagers?:string[] } } | null)?.assignments || {});
+    const bTier = new Set((assignment.bTierManagers||[]).map(managerIdentity));
+    const tierMatches=(manager:string)=> !requestedTier || (requestedTier==="B" ? bTier.has(managerIdentity(manager)) : !bTier.has(managerIdentity(manager)));
     const groups = assignment.managerGroups || {};
     const names = assignment.managerNames || {};
     const recruitmentAdjustments = assignment.recruitmentAdjustments || {};
-    const deleted = new Set((assignment.deletedManagers || []).map(managerIdentity));
+    const deleted = new Set((assignment.deletedManagers || []).map(managerIdentity).filter(manager => recruitmentManagerIdentity(manager) === manager));
     const groupForManager = (manager: string) => Object.entries(groups).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "Unassigned";
     const nameForManager = (manager: string) => Object.entries(names).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "";
-    const recruitmentAdjustmentForManager = (manager: string) => Object.entries(recruitmentAdjustments).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || 0;
+    const recruitmentAdjustmentForManager = (manager: string) => Object.entries(recruitmentAdjustments).filter(([savedManager]) => recruitmentManagerIdentity(savedManager) === managerIdentity(manager)).reduce((sum,[,amount]) => sum + Number(amount || 0),0);
 
     // Every upload in the period is used. This means a creator who leaves later
     // still contributes the diamonds they earned before disappearing.
@@ -99,7 +103,7 @@ export async function GET(request: Request) {
       // recruitment credit and diamonds even if they disappear on a later upload.
       if (lastDays < 15 && (hasQuitNetwork(last) || !activeCreatorIds.has(id))) continue;
 
-      const sourceManagerKey = managerIdentity(managerRaw(first));
+      const sourceManagerKey = recruitmentManagerIdentity(managerRaw(first));
       const managerKey = isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
       if (!sourceManagerKey || deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)) continue;
       const diamonds = rows.reduce((sum, row) => sum + number(row.diamonds || row.Diamonds), 0);
@@ -120,9 +124,9 @@ export async function GET(request: Request) {
     recruits.sort((a, b) => b.diamonds - a.diamonds || a.username.localeCompare(b.username));
     const managers = new Map<string, { key: string; manager: string; group: string; recruits: number; diamonds: number; hours: number; dph: number }>();
     for (const [savedManager, group] of Object.entries(groups)) {
-      const managerKey = managerIdentity(savedManager);
+      const managerKey = recruitmentManagerIdentity(savedManager);
       if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey) || isKjbManager(managerKey) || group === "Excluded") continue;
-      managers.set(managerKey, { key: managerKey, manager: nameForManager(savedManager) || label(savedManager), group, recruits: 0, diamonds: 0, hours: 0, dph: 0 });
+      managers.set(managerKey, { key: managerKey, manager: nameForManager(managerKey) || (managerKey === KYRAN_ASH_KEY ? "Team Kyran & Ash" : label(savedManager)), group: groupForManager(managerKey) === "Unassigned" ? group : groupForManager(managerKey), recruits: 0, diamonds: 0, hours: 0, dph: 0 });
     }
     for (const recruit of recruits) {
       const current = managers.get(recruit.managerKey) || { key: recruit.managerKey, manager: recruit.manager, group: recruit.group, recruits: 0, diamonds: 0, hours: 0, dph: 0 };
@@ -139,8 +143,8 @@ export async function GET(request: Request) {
       manager.recruits = Math.max(0, manager.recruits + adjustment);
       managers.set(managerKey, manager);
     }
-    const managerList = [...managers.values()].sort((a, b) => b.recruits - a.recruits || a.manager.localeCompare(b.manager));
-    return NextResponse.json({ period, startDate, endDate, recruits, managers: managerList, groups: [...new Set(managerList.map((manager) => manager.group))].sort() });
+    const managerList = [...managers.values()].filter(manager=>tierMatches(manager.key)).sort((a, b) => b.recruits - a.recruits || a.manager.localeCompare(b.manager));
+    return NextResponse.json({ period, startDate, endDate, recruits:recruits.filter(recruit=>tierMatches(recruit.managerKey)), managers: managerList, groups: [...new Set(managerList.map((manager) => manager.group))].sort() });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load recruitment leaderboard." }, { status: 500 });
   }

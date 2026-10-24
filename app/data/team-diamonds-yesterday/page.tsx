@@ -784,13 +784,13 @@ export default function TeamDiamondsYesterdayPage() {
     saveAs(blob, `${selectedTemplateName}-${latestStatDate || getYesterdayDateKey()}.png`);
   }
 
-  async function downloadAllPosters(side?: TeamPosterCategory) {
+  async function downloadAllPosters(side?: TeamPosterCategory | "first-class") {
     const allItems = templates.length
       ? templates
       : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
-    const items = side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
+    const items = side === "first-class" ? allItems.filter(item => ["dan", "mike-indi"].includes(item.template.teamSide || "dan")) : side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
     if (!items.length) {
-      const categoryLabel = side ? teamPosterCategoryLabel(side) : "All Teams";
+      const categoryLabel = side === "first-class" ? "All First Class" : side ? teamPosterCategoryLabel(side) : "All Teams";
       setMessage(`No saved presets in ${categoryLabel} yet.`);
       return;
     }
@@ -824,7 +824,7 @@ export default function TeamDiamondsYesterdayPage() {
         }
         setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
       }
-      const sideLabel = side ? teamPosterCategoryLabel(side) : "All teams";
+      const sideLabel = side === "first-class" ? "All First Class" : side ? teamPosterCategoryLabel(side) : "All teams";
       setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
       const archive = await zip.generateAsync({ type: "blob" });
       saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${latestStatDate || getYesterdayDateKey()}.zip`);
@@ -966,6 +966,7 @@ export default function TeamDiamondsYesterdayPage() {
           </div>
 
           <section className="rounded-3xl border border-yellow-300/25 bg-yellow-300/10 p-6">
+            <button type="button" onClick={() => void downloadAllPosters("first-class")} disabled={loading} className="mb-6 w-full rounded-2xl bg-yellow-300 px-6 py-5 text-lg font-black uppercase tracking-wider text-black hover:bg-yellow-200 disabled:opacity-50">Download All First Class</button>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-200/70">Team Posters</p>

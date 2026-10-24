@@ -10,7 +10,7 @@ const RETIRED_MANAGER_KEYS = new Set(["bmwe46320dhotmailcouk"]);
 const MANAGER_DISPLAY_NAMES: Record<string, string> = { georgialilyglow: "G", teamgeorgialilyglow: "G", lisaruss1988: "Lisa", teamlisaruss1988: "Lisa" };
 type Group = (typeof GROUPS)[number];
 type CreatorStat = Record<string, unknown>;
-type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string>; recruitmentAdjustments: Record<string, number> };
+type SavedAssignments = { managerGroups: Record<string, Group>; managerNames: Record<string, string>; deletedManagers: string[]; ownerManagers: string[]; assignedAt: Record<string, string>; recruitmentAdjustments: Record<string, number>; bTierManagers: string[]; managerParents: Record<string,string> };
 
 function clean(value: unknown) { return String(value || "").trim(); }
 function key(value: unknown) {
@@ -65,7 +65,16 @@ function normalize(input: unknown): SavedAssignments {
     const amount = Number(adjustment);
     if (Number.isInteger(amount) && amount !== 0) recruitmentAdjustments[key(manager)] = amount;
   }
-  return { managerGroups, managerNames, deletedManagers, ownerManagers, assignedAt, recruitmentAdjustments };
+  const bTierManagers = Array.isArray(value.bTierManagers) ? [...new Set(value.bTierManagers.map(key).filter(Boolean))] : [];
+  const managerParents: Record<string,string> = {};
+  for (const [child,parent] of Object.entries(value.managerParents as Record<string,unknown> || {})) {
+    const childKey=key(child), parentKey=key(parent);
+    if (!childKey || !parentKey || childKey===parentKey || deletedManagers.includes(childKey) || deletedManagers.includes(parentKey)) continue;
+    let ancestor=parentKey;const seen=new Set([childKey]);let cycle=false;
+    while(ancestor){if(seen.has(ancestor)){cycle=true;break}seen.add(ancestor);ancestor=managerParents[ancestor]}
+    if(!cycle)managerParents[childKey]=parentKey;
+  }
+  return { managerGroups, managerNames, deletedManagers, ownerManagers, assignedAt, recruitmentAdjustments, bTierManagers, managerParents };
 }
 
 export async function GET() {
@@ -104,7 +113,11 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const assignments = normalize((await request.json())?.assignments);
+    const input = (await request.json())?.assignments;
+    const { data: existing, error: readError } = await submissionsSupabase.from("poster_templates").select("template_json").eq("name", SETTINGS_NAME).maybeSingle();
+    if(readError)throw Error(readError.message);
+    const previous=(existing?.template_json as {assignments?:Record<string,unknown>}|null)?.assignments||{};
+    const assignments = normalize({ ...previous, ...input });
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { assignments }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ assignments });

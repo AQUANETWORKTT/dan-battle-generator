@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
+import { KYRAN_ASH_KEY, recruitmentManagerIdentity } from "@/lib/recruitment-manager-aliases";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,8 @@ const isExcludedManager = (value: unknown) => managerIdentity(value) === "mikeha
 // Brandy has left the agency. Keep all of her existing monthly credit with
 // Team Kyran instead of dropping it because Brandy is now excluded.
 const BRANDY_IDENTITIES = new Set(["brandyfalconer33", "brandyfalconer35"]);
-const KYRAN_MANAGER_KEY = "firstclassagencykyran";
-const KYRAN_MANAGER_NAME = "Team Kyran";
+const KYRAN_MANAGER_KEY = KYRAN_ASH_KEY;
+const KYRAN_MANAGER_NAME = "Team Kyran & Ash";
 const isBrandyManager = (value: unknown) => BRANDY_IDENTITIES.has(managerIdentity(value));
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
 const date = (value: Date) => value.toISOString().slice(0, 10);
@@ -67,14 +68,23 @@ export async function GET() {
     // Begin with Manager Assignments so group filters always offer the full
     // current roster, including a manager with no diamonds yet this month.
     for (const [savedManager, group] of Object.entries(savedGroups)) {
-      const managerKey = managerIdentity(savedManager);
+      const managerKey = recruitmentManagerIdentity(savedManager);
+      if (deleted.has(managerIdentity(savedManager))) continue;
       if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey) || isKjbManager(managerKey) || group === "Recruitment" || group === "Excluded") continue;
       managers.set(managerKey, { key: managerKey, name: nameForManager(savedManager) || label(savedManager), group, diamonds: 0 });
     }
 
-    for (const row of await rowsBetween(startDate, endDate)) {
-      const raw = managerRaw(row);
-      const sourceManagerKey = managerIdentity(raw);
+    const monthlyRows = await rowsBetween(startDate, endDate);
+    const creatorIdentity = (row: Row) => text(row.creator_id) || text(row.creator_username).toLowerCase();
+    // The merged team's current creators bring their full month's history,
+    // including days previously recorded under another manager. Attribute each
+    // row once here, rather than adding a second copy to the combined total.
+    const combinedRoster = new Set(monthlyRows
+      .filter(row => text(row.stat_date) === endDate && recruitmentManagerIdentity(managerRaw(row)) === KYRAN_ASH_KEY)
+      .map(creatorIdentity).filter(Boolean));
+    for (const row of monthlyRows) {
+      const raw = combinedRoster.has(creatorIdentity(row)) ? KYRAN_ASH_KEY : managerRaw(row);
+      const sourceManagerKey = recruitmentManagerIdentity(raw);
       if (!sourceManagerKey || (!isBrandyManager(sourceManagerKey) && (deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)))) continue;
       const managerKey = isBrandyManager(sourceManagerKey) ? KYRAN_MANAGER_KEY : isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
       const group = isBrandyManager(sourceManagerKey) ? groupForManager(KYRAN_MANAGER_KEY) : isKjbManager(sourceManagerKey) ? KJB_TEAM_GROUP : groupForManager(sourceManagerKey);

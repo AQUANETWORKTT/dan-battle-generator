@@ -8,7 +8,7 @@ const eligibleGroups = new Set(["Team Dan / James", "Team Mike / Indi"]);
 const format = new Intl.NumberFormat("en-GB");
 const displayName = (name: string) => name.replace(/^team\s+/i, "");
 
-export default function LeaderboardClient() {
+export default function LeaderboardClient({ tier = "A" }: { tier?: "A" | "B" }) {
   const [data, setData] = useState<Data>({ endDate: "", managers: [] });
   const [error, setError] = useState("");
   const [hasTabAccess, setHasTabAccess] = useState(false);
@@ -16,19 +16,19 @@ export default function LeaderboardClient() {
 
   useEffect(() => {
     if (window.sessionStorage.getItem("first-class-recruitment-leaderboard-access") !== "true") {
-      window.location.replace("/recruitment-leaderboard/access");
+      window.location.replace(tier === "B" ? "/recruitment-leaderboard-b/access" : "/recruitment-leaderboard/access");
       return;
     }
 
     setHasTabAccess(true);
-    fetch("/api/data-analysis/recruitment-leaderboard?period=month", { cache: "no-store" })
+    fetch(`/api/data-analysis/recruitment-leaderboard?period=month&tier=${tier}`, { cache: "no-store" })
       .then(async (response) => {
         const result = await response.json() as Data;
         if (!response.ok) throw new Error(result.error || "Could not load the leaderboard.");
         setData(result);
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not load the leaderboard."));
-  }, []);
+  }, [tier]);
 
   if (!hasTabAccess) {
     return <main className="min-h-screen bg-[#070608]" aria-label="Checking recruitment access" />;
@@ -43,12 +43,12 @@ export default function LeaderboardClient() {
         <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-white/55">Current calendar month · Live daily data</p>
       </header>
 
-      <section className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-[30px] border border-[#f5ca62]/40 bg-black/65 px-4 py-6 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm sm:px-8"><p className="text-center font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-[0.08em] text-[#ffe79a] sm:text-4xl">Monthly rewards</p><div className="mt-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10"><Reward place="First place" amount="£50" tone="gold" /><Reward place="Second place" amount="£30" tone="silver" /><Reward place="Third place" amount="£20" tone="bronze" /></div></section>
+      <section className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-[30px] border border-[#f5ca62]/40 bg-black/65 px-4 py-6 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm sm:px-8"><p className="text-center font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-[0.08em] text-[#ffe79a] sm:text-4xl">Monthly rewards</p><div className="mt-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10"><Reward place="First place" amount={tier === "B" ? "£25" : "£50"} tone="gold" /><Reward place="Second place" amount={tier === "B" ? "£15" : "£30"} tone="silver" /><Reward place="Third place" amount={tier === "B" ? "£10" : "£20"} tone="bronze" /></div></section>
 
       <section className="mt-9 overflow-hidden rounded-[28px] border border-[#f5ca62]/45 bg-black/75 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm">
         <div className="hidden grid-cols-[76px_minmax(0,1fr)_140px_150px] items-center gap-4 border-b border-[#f5ca62]/25 bg-[#f5ca62]/10 px-6 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#f5ca62] sm:grid"><span>Rank</span><span>Manager</span><span className="text-right">Recruits</span><span className="text-right">Recruit diamonds</span></div>
         {managers.map((manager, index) => <ManagerRow key={manager.key} manager={manager} rank={index + 1} />)}
-        {!error && !managers.length ? <p className="px-6 py-16 text-center text-sm text-white/55">Loading leaderboard…</p> : null}
+        {!error && !managers.length ? <p className="px-6 py-16 text-center text-sm text-white/55">{data.endDate ? "No managers assigned to this leaderboard yet." : "Loading leaderboard…"}</p> : null}
         {error ? <p className="px-6 py-16 text-center text-sm text-red-200">{error}</p> : null}
       </section>
       <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-white/35">Recruit credit and diamonds are matched by permanent TikTok creator ID.</p>
@@ -59,7 +59,7 @@ export default function LeaderboardClient() {
 function ManagerRow({ manager, rank }: { manager: Manager; rank: number }) {
   const color = rank === 1 ? "border-[#ffe79a] bg-gradient-to-r from-[#b78318]/40 via-[#f5ca62]/20 to-transparent" : rank === 2 ? "border-slate-200/70 bg-gradient-to-r from-slate-200/20 to-transparent" : rank === 3 ? "border-[#d89157]/70 bg-gradient-to-r from-[#b56b36]/25 to-transparent" : "border-[#d9a83f]/25 bg-black/20";
   const medal = rank === 1 ? "text-[#ffe79a]" : rank === 2 ? "text-slate-100" : rank === 3 ? "text-[#e3a46b]" : "text-[#f5ca62]";
-  const theme = ({ fearnegurry1: "/manager-themes/fearne-sunset.png", louisesquelch: "/manager-themes/louise-cosmic.png", firstclassagencykyran: "/manager-themes/team-kieran-lightning.png", firstclassagencyash: "/manager-themes/ash-halloween.png", cjtokens1237: "/manager-themes/cj-sunset.png", firstclassagencymillie: "/manager-themes/millie-red-rose.png", firstclassagencymavis: "/manager-themes/mavis-moths.png", firstclassagencyolivia: "/manager-themes/liv-butterflies.png", demileawebster7: "/manager-themes/demi-highland-cow.png", firstclassagencyabbie: "/manager-themes/abbie-purple-music.png", rachellouise18rlyahoocom: "/manager-themes/rach-crowns.png", firstclassagencylauren: "/manager-themes/lauren-strawberry-field.png", firstclassagencykayden: "/manager-themes/kayden-mads-orange-sunset.png", megan25121990hot: "/manager-themes/megan-wildlife.png", kishaunnolan1: "/manager-themes/kash-first-class.png", xaramills17: "/manager-themes/zara-wolf.png", chantelleswaine97: "/manager-themes/chan-cherry-cupcake.png", trident125: "/manager-themes/marcy-black-gold.png", steven06gmxcom: "/manager-themes/primal-wolf-sunset.png", firstclassagencyjack: "/manager-themes/jack-team-red.png" } as Record<string, string>)[manager.key] || "";
+  const theme = /^(team[ ]+)?cam$/i.test(manager.manager.trim()) ? "/manager-themes/cam-chess.png" : /^(team[ ]+)?alice$/i.test(manager.manager.trim()) ? "/manager-themes/alice-red-roses.png" : /^(team[ ]+)?tezza$/i.test(manager.manager.trim()) ? "/manager-themes/tezza-lions.png" : ({ firstclassagencykyranash: "/manager-themes/kyran-ash-lightning.png", firstclassagencydemilee: "/manager-themes/demilee-goats.png", fearnegurry1: "/manager-themes/fearne-sunset.png", louisesquelch: "/manager-themes/louise-cosmic.png", firstclassagencykyran: "/manager-themes/team-kieran-lightning.png", firstclassagencyash: "/manager-themes/ash-halloween.png", cjtokens1237: "/manager-themes/cj-sunset.png", firstclassagencymillie: "/manager-themes/millie-red-rose.png", firstclassagencymavis: "/manager-themes/mavis-moths.png", firstclassagencyolivia: "/manager-themes/liv-butterflies.png", demileawebster7: "/manager-themes/demi-highland-cow.png", firstclassagencyabbie: "/manager-themes/abbie-purple-music.png", rachellouise18rlyahoocom: "/manager-themes/rach-crowns.png", firstclassagencylauren: "/manager-themes/lauren-strawberry-field.png", firstclassagencykayden: "/manager-themes/kayden-mads-orange-sunset.png", megan25121990hot: "/manager-themes/megan-wildlife.png", kishaunnolan1: "/manager-themes/kash-first-class.png", xaramills17: "/manager-themes/zara-wolf.png", chantelleswaine97: "/manager-themes/chan-cherry-cupcake.png", trident125: "/manager-themes/marcy-black-gold.png", steven06gmxcom: "/manager-themes/primal-wolf-sunset.png", firstclassagencyjack: "/manager-themes/jack-team-red.png" } as Record<string, string>)[manager.key] || "";
   return <article className={`relative grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 overflow-hidden border-b px-4 py-6 last:border-0 sm:grid-cols-[96px_minmax(0,1fr)_180px_200px] sm:gap-4 sm:px-6 ${color}`}>
     {theme ? <><div className="absolute inset-0 bg-cover bg-center opacity-[.82]" style={{ backgroundImage: `url('${theme}')` }} /><div className="absolute inset-0 bg-gradient-to-r from-black/34 via-black/10 to-black/30" /><div className="absolute inset-y-0 right-0 w-[44%] bg-gradient-to-l from-black/60 via-black/25 to-transparent" /></> : null}
     <strong className={`relative z-10 font-[family-name:var(--font-norwester)] text-3xl ${medal}`}>{rank}</strong>
