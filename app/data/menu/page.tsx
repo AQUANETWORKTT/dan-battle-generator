@@ -32,6 +32,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
     { href: "/data/battle-network-settings", number: "18", label: "Battle network", title: "Battle Network Settings", description: "Add external agencies, their Battle Network passwords and logos for manual pairing.", accent: "sky" },
   ] },
   { title: "Creator/Agency Targets", description: "Track creator progress, graduation and mature-creator retention.", accent: "emerald", workspaces: [
+    { href: "/data/mature-creators-tracker", number: "34", label: "Copy & paste reports", title: "Mature Creators Tracker", description: "The original maintain and rank-up tracker, with WhatsApp text to copy, diamond targets, LIVE days and hours needed.", accent: "orange" },
     { href: "/graduation-tracker", number: "03", label: "Progress", title: "Graduation Tracker", description: "Track creator progress towards 200,000 diamonds and graduation milestones.", accent: "emerald" },
     { href: "/data/fifty-percent-mature-creators", number: "04", label: "Retention", title: "50% Mature Creators", description: "Track 200,000+ creators from last month and predict who will maintain or rank up.", accent: "orange" },
     { href: "/data/mature-creators-growth", number: "05", label: "Growth", title: "Mature Growth Tracker", description: "Compare August, September and October daily diamonds, live hours and the largest performance drops.", accent: "orange" },
