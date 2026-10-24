@@ -13,4 +13,4 @@ export const onboardingSections: { title: string; tasks: readonly (readonly [num
     [32, "14-day review & feedback completed"],
   ] },
 ] as const;
-export const ONBOARDING_CHECKLIST_LENGTH = 33;
+export const ONBOARDING_CHECKLIST_LENGTH = 34;

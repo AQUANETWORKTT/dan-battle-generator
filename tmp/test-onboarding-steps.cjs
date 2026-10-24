@@ -1,0 +1,32 @@
+const fs=require('fs'),vm=require('vm'),ts=require('typescript'),assert=require('assert/strict');
+const compile=p=>ts.transpileModule(fs.readFileSync(p,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const steps={exports:{}};vm.runInNewContext(compile('lib/onboarding-steps.ts'),steps);
+let today='2026-10-28';
+const schedule={exports:{}};vm.runInNewContext(compile('lib/onboarding-schedule.ts'),schedule);
+let record={entries:{},notes:'Workspace notes stay saved'};
+const client={from(){return {select(){return this},eq(){return this},maybeSingle:async()=>({data:{template_json:JSON.parse(JSON.stringify(record))}}),upsert:async row=>{record=row.template_json;return {error:null}}}}};
+const box={exports:{},require(id){if(id==='next/server')return{NextResponse:{json:(body,options)=>({body,status:options?.status||200})}};if(id.includes('submissions-supabase'))return{submissionsSupabase:client};if(id.includes('onboarding-checklist'))return{ONBOARDING_CHECKLIST_LENGTH:34};if(id.includes('onboarding-schedule'))return {...schedule.exports,londonToday:()=>today};if(id.includes('onboarding-steps'))return steps.exports;if(id.includes('onboarding-report-data'))return{};throw Error(id)}};
+vm.runInNewContext(compile('app/api/onboarding/route.ts'),box);
+const post=(creator,action)=>box.exports.POST({json:async()=>({creator,action,checklist:creator.checklist})});
+(async()=>{
+ let creator={id:'123456789',username:'test',manager:'Manager A',group:'First Class',days:9,joinedDate:'2026-10-01',startDate:'2026-10-16',checklist:Array(33).fill(false),status:'pending',stepVersion:1,currentStep:3,notes:'General notes',handoverNotes:'Manager handover survives',stepNotes:{3:'Lighting checked'},completedSteps:[1,2]};
+ record.entries[creator.id]=creator;
+ let result=await post(creator,'advance');assert.equal(result.status,200);let saved=record.entries[creator.id];
+ assert.equal(saved.currentStep,4);assert.equal(saved.startDate,creator.startDate);assert.equal(saved.stepNotes[3],'Lighting checked');assert.equal(saved.notes,'General notes');assert.equal(saved.handoverNotes,'Manager handover survives');assert.equal(saved.checklist[16],true);assert.equal(saved.checklist[17],false);assert(!saved.completedSteps.includes(4));assert.equal(record.notes,'Workspace notes stay saved');
+ result=await post(creator,'advance');assert.equal(result.status,409);assert.equal(record.entries[creator.id].currentStep,4);
+ result=await post(saved,'no-chat');saved=record.entries[creator.id];assert.equal(saved.status,'no-chat');assert.equal(saved.currentStep,4);
+ await post(saved,'restore');saved=record.entries[creator.id];assert.equal(saved.currentStep,4);assert.equal(saved.startDate,creator.startDate);
+ saved={...saved,currentStep:12,stepNotes:{...saved.stepNotes,12:'Signed off'}};record.entries[creator.id]=saved;
+ await post(saved,'advance');saved=record.entries[creator.id];assert.equal(saved.status,'awaiting-final');assert(!saved.completedAt);assert(saved.completedSteps.includes(12));assert.equal(saved.stepNotes[3],'Lighting checked');
+ saved={...saved,checklist:Array(34).fill(false)};for(const id of [21,22,33])saved.checklist[id]=true;
+ result=await post(saved,'finish');assert.equal(result.status,400);assert.equal(record.entries[creator.id].status,'awaiting-final');
+ today='2026-10-29';result=await post({...saved,checklist:Array(34).fill(false)},'finish');assert.equal(result.status,400);
+ result=await post(saved,'finish');assert.equal(result.status,200);saved=record.entries[creator.id];assert.equal(saved.status,'complete');assert(saved.completedAt);
+ await post(saved,'unboard');saved=record.entries[creator.id];assert.equal(saved.currentStep,1);assert.equal(saved.status,'pending');assert.equal(saved.completedAt,'');assert.equal(saved.notes,'General notes');
+ let progress={checklist:Array(33).fill(false),currentStep:1,startDate:'2026-10-16'};
+ for(let day=1;day<=12;day++){assert.equal(steps.exports.onboardingStep(progress),day);progress=steps.exports.completeOnboardingStep(progress);assert.equal(progress.startDate,'2026-10-16');if(day<12)assert(!progress.completedSteps.includes(day+1));}
+ const oldChecklist=Array(33).fill(true);assert.equal(steps.exports.onboardingStep({checklist:oldChecklist}),1);
+ const oldCreator={...creator,id:'987654321',currentStep:8,stepVersion:undefined,checklist:oldChecklist,completedSteps:[]};record.entries[oldCreator.id]=oldCreator;
+ result=await post({...oldCreator,currentStep:1},'advance');assert.equal(result.status,200);assert.equal(record.entries[oldCreator.id].currentStep,2);assert.equal(record.entries[oldCreator.id].stepVersion,1);assert.equal(record.entries[oldCreator.id].checklist[24],true);
+ console.log('Passed: existing creators restart at step one with historical ticks preserved; 12-step sequence, notes persistence, unchanged planned dates, next step incomplete, stale double-submit protection, no-chat restoration, sign-off awaits day 14; finish requires all final tasks and the correct date; archive and restart. No real data changed.');
+})().catch(e=>{console.error(e);process.exitCode=1});
