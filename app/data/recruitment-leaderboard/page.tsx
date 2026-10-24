@@ -13,7 +13,7 @@ const recruitmentTitleImageWidth = 435;
 // October-only manual credit for this internal board and its PNG export.
 // Keep this out of the shared API so the universal boards are unchanged.
 const manualCreditMonth = "2026-10";
-const manualCredit = 12;
+const manualCredit = 18;
 
 export default function RecruitmentLeaderboardPage() {
   const [data, setData] = useState<Data>({ period: "month", startDate: "", endDate: "", groups: [], managers: [], recruits: [] });
