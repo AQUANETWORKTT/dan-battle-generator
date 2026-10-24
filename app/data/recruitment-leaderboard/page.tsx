@@ -20,7 +20,9 @@ export default function RecruitmentLeaderboardPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [status, setStatus] = useState("LOADING RECRUITMENT DATA...");
   const [preview, setPreview] = useState("");
-  const managers = useMemo(() => data.managers
+  const managers = useMemo(() => (data.endDate.startsWith(manualCreditMonth)
+    ? [...data.managers.filter(manager => manager.key !== "mikehalesjb"), { key: "mikehalesjb", manager: "Mike & Indi", group: "Team Mike / Indi", recruits: 33 }]
+    : data.managers)
     .filter((manager) => !selected.length || selected.includes(manager.group))
     .map((manager) => ({ ...manager, recruits: manager.recruits + (data.endDate.startsWith(manualCreditMonth) && manager.key === "firstclassagencydan" ? manualCredit : 0) }))
     .sort((a, b) => b.recruits - a.recruits || a.manager.localeCompare(b.manager)), [data.managers, data.endDate, selected]);

@@ -53,7 +53,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
   { title: "Leaderboards", description: "Daily posters and manager performance leaderboards.", accent: "yellow", workspaces: [
     { href: "/data/team-diamonds-yesterday", number: "05", label: "Daily snapshot", title: "Team Posters", description: "Build and download yesterday's top diamonds and live-hours posters.", accent: "yellow" },
-    { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Leaderboard", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
+    { href: "/data/manager-leaderboard", number: "11", label: "Monthly totals", title: "Manager Diamonds", description: "Load manager diamond totals, use the saved poster background and download the leaderboard PNG.", accent: "emerald" },
       { href: "https://firstclassagency.space/recruitment-leaderboard", number: "31", label: "Manager link", title: "First Class Universal Leaderboard", description: "Open the manager-only First Class Recruitment leaderboard.", accent: "yellow" },
       { href: "/recruitment-leaderboard-b", number: "35", label: "Manager link", title: "Second Universal Leaderboard", description: "Separate rankings for managers selected with the blue B in Manager Assignments.", accent: "sky" },
     { href: "/data/new-creator-diamonds-leaderboard", number: "30", label: "Live totals", title: "Diamonds for New Creators", description: "View calendar-month diamonds from new recruits using daily uploads and download the live leaderboard PNG.", accent: "emerald" },
