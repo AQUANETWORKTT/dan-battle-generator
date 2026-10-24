@@ -73,6 +73,11 @@ export function middleware(req: NextRequest) {
   }
 
   if (isRecruitmentLeaderboard || isRecruitmentLeaderboardApi) {
+    // Data Space uses the same data endpoint, but has its own site login.
+    // This does not unlock either manager-facing leaderboard page.
+    if (isRecruitmentLeaderboardApi && req.cookies.get("first-class-space-auth")?.value === "true") {
+      return NextResponse.next();
+    }
     if (!hasRecruitmentAccess) {
       return isRecruitmentLeaderboardApi
         ? NextResponse.json({ error: "Recruitment leaderboard access required." }, { status: 401 })
