@@ -14,7 +14,11 @@ export default function NewCreatorDiamondsLeaderboardPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [status, setStatus] = useState("LOADING LIVE DATA...");
   const [preview, setPreview] = useState("");
-  const managers = useMemo(() => data.managers.filter((manager) => !selected.length || selected.includes(manager.group)).sort((a, b) => a.manager.localeCompare(b.manager)), [data.managers, selected]);
+  // October-only manual total, limited to this internal board and its export.
+  const managers = useMemo(() => data.managers
+    .filter((manager) => !selected.length || selected.includes(manager.group))
+    .map((manager) => data.endDate.startsWith("2026-10") && manager.key === "firstclassagencydan" ? { ...manager, diamonds: 240264 } : manager)
+    .sort((a, b) => a.manager.localeCompare(b.manager)), [data.managers, data.endDate, selected]);
   const leaderboardManagers = useMemo(() => [...managers].sort((a, b) => b.diamonds - a.diamonds || a.manager.localeCompare(b.manager)), [managers]);
   const rows = useMemo(() => leaderboardManagers.map((manager) => ({ name: manager.manager, value: Math.round(manager.diamonds).toLocaleString() })), [leaderboardManagers]);
 

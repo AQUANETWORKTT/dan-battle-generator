@@ -10,13 +10,20 @@ type Recruit = { id: string; username: string; managerKey: string };
 type Data = { period: string; startDate: string; endDate: string; groups: string[]; managers: Manager[]; recruits: Recruit[]; error?: string };
 const recruitmentTitleImage = "/leaderboards/recruitment-title.png";
 const recruitmentTitleImageWidth = 435;
+// October-only manual credit for this internal board and its PNG export.
+// Keep this out of the shared API so the universal boards are unchanged.
+const manualCreditMonth = "2026-10";
+const manualCredit = 12;
 
 export default function RecruitmentLeaderboardPage() {
   const [data, setData] = useState<Data>({ period: "month", startDate: "", endDate: "", groups: [], managers: [], recruits: [] });
   const [selected, setSelected] = useState<string[]>([]);
   const [status, setStatus] = useState("LOADING RECRUITMENT DATA...");
   const [preview, setPreview] = useState("");
-  const managers = useMemo(() => data.managers.filter((manager) => !selected.length || selected.includes(manager.group)), [data.managers, selected]);
+  const managers = useMemo(() => data.managers
+    .filter((manager) => !selected.length || selected.includes(manager.group))
+    .map((manager) => ({ ...manager, recruits: manager.recruits + (data.endDate.startsWith(manualCreditMonth) && manager.key === "firstclassagencydan" ? manualCredit : 0) }))
+    .sort((a, b) => b.recruits - a.recruits || a.manager.localeCompare(b.manager)), [data.managers, data.endDate, selected]);
   const rows = useMemo(() => managers.map((manager) => ({ name: manager.manager, value: `${manager.recruits} / 8` })), [managers]);
 
   async function load() {
