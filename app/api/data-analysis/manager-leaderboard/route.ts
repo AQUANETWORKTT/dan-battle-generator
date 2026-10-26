@@ -30,6 +30,14 @@ const KYRAN_MANAGER_KEY = KYRAN_ASH_KEY;
 const KYRAN_MANAGER_NAME = "Team Kyran & Ash";
 const isBrandyManager = (value: unknown) => BRANDY_IDENTITIES.has(managerIdentity(value));
 const managerRaw = (row: Row) => text(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || row.email);
+// Permanent Manager Diamonds attribution requested for Dan Bradley. Apply it
+// before roster transfers and source-manager exclusions, without changing uploads.
+const fixedDiamondManager = (row: Row) => {
+  const id = text(row.creator_id || row["Creator ID"]);
+  const username = text(row.creator_username || row.username).replace(/^@/, "").toLowerCase();
+  return id === "7663148096431538196" || (!id && username === "dan.bradley")
+    ? "firstclassagencyolivia" : "";
+};
 const date = (value: Date) => value.toISOString().slice(0, 10);
 const label = (raw: string) => {
   const local = raw.split("@")[0].replace(/^firstclassagency[_.-]?/i, "").replace(/[_.-]+/g, " ").trim();
@@ -83,7 +91,7 @@ export async function GET() {
       .filter(row => text(row.stat_date) === endDate && recruitmentManagerIdentity(managerRaw(row)) === KYRAN_ASH_KEY)
       .map(creatorIdentity).filter(Boolean));
     for (const row of monthlyRows) {
-      const raw = combinedRoster.has(creatorIdentity(row)) ? KYRAN_ASH_KEY : managerRaw(row);
+      const raw = fixedDiamondManager(row) || (combinedRoster.has(creatorIdentity(row)) ? KYRAN_ASH_KEY : managerRaw(row));
       const sourceManagerKey = recruitmentManagerIdentity(raw);
       if (!sourceManagerKey || (!isBrandyManager(sourceManagerKey) && (deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)))) continue;
       const managerKey = isBrandyManager(sourceManagerKey) ? KYRAN_MANAGER_KEY : isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
