@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const host = req.headers.get("host")?.split(":")[0].toLowerCase();
+  // Atlas has its own signed session and scoped API. It never inherits the
+  // First Class login. A dedicated Atlas deployment exposes no other tools.
+  const isAtlasRoute = path === "/atlas" || path.startsWith("/atlas/") || path.startsWith("/api/atlas/");
+  if (isAtlasRoute) return NextResponse.next();
+  if (process.env.SITE_MODE === "atlas") {
+    if (path === "/" || path === "/generator") return NextResponse.redirect(new URL("/atlas/generator", req.url));
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   // First Class Owners is deliberately a small, separate experience that is
   // hosted from this codebase. The domain is the boundary: it exposes only
