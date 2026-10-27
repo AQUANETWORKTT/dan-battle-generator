@@ -4,10 +4,14 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 
 const recipient = "firstclassagency_james@outlook.com";
-const submissionsAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL || "https://dxupgmsscysvztxdtaku.supabase.co",
-  process.env.SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY || "",
-);
+function getSubmissionsAdmin() {
+  const key = process.env.SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_ANON_KEY;
+  if (!key) return null;
+  return createClient(
+    process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL || "https://dxupgmsscysvztxdtaku.supabase.co",
+    key,
+  );
+}
 
 function clean(value: unknown, limit: number) {
   return typeof value === "string" ? value.trim().slice(0, limit) : "";
@@ -53,6 +57,8 @@ export async function POST(request: Request) {
   const telegramToken = process.env.APPLICATION_TELEGRAM_BOT_TOKEN;
   const telegramChatId = process.env.APPLICATION_TELEGRAM_CHAT_ID;
   if (!telegramToken || !telegramChatId) return NextResponse.json({ error: "Applications are not configured to send yet. Please try again shortly." }, { status: 503 });
+  const submissionsAdmin = getSubmissionsAdmin();
+  if (!submissionsAdmin) return NextResponse.json({ error: "Applications are not configured to send yet. Please try again shortly." }, { status: 503 });
 
   const username = tiktokUsername.replace(/^@+/, "").replace(/[^a-zA-Z0-9._-]/g, "");
   const plainApplicationText = ["NEW START YOUR JOURNEY APPLICATION", "", `Name: ${name}`, `TikTok: ${username ? `tiktok.com/@${username}` : "Not provided"}`, `Phone: ${fullPhoneNumber}`].join("\n");
