@@ -95,7 +95,6 @@ def main():
     def run(names, message):
         try:
             from playwright.sync_api import sync_playwright
-            from backstage_batch import check_batch, ScanStopped
             bot = load_existing_bot()
             bot.init_database()
             with sync_playwright() as playwright:
@@ -104,37 +103,22 @@ def main():
                 try:
                     tiktok = context.pages[0] if context.pages else context.new_page()
                     tiktok.goto("https://www.tiktok.com/", wait_until="domcontentloaded", timeout=60000)
-                    backstage = context.new_page()
-                    backstage.goto(bot.BACKSTAGE_URL, wait_until="domcontentloaded", timeout=60000)
-                    report("Sign into your intended TikTok account and Backstage. Then click Continue after sign-in here.")
+                    report("Sign into your intended TikTok account. Then click Continue after sign-in here. Your pasted list will not be checked in Backstage again.")
                     events.put(("login", None))
                     while not signed_in.wait(0.25):
                         if stop.is_set():
                             return
-                    for offset in range(0, len(names), 30):
+                    for name in names:
                         if stop.is_set():
                             break
-                        blocked = blocked_names(BOT_FOLDER / "creators.db")
-                        batch = [name for name in names[offset:offset + 30] if name not in blocked]
-                        if not batch:
-                            continue
-                        report(f"Checking eligibility for {len(batch)} creators together...")
-                        checks = check_batch(backstage, batch, should_stop=stop.is_set)
-                        for result in checks:
-                            if stop.is_set():
-                                break
-                            name = result["username"]
-                            if result["status"] != "Available":
-                                report(f"@{name}: {result['status']} — no message sent.")
-                                continue
-                            status, detail = send_one(bot, context, name, message)
-                            report(f"@{name}: {status} — {detail}")
-                            if status not in {"SENT", "SKIPPED"}:
-                                report("Stopped because delivery was not confirmed. Review this conversation in TikTok; it will not be retried automatically.")
-                                stop.set()
-                                break
-                            if stop.wait(4):
-                                break
+                        status, detail = send_one(bot, context, name, message)
+                        report(f"@{name}: {status} — {detail}")
+                        if status not in {"SENT", "SKIPPED"}:
+                            report("Stopped because delivery was not confirmed. Review this conversation in TikTok; it will not be retried automatically.")
+                            stop.set()
+                            break
+                        if stop.wait(4):
+                            break
                     report("List finished or stopped. Confirmed/uncertain attempts were recorded in the existing bot database.")
                 finally:
                     context.close()
@@ -160,7 +144,7 @@ def main():
         if not fresh:
             messagebox.showinfo("Nothing to send", "All pasted creators are already contacted or logged.")
             return
-        if not messagebox.askyesno("Start this list?", f"{len(fresh)} unique creators to check; {len(names)-len(fresh)} already logged and skipped.\n\nOnly currently Available creators will be messaged.\n\nMessage:\n{message}\n\nContinue with this list and message?"):
+        if not messagebox.askyesno("Start this list?", f"{len(fresh)} unique creators to message; {len(names)-len(fresh)} already logged and skipped.\n\nThis uses your pasted list directly, without another Backstage check.\n\nMessage:\n{message}\n\nContinue with this list and message?"):
             return
         state["running"] = True
         stop.clear()
