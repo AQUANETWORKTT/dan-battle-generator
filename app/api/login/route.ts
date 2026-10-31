@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SEARCH_COOKIE, searchSessionToken } from "@/lib/creator-api-search/auth";
 
 export async function POST(req: Request) {
   const { password, area } = await req.json();
@@ -57,6 +58,12 @@ export async function POST(req: Request) {
   response.cookies.set("first-class-space-auth", "true", {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
+  });
+
+  const searchSession = searchSessionToken();
+  if (searchSession) response.cookies.set(SEARCH_COOKIE, searchSession, {
+    path: "/", maxAge: 60 * 60 * 24 * 30, httpOnly: true,
+    secure: new URL(req.url).protocol === "https:", sameSite: "lax",
   });
 
   return response;

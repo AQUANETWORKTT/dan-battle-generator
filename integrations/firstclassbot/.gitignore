@@ -1,0 +1,4 @@
+browser_profile_api_search/
+__pycache__/
+.env
+*.log

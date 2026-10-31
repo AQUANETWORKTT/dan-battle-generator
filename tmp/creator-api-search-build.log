@@ -1,0 +1,174 @@
+
+> daniel-battle-generator@0.1.0 build
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.2s
+  Running TypeScript ...
+  Finished TypeScript in 9.0s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/117) ...
+  Generating static pages using 11 workers (29/117) 
+  Generating static pages using 11 workers (58/117) 
+  Generating static pages using 11 workers (87/117) 
+✓ Generating static pages using 11 workers (117/117) in 1278ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/atlas/[...path]
+├ ƒ /api/battle-calendar
+├ ƒ /api/battle-calendar/reminders
+├ ƒ /api/battle-network
+├ ƒ /api/creator-api-search/[...path]
+├ ƒ /api/data-analysis/creator-lookup
+├ ƒ /api/data-analysis/creator-performance-review
+├ ƒ /api/data-analysis/creator-recruitment
+├ ƒ /api/data-analysis/daily-stats
+├ ƒ /api/data-analysis/excluded-creators
+├ ƒ /api/data-analysis/fallback-avatars
+├ ƒ /api/data-analysis/import
+├ ƒ /api/data-analysis/leave-requests
+├ ƒ /api/data-analysis/manager-assignments
+├ ƒ /api/data-analysis/manager-leaderboard
+├ ƒ /api/data-analysis/manager-sources
+├ ƒ /api/data-analysis/new-creator-diamonds-leaderboard
+├ ƒ /api/data-analysis/quitting-records
+├ ƒ /api/data-analysis/recruitment-leaderboard
+├ ƒ /api/data-analysis/sub-agency-metrics
+├ ƒ /api/data-analysis/upload-status
+├ ƒ /api/data/event-planner
+├ ƒ /api/data/event-planner/upload
+├ ƒ /api/data/fifty-percent-mature-creators
+├ ƒ /api/data/focus-target-tracker
+├ ƒ /api/data/incremental-tracking
+├ ƒ /api/data/mature-creators-growth
+├ ƒ /api/data/mature-creators/month-totals
+├ ƒ /api/data/notepad
+├ ƒ /api/data/starlight-creators
+├ ƒ /api/data/team-target-tracker
+├ ƒ /api/data/todo-calendar
+├ ƒ /api/events/archive-status
+├ ƒ /api/events/first-class/stats
+├ ƒ /api/login
+├ ƒ /api/management-onboarding
+├ ƒ /api/management-onboarding-upload
+├ ƒ /api/manager-strikes
+├ ƒ /api/manager-tasks
+├ ƒ /api/onboarding
+├ ƒ /api/poster-templates
+├ ƒ /api/race-to-the-top
+├ ƒ /api/race-to-the-top-october
+├ ƒ /api/recruitment-login
+├ ƒ /api/start-your-journey/application
+├ ƒ /api/tasks
+├ ƒ /api/team-poster-templates
+├ ƒ /api/tikleap/live-league-availability
+├ ƒ /api/tikleap/uk-daily-rankings
+├ ƒ /api/tikleap/uk-last-day-usernames
+├ ƒ /api/tiktok-avatar
+├ ƒ /api/tiktok-avatar-image
+├ ƒ /api/tiktok-avatar-v2
+├ ○ /atlas
+├ ƒ /atlas/data/creator-id-lookup
+├ ƒ /atlas/data/graduation-tracker
+├ ƒ /atlas/data/incremental-data-tracking
+├ ƒ /atlas/data/manager-assignments
+├ ƒ /atlas/data/manager-strikes
+├ ƒ /atlas/data/mature-creators-tracker
+├ ƒ /atlas/data/menu
+├ ƒ /atlas/data/notepad
+├ ƒ /atlas/data/team-posters
+├ ƒ /atlas/data/upload
+├ ƒ /atlas/generator
+├ ƒ /atlas/leadership
+├ ○ /atlas/login
+├ ○ /battle-calendar
+├ ƒ /battle-network
+├ ○ /creator-intelligence
+├ ○ /crew-showdown-download
+├ ○ /daily-rankings
+├ ○ /data
+├ ○ /data-analysis
+├ ○ /data-analysis/upload
+├ ○ /data/battle-calendar
+├ ○ /data/battle-network-settings
+├ ƒ /data/creator-api-search
+├ ƒ /data/creator-api-search/lookup
+├ ƒ /data/creator-api-search/rankings
+├ ○ /data/creator-id-lookup
+├ ○ /data/creator-performance-review
+├ ○ /data/creator-recruitment
+├ ○ /data/event-planner
+├ ○ /data/events-leaderboards-admin
+├ ○ /data/excluded-creators
+├ ○ /data/fallback-pictures
+├ ○ /data/fifty-percent-mature-creators
+├ ○ /data/focus-target-tracker
+├ ○ /data/incremental-data-tracking
+├ ○ /data/leave-requests
+├ ○ /data/manager-assignments
+├ ○ /data/manager-leaderboard
+├ ○ /data/manager-onboarding-progress
+├ ○ /data/manager-strikes
+├ ○ /data/mature-creators-growth
+├ ○ /data/mature-creators-tracker
+├ ○ /data/menu
+├ ○ /data/new-creator-diamonds-leaderboard
+├ ○ /data/notepad
+├ ○ /data/quitting-records
+├ ○ /data/recruitment-leaderboard
+├ ○ /data/recruitment-quality
+├ ○ /data/starlight-creators
+├ ○ /data/sub-agency-metrics
+├ ○ /data/team-dan-target-tracker
+├ ○ /data/team-diamonds-yesterday
+├ ○ /data/team-posters
+├ ○ /data/telegram-bot-settings
+├ ○ /data/tikleap-uk-usernames
+├ ○ /data/todo-calendar
+├ ○ /events
+├ ○ /events/sunset-showdown
+├ ○ /events/sunset-showdown/admin
+├ ○ /events/world-cup-2026
+├ ○ /events/world-cup-2026/admin
+├ ○ /generator
+├ ○ /graduation-tracker
+├ ○ /live/7xq9v2-first-class
+├ ○ /live/8f3k2j9m-sunset
+├ ○ /live/race-to-the-top
+├ ○ /live/race-to-the-top-october
+├ ○ /live/race-to-the-top-october/opengraph-image
+├ ○ /live/world-cup-2026
+├ ○ /login
+├ ○ /login/leadership
+├ ○ /login/management
+├ ○ /login/onboarding
+├ ○ /management
+├ ƒ /management/[manager]
+├ ƒ /management/[manager]/onboarding
+├ ƒ /management/[manager]/tasks
+├ ○ /onboarding
+├ ○ /owners
+├ ○ /posters
+├ ○ /privacy/tikleap-helper
+├ ○ /recruitment-leaderboard
+├ ○ /recruitment-leaderboard-b
+├ ○ /recruitment-leaderboard-b/access
+├ ○ /recruitment-leaderboard/access
+├ ○ /recruitment-leaderboard/opengraph-image.png
+├ ○ /start-your-journey
+├ ○ /start-your-journey/thank-you
+└ ○ /tasks
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

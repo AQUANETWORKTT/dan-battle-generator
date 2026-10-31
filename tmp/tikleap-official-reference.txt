@@ -1,0 +1,1093 @@
+Browser tab: 184541077, Title: "TikTok Live API and MCP by Tikleap", URL: "https://www.tikleap.com/api-docs".
+0 AXWebArea TikTok Live API and MCP by Tikleap, URL: tikleap.com/api-docs
+	1 container
+		2 link Description: tikleap, Value: tikleap.com/
+		3 image
+		4 button Search
+			5 image
+		6 link Description: Home, Value: tikleap.com/
+		7 link Description: Ranks, Value: tikleap.com/ranks
+		8 link Description: Streams, Value: tikleap.com/streams
+		9 link Description: Gifts, Value: tikleap.com/top-gifters
+		10 link Description: API, Value: tikleap.com/api-docs
+		11 image
+		12 link Description: Watchlist 0, Value: tikleap.com/my-watchlist
+		13 image
+	14 container
+		15 text Do you have a request or  want to report a bug?
+		16 link Description: Report, Value: tikleap.com/report?url=https%3A%2F%2Fwww.tikleap.com%2Fapi-docs
+		17 heading Tikleap API, Value: 1
+			18 text Tikleap API
+		19 text Access and process Tikleap data via official API.
+		20 button (collapsed) 1 key, ID: api-keys-toggle, Secondary Actions: Expand
+			21 text 1 key
+		22 button Generate API Key, ID: api-token-create
+		23 heading API Builder, Value: 2
+			24 text API Builder
+		25 text ENDPOINT
+		26 pop up button (collapsed, settable) Value: GET /rankings, ID: api-endpoint, Secondary Actions: Expand
+			27 menu
+				28 (selected) GET /rankings
+				29 GET /archive
+				30 GET /archive/dates
+				31 GET /leagues
+				32 GET /leagues/{league}
+				33 GET /gameranking
+				34 GET /teams
+				35 GET /shopping
+				36 GET /watchlist
+				37 GET /watchlist/{username}
+				38 POST /watchlist
+				39 DELETE /watchlist/{username}
+				40 GET /creators/{username}
+				41 GET /creators/{username}/history
+				42 GET /creators/{username}/gift-gallery
+				43 GET /creators/{username}/gift-gallery/{period}
+				44 GET /creators/{username}/streams
+				45 GET /creators/{username}/streams/{stream_id}
+				46 GET /creators/{username}/streams/{stream_id}/events
+				47 POST /creators/{username}/streams
+				48 GET /gifters
+				49 GET /gifters/{username}
+				50 GET /gifters/{username}/gift-gallery
+				51 GET /gifters/{username}/gift-gallery/{period}
+				52 GET /global-rankings
+				53 GET /search
+		54 container api-filters
+			55 text REGION
+			56 pop up button (collapsed, settable) Value: United States, Secondary Actions: Expand
+				57 menu
+					58 Albania
+					59 Algeria
+					60 Andorra
+					61 Argentina
+					62 Armenia
+					63 Australia
+					64 Austria
+					65 Azerbaijan
+					66 Bahrain
+					67 Belarus
+					68 Belgium
+					69 Bolivia
+					70 Bosnia
+					71 Brazil
+					72 Bulgaria
+					73 Canada
+					74 Chile
+					75 Colombia
+					76 Costa Rica
+					77 Croatia
+					78 Czech
+					79 Denmark
+					80 Dominican Republic
+					81 Ecuador
+					82 Egypt
+					83 Estonia
+					84 Finland
+					85 France
+					86 Georgia
+					87 Germany
+					88 Ghana
+					89 Greece
+					90 Hungary
+					91 Iceland
+					92 Indonesia
+					93 Iraq
+					94 Ireland
+					95 Israel
+					96 Italy
+					97 Jamaica
+					98 Japan
+					99 Jordan
+					100 Kazakhstan
+					101 Kenya
+					102 Kuwait
+					103 Kyrgyzstan
+					104 Latvia
+					105 Lebanon
+					106 Lithuania
+					107 Luxembourg
+					108 Macedonia
+					109 Malaysia
+					110 Malta
+					111 Mexico
+					112 Moldova
+					113 Morocco
+					114 Nepal
+					115 Netherlands
+					116 New Zealand
+					117 Nigeria
+					118 Norway
+					119 Panama
+					120 Peru
+					121 Philippines
+					122 Poland
+					123 Portugal
+					124 Romania
+					125 Saudi Arabia
+					126 Serbia
+					127 Singapore
+					128 Slovakia
+					129 Slovenia
+					130 South Africa
+					131 South Korea
+					132 Spain
+					133 Sweden
+					134 Switzerland
+					135 Taiwan
+					136 Thailand
+					137 Trinidad and Tobago
+					138 Turkey
+					139 Ukraine
+					140 United Arab Emirates
+					141 United Kingdom
+					142 (selected) United States
+					143 Uruguay
+					144 Uzbekistan
+					145 Venezuela
+					146 Vietnam
+			147 text LIVE
+			148 pop up button (collapsed, settable) Value: Both, Secondary Actions: Expand
+				149 menu
+					150 (selected) Both
+					151 Live
+					152 Offline
+		153 text GENERATED ENDPOINT
+		154 text field Value: https://api.tikleap.com/rankings?region=US, ID: api-url
+		155 button Description: Copy URL, ID: api-url-icon
+		156 button (collapsed) View example, ID: api-view-example, Secondary Actions: Expand
+		157 button Copy URL, ID: api-copy-url
+		158 heading API Usage, Value: 2
+			159 text API Usage
+		160 text 1
+		161 text 1H
+		162 text 1
+		163 text 24H
+		164 text 1
+		165 text 7D
+		166 text 100%
+		167 text SUCCESS RATE API REQUESTS 7 DAYS
+		168 text Daily usage
+		169 text 1
+		170 text  / 77,000 Requests Creators today
+		171 text 0
+		172 text  / 2,200
+		173 link Description: Increase limit, Value: tikleap.com/api-packages, ID: api-increase-limit
+		174 heading Tikleap API documentation, Value: 2
+			175 text Tikleap API documentation
+		176 container
+			177 text Send the token as  Authorization: Bearer . The secret starts with  tlk_ .
+		178 content list
+			179 text One call counts toward the daily request cap, including requests from this console.
+			180 container
+				181 text Unique usernames on  /creators/*  count toward the daily creators cap.
+			182 text Unknown filters return 400.
+			183 text Accounts without premium or an active package return 403.
+			184 container
+				185 text Daily request or creators caps return 429. Responses carry  X-Daily-Limit ,  X-Daily-Remaining ,  X-Creators-Limit  and  X-Creators-Remaining .
+			186 container
+				187 text Per-minute burst limit: Premium 30, Basic 60, Pro 180, Ultra 600. Above it you get 429  too_many_requests  with  Retry-After  and  X-RateLimit-*  headers.
+			188 container
+				189 text History is limited by plan: Premium and Basic get current data only, Pro 30 days, Ultra 60 days. Older periods return 403  history_limit .
+		190 heading MCP server, Value: 2, ID: mcp
+			191 text MCP server
+		192 container
+			193 text Connect Claude, Cursor or any other MCP client to  https://api.tikleap.com/mcp  (Streamable HTTP) with the same API key. Every endpoint below is a tool, and each tool call counts as one request toward the same limits.
+		194 text claude mcp add --transport http tikleap https://api.tikleap.com/mcp --header "Authorization: Bearer YOUR_API_KEY"
+		195 text {
+  "mcpServers": {
+    "tikleap": {
+      "type": "http",
+      "url": "https://api.tikleap.com/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+		196 container api-reference
+			197 button (collapsed) GET /rankings, Secondary Actions: Expand
+				198 text GET
+				199 text /rankings
+			200 button (collapsed) GET /archive, Secondary Actions: Expand
+				201 text GET
+				202 text /archive
+			203 button (collapsed) GET /archive/dates, Secondary Actions: Expand
+				204 text GET
+				205 text /archive/dates
+			276 container
+				277 button (expanded) GET /leagues, Secondary Actions: Collapse
+					278 text GET
+					279 text /leagues
+				280 text Leagues in a country
+				281 heading FILTERS, Value: 4
+					282 text FILTERS
+				283 table
+					284 row
+						285 cell
+							286 text Name
+						287 cell
+							288 text Details
+					289 row
+						290 cell
+							291 text region
+						292 cell
+							293 text ISO country code
+						294 cell
+							295 text Required
+					296 row
+						297 cell
+							298 text sort
+						299 cell
+							300 text Sort · name, earnings, creators · Default name
+						301 cell
+							302 text Optional
+				303 heading FIELDS, Value: 4
+					304 text FIELDS
+				305 table
+					306 row
+						307 cell
+							308 text Name
+						309 cell
+							310 text Description
+					311 row
+						312 cell
+							313 text league
+						314 cell
+							315 text League code, for example A1
+					316 row
+						317 cell
+							318 text region
+						319 cell
+							320 text ISO country code
+					321 row
+						322 cell
+							323 text users_count
+						324 cell
+							325 text Creators in the league
+					326 row
+						327 cell
+							328 text total_diamonds
+						329 cell
+							330 text Sum of ranking scores
+					331 row
+						332 cell
+							333 text total_earnings
+						334 cell
+							335 text Estimated USD
+			336 container
+				337 button (expanded) GET /leagues/{league}, Secondary Actions: Collapse
+					338 text GET
+					339 text /leagues/{league}
+				340 text Creators in one league
+				341 heading FILTERS, Value: 4
+					342 text FILTERS
+				343 table
+					344 row
+						345 cell
+							346 text Name
+						347 cell
+							348 text Details
+					349 row
+						350 cell
+							351 text region
+						352 cell
+							353 text ISO country code
+						354 cell
+							355 text Required
+					356 row
+						357 cell
+							358 text league
+						359 cell
+							360 text League code, for example A1
+						361 cell
+							362 text Required
+					363 row
+						364 cell
+							365 text live
+						366 cell
+							367 text Only creators currently live
+						368 cell
+							369 text Optional
+				370 heading FIELDS, Value: 4
+					371 text FIELDS
+				372 table
+					373 row
+						374 cell
+							375 text Name
+						376 cell
+							377 text Description
+					378 row
+						379 cell
+							380 text rank
+						381 cell
+							382 text Position in the source list
+					383 row
+						384 cell
+							385 text name
+						386 cell
+							387 text Display name
+					388 row
+						389 cell
+							390 text username
+						391 cell
+							392 text TikTok username
+					393 row
+						394 cell
+							395 text avatar
+						396 cell
+							397 text Profile photo URL
+					398 row
+						399 cell
+							400 text earnings
+						401 cell
+							402 text Estimated USD for the active window
+					403 row
+						404 cell
+							405 text diamonds
+						406 cell
+							407 text Ranking score. Null for Popular LIVE.
+					408 row
+						409 cell
+							410 text is_live
+						411 cell
+							412 text Whether a live room was present
+					413 row
+						414 cell
+							415 text user_id
+						416 cell
+							417 text TikTok user id
+					418 row
+						419 cell
+							420 text region
+						421 cell
+							422 text Creator country shown on the profile
+					423 row
+						424 cell
+							425 text audience_language
+						426 cell
+							427 text Audience language, for example en
+			212 button (collapsed) GET /gameranking, Secondary Actions: Expand
+				213 text GET
+				214 text /gameranking
+			215 button (collapsed) GET /teams, Secondary Actions: Expand
+				216 text GET
+				217 text /teams
+			218 button (collapsed) GET /shopping, Secondary Actions: Expand
+				219 text GET
+				220 text /shopping
+			221 button (collapsed) GET /watchlist, Secondary Actions: Expand
+				222 text GET
+				223 text /watchlist
+			224 button (collapsed) GET /watchlist/{username}, Secondary Actions: Expand
+				225 text GET
+				226 text /watchlist/{username}
+			227 button (collapsed) POST /watchlist, Secondary Actions: Expand
+				228 text POST
+				229 text /watchlist
+			230 button (collapsed) DELETE /watchlist/{username}, Secondary Actions: Expand
+				231 text DELETE
+				232 text /watchlist/{username}
+			428 container
+				429 button (expanded) GET /creators/{username}, Secondary Actions: Collapse
+					430 text GET
+					431 text /creators/{username}
+				432 text One creator
+				433 heading FILTERS, Value: 4
+					434 text FILTERS
+				435 table
+					436 row
+						437 cell
+							438 text Name
+						439 cell
+							440 text Details
+					441 row
+						442 cell
+							443 text username
+						444 cell
+							445 text TikTok username
+						446 cell
+							447 text Required
+				448 heading FIELDS, Value: 4
+					449 text FIELDS
+				450 table
+					451 row
+						452 cell
+							453 text Name
+						454 cell
+							455 text Description
+					456 row
+						457 cell
+							458 text name
+						459 cell
+							460 text Display name
+					461 row
+						462 cell
+							463 text username
+						464 cell
+							465 text TikTok username
+					466 row
+						467 cell
+							468 text avatar
+						469 cell
+							470 text Profile photo URL
+					471 row
+						472 cell
+							473 text region
+						474 cell
+							475 text Creator country shown on the profile
+					476 row
+						477 cell
+							478 text rank
+						479 cell
+							480 text Position on the country rank badge
+					481 row
+						482 cell
+							483 text rank_country
+						484 cell
+							485 text Country on the rank badge
+					486 row
+						487 cell
+							488 text is_live
+						489 cell
+							490 text Live now
+					491 row
+						492 cell
+							493 text earnings
+						494 cell
+							495 text Current period estimated USD
+					496 row
+						497 cell
+							498 text diamonds
+						499 cell
+							500 text Current period score
+					501 row
+						502 cell
+							503 text period_expired_at
+						504 cell
+							505 text Unix timestamp when the current ranking period ends
+					506 row
+						507 cell
+							508 text total_earnings
+						509 cell
+							510 text Total estimated USD
+					511 row
+						512 cell
+							513 text total_days
+						514 cell
+							515 text Days covered by the total
+					516 row
+						517 cell
+							518 text earnings_from
+						519 cell
+							520 text First tracked day, YYYY-MM-DD
+					521 row
+						522 cell
+							523 text account_age
+						524 cell
+							525 text Account age
+					526 row
+						527 cell
+							528 text account_created_at
+						529 cell
+							530 text Account creation date, YYYY-MM-DD
+					531 row
+						532 cell
+							533 text account_language
+						534 cell
+							535 text Account language, for example en
+					536 row
+						537 cell
+							538 text audience_language
+						539 cell
+							540 text Audience language, for example en
+					541 row
+						542 cell
+							543 text peak_earnings
+						544 cell
+							545 text Highest estimated USD
+					546 row
+						547 cell
+							548 text peak_date
+						549 cell
+							550 text Day of the peak, YYYY-MM-DD
+			551 container
+				552 button (expanded) GET /creators/{username}/history, Secondary Actions: Collapse
+					553 text GET
+					554 text /creators/{username}/history
+				555 text Completed earning periods
+				556 heading FILTERS, Value: 4
+					557 text FILTERS
+				558 table
+					559 row
+						560 cell
+							561 text Name
+						562 cell
+							563 text Details
+					564 row
+						565 cell
+							566 text username
+						567 cell
+							568 text TikTok username
+						569 cell
+							570 text Required
+					571 row
+						572 cell
+							573 text limit
+						574 cell
+							575 text Page size · Default 20
+						576 cell
+							577 text Optional
+					578 row
+						579 cell
+							580 text cursor
+						581 cell
+							582 text Cursor from the previous page
+						583 cell
+							584 text Optional
+				585 heading FIELDS, Value: 4
+					586 text FIELDS
+				587 table
+					588 row
+						589 cell
+							590 text Name
+						591 cell
+							592 text Description
+					593 row
+						594 cell
+							595 text period
+						596 cell
+							597 text Day as YYYY-MM-DD, or YYYY-MM-DD - YYYY-MM-DD for weekly periods
+					598 row
+						599 cell
+							600 text type
+						601 cell
+							602 text daily or weekly
+					603 row
+						604 cell
+							605 text diamonds
+						606 cell
+							607 text Score for the period
+					608 row
+						609 cell
+							610 text earnings
+						611 cell
+							612 text Estimated USD
+			613 container
+				614 button (expanded) GET /creators/{username}/gift-gallery, Secondary Actions: Collapse
+					615 text GET
+					616 text /creators/{username}/gift-gallery
+				617 text All gift gallery periods
+				618 heading FILTERS, Value: 4
+					619 text FILTERS
+				620 table
+					621 row
+						622 cell
+							623 text Name
+						624 cell
+							625 text Details
+					626 row
+						627 cell
+							628 text username
+						629 cell
+							630 text TikTok username
+						631 cell
+							632 text Required
+				633 heading FIELDS, Value: 4
+					634 text FIELDS
+				635 table
+					636 row
+						637 cell
+							638 text Name
+						639 cell
+							640 text Description
+					641 row
+						642 cell
+							643 text period
+						644 cell
+							645 text Gallery week Monday as YYYYMMDD
+					646 row
+						647 cell
+							648 text total_diamonds
+						649 cell
+							650 text Diamonds collected
+					651 row
+						652 cell
+							653 text gifters_count
+						654 cell
+							655 text Gifters in the gallery
+			656 container
+				657 button (expanded) GET /creators/{username}/gift-gallery/{period}, Secondary Actions: Collapse
+					658 text GET
+					659 text /creators/{username}/gift-gallery/{period}
+				660 text Top 20 gifters in one gallery period
+				661 heading FILTERS, Value: 4
+					662 text FILTERS
+				663 table
+					664 row
+						665 cell
+							666 text Name
+						667 cell
+							668 text Details
+					669 row
+						670 cell
+							671 text username
+						672 cell
+							673 text TikTok username
+						674 cell
+							675 text Required
+					676 row
+						677 cell
+							678 text period
+						679 cell
+							680 text Gallery week Monday as YYYYMMDD (Y-m-d also accepted)
+						681 cell
+							682 text Required
+				683 heading FIELDS, Value: 4
+					684 text FIELDS
+				685 table
+					686 row
+						687 cell
+							688 text Name
+						689 cell
+							690 text Description
+					691 row
+						692 cell
+							693 text rank
+						694 cell
+							695 text Position by diamonds
+					696 row
+						697 cell
+							698 text name
+						699 cell
+							700 text Display name
+					701 row
+						702 cell
+							703 text avatar
+						704 cell
+							705 text Cached profile photo URL on tikleap.com
+					706 row
+						707 cell
+							708 text user_id
+						709 cell
+							710 text TikTok user id
+					711 row
+						712 cell
+							713 text diamonds
+						714 cell
+							715 text Diamonds sent
+					716 row
+						717 cell
+							718 text gifts
+						719 cell
+							720 text Gifts sent
+			721 container
+				722 button (expanded) GET /creators/{username}/streams, Secondary Actions: Collapse
+					723 text GET
+					724 text /creators/{username}/streams
+				725 text Tracked LIVE streams of one creator Newest first. Status is requested (queued), live or ended. The latest finished stream is always included; older ones follow your plan history.
+				726 heading FILTERS, Value: 4
+					727 text FILTERS
+				728 table
+					729 row
+						730 cell
+							731 text Name
+						732 cell
+							733 text Details
+					734 row
+						735 cell
+							736 text username
+						737 cell
+							738 text TikTok username
+						739 cell
+							740 text Required
+					741 row
+						742 cell
+							743 text limit
+						744 cell
+							745 text Page size · Default 20
+						746 cell
+							747 text Optional
+					748 row
+						749 cell
+							750 text cursor
+						751 cell
+							752 text Cursor from the previous page
+						753 cell
+							754 text Optional
+				755 heading FIELDS, Value: 4
+					756 text FIELDS
+				757 table
+					758 row
+						759 cell
+							760 text Name
+						761 cell
+							762 text Description
+					763 row
+						764 cell
+							765 text id
+						766 cell
+							767 text Stream id
+					768 row
+						769 cell
+							770 text status
+						771 cell
+							772 text requested, live or ended
+					773 row
+						774 cell
+							775 text room_id
+						776 cell
+							777 text TikTok LIVE room id
+					778 row
+						779 cell
+							780 text started_at
+						781 cell
+							782 text Tracking start, ISO 8601
+					783 row
+						784 cell
+							785 text ended_at
+						786 cell
+							787 text Stream end, ISO 8601. Null while live.
+					788 row
+						789 cell
+							790 text duration_seconds
+						791 cell
+							792 text Tracked length so far
+					793 row
+						794 cell
+							795 text diamonds
+						796 cell
+							797 text Diamonds received while tracked
+					798 row
+						799 cell
+							800 text earnings
+						801 cell
+							802 text Estimated creator USD
+					803 row
+						804 cell
+							805 text earnings_before_commission
+						806 cell
+							807 text Estimated USD before TikTok's cut
+					808 row
+						809 cell
+							810 text gifts
+						811 cell
+							812 text Gifts received
+					813 row
+						814 cell
+							815 text likes
+						816 cell
+							817 text Likes
+					818 row
+						819 cell
+							820 text comments
+						821 cell
+							822 text Comments
+					823 row
+						824 cell
+							825 text shares
+						826 cell
+							827 text Shares
+					828 row
+						829 cell
+							830 text joins
+						831 cell
+							832 text Viewer joins
+					833 row
+						834 cell
+							835 text new_followers
+						836 cell
+							837 text New followers during the stream
+					838 row
+						839 cell
+							840 text viewers_peak
+						841 cell
+							842 text Peak concurrent viewers
+					843 row
+						844 cell
+							845 text viewers_unique
+						846 cell
+							847 text Unique viewers reported by TikTok
+			848 container
+				849 button (expanded) GET /creators/{username}/streams/{stream_id}, Secondary Actions: Collapse
+					850 text GET
+					851 text /creators/{username}/streams/{stream_id}
+				852 text One tracked LIVE stream with top gifters, top gifts and a per-minute timeline Poll every few seconds while status is live; totals keep growing until it ends.
+				853 heading FILTERS, Value: 4
+					854 text FILTERS
+				855 table
+					856 row
+						857 cell
+							858 text Name
+						859 cell
+							860 text Details
+					861 row
+						862 cell
+							863 text username
+						864 cell
+							865 text TikTok username
+						866 cell
+							867 text Required
+					868 row
+						869 cell
+							870 text stream_id
+						871 cell
+							872 text Stream id from /creators/{username}/streams
+						873 cell
+							874 text Required
+				875 heading FIELDS, Value: 4
+					876 text FIELDS
+				877 table
+					878 row
+						879 cell
+							880 text Name
+						881 cell
+							882 text Description
+					883 row
+						884 cell
+							885 text id
+						886 cell
+							887 text Stream id
+					888 row
+						889 cell
+							890 text status
+						891 cell
+							892 text requested, live or ended
+					893 row
+						894 cell
+							895 text room_id
+						896 cell
+							897 text TikTok LIVE room id
+					898 row
+						899 cell
+							900 text started_at
+						901 cell
+							902 text Tracking start, ISO 8601
+					903 row
+						904 cell
+							905 text ended_at
+						906 cell
+							907 text Stream end, ISO 8601. Null while live.
+					908 row
+						909 cell
+							910 text duration_seconds
+						911 cell
+							912 text Tracked length so far
+					913 row
+						914 cell
+							915 text diamonds
+						916 cell
+							917 text Diamonds received while tracked
+					918 row
+						919 cell
+							920 text earnings
+						921 cell
+							922 text Estimated creator USD
+					923 row
+						924 cell
+							925 text earnings_before_commission
+						926 cell
+							927 text Estimated USD before TikTok's cut
+					928 row
+						929 cell
+							930 text gifts
+						931 cell
+							932 text Gifts received
+					933 row
+						934 cell
+							935 text likes
+						936 cell
+							937 text Likes
+					938 row
+						939 cell
+							940 text comments
+						941 cell
+							942 text Comments
+					943 row
+						944 cell
+							945 text shares
+						946 cell
+							947 text Shares
+					948 row
+						949 cell
+							950 text joins
+						951 cell
+							952 text Viewer joins
+					953 row
+						954 cell
+							955 text new_followers
+						956 cell
+							957 text New followers during the stream
+					958 row
+						959 cell
+							960 text viewers_peak
+						961 cell
+							962 text Peak concurrent viewers
+					963 row
+						964 cell
+							965 text viewers_unique
+						966 cell
+							967 text Unique viewers reported by TikTok
+					968 row
+						969 cell
+							970 text last_seen_at
+						971 cell
+							972 text Last event received, ISO 8601
+					973 row
+						974 cell
+							975 text viewers_current
+						976 cell
+							977 text Concurrent viewers now
+					978 row
+						979 cell
+							980 text followers
+						981 cell
+							982 text Follower count at the last follow event
+					983 row
+						984 cell
+							985 text events_count
+						986 cell
+							987 text Events stored, see the events endpoint
+					988 row
+						989 cell
+							990 text top_gifters
+						991 cell
+							992 text Up to 50 gifters: rank, name, username, user_id, avatar, diamonds, gifts
+					993 row
+						994 cell
+							995 text top_gifts
+						996 cell
+							997 text Up to 50 gifts: gift_id, name, image, count, diamonds
+					998 row
+						999 cell
+							1000 text timeline
+						1001 cell
+							1002 text One bucket per minute: time, diamonds, gifts, likes, comments, shares, joins, viewers
+			1003 container
+				1004 button (expanded) GET /creators/{username}/streams/{stream_id}/events, Secondary Actions: Collapse
+					1005 text GET
+					1006 text /creators/{username}/streams/{stream_id}/events
+				1007 text Chat, gift and other events of one tracked stream Newest first. Pass next_cursor to read older events.
+				1008 heading FILTERS, Value: 4
+					1009 text FILTERS
+				1010 table
+					1011 row
+						1012 cell
+							1013 text Name
+						1014 cell
+							1015 text Details
+					1016 row
+						1017 cell
+							1018 text username
+						1019 cell
+							1020 text TikTok username
+						1021 cell
+							1022 text Required
+					1023 row
+						1024 cell
+							1025 text stream_id
+						1026 cell
+							1027 text Stream id from /creators/{username}/streams
+						1028 cell
+							1029 text Required
+					1030 row
+						1031 cell
+							1032 text type
+						1033 cell
+							1034 text Event type · all, comment, gift, like, join, share, follow, viewer · Default all
+						1035 cell
+							1036 text Optional
+					1037 row
+						1038 cell
+							1039 text limit
+						1040 cell
+							1041 text Page size · Default 50
+						1042 cell
+							1043 text Optional
+					1044 row
+						1045 cell
+							1046 text cursor
+						1047 cell
+							1048 text Cursor from the previous page
+						1049 cell
+							1050 text Optional
+				1051 heading FIELDS, Value: 4
+					1052 text FIELDS
+				1053 table
+					1054 row
+						1055 cell
+							1056 text Name
+						1057 cell
+							1058 text Description
+					1059 row
+						1060 cell
+							1061 text time
+						1062 cell
+							1063 text When it happened, ISO 8601
+					1064 row
+						1065 cell
+							1066 text type
+						1067 cell
+							1068 text comment, gift, like, join, share, follow or viewer
+					1069 row
+						1070 cell
+							1071 text user_id
+						1072 cell
+							1073 text TikTok user id of the viewer
+					1074 row
+						1075 cell
+							1076 text username
+						1077 cell
+							1078 text TikTok username of the viewer
+					1079 row
+						1080 cell
+							1081 text name
+						1082 cell
+							1083 text Display name of the viewer
+					1084 row
+						1085 cell
+							1086 text text
+						1087 cell
+							1088 text Comment text
+					1089 row
+						1090 cell
+							1091 text count
+						1092 cell
+							1093 text Gifts sent, likes, or the viewer count for viewer events
+					1094 row
+						1095 cell
+							1096 text gift_id
+						1097 cell
+							1098 text Gift id
+					1099 row
+						1100 cell
+							1101 text gift_name
+						1102 cell
+							1103 text Gift name
+					1104 row
+						1105 cell
+							1106 text diamonds
+						1107 cell
+							1108 text Diamonds of the gift event
+			254 button (collapsed) POST /creators/{username}/streams, Secondary Actions: Expand
+				255 text POST
+				256 text /creators/{username}/streams
+			257 button (collapsed) GET /gifters, Secondary Actions: Expand
+				258 text GET
+				259 text /gifters
+			260 button (collapsed) GET /gifters/{username}, Secondary Actions: Expand
+				261 text GET
+				262 text /gifters/{username}
+			263 button (collapsed) GET /gifters/{username}/gift-gallery, Secondary Actions: Expand
+				264 text GET
+				265 text /gifters/{username}/gift-gallery
+			266 button (collapsed) GET /gifters/{username}/gift-gallery/{period}, Secondary Actions: Expand
+				267 text GET
+				268 text /gifters/{username}/gift-gallery/{period}
+			269 button (collapsed) GET /global-rankings, Secondary Actions: Expand
+				270 text GET
+				271 text /global-rankings
+			272 button (collapsed) GET /search, Secondary Actions: Expand
+				273 text GET
+				274 text /search
+	275 button open-side-panel
+
+The focused UI element is 1004 button (expanded) GET /creators/{username}/streams/{stream_id}/events, Secondary Actions: Collapse

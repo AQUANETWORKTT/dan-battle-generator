@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:atlas": "node scripts/test-atlas-portal.cjs"
+    "test:atlas": "node scripts/test-atlas-portal.cjs",
+    "test:creator-api-search": "node scripts/test-creator-api-search.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
