@@ -94,6 +94,45 @@ class MessagingTests(unittest.TestCase):
         review.close_review_pages()
         self.assertTrue(proxy.is_closed())
 
+    def test_completed_send_click_continues_without_faking_delivery(self):
+        self.assertEqual(sender.normalise_send_result("UNKNOWN", "Send clicked, confirmation not verifiable")[0], "SEND_ATTEMPTED")
+        for detail in ("Recipient could not be independently verified in conversation", "Composer text mismatch", "Messaging interrupted; verify the conversation before attempting again."):
+            self.assertEqual(sender.normalise_send_result("UNKNOWN", detail), ("UNKNOWN", detail))
+        bot = FakeBot(result="UNKNOWN")
+        bot.try_send_message = lambda context, name: ("UNKNOWN", "Send clicked, confirmation not verifiable")
+        self.assertEqual(sender.send_one(bot, None, "fresh", "approved fixture")[0], "SEND_ATTEMPTED")
+        self.assertEqual(bot.calls, ["add", "reserve", "record:SEND_ATTEMPTED"])
+
+    def test_only_proven_old_pre_send_navigation_failure_can_be_reserved_again(self):
+        note = 'Timeout 30000ms exceeded. waiting for navigation to "**/business-suite/messages**" until load'
+        self.assertTrue(sender.old_navigation_failure('FAILED', note))
+        self.assertFalse(sender.old_navigation_failure('UNKNOWN', note))
+        self.assertTrue(sender.old_navigation_failure('UNKNOWN', 'Recipient could not be independently verified in conversation'))
+        self.assertFalse(sender.old_navigation_failure('UNKNOWN', 'Send clicked, confirmation not verifiable'))
+        db_path = sender.BOT_FOLDER / 'creators.db'
+        db = sqlite3.connect(db_path)
+        for name in ('note','message_text','attempted_at','confirmed_at'):
+            db.execute(f'ALTER TABLE message_log ADD COLUMN {name} TEXT')
+        db.execute('INSERT INTO message_log(username,status,note) VALUES(?,?,?)', ('navigation_failed','FAILED',note))
+        db.commit(); db.close()
+        self.assertNotIn('navigation_failed', sender.blocked_names(db_path))
+        previous = sender.navigation_retry_record(db_path, 'navigation_failed')
+        self.assertTrue(sender.reserve_navigation_retry(db_path, 'navigation_failed', 'fixture', previous))
+        self.assertFalse(sender.reserve_navigation_retry(db_path, 'navigation_failed', 'fixture', previous))
+        self.assertIn('navigation_failed', sender.blocked_names(db_path))
+
+    def test_known_pre_send_recipient_failure_is_retryable_but_confirmed_send_is_not(self):
+        db_path = sender.BOT_FOLDER / 'creators.db'
+        with sqlite3.connect(db_path) as db:
+            db.execute('ALTER TABLE message_log ADD COLUMN note TEXT')
+            note = 'Recipient could not be independently verified in conversation'
+            db.execute('INSERT INTO message_log VALUES(?,?,?)', ('recipient_failed','UNKNOWN',note))
+            db.execute('INSERT INTO message_log VALUES(?,?,?)', ('already_sent','UNKNOWN',note))
+        db.close()
+        blocked = sender.blocked_names(db_path)
+        self.assertNotIn('recipient_failed', blocked)
+        self.assertIn('already_sent', blocked)
+
 
 if __name__ == "__main__":
     unittest.main()

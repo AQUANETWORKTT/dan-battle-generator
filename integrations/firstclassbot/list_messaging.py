@@ -6,6 +6,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 from contact_history import read_contacts
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent
 BOT_FOLDER = Path(os.environ.get("CREATOR_SEARCH_BOT_FOLDER", str(Path.home() / "OneDrive" / "Desktop" / "FirstClassBot")))
@@ -27,12 +28,26 @@ def parse_names(text):
     return names, invalid
 
 
+def old_navigation_failure(status, note):
+    status, note = str(status).upper(), str(note)
+    return (status == "FAILED" and 'waiting for navigation to "**/business-suite/messages**"' in note and "timeout" in note.lower()) or (status == "UNKNOWN" and note == "Recipient could not be independently verified in conversation") or (status == "CANCELLED" and note == "Stopped by you before Send.")
+
+
 def blocked_names(database):
-    blocked = {row["username"] for row in read_contacts(database)}
+    contacts = read_contacts(database)
+    blocked = {row["username"] for row in contacts}
+    confirmed = {row["username"] for row in contacts if row["status"] == 'SENT'}
     with closing(sqlite3.connect(Path(database).resolve().as_uri() + "?mode=ro", uri=True, timeout=15)) as db:
         exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='message_log'").fetchone()
         if exists:
-            blocked.update(str(row[0]).strip().lower().lstrip("@") for row in db.execute("SELECT username FROM message_log"))
+            columns = {row[1] for row in db.execute("PRAGMA table_info(message_log)")}
+            note = "note" if "note" in columns else "''"
+            for name, status, detail in db.execute(f"SELECT username,status,{note} FROM message_log"):
+                name = str(name).strip().lower().lstrip("@")
+                if old_navigation_failure(status, detail) and name not in confirmed:
+                    blocked.discard(name)
+                else:
+                    blocked.add(name)
     return blocked
 
 
@@ -46,21 +61,54 @@ def load_existing_bot():
     spec = importlib.util.spec_from_file_location("firstclass_existing_message_adapter", filename)
     bot = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(bot)
+    from messaging_navigation import send_with_navigation_retry
+    original = bot.try_send_message
+    session = {}
+    bot.list_messaging_session = session
+    bot.try_send_message = lambda context, username: send_with_navigation_retry(original, context, username, bot.MESSAGE_IFRAME_SELECTOR, max_attempts=None, session=session, should_stop=session.get('should_stop'), report=session.get('report'))
     return bot
+
+
+def navigation_retry_record(database, name):
+    with closing(sqlite3.connect(Path(database).resolve().as_uri() + "?mode=ro", uri=True, timeout=15)) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(message_log)")}
+        if "note" not in columns:
+            return None
+        row = db.execute("SELECT status,note FROM message_log WHERE username=?", (name,)).fetchone()
+        return row if row and old_navigation_failure(*row) else None
+
+
+def reserve_navigation_retry(database, name, message, previous):
+    with closing(sqlite3.connect(Path(database).resolve().as_uri() + "?mode=rw", uri=True, timeout=15)) as db:
+        with db:
+            return db.execute("UPDATE message_log SET status='PENDING',message_text=?,attempted_at=?,confirmed_at=NULL,note=? WHERE username=? AND status=? AND note=?", (message, datetime.now(timezone.utc).isoformat(), "Retrying a verified pre-send readiness failure; previous attempt did not reach Send.", name, previous[0], previous[1])).rowcount == 1
+
+
+def normalise_send_result(status, detail):
+    # This exact adapter result occurs only after its Send click completed.
+    # Recipient/composer failures are handled by the cancellable pre-send waits.
+    if status == "UNKNOWN" and detail == "Send clicked, confirmation not verifiable":
+        return "SEND_ATTEMPTED", "Send clicked; continuing automatically. Delivery unverified; no automatic resend."
+    return status, detail
 
 
 def send_one(bot, context, name, message):
     """Reservation is atomic; uncertain sends are never retried automatically."""
-    if name in blocked_names(BOT_FOLDER / "creators.db") or bot.logged_message(name):
+    database = BOT_FOLDER / "creators.db"
+    previous = bot.logged_message(name)
+    retry = navigation_retry_record(database, name) if previous else None
+    if name in blocked_names(database) or (previous and not retry):
         return "SKIPPED", "Already contacted or logged; skipped."
     bot.MESSAGE_TEXT = message
     bot.add_creator(name)
-    if not bot.reserve_message(name):
+    reserved = reserve_navigation_retry(database, name, message, retry) if retry else bot.reserve_message(name)
+    if not reserved:
         return "SKIPPED", "Another process reserved this creator; skipped."
     try:
         status, detail = bot.try_send_message(context, name)
     except Exception:
         status, detail = "UNKNOWN", "Messaging interrupted; verify the conversation before attempting again."
+    status, detail = normalise_send_result(status, detail)
     bot.record_message(name, status, detail)
     return status, detail
 
@@ -76,6 +124,8 @@ def main():
     window.geometry("860x850")
     window.configure(bg="#101015")
     events, stop, signed_in = queue.Queue(), threading.Event(), threading.Event()
+    paused = threading.Event()
+    skip_person = threading.Event()
     state = {"running": False}
     tk.Label(window, text="Paste usernames — one per line", bg="#101015", fg="#ffe447", font=("Arial", 16, "bold")).pack(anchor="w", padx=18, pady=(15, 7))
     names_box = scrolledtext.ScrolledText(window, height=9, font=("Arial", 11))
@@ -92,45 +142,52 @@ def main():
     def report(text):
         events.put(("log", text))
 
+    def should_stop():
+        while paused.is_set() and not stop.is_set() and not skip_person.is_set():
+            stop.wait(0.2)
+        return stop.is_set() or skip_person.is_set()
+
     def run(names, message):
         try:
             from playwright.sync_api import sync_playwright
-            from message_review import ReviewContext
             bot = load_existing_bot()
             bot.init_database()
+            bot.list_messaging_session.update(should_stop=should_stop, report=report)
             with sync_playwright() as playwright:
                 # A separate persistent profile avoids competing with the availability checker.
                 context = playwright.chromium.launch_persistent_context(str(ROOT / "browser_profile_messaging_list"), headless=False, viewport={"width": 1500, "height": 900})
                 try:
                     tiktok = context.pages[0] if context.pages else context.new_page()
-                    tiktok.goto("https://www.tiktok.com/", wait_until="domcontentloaded", timeout=60000)
                     report("Sign into your intended TikTok account. Then click Continue after sign-in here. Your pasted list will not be checked in Backstage again.")
                     events.put(("login", None))
+                    try:
+                        tiktok.goto("https://www.tiktok.com/business-suite/messages", wait_until="commit", timeout=1000)
+                    except Exception:
+                        report('TikTok is still opening. The browser stays open; sign in or refresh it, then press Continue. Stop cancels the run.')
                     while not signed_in.wait(0.25):
                         if stop.is_set():
                             return
+                    # Use the signed-in inbox tab itself. Do not leave TikTok's video
+                    # feed playing in another tab while every conversation loads.
+                    bot.list_messaging_session["page"] = tiktok
+                    for extra in list(context.pages):
+                        if extra != tiktok:
+                            extra.close()
                     for name in names:
-                        if stop.is_set():
+                        if should_stop():
                             break
-                        review = ReviewContext(context)
-                        status, detail = send_one(bot, review, name, message)
+                        state['current_person'] = name
+                        status, detail = send_one(bot, context, name, message)
+                        state['current_person'] = None
                         report(f"@{name}: {status} — {detail}")
-                        if status == "UNKNOWN" and not stop.is_set():
-                            response = {"event": threading.Event(), "confirmed": False}
-                            report("The conversation is still open. Confirm only if you can see this message as sent.")
-                            events.put(("review", (name, response)))
-                            while not response["event"].wait(0.25):
-                                if stop.is_set():
-                                    break
-                            if response["confirmed"] and not stop.is_set():
-                                bot.record_message(name, "SENT", "Confirmed by the user in the visible TikTok conversation.")
-                                status = "SENT"
-                                report(f"@{name}: SENT — confirmed by you; no resend was performed.")
-                        review.close_review_pages()
-                        if status not in {"SENT", "SKIPPED"}:
-                            report("Stopped because delivery was not confirmed. Review this conversation in TikTok; it will not be retried automatically.")
-                            stop.set()
+                        if skip_person.is_set() and not stop.is_set():
+                            skip_person.clear()
+                            report('Skipped this person. Moving to the next username; any attempted send remains recorded.')
+                            continue
+                        if status == 'CANCELLED':
                             break
+                        if status not in {"SENT", "SEND_ATTEMPTED", "SKIPPED"}:
+                            report("Recorded this recipient's error. Moving to the next person without retrying this message.")
                         if stop.wait(4):
                             break
                     report("List finished or stopped. Confirmed/uncertain attempts were recorded in the existing bot database.")
@@ -162,6 +219,9 @@ def main():
             return
         state["running"] = True
         stop.clear()
+        skip_person.clear()
+        paused.clear()
+        pause_button.configure(text='Pause')
         signed_in.clear()
         start_button.configure(state="disabled")
         names_box.configure(state="disabled")
@@ -172,7 +232,29 @@ def main():
     start_button.pack(side="left")
     login_button = tk.Button(controls, text="Continue after sign-in", state="disabled", command=signed_in.set, padx=12, pady=8)
     login_button.pack(side="left", padx=8)
-    tk.Button(controls, text="Stop after current creator", command=stop.set, padx=12, pady=8).pack(side="left")
+    tk.Button(controls, text="Stop", command=stop.set, padx=12, pady=8).pack(side="left")
+
+    def toggle_pause():
+        if not state['running']:
+            return
+        if paused.is_set():
+            paused.clear()
+            pause_button.configure(text='Pause')
+            report('Resuming the list.')
+        else:
+            paused.set()
+            pause_button.configure(text='Resume')
+            report('Pausing before the next action. If TikTok shows a CAPTCHA, solve it in the browser, then press Resume. No automatic refresh or CAPTCHA solving.')
+
+    pause_button = tk.Button(controls, text='Pause', command=toggle_pause, padx=12, pady=8)
+    pause_button.pack(side='left', padx=8)
+
+    def skip_current():
+        if state['running'] and state.get('current_person'):
+            skip_person.set()
+            report('Skipping the current person as soon as the active check returns.')
+
+    tk.Button(controls, text='Skip person', command=skip_current, padx=12, pady=8).pack(side='left')
 
     def drain():
         while not events.empty():
@@ -184,14 +266,11 @@ def main():
                 log.configure(state="disabled")
             elif kind == "login":
                 login_button.configure(state="normal")
-            elif kind == "review":
-                name, response = value
-                if stop.is_set():
-                    response["event"].set()
-                    continue
-                response["confirmed"] = messagebox.askyesno("Confirm this message", f"Check the open TikTok conversation with @{name}.\n\nCan you see the approved message as sent?\n\nYes records it as sent and continues without resending. No stops the list and leaves it unconfirmed.")
-                response["event"].set()
             elif kind == "done":
+                state['current_person'] = None
+                skip_person.clear()
+                paused.clear()
+                pause_button.configure(text='Pause')
                 state["running"] = False
                 start_button.configure(state="normal")
                 login_button.configure(state="disabled")
@@ -202,7 +281,7 @@ def main():
     def close():
         if state["running"]:
             stop.set()
-            messagebox.showinfo("Stopping", "Stopping after the current creator. Wait for the stopped message, then close this window.")
+            messagebox.showinfo("Stopping", "Cancelling the current wait. Wait for the stopped message, then close this window.")
         else:
             window.destroy()
 
