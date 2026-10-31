@@ -30,6 +30,8 @@ def outcome(username, value):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", default=str(Path(__file__).parent / "browser_profile_api_search"))
+    parser.add_argument("--contacts-db", default=os.environ.get("CREATOR_SEARCH_BOT_DB", str(Path.home() / "OneDrive" / "Desktop" / "FirstClassBot" / "creators.db")))
+    parser.add_argument("--sync-only", action="store_true", help="Sync contact history read-only, without opening Backstage or checking creators.")
     args = parser.parse_args()
     base = os.environ.get("CREATOR_SEARCH_PORTAL_URL", "https://firstclassagency.management").rstrip("/")
     token = os.environ.get("CREATOR_SEARCH_WORKER_TOKEN", "")
@@ -57,8 +59,22 @@ def main():
                     raise RuntimeError("Portal connection failed; saved job results remain on the server.") from None
             time.sleep(min(30, 3 * (2 ** attempt)))
 
+    from contact_history import read_contacts
+
+    def sync_history():
+        records = read_contacts(args.contacts_db)
+        for offset in range(0, len(records), 500):
+            api("contacts", {"records": records[offset:offset + 500], "complete": False})
+        api("contacts", {"records": [], "complete": True})
+        print(f"Synced {len(records)} contact-history records; no message text was read or uploaded.")
+
+    if args.sync_only:
+        sync_history()
+        return
+
     # This is the audited eligibility module only. No bot.py/message_sender import.
-    from backstage_checker import BACKSTAGE_URL, check_creator
+    from backstage_checker import BACKSTAGE_URL
+    from backstage_batch import check_batch, ScanStopped
     from playwright.sync_api import sync_playwright
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch_persistent_context(
@@ -69,9 +85,16 @@ def main():
         print("Sign into Backstage in this dedicated browser. This worker checks eligibility only.")
         input("When the Invite creators button is visible, press ENTER here to begin polling: ")
         print("Polling for queued batches (up to 30). No invitations or messages will be sent.")
+        history_synced_at = 0
         try:
             while True:
                 try:
+                    if time.monotonic() - history_synced_at >= 60:
+                        try:
+                            sync_history()
+                        except Exception as error:
+                            print(f"Message history not synced: {error}")
+                        history_synced_at = time.monotonic()
                     ready = page.get_by_role("button", name="Invite creators", exact=True).is_visible()
                     # The eligibility dialog may still be open after a previous job.
                     if not ready:
@@ -86,16 +109,16 @@ def main():
                     names = job.get("usernames", [])
                     if not isinstance(names, list) or not 1 <= len(names) <= 30:
                         raise RuntimeError("Portal returned an invalid batch.")
-                    for name in names:
-                        if job.get("results", {}).get(name, {}).get("checkedAt"):
-                            continue
-                        try:
-                            value = check_creator(page, name, max_attempts=3)
-                        except Exception:
-                            value = "CHECK_FAILED"
-                        result = outcome(name, value)
-                        api("results/" + job["id"], {"leaseToken": job["lease_token"], "results": [result]})
-                        print(f"Saved @{name}: {result['status']}")
+                    remaining = [name for name in names if not job.get("results", {}).get(name, {}).get("checkedAt")]
+                    if remaining:
+                        def stopped():
+                            return not api("active/" + job["id"], {"leaseToken": job["lease_token"]}).get("active", False)
+                        results = check_batch(page, remaining, max_attempts=3, should_stop=stopped)
+                        api("results/" + job["id"], {"leaseToken": job["lease_token"], "results": results})
+                        counts = {status: sum(row["status"] == status for row in results) for status in ("Available", "Ineligible", "Pending", "Failed")}
+                        print(f"Saved batch of {len(results)}: {counts}")
+                except ScanStopped:
+                    print("Scan stopped from the portal. No further results or batches for that scan will be submitted.")
                 except Exception as error:
                     print(str(error))
                     print("Pausing before retry; unreported results remain Pending and expired jobs can resume.")

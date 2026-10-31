@@ -19,10 +19,15 @@ async function handle(req:NextRequest){
   if(path[0]==='config'&&req.method==='GET')return NextResponse.json(await service.configuration());
   if(!databaseConfigured())return NextResponse.json({error:'Configure SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY and run supabase/creator_api_search.sql in the First Class project. This migration adds new feature tables only.'},{status:503});
   if(path[0]==='worker'){
+   if(path[1]==='contacts'&&req.method==='POST')return NextResponse.json(await service.syncContacts(await req.json()));
+   if(path[1]==='active'&&path[2]&&req.method==='POST'){const body=await req.json();return NextResponse.json({active:await service.workerJobActive(path[2],String(body.leaseToken||''))});}
    if(path[1]==='claim'&&req.method==='POST'){const body=await req.json();return NextResponse.json({job:await service.claimJob(body.ready===true)});}
    if(path[1]==='results'&&path[2]&&req.method==='POST')return NextResponse.json(await service.completeJob(path[2],await req.json()));
   }
+  if(path[0]==='contacts'&&req.method==='GET')return NextResponse.json(await service.contacts(req.nextUrl.searchParams.get('cursor')));
+  if(path[0]==='scans'&&req.method==='POST'){const body=await req.json();return NextResponse.json({run:await service.newScan(body.previousRunId)},{status:201});}
   if(path[0]==='runs'){
+   if(path[2]==='stop'&&req.method==='POST')return NextResponse.json({run:await service.stopScan(path[1])});
    if(path.length===1&&req.method==='GET')return NextResponse.json({runs:await service.history(req.nextUrl.searchParams.get('before'))});
    if(path.length===1&&req.method==='POST')return NextResponse.json({run:await service.createRun()},{status:201});
    if(path.length===2&&req.method==='GET')return NextResponse.json({run:await service.withEligibility(await service.getRun(path[1]))});

@@ -28,9 +28,9 @@ Redeploy/restart after configuring the environment. Sign into the existing **Lea
 
 ## UK rankings and saved history
 
-“Fetch All UK Rankings” discovers the leagues returned by `GET /leagues?region=GB`, then fetches every discovered league. It does not invent leagues that the provider does not list. Results save after every successful request, deduplicate usernames and retain all returned league memberships.
+“New Scan” discovers the leagues returned by `GET /leagues?region=GB`, fetches every discovered league, then queues availability checks when the worker is configured. Results save after successful requests, deduplicate usernames and retain league memberships. The previous-scan dropdown has been removed; only the current scan is presented.
 
-Each fetch creates a timestamped database record. Closing the page stops automatic processing; reopen the saved fetch and resume. Another device can open the same saved history. A lease prevents simultaneous requests from overwriting one fetch. Partial league failures, missing leagues, retries and quota exhaustion stay visible. CSV/TXT exports include all deduplicated usernames, not only the table's current page.
+The current scan is stored so a refresh or another device can recover it. A lease prevents concurrent overwrites. “Stop Scan” cancels the selected run's ranking loop and queued/running jobs, invalidates their leases and keeps saved results exportable. A request already in flight may finish reading but cannot save after cancellation. “New Scan” stops only the displayed previous run; permanent contact history is retained. Partial league failures, missing leagues, retries and quotas remain visible. Exports cover all matches, not just the visible page.
 
 The official league documentation does not list pagination filters. The implementation follows explicit same-endpoint next links or `next_cursor` if returned. If the reported `users_count` exceeds the returned unique usernames without pagination information, it flags the league as incomplete rather than claiming all creators were fetched. No undocumented page/limit filters are guessed.
 
@@ -40,7 +40,7 @@ Uses only documented **GET** endpoints for profile, performance history, tracked
 
 Missing values remain “Not returned”; earnings come from the API rather than an invented diamonds conversion. Provider package restrictions and individual endpoint failures are displayed separately so successful sections remain visible. Fields and history depth depend on your TikLeap package. Stream data is whatever TikLeap has already tracked; this page does not initiate paid tracking.
 
-Primary reference: [official TikLeap API documentation](https://www.tikleap.com/api-docs). The public API origin and unauthenticated 401 response were checked, and the documented response fields/wrapper were inspected. **Authenticated live requests have not been verified because an official Bearer key is not configured locally.** Once configured, test a lookup and a rankings fetch and inspect per-league errors/raw fields before relying on the results.
+Primary reference: [official TikLeap API documentation](https://www.tikleap.com/api-docs). Authenticated UK league requests were verified on 31 October 2026. One D2 record contained invisible formatting characters in its username. The parser now retains other valid records while flagging unsupported names for review, rather than stripping characters and risking a match to a different account. This does not claim every creator-lookup endpoint or package allowance has been tested live.
 
 ## Connect your existing Backstage checker
 
@@ -60,9 +60,27 @@ python integrations/firstclassbot/worker.py
 
 Use the final canonical HTTPS portal origin, without a path. Local development may use `http://localhost:3000`. Redirects are rejected so the token cannot be forwarded to another host.
 
-A dedicated browser profile opens. Sign into Backstage manually, then press Enter in the worker terminal. Its profile is separate from your running FirstClassBot and excluded from Git. Keep this computer/worker open while checking. The page reports “connected” only after a recent ready heartbeat; a configured token alone does not imply Backstage is connected. **No live Backstage checks were run during implementation.**
+A dedicated browser profile opens. Sign into Backstage manually, then press Enter in the worker terminal. Its profile is separate from your running FirstClassBot and excluded from Git. Keep this computer/worker open while checking. The page reports “connected” only after a recent ready heartbeat. Real 30-username preflight batches were verified on 31 October 2026; no invitation or message was sent. The checker reads only the invitation dialog's result table, excluding background manager tables.
 
-The page queues batches of at most 30. Each creator's confirmed result saves immediately against the exact normalized username. Interrupted jobs resume after the ten-minute lease expires, retaining already saved results. Use “Retry Failed” after fixing network/login issues; Pending manual-review results can be selected and checked again. “Export Available” includes confirmed Available results only. Eligibility is a timestamped check, not a promise that availability cannot change.
+The checker enters up to 30 usernames together, one per line, in a single Backstage preflight. Results are matched by actual username, never nickname or row order, and saved once per batch. Network retries submit unresolved names only. Failed means the result could not be read, not that eligibility was rejected. Select failed/uncertain rows and press “Check Backstage Availability” to recheck them. Interrupted jobs can resume after their ten-minute lease, unless Stop Scan cancelled them.
+
+## Available lists and messaging history
+
+Run `supabase/creator_api_search_workflow.sql` after the original migration. It adds one private contacts table, one sync timestamp and service-role-only scan/history functions. It does not modify creator stats or the original bot database. This upgrade was applied to the existing First Class project during setup.
+
+The three manager exports are All Available, All Available (Premium), and All Available (Regular), each in CSV/TXT. They ignore message history. Premium/Regular comes strictly from Backstage's Invitation type column, never league or estimated diamonds; missing/ambiguous labels remain Unknown and appear only in All Available.
+
+Available — Not Previously Messaged excludes both confirmed sends and uncertain attempts. It requires a complete successful history sync within five minutes; unknown or stale history cannot silently become an empty exclusion list. Previously Messaged displays/exports the complete confirmed-send history independently of scans. Checking availability, starting a scan or downloading a list never marks someone as messaged.
+
+The local worker reads `FirstClassBot/creators.db` in SQLite read-only mode every 60 seconds. Only normalized usernames, send statuses and recorded dates are synced; message bodies are neither read nor copied. SENT/MESSAGED/DELIVERED are confirmed. PENDING/UNKNOWN/SEND_ATTEMPTED/UNCERTAIN are held for review and excluded from the fresh list. Failed/not_sent or merely discovered creators are not treated as messages. A confirmed send cannot be downgraded by a later uncertain import. The history is only as complete as this bot's records and cannot infer messages sent outside it or reliably link renamed accounts without a saved ID.
+
+The default source is `C:/Users/james/OneDrive/Desktop/FirstClassBot/creators.db`. Override it locally with `CREATOR_SEARCH_BOT_DB` or `--contacts-db`. Do not set this local filename as a Vercel database connection. To sync without opening Backstage or scanning:
+
+```powershell
+node integrations/firstclassbot/start-checker.cjs --sync-only
+```
+
+For normal use, double-click `integrations/firstclassbot/Start Backstage Checker.cmd`.
 
 ### Worker backend contract
 
@@ -78,6 +96,8 @@ The worker initiates outbound requests to the portal; Vercel never needs to reac
 ```powershell
 npm run test:creator-api-search
 python scripts/test_creator_api_worker.py
+python scripts/test_creator_api_batch.py
+python scripts/test_creator_api_contacts.py
 npm run build
 ```
 
