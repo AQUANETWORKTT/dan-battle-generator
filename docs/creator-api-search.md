@@ -82,6 +82,18 @@ node integrations/firstclassbot/start-checker.cjs --sync-only
 
 For normal use, double-click `integrations/firstclassbot/Start Backstage Checker.cmd`.
 
+The checker no longer waits for terminal input: sign into its dedicated browser and it connects automatically. It does not reload the page while you are signing in. A local single-instance lock prevents two launchers fighting over the browser profile. Startup/output errors remain in the console and in the ignored `integrations/firstclassbot/checker.log`. The website queues work; it cannot directly launch a Windows process. Keep the checker running while using the availability action.
+
+## Eligibility changes and diamond ordering
+
+The Eligibility Changes section reads the confirmed Available/Ineligible records already retained in all saved scan jobs. No extra SQL migration, API key or history table is required. It paginates through all stored jobs, ignores Failed/Pending states, and compares each creator's consecutive confirmed observations. First sightings establish a baseline. It reports Ineligible → Available (including Premium), and confirmed Regular → Premium upgrades. Unknown invitation type → Premium alone does not prove an upgrade.
+
+Only creators whose latest confirmed state is Available remain in the change list. Dates identify the transition and last confirmed check. Earlier “In another Creator Network” reasons are retained as evidence; the app does not infer the name of an agency or claim it can prove an agency departure. New checks save the exact TikLeap creator ID when supplied. Renames can then be linked by ID; older username-only records use exact username matching and are labelled accordingly. Conflicting known IDs are never merged. Missing historical IDs cannot be reconstructed reliably.
+
+All username TXT and CSV downloads now sort by the latest known TikLeap diamond total, descending; ties are alphabetical, zero remains a real value, and unknown/invalid totals go last. The scanning table and username export files do not display diamond values. These are the provider's ranking-period totals, not an invented lifetime/monthly sum. Saved live data was checked: all 1,774 creators in the inspected scan had reported diamond values. Older history-only usernames absent from current rankings may still have unknown totals.
+
+The scan dropdown remains removed, but underlying scan/job snapshots are retained to support eligibility comparisons. Retention uses your Supabase project's storage; it is not unlimited storage.
+
 ### Worker backend contract
 
 All worker requests use `Authorization: Bearer <CREATOR_SEARCH_WORKER_TOKEN>`. The token never reaches the frontend.

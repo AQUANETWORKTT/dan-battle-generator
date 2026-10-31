@@ -25,6 +25,7 @@ async function handle(req:NextRequest){
    if(path[1]==='results'&&path[2]&&req.method==='POST')return NextResponse.json(await service.completeJob(path[2],await req.json()));
   }
   if(path[0]==='contacts'&&req.method==='GET')return NextResponse.json(await service.contacts(req.nextUrl.searchParams.get('cursor')));
+  if(path[0]==='changes'&&req.method==='GET')return NextResponse.json(await service.eligibilityChanges());
   if(path[0]==='scans'&&req.method==='POST'){const body=await req.json();return NextResponse.json({run:await service.newScan(body.previousRunId)},{status:201});}
   if(path[0]==='runs'){
    if(path[2]==='stop'&&req.method==='POST')return NextResponse.json({run:await service.stopScan(path[1])});

@@ -18,6 +18,10 @@ async function checked(query){const result=await query;if(result.error)throw Err
  }else if(command==='current-status'){
   const rows=await checked(db.from('creator_api_search_runs').select('id,created_at,status,summary').order('created_at',{ascending:false}).limit(1));
   console.log(JSON.stringify(rows));
+ }else if(command==='diamond-status'){
+  const rows=await checked(db.from('creator_api_search_runs').select('payload').order('created_at',{ascending:false}).limit(1));
+  const unique=new Map(Object.values(rows[0]?.payload?.results||{}).flat().map(row=>[row.username,row]));
+  console.log(JSON.stringify({creators:unique.size,withReportedDiamonds:[...unique.values()].filter(row=>typeof row.diamonds==='number'&&Number.isFinite(row.diamonds)&&row.diamonds>=0).length}));
  }else if(command==='sync-contacts'){
   const filename=process.env.CREATOR_SEARCH_BOT_DB||path.join(require('node:os').homedir(),'OneDrive','Desktop','FirstClassBot','creators.db');
   const code="import sys,json;sys.path.insert(0,sys.argv[1]);from contact_history import read_contacts;print(json.dumps(read_contacts(sys.argv[2])))";

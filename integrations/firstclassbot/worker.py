@@ -83,12 +83,15 @@ def main():
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.goto(BACKSTAGE_URL, wait_until="domcontentloaded", timeout=60000)
         print("Sign into Backstage in this dedicated browser. This worker checks eligibility only.")
-        input("When the Invite creators button is visible, press ENTER here to begin polling: ")
+        print("After signing in, the checker connects automatically. No Enter key is required.")
         print("Polling for queued batches (up to 30). No invitations or messages will be sent.")
         history_synced_at = 0
         try:
             while True:
                 try:
+                    if page.is_closed():
+                        print("The checker browser was closed. Run Start Backstage Checker again when needed.")
+                        break
                     if time.monotonic() - history_synced_at >= 60:
                         try:
                             sync_history()
@@ -96,10 +99,7 @@ def main():
                             print(f"Message history not synced: {error}")
                         history_synced_at = time.monotonic()
                     ready = page.get_by_role("button", name="Invite creators", exact=True).is_visible()
-                    # The eligibility dialog may still be open after a previous job.
-                    if not ready:
-                        page.goto(BACKSTAGE_URL, wait_until="domcontentloaded", timeout=60000)
-                        ready = page.get_by_role("button", name="Invite creators", exact=True).is_visible()
+                    # Never reload a login page while the user is signing in.
                     job = api("claim", {"ready": ready}).get("job")
                     if not ready:
                         print("Backstage login/page is not ready. Sign in or clear the page issue; jobs stay queued.")
