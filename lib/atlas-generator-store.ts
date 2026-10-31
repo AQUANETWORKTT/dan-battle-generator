@@ -1,4 +1,4 @@
-import { submissionsSupabase } from "./submissions-supabase";
+import { atlasSupabase as submissionsSupabase } from "./atlas-supabase";
 export const ATLAS_RECORD = "atlas-generator-workspace-v1";
 export type AtlasTemplate = { id: string; name: string; background_url: string | null; template_json: Record<string, unknown>; updated_at?: string };
 export type AtlasWorkspace = { templates: AtlasTemplate[]; defaults: Record<string,string> };

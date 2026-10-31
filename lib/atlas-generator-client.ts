@@ -10,20 +10,27 @@ async function api(path: string, options?: RequestInit): Promise<Result> {
 }
 class AtlasQuery implements PromiseLike<Result> {
   private operation = "select"; private value: any; private filters: Record<string,unknown> = {}; private singleRow = false;
+  private query: {filters: {op:string;key:string;value:unknown}[];orders:{key:string;ascending:boolean}[];start:number;end:number} = {filters:[],orders:[],start:0,end:999};
   constructor(private table: string) {}
   select(_fields?: string) { return this; }
-  eq(key: string, value: unknown) { this.filters[key] = value; return this; }
-  gte(_key: string, _value: unknown) { return this; }
-  lte(_key: string, _value: unknown) { return this; }
-  order(_key: string, _options?: unknown) { return this; }
-  limit(_limit: number) { return this; }
-  range(_start: number, _end: number) { return this; }
+  eq(key: string, value: unknown) { this.filters[key] = value; this.query.filters.push({op:"eq",key,value}); return this; }
+  gte(key: string, value: unknown) { this.query.filters.push({op:"gte",key,value}); return this; }
+  lte(key: string, value: unknown) { this.query.filters.push({op:"lte",key,value}); return this; }
+  order(key: string, options?: {ascending?:boolean}) { this.query.orders.push({key,ascending:options?.ascending!==false}); return this; }
+  limit(limit: number) { this.query.end = this.query.start+limit-1; return this; }
+  range(start: number, end: number) { this.query.start=start; this.query.end=end; return this; }
+  or(value: string) { this.query.filters.push({op:"or",key:"",value}); return this; }
+  in(key: string,value:unknown[]) { this.query.filters.push({op:"in",key,value}); return this; }
   maybeSingle() { this.singleRow = true; return this; }
   single() { this.singleRow = true; return this; }
   upsert(value: any, _options?: unknown) { this.operation = "upsert"; this.value = value; return this; }
   delete() { this.operation = "delete"; return this; }
   private async run(): Promise<Result> {
-    if (this.table === "creator_daily_stats") return { data: this.singleRow ? null : [], error: null };
+    if (this.table === "creator_daily_stats") {
+      if(this.operation!=="select") return {data:null,error:{message:"Creator stats are read-only. Use Backstage Upload to import data."}};
+      const result = await api("data-query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(this.query)});
+      return result.error ? result : {data:this.singleRow ? result.data.rows[0] || null : result.data.rows,error:null};
+    }
     if (this.table !== "poster_templates") return { data: null, error: { message: "This data source is not connected to Atlas." } };
     if (this.operation === "upsert") { const r = await api("records", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ template: this.value }) }); return { data: r.data?.template, error: r.error }; }
     if (this.operation === "delete") return api("records", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(this.filters) });

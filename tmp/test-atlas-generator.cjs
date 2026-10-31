@@ -7,7 +7,7 @@ let w={templates:[],defaults:{}};
 const clone=x=>JSON.parse(JSON.stringify(x));
 const store={readAtlasWorkspace:async()=>clone(w),changeAtlasWorkspace:async fn=>fn(w)};
 class ResponseMock { constructor(body,opts={}){this.body=body;this.status=opts.status||200;this.cookies={set(){},delete(){}}} static json(body,opts){return new ResponseMock(body,opts)} }
-const route=moduleFor('app/api/atlas/[...path]/route.ts',id=>{if(id==='next/server')return{NextResponse:ResponseMock};if(id.includes('atlas-auth'))return auth;if(id.includes('atlas-generator-store'))return store;if(id.includes('submissions-supabase'))return{submissionsSupabase:{}};if(id.includes('tiktok-avatar'))return{};throw Error(id)});
+const route=moduleFor('app/api/atlas/[...path]/route.ts',id=>{if(id==='next/server')return{NextResponse:ResponseMock};if(id.includes('atlas-auth'))return auth;if(id.includes('atlas-generator-store'))return store;if(id.includes('atlas-supabase'))return{atlasSupabase:{},atlasDatabaseConfigured:()=>true};if(id.includes('atlas-handlers'))return{atlasHandlers:{}};if(id.includes('tiktok-avatar'))return{};throw Error(id)});
 const request=(path,method='GET',body={},token=auth.atlasSessionToken())=>({nextUrl:new URL('http://localhost/api/atlas/'+path),method,cookies:{get:()=>token?{value:token}:undefined},headers:{get:()=>null},json:async()=>body});
 (async()=>{
  assert.equal((await route.GET(request('poster-templates','GET',{},''))).status,401);

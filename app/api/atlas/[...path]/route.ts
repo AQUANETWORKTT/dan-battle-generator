@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ATLAS_COOKIE, atlasPasswordMatches, atlasSessionToken, atlasSessionValid } from "@/lib/atlas-auth";
 import { changeAtlasWorkspace, readAtlasWorkspace, type AtlasTemplate } from "@/lib/atlas-generator-store";
-import { submissionsSupabase } from "@/lib/submissions-supabase";
+import { atlasSupabase as submissionsSupabase, atlasDatabaseConfigured } from "@/lib/atlas-supabase";
+import { atlasHandlers } from "@/lib/atlas-handlers";
 import { POST as tiktokAvatar } from "@/app/api/tiktok-avatar/route";
 import { GET as tiktokImage } from "@/app/api/tiktok-avatar-image/route";
 export const runtime = "nodejs";
@@ -20,6 +21,12 @@ async function handle(request: NextRequest) {
   }
   if (!atlasSessionValid(request.cookies.get(ATLAS_COOKIE)?.value)) return NextResponse.json({ error: "Atlas access required." }, { status: 401 });
   try {
+    if (path === "config" && request.method === "GET") return NextResponse.json({configured:atlasDatabaseConfigured()});
+    const handler = atlasHandlers[path]?.[request.method as "GET"|"POST"|"PUT"|"DELETE"];
+    if (handler) {
+      if (!atlasDatabaseConfigured()) return NextResponse.json({error:"Atlas database setup is required. Add ATLAS_SUPABASE_URL and ATLAS_SUPABASE_SERVICE_ROLE_KEY to the Atlas Vercel project and run supabase/atlas-portal.sql."},{status:503});
+      return await handler(request);
+    }
     if (path === "tiktok-avatar" && request.method === "POST") return tiktokAvatar(request);
     if (path === "tiktok-avatar-image" && request.method === "GET") {
       const raw = request.nextUrl.searchParams.get("url") || "";

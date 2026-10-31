@@ -556,8 +556,7 @@ function belongsToSelectedManagerLeaderboardGroup(
   const assignedGroup = managerGroups[getManagerLeaderboardManagerKey(row)];
   // Manager Assignments is the single source of truth for this builder. A
   // manager moved on that board must appear in their newly selected group.
-  if (!assignedGroup) return false;
-  return assignedGroup === (group === "Team Horizon" ? "Horizon" : group);
+  return assignedGroup !== "Excluded" && (group === "All Groups" || group === "Atlas Creator Network" || assignedGroup === group);
 }
 
 function createManagerLeaderboardTemplate(rowCount = DEFAULT_MANAGER_LEADERBOARD_ROWS): TeamPosterTemplate {
@@ -666,7 +665,7 @@ function normalizeTeamDanPosterTemplate(input?: Partial<TeamPosterTemplate> | nu
   return {
     backgroundUrl: incoming.backgroundUrl || "",
     backgroundPath: incoming.backgroundPath || "",
-    managerKey: incoming.managerKey || "team-dan",
+    managerKey: incoming.managerKey || "atlas-all",
     teamSide: incoming.teamSide || "dan",
     elements: base.elements.map((element) => ({
       ...element,
@@ -688,7 +687,7 @@ function normalizeManagerLeaderboardTemplate(input?: Partial<TeamPosterTemplate>
   return {
     backgroundUrl: incoming.backgroundUrl || "",
     backgroundPath: incoming.backgroundPath || "",
-    managerKey: incoming.managerKey || "team-dan",
+    managerKey: incoming.managerKey || "atlas-all",
     elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}) })),
   };
 }
@@ -935,32 +934,9 @@ export default function BattleGeneratorPage() {
 
   const selectedBattle = battles.find((b) => b.id === selectedId) || null;
 
-  async function syncDfjdbattlesToCalendar(rows: string[], date: string) {
-    if (!date) return;
-    const calendarRows = rows.flatMap((row) => {
-      // Keep empty spreadsheet cells. Splitting on one-or-more tabs shifts
-      // every later column when the battle sheet contains a blank cell.
-      const parts = row.split("\t").map((cell) => cell.trim());
-      const manager = parts.find((cell) => cell.toUpperCase().replace(/[^A-Z]/g, "") === "DFJD") || "";
-      const usernames = parts.map(getTikTokUsername).filter(Boolean);
-      const creator = usernames[0] || String(parts[0] || "").replace(/^@/, "").trim();
-      const opponent = usernames[1] || getTikTokUsername(parts[5] || "");
-      const time = parts.find((cell) => /\b(?:[01]?\d|2[0-3]):[0-5]\d\s*(?:AM|PM)?\b/i.test(cell)) || "";
-      const size = parts.find((cell) => /(?:UNDER|LESS THAN|OVER|MORE THAN)?\s*\d+(?:\.\d+)?\s*K\b/i.test(cell)) || String(parts[2] || "");
-      const agency = String(parts.at(-1) || "");
-      if (!manager || !creator || !opponent || !time) return [];
-      return [{ date, time, creator, opponent, manager, size, agency }];
-    });
-    if (!calendarRows.length) return;
-    try {
-      const response = await fetch("/api/atlas/battle-calendar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "import-dfjd-battles", rows: calendarRows }) });
-      if (!response.ok) throw new Error("Battle Calendar could not save the generated battles.");
-    } catch (error) {
-      // Poster generation stays available even if the calendar is temporarily unreachable.
-      console.error("[battle-calendar] generator sync failed", error);
-    }
+  async function syncDfjdbattlesToCalendar(_rows: string[], _date: string) {
+    // Atlas uses manual poster entry and its own uploads; there is no calendar.
   }
-
   const blankPreviewBattle: Battle = {
     id: "blank-preview",
     date: "",
@@ -976,6 +952,7 @@ export default function BattleGeneratorPage() {
   const selectedTemplate =
     templates.find((template) => template.id === selectedTemplateId) ||
     createLocalTemplate();
+
 
   function addUndoSnapshot(snapshot: PosterTemplateJson) {
     setUndoStack((prev) => [...prev.slice(-24), structuredClone(snapshot)]);
@@ -1606,7 +1583,7 @@ export default function BattleGeneratorPage() {
       if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || "Could not load manager assignments.");
       const hiddenUsernames = new Set((exclusions.creators || []).filter((creator: { hiddenFromDownloads?: boolean }) => creator.hiddenFromDownloads).map((creator: { username: string }) => creator.username.toLowerCase()));
       const managerGroups = assignmentsData.managerGroups || assignmentsData.assignments?.managerGroups || {};
-      const managerKey = String(teamPosterTemplate.managerKey || "team-dan").toLowerCase().replace(/[^a-z0-9:-]/g, "");
+      const managerKey = String(teamPosterTemplate.managerKey || "atlas-all").toLowerCase().replace(/[^a-z0-9:-]/g, "");
       const managerFor = (row: Record<string, unknown>) => String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "").trim().toLowerCase();
       const usernameFor = (row: Record<string, unknown>) => String(row.creator_username || row["Creator's username"] || "").replace("@", "").trim().toLowerCase();
       const numeric = (value: unknown) => Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
@@ -1614,38 +1591,9 @@ export default function BattleGeneratorPage() {
       const rows = (json.rows || []).filter((row: Record<string, unknown>) => {
         if (row.stat_date !== statDate || !usernameFor(row) || hiddenUsernames.has(usernameFor(row))) return false;
         const manager = managerFor(row);
-        const managerKeyNormalizedRaw = manager.replace(/[^a-z0-9]/g, "");
-        // Kayden and Mads are separate manager sources. Older templates used
-        // the combined key, but current creator data must stay with Kayden.
-        const managerKeyNormalized = ["kaydenmads", "firstclassagencykaydenoutlookcom"].includes(managerKeyNormalizedRaw)
-          ? "firstclassagencykaydenoutlookcom"
-          : managerKeyNormalizedRaw;
-        if (managerKey === "team-dan") {
-          const directTeamKey = managerKeyNormalized.replace(/(outlook|gmail|mail)com$/, "");
-          return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);
-        }
-        if (managerKey === "combined:lisa-g") {
-          return TEAM_LISA_G_MANAGER_KEYS.some((key) => managerKeyNormalized.includes(key));
-        }
-        const selectedGroup = ({
-          "group:respawn": "Respawn",
-          "group:paradise": "Paradise",
-          "group:horizon": "Horizon",
-          "group:trident": "Trident",
-        } as Record<string, string>)[managerKey];
-        if (selectedGroup) return managerGroups[managerKeyNormalized] === selectedGroup;
-        if (managerKey === "first-class-all") {
-          // The whole-agency poster follows the current Manager Assignments
-          // configuration. Agency values can be stale after a creator moves
-          // to another sub-agency, so they must not decide membership here.
-          return ["Atlas / James", "Atlas"].includes(managerGroups[managerKeyNormalized]);
-        }
-        if (["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKey)) {
-          return ["ashwalbridge", "ashwalbridgeaolcom", "firstclassagencyashoutlookcom", "firstclassagencyash"].includes(managerKeyNormalized);
-        }
-        // Manager Assignments store a normalised email key, while the export
-        // retains punctuation in the actual email. Support either form.
-        return managerKeyNormalized === managerKey;
+        const normalized = manager.replace(/[^a-z0-9]/g, "");
+        if (managerGroups[normalized] === "Excluded") return false;
+        return managerKey === "atlas-all" || normalized === managerKey;
       });
       if (!rows.length) throw new Error("No creators were found for this data source on the latest upload.");
       const topDiamonds = [...rows].sort((a, b) => numeric(b.diamonds) - numeric(a.diamonds)).slice(0, 5);
@@ -1924,7 +1872,7 @@ export default function BattleGeneratorPage() {
           // label, including its assigned group, for the latest upload.
           return { value, label: row.manager_label || getManagerLeaderboardName(row) };
         }).sort((a, b) => managerNameCollator.compare(a.label, b.label));
-        setTeamPosterManagerOptions(managers);
+        setTeamPosterManagerOptions([{value:"atlas-all",label:"All Atlas"}, ...managers]);
       } catch {
         // The editable field remains available if the latest data cannot load.
       }
@@ -4114,7 +4062,7 @@ function renderText(
             <label className="block">
               <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/55">Team Data Source / Manager</p>
               <select
-                value={teamPosterTemplate.managerKey || "team-dan"}
+                value={teamPosterTemplate.managerKey || "atlas-all"}
                 onChange={(event) => setTeamPosterTemplate((current) => ({ ...current, managerKey: event.target.value }))}
                 className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-sky-300"
               >
@@ -4131,14 +4079,8 @@ function renderText(
                 className="w-full rounded-lg border border-white/15 bg-black/45 p-3 text-white outline-none focus:border-sky-300"
               >
                 <option value="dan">Atlas</option>
-                <option value="mike-indi">Team Mike + Indi</option>
-                <option value="sub-agencies">Whole Agencies</option>
-                <option value="paradise">Paradise</option>
-                <option value="horizon">Horizon</option>
-                <option value="trident">Trident</option>
-                <option value="respawn">Respawn</option>
               </select>
-              <p className="mt-2 text-xs text-white/45">Saved with this layout. Team Diamonds Yesterday groups downloads by this category.</p>
+              <p className="mt-2 text-xs text-white/45">Saved to the Atlas Team Posters library. Choose a manager or All Atlas above.</p>
             </label>
 
             <div className="grid grid-cols-2 gap-3">
@@ -4609,3 +4551,4 @@ function renderText(
     </div>
   );
 }
+export type { TeamPosterTemplate, TeamPosterElement };

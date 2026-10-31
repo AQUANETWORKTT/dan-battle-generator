@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { managerPosterGeneratorLink } from "../../../../../lib/manager-poster-access";
 
 type Creator = { username: string; daysSinceJoining: number };
 const accents: Record<string, string> = { paradise: "#d6a65e", respawn: "#28d7c3", horizon: "#f97316", trident: "#38bdf8" };
@@ -26,6 +27,9 @@ export default function ManagerPortal() {
     <p>{managerLabel}</p>
     <h1>MANAGER PORTAL</h1>
     <div className="agency-workspace">
+      {agency === "paradise" && <Link className="poster-generator-link" href={managerPosterGeneratorLink(agency, manager, managerLabel)}>
+        <span>POSTER TOOL</span><strong>POSTER<br />GENERATOR</strong><span className="poster-generator-cta">OPEN PARADISE POSTER MAKER →</span>
+      </Link>}
       <Link className="poster-generator-link" href={`/agency/${agency}/managers/${manager}/onboarding?label=${encodeURIComponent(managerLabel)}`}>
         <span>CREATOR CARE</span><strong>ONBOARDING</strong><span className="poster-generator-cta">{creators.length} NEW CREATORS →</span>
       </Link>

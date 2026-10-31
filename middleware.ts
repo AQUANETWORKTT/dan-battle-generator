@@ -3,12 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const host = req.headers.get("host")?.split(":")[0].toLowerCase();
+  if(path === "/favicon.ico") {
+    if(process.env.SITE_MODE === "atlas" || host === "atlasagency.space" || host === "www.atlasagency.space") return NextResponse.rewrite(new URL("/atlas/favicon.png",req.url));
+    return NextResponse.next();
+  }
   // Atlas has its own signed session and scoped API. It never inherits the
   // First Class login. A dedicated Atlas deployment exposes no other tools.
   const isAtlasRoute = path === "/atlas" || path.startsWith("/atlas/") || path.startsWith("/api/atlas/");
   if (isAtlasRoute) return NextResponse.next();
-  if (process.env.SITE_MODE === "atlas") {
-    if (path === "/" || path === "/generator") return NextResponse.redirect(new URL("/atlas/generator", req.url));
+  if (process.env.SITE_MODE === "atlas" || host === "atlasagency.space" || host === "www.atlasagency.space") {
+    if (path === "/" || path === "/generator") return NextResponse.redirect(new URL(path === "/generator" ? "/atlas/generator" : "/atlas/leadership", req.url));
     return new NextResponse("Not found", { status: 404 });
   }
 
@@ -148,6 +152,7 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/favicon.ico",
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2|otf|mp4|webm|mov|m4v)$).*)",
   ],
 };

@@ -8,6 +8,7 @@ import * as htmlToImage from "html-to-image";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { FIRST_CLASS_CAPTAINS, FIRST_CLASS_CREATORS, FIRST_CLASS_VICE_CAPTAINS } from "@/lib/first-class-tournament";
+import { managerPosterReturnLink } from "../../../../lib/manager-poster-access";
 
 type Battle = {
   id: string;
@@ -847,6 +848,7 @@ export default function BattleGeneratorPage() {
   const teamPosterRef = useRef<HTMLDivElement | null>(null);
   const fallbackAvatarUrlsRef = useRef<Record<string, string>>({});
   const [workspace, setWorkspace] = useState<string | null>(null);
+  const [managerReturnUrl, setManagerReturnUrl] = useState<string | null>(null);
   const isPostersWorkspace = workspace === "posters";
   const isCrewShowdownWorkspace = workspace === "crew-showdown";
 
@@ -854,6 +856,7 @@ export default function BattleGeneratorPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    setManagerReturnUrl(managerPosterReturnLink(agencyId, params));
     const nextWorkspace = params.get("workspace");
     setWorkspace(nextWorkspace);
     if (nextWorkspace === "posters") setActiveMode("team");
@@ -4140,12 +4143,13 @@ function renderText(
       <div className="max-w-[1700px] mx-auto space-y-6">
 	<div className="flex gap-3 mb-4">
   <a
-    href={`/agency/${agencyId}`}
+    href={managerReturnUrl || `/agency/${agencyId}`}
     className="agency-generator-logo"
-    aria-label={`Back to ${agencyTheme.name}`}
+    aria-label={managerReturnUrl ? "Back to manager portal" : `Back to ${agencyTheme.name}`}
   >
     <img src={`/agency-logos/${agencyId}.png`} alt={`${agencyTheme.name} agency`} />
   </a>
+  {managerReturnUrl && <a href={managerReturnUrl} className="rounded-lg border border-white/20 bg-black/40 px-4 py-3 text-xs font-black uppercase tracking-widest">Back to manager portal →</a>}
 
 </div>
         {editMode ? (
