@@ -1,0 +1,386 @@
+Browser tab: 184541071, Title: "Untitled query | SQL Editor | aqua-admin | AQUANETWORKTT's Org | Supabase", URL: "https://supabase.com/dashboard/project/dxupgmsscysvztxdtaku/sql/e8859f62-2c9a-44b1-bedb-4053e66c825a".
+0 AXWebArea Untitled query | SQL Editor | aqua-admin | AQUANETWORKTT's Org | Supabase, URL: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/sql/e8859f62-2c9a-44b1-bedb-4053e66c825a
+	1 container
+		4 link Description: Skip to content, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/sql/e8859f62-2c9a-44b1-bedb-4053e66c825a#main
+		5 link Description: Supabase Back to organization home, Value: supabase.com/dashboard/org/flwrnpuwrcrpaefeeusx
+		6 link Description: AQUANETWORKTT's Org PRO, Value: supabase.com/dashboard/org/flwrnpuwrcrpaefeeusx
+		7 pop up button (collapsed) Description: Show organizations, Secondary Actions: Expand
+		8 link Description: aqua-admin, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku
+		9 pop up button (collapsed) Description: Show organization projects, Secondary Actions: Expand
+		10 link Description: main PRODUCTION, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku
+		11 pop up button (collapsed) Description: Show project branches, Secondary Actions: Expand
+		12 button Connect
+		13 pop up button (collapsed) Feedback, Secondary Actions: Expand
+		14 pop up button (collapsed) Search..., Secondary Actions: Expand
+		15 button Help, ID: help-dropdown-button
+		16 button Advisor Center, ID: advisor-center-trigger
+		17 button SQL Editor, ID: editor-trigger
+			18 image
+			19 text SQL Editor
+		20 button AI Assistant, ID: assistant-trigger
+			21 text AI Assistant
+		22 pop up button (collapsed) AQUANETWORKTT, ID: radix-_r_d_, Secondary Actions: Expand
+			23 image AQUANETWORKTT
+		24 container
+			25 content list
+				26 link Description: Project Overview, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku
+				27 link Description: Table Editor, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/editor
+				28 link Description: SQL Editor, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/sql
+			29 content list
+				30 link Description: Database, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/database/schemas
+				31 link Description: Authentication, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/auth/users
+				32 link Description: Storage, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/storage/files
+				33 link Description: Edge Functions, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/functions
+				34 link Description: Compute NEW, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/compute
+				35 link Description: Realtime, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/realtime/inspector
+			36 content list
+				37 link Description: Advisors, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/advisors/health
+				38 link Description: Observability, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/observability
+				39 link Description: Logs, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/logs
+				40 link Description: Integrations, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/integrations
+			41 content list
+				42 link Description: Project Settings, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/settings/general
+			43 pop up button (collapsed) Description: Sidebar control, ID: radix-_r_t_, Secondary Actions: Expand
+		216 container
+			217 container spec-click-target
+				218 heading SQL Editor, Value: 4
+					219 text SQL Editor
+				238 container
+					239 text Search queries
+					240 text field (settable) Search queries...
+					241 pop up button (collapsed) ID: radix-_r_3s_, Secondary Actions: Expand
+					242 pop up button (collapsed) Description: Create a new query, ID: radix-_r_3v_, Secondary Actions: Expand
+					243 button (collapsed) SHARED, Help: Shared, Secondary Actions: Expand
+					244 button (collapsed) FAVORITES, Help: Favorites, Secondary Actions: Expand
+					245 button (expanded) PRIVATE (83), Secondary Actions: Collapse
+					246 outline private-snippets
+						522 container
+							523 image
+							524 text Untitled query
+						247 container
+							248 image
+							249 text Untitled query
+						250 container
+							251 image
+							252 text Untitled query
+						253 container
+							254 image
+							255 text Untitled query
+						256 container
+							257 image
+							258 text Untitled query
+						259 container
+							260 image
+							261 text Untitled query
+						262 container
+							263 image
+							264 text Untitled query
+						265 container
+							266 image
+							267 text Untitled query
+						268 container
+							269 image
+							270 text Untitled query
+						271 container
+							272 image
+							273 text Untitled query
+						274 container
+							275 image
+							276 text Untitled query
+						277 container
+							278 image
+							279 text Untitled query
+						280 container
+							281 image
+							282 text Untitled query
+						283 container
+							284 image
+							285 text Untitled query
+						286 container
+							287 image
+							288 text Untitled query
+						289 container
+							290 image
+							291 text Untitled query
+						292 container
+							293 image
+							294 text Untitled query
+						295 container
+							296 image
+							297 text Untitled query
+						298 container
+							299 image
+							300 text Untitled query
+						301 container
+							302 image
+							303 text Untitled query
+						304 container
+							305 image
+							306 text Untitled query
+						307 container
+							308 image
+							309 text Untitled query
+						310 container
+							311 image
+							312 text Untitled query
+						313 container
+							314 image
+							315 text Untitled query
+						316 container
+							317 image
+							318 text Untitled query
+						319 container
+							320 image
+							321 text Untitled query
+						322 container
+							323 image
+							324 text Untitled query
+						325 container
+							326 image
+							327 text Untitled query
+						328 container
+							329 image
+							330 text Untitled query
+						331 container
+							332 image
+							333 text Untitled query
+						334 container
+							335 image
+							336 text Untitled query
+						337 container
+							338 image
+							339 text Untitled query
+						340 container
+							341 image
+							342 text Untitled query
+						343 container
+							344 image
+							345 text Clear World Cup Scores Records
+						346 container
+							347 image
+							348 text World Cup Daily Team Score Tracking
+						349 container
+							350 image
+							351 text Untitled query
+						352 container
+							353 image
+							354 text Add Graduation Status to Creator Stats
+						355 container
+							356 image
+							357 text Enable RLS and Permit All Access
+						358 container
+							359 image
+							360 text World Cup 2026 Score Tracking
+						361 container
+							362 image
+							363 text Clear Creator Daily Stats
+						364 container
+							365 image
+							366 text Count Stats for Specific Date
+						367 container
+							368 image
+							369 text Sample Recent Creator Daily Stats
+						370 container
+							371 image
+							372 text Daily Creator Statistics Storage
+						373 container
+							374 image
+							375 text Indexes for Creator Daily Stats
+						376 container
+							377 image
+							378 text Creator Daily Statistics
+						379 container
+							380 image
+							381 text Fetch James Manager Push Subscriptions
+						382 container
+							383 image
+							384 text Fetch Reminders at Specific Times
+						385 container
+							386 image
+							387 text Find James Manager Subscriptions
+						388 container
+							389 image
+							390 text Delete James Manager Subscriptions
+						391 container
+							392 image
+							393 text Recent James Push Subscriptions
+						394 container
+							395 image
+							396 text Remove Duplicate Key Constraint
+						397 container
+							398 image
+							399 text Remove Expired Battle Reminders
+						400 container
+							401 image
+							402 text Update Battle Reminder Details
+						403 container
+							404 image
+							405 text Update Battle Reminder Date
+						406 container
+							407 image
+							408 text Battle Reminders Schedule Overview
+						409 container
+							410 image
+							411 text Untitled query
+						412 container
+							413 image
+							414 text Manager Notification Preferences
+						415 container
+							416 image
+							417 text Add Reminder Sent Timestamp Column
+						418 container
+							419 image
+							420 text Manager Push Subscription Registry
+						421 container
+							422 image
+							423 text Fetch Latest Battle Reminders
+						424 container
+							425 image
+							426 text Battle Reminder Scheduling Table
+						427 container
+							428 image
+							429 text Sunset Showdown Creators Directory
+						430 container
+							431 image
+							432 text Battle Schedule Registry
+						433 container
+							434 image
+							435 text Delete User Score Record
+						436 container
+							437 image
+							438 text Sunset Showdown Player Scores Table
+						439 container
+							440 image
+							441 text Insert Manager Points Record
+						442 container
+							443 image
+							444 text Creator Login Records Table
+						445 container
+							446 image
+							447 text Add Updated Timestamp Column
+						448 container
+							449 image
+							450 text Profiles Schema Update
+						451 container
+							452 image
+							453 text Normalize Manager Point Names
+						454 container
+							455 image
+							456 text Seed Manager Points Records
+						457 container
+							458 image
+							459 text Add Creator Status Column
+						460 container
+							461 image
+							462 text Creator Monthly Performance Stats
+						463 container
+							464 image
+							465 text Submissions Duplicate Flags
+						466 container
+							467 image
+							468 text Manager Points Tracking
+						469 container
+							470 image
+							471 text Manager Points Ledger
+						472 container
+							473 image
+							474 text Remove Submission Policies and User Reference
+						475 container
+							476 image
+							477 text Drop user_id Column from Submissions
+						478 container
+							479 image
+							480 text Add submission metadata columns
+						481 container
+							482 image
+							483 text Anon Access to Submission Images
+						484 container
+							485 image
+							486 text Enable Row-Level Security for Submissions
+						487 container
+							488 image
+							489 text Submissions Tracking Table
+						490 container
+							491 image
+							492 text Set User Role to Admin
+						493 container
+							494 image
+							495 text Profiles, Submissions & Admin Points Schema
+					496 button (collapsed) LOGS, Help: Logs, Secondary Actions: Expand
+					497 button (expanded) REFERENCE, Help: Reference, Secondary Actions: Collapse
+					498 container radix-_r_46_
+						499 link Description: Templates, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/sql/templates
+						500 link Description: Examples, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/sql/examples
+					501 link Description: View running queries, Value: supabase.com/dashboard/project/dxupgmsscysvztxdtaku/observability/connections
+			234 splitter 14.08899974822998
+			235 container
+				236 button Collapse sidebar
+				237 tab group
+					525 container
+						526 tab (selected, settable, boolean) Untitled query, ID: radix-_r_5b_-trigger-sql-e8859f62-2c9a-44b1-bedb-4053e66c825a, Value: 1
+Untitled query
+						527 button Close tab
+					528 button
+				529 text Unsaved edits
+				505 pop up button (collapsed) Description: More actions, ID: radix-_r_6e_, Secondary Actions: Expand
+				506 button Add to favorites
+				507 button Prettify SQL
+				508 pop up button (collapsed) Description: Query source: Database, ID: radix-_r_6j_, Secondary Actions: Expand
+				509 button Save
+				510 button Run
+				511 container
+					512 editor (settable) Description: Editor content, Value: ed.
+select c.relname as table_name, c.relrowsecurity as rls_enabled, c.reltuples::bigint as estimated_rows, coalesce((select string_agg(p.policyname || ': ' || p.cmd || ' roles=' || p.roles::text, '; ') from pg_policies p where p.schemaname='public' and p.tablename=c.relname), 'NO POLICIES') as policies from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('creator_daily_stats','poster_templates','mature_creator_month_totals') order by c.relname;
+				514 splitter 50
+				515 container
+					516 tab group
+						517 tab (selected, settable, boolean) Results, Value: 1, ID: radix-_r_6q_-trigger-results
+						518 tab (selectable, settable, boolean) Chart, Value: 0, ID: radix-_r_6q_-trigger-chart
+						530 button 3 rows
+							531 container
+								532 text 3  row s
+						533 pop up button (collapsed) Export, ID: radix-_r_71_, Secondary Actions: Expand
+					534 table
+						535 row table_name rls_enabled estimated_rows policies
+							536 cell (selectable) table_name
+							537 cell (selectable) rls_enabled
+							538 cell (selectable) estimated_rows
+							539 cell (selectable) policies
+						540 row creator_daily_stats true 202591 NO POLICIES
+							541 cell (selectable) creator_daily_stats
+							542 cell (selectable) true
+							543 cell (selectable) 202591
+							544 cell (selectable) NO POLICIES
+						545 row mature_creator_month_totals true 133 Allow mature creator month totals read: SELECT roles={anon}; Allow mature creator month totals write: ALL roles={anon} View full cell content
+							546 cell (selectable) mature_creator_month_totals
+							547 cell (selectable) true
+							548 cell (selectable) 133
+							549 cell (selectable) Description: View full cell content, Value: Allow mature creator month totals read: SELECT roles={anon}; Allow mature creator month totals write: ALL roles={anon}
+						550 row poster_templates true 185 Allow public delete poster templates: DELETE roles={public}; Allow public insert poster templates: INSERT roles={public}; Allow public read poster templates: SELECT roles={public}; Allow public update poster templates: UPDATE roles={public} View full cell content
+							551 cell (selectable) poster_templates
+							552 cell (selectable) true
+							553 cell (selectable) 185
+							554 cell (selectable) Description: View full cell content, Value: Allow public delete poster templates: DELETE roles={public}; Allow public insert poster templates: INSERT roles={public}; Allow public read poster templates: SELECT roles={public}; Allow public update poster templates: UPDATE roles={public}
+		198 container
+			199 button Close banner
+			200 text PREVIEW
+			201 text User growth
+			202 text Track how your user base is trending.
+			203 container
+				204 text select date_trunc('week', last_sign_in_at) as week, count(distinct id) as active_users
+			205 text Explorer & Notebooks
+			206 text New unified workspace for querying data and chatting with Assistant.
+			207 button Enable Explorer
+		2 container Notifications alt+T
+			208 content list
+			209 content list
+				210 container
+					211 text We use cookies to collect data and improve our services.
+					212 link Description: Learn more, Value: supabase.com/privacy#8-cookies-and-similar-technologies-used-on-our-european-services
+					213 button Accept
+					214 button Opt out
+					215 pop up button (collapsed) Privacy settings, Secondary Actions: Expand
+		3 button open-side-panel
+
+The focused UI element is 512 editor (settable) Description: Editor content, Value: ed.
+select c.relname as table_name, c.relrowsecurity as rls_enabled, c.reltuples::bigint as estimated_rows, coalesce((select string_agg(p.policyname || ': ' || p.cmd || ' roles=' || p.roles::text, '; ') from pg_policies p where p.schemaname='public' and p.tablename=c.relname), 'NO POLICIES') as policies from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('creator_daily_stats','poster_templates','mature_creator_month_totals') order by c.relname;

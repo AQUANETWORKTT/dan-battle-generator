@@ -12,7 +12,7 @@ export function middleware(req: NextRequest) {
   const isAtlasRoute = path === "/atlas" || path.startsWith("/atlas/") || path.startsWith("/api/atlas/");
   if (isAtlasRoute) return NextResponse.next();
   if (process.env.SITE_MODE === "atlas" || host === "atlasagency.space" || host === "www.atlasagency.space") {
-    if (path === "/" || path === "/generator") return NextResponse.redirect(new URL(path === "/generator" ? "/atlas/generator" : "/atlas/leadership", req.url));
+    if (path === "/" || path === "/generator") return NextResponse.redirect(new URL(path === "/generator" ? "/atlas/generator" : "/atlas", req.url));
     return new NextResponse("Not found", { status: 404 });
   }
 

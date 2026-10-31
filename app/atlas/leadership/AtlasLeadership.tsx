@@ -1,14 +1,87 @@
-"use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-const sections = [
-  {title:"Agency tools",items:[{name:"Agency Tools",description:"Your poster generator, entry library and page editor.",href:"/atlas/generator",icon:"↗"},{name:"Team Posters",description:"Build and download posters using your Atlas creator data.",href:"/atlas/data/team-posters",icon:"▧"},{name:"Team Poster Builder",description:"Design and save layouts for every manager and the whole network.",href:"/atlas/generator?workspace=posters",icon:"✧"}]},
-  {title:"Data & management",items:[{name:"Upload Backstage Data",description:"Import daily creator exports and monthly mature creator totals.",href:"/atlas/data/upload",icon:"↑"},{name:"Manager Assignments",description:"New managers appear automatically after an upload. Organise and rename them here.",href:"/atlas/data/manager-assignments",icon:"⊞"},{name:"Manager Strikes",description:"Private management records, reasons and dates.",href:"/atlas/data/manager-strikes",icon:"≋"},{name:"Notepad",description:"Shared leadership notes, saved across your devices.",href:"/atlas/data/notepad",icon:"≡"}]},
-  {title:"Creator intelligence",items:[{name:"Graduation Tracker",description:"Track graduation progress and upcoming milestones.",href:"/atlas/data/graduation-tracker",icon:"↗"},{name:"Mature Creators Tracker",description:"Maintain and rank-up progress with a message ready to copy.",href:"/atlas/data/mature-creators-tracker",icon:"◇"},{name:"Incremental Data Tracking",description:"Daily performance, Atlas targets and saved monthly history.",href:"/atlas/data/incremental-data-tracking",icon:"⌁"},{name:"Creator ID Lookup",description:"Find accounts, username changes and manager history by creator ID.",href:"/atlas/data/creator-id-lookup",icon:"⌕"}]},
+
+
+const spaces = [
+  {
+    "eyebrow": "Performance & reporting",
+    "title": "Data",
+    "copy": "Creator trackers, manager assignments and daily Atlas reporting in one protected workspace.",
+    "href": "/atlas/data/menu",
+    "action": "Open Data Space",
+    "accent": "from-sky-300/20 via-sky-300/5 to-transparent",
+    "marker": "01"
+  },
+  {
+    "eyebrow": "Management tools",
+    "title": "Agency Tools",
+    "copy": "Create posters and team assets with your Atlas entry library, generator and template editor.",
+    "href": "/atlas/generator",
+    "action": "Open Agency Tools",
+    "accent": "from-cyan-300/20 via-cyan-300/5 to-transparent",
+    "marker": "02"
+  }
 ];
-export default function AtlasLeadership(){
-  const [configured,setConfigured]=useState<boolean|null>(null),[latest,setLatest]=useState(""),[error,setError]=useState("");
-  useEffect(()=>{let active=true; void(async()=>{try{const c=await fetch("/api/atlas/config",{cache:"no-store"});if(c.status===401){window.location.assign("/atlas/login");return;}const config=await c.json();if(!c.ok)throw Error(config.error);if(!active)return;setConfigured(config.configured);if(config.configured){const r=await fetch("/api/atlas/data-analysis/upload-status?latest=true",{cache:"no-store"});const j=await r.json();if(!r.ok)throw Error(j.error);if(active)setLatest(j.latestDate||"");}}catch(e){if(active)setError(e instanceof Error?e.message:"Could not load Backstage status.");}})();return()=>{active=false;};},[]);
-  const yesterday=new Date(Date.now()-86400000).toLocaleDateString("en-CA",{timeZone:"Europe/London"});
-  return <main className="min-h-screen bg-[#edf6fc] text-[#112d43]" style={{fontFamily:"Arial,sans-serif"}}><header className="border-b border-sky-200/70 bg-white/80 px-5 sm:px-10"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-4"><Link href="/atlas" className="flex min-w-0 items-center gap-3"><img src="/atlas/logo-small.png" alt="Atlas Agency" className="h-12 w-12 shrink-0 object-contain sm:h-20 sm:w-20"/><span><span className="block text-base font-bold sm:text-xl">Atlas Creator Network</span><span className="text-xs uppercase tracking-[.22em] text-sky-700">Leadership space</span></span></Link><button className="shrink-0 whitespace-nowrap rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-semibold sm:text-sm" onClick={async()=>{await fetch("/api/atlas/logout",{method:"POST"});window.location.assign("/atlas/login");}}>Sign out</button></div></header><div className="mx-auto max-w-7xl px-5 py-10 sm:px-10 sm:py-14"><p className="text-xs font-bold uppercase tracking-[.25em] text-sky-600">Your network. Your workspace.</p><h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Leadership</h1><p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Everything you need to support your creators and keep Atlas moving.</p><div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-white p-5 shadow-sm"><div><p className="flex items-center gap-2 text-sm font-bold"><span className={`h-2.5 w-2.5 rounded-full ${latest>=yesterday?"bg-emerald-500":"bg-amber-400"}`}/>Backstage status</p><p className="mt-1 text-sm text-slate-600">{error|| (configured===false?"Database setup required":configured===null?"Checking your connection…":latest?`Latest upload: ${new Date(`${latest}T12:00:00`).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}${latest<yesterday?" · Yesterday’s data is due":" · Up to date"}`:"No Atlas data uploaded yet.")}</p></div><Link href="/atlas/data/upload" className="rounded-xl bg-[#123e5b] px-5 py-3 text-sm font-bold text-white">Upload data ↑</Link></div>{configured===false&&<div role="status" style={{overflowWrap:"anywhere"}} className="mt-4 rounded-2xl border border-sky-200 bg-sky-100 p-5 text-sm leading-6">Atlas uses its own database. Create a separate Supabase project, run the supplied <strong>atlas-portal.sql</strong>, then add <strong>ATLAS_SUPABASE_URL</strong> and <strong>ATLAS_SUPABASE_SERVICE_ROLE_KEY</strong> to the Atlas Vercel project. First Class’s data is kept separate.</div>}{sections.map(section=><section key={section.title} className="mt-10"><h2 className="mb-4 text-xs font-bold uppercase tracking-[.22em] text-slate-500">{section.title}</h2><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{section.items.map(item=><Link key={item.href} href={item.href} className="group flex min-h-44 flex-col rounded-2xl border border-sky-200/70 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"><span className="mb-5 flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-xl text-sky-700" aria-hidden="true">{item.icon}</span><h3 className="flex items-center justify-between gap-2 text-lg font-bold">{item.name}<span className="text-sky-400 transition group-hover:translate-x-1">→</span></h3><p className="mt-2 text-sm leading-6 text-slate-500">{item.description}</p></Link>)}</div></section>)}<footer className="mt-12 border-t border-sky-200 pt-6 text-xs text-slate-400">Atlas Creator Network · Leadership & agency tools</footer></div></main>;
+
+export default function AtlasLeadership() {
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8">
+      <div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_75%_0%,rgba(125,211,252,0.16),transparent_28%),radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.05),transparent_25%)]" />
+
+      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col">
+        <header className="flex items-center justify-between border-b border-white/10 pb-5">
+          <div className="font-[family-name:var(--font-norwester)] text-xl uppercase tracking-wide sm:text-2xl">
+            Atlas <span className="text-sky-300">Leadership Space</span>
+          </div>
+          <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-sky-200 sm:px-4">
+            Leadership Portal
+          </span>
+        </header>
+
+        <section className="flex flex-1 flex-col justify-center py-14 sm:py-20">
+          <div className="max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.34em] text-sky-300/80">Atlas Creator Network</p>
+            <h1 className="mt-5 font-[family-name:var(--font-norwester)] text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl lg:text-8xl">
+              Your agency,<br />
+              <span className="text-sky-300">in one space.</span>
+            </h1>
+            <p className="mt-7 max-w-xl text-base leading-relaxed text-white/60 sm:text-lg">
+              The private operational workspace for Atlas performance, reporting and creator management.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-6">
+            {spaces.map((space) => (
+              <Link
+                key={space.href}
+                href={space.href}
+                className="group relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.035] p-6 transition duration-300 hover:-translate-y-1 hover:border-sky-300/50 hover:bg-white/[0.06] sm:p-8"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${space.accent}`} />
+                <div className="relative flex min-h-56 flex-col justify-between">
+                  <div className="flex items-start justify-between gap-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">{space.eyebrow}</p>
+                    <span className="font-[family-name:var(--font-norwester)] text-2xl text-white/20">{space.marker}</span>
+                  </div>
+                  <div>
+                    <h2 className="font-[family-name:var(--font-norwester)] text-4xl uppercase tracking-tight sm:text-5xl">{space.title}</h2>
+                    <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60">{space.copy}</p>
+                    <span className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-sky-200">
+                      {space.action} <span className="text-lg transition-transform group-hover:translate-x-1">→</span>
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
+          <span>Atlas Creator Network</span>
+          <Link href="/atlas" className="text-sky-200 transition hover:text-white">Go Back · Atlas Space</Link>
+          <span>Data · Creator Trackers · Agency Tools</span>
+        </footer>
+      </div>
+    </main>
+  );
 }

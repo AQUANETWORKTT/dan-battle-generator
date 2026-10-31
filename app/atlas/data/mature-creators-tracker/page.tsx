@@ -480,10 +480,10 @@ export default function MatureCreatorsTrackerPage() {
       <main className="min-h-screen bg-[#090303] px-4 py-6 text-white">
         <div className="mx-auto max-w-[1600px]">
           <div className="mb-5 flex flex-wrap gap-3">
-            <Link href="/atlas/leadership" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black uppercase hover:bg-white/10">
+            <Link href="/atlas/data/menu" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black uppercase hover:bg-white/10">
               Back to Data
             </Link>
-            <Link href="/atlas/leadership" className="rounded-xl border border-sky-300/30 bg-sky-400/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-400/20">
+            <Link href="/atlas/data/menu" className="rounded-xl border border-sky-300/30 bg-sky-400/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-400/20">
               AI Analysis
             </Link>
             <Link href="/atlas/data/graduation-tracker" className="rounded-xl border border-sky-300/30 bg-sky-400/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-400/20">

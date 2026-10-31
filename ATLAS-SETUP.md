@@ -1,6 +1,6 @@
 # Atlas Creator Network leadership portal
 
-Domain: https://atlasagency.space. Root opens /atlas/leadership; the existing Atlas password still applies. The transparent logo, favicon and home-screen icon are in public/atlas/.
+Domain: https://atlasagency.space. Root opens the Atlas Space chooser, then Leadership, with Data Space and Agency Tools; the existing Atlas password still applies. The transparent logo, favicon and home-screen icon are in public/atlas/.
 
 ## Required database setup
 

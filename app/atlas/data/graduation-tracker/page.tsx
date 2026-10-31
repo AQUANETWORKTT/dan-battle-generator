@@ -511,7 +511,7 @@ export default function GraduationTrackerPage() {
               </Link>
 
               <Link
-                href="/atlas/leadership"
+                href="/atlas/data/menu"
                 className="rounded-xl border border-sky-300/30 bg-sky-400/10 px-6 py-3 text-center font-black uppercase text-sky-300 transition hover:scale-[1.02] hover:bg-sky-400/20"
               >
                 📊 Leadership
