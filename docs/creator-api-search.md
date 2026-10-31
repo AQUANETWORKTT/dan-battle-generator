@@ -84,6 +84,14 @@ For normal use, double-click `integrations/firstclassbot/Start Backstage Checker
 
 The checker no longer waits for terminal input: sign into its dedicated browser and it connects automatically. It does not reload the page while you are signing in. A local single-instance lock prevents two launchers fighting over the browser profile. Startup/output errors remain in the console and in the ignored `integrations/firstclassbot/checker.log`. The website queues work; it cannot directly launch a Windows process. Keep the checker running while using the availability action.
 
+## Pasted-list messaging (separate, manually started)
+
+`integrations/firstclassbot/Start List Messaging.cmd` opens a local window with a username box and the approved message from `approved-message.txt`. Paste usernames one per line, review the message, and press Review list & start. The confirmation displays the exact message and recipient count after excluding existing contacts and message reservations. The user must confirm and then sign into the intended TikTok account/Backstage in a separate saved browser profile before pressing Continue after sign-in.
+
+This mode imports the existing FirstClassBot messaging adapter without starting its LIVE discovery loop or changing its original source files. It rechecks availability in groups of up to 30, sends only to confirmed Available creators, reserves each recipient atomically in the original bot database and records the adapter's actual result. Existing confirmed/uncertain/previously logged recipients are skipped. Unconfirmed delivery or failures stop the list rather than repeatedly attempting messages. Stop after current creator lets the current send finish, then stops. The availability-only website worker does not import this sender.
+
+This mode was tested with fixtures; no real messages were sent during implementation. Actual recipient/confirmation selectors are inherited from the existing bot and may require an update if TikTok changes its UI. The contact-history sync picks up the resulting original bot records. Website downloads and scans never themselves authorise or trigger messaging.
+
 ## Eligibility changes and diamond ordering
 
 The Eligibility Changes section reads the confirmed Available/Ineligible records already retained in all saved scan jobs. No extra SQL migration, API key or history table is required. It paginates through all stored jobs, ignores Failed/Pending states, and compares each creator's consecutive confirmed observations. First sightings establish a baseline. It reports Ineligible → Available (including Premium), and confirmed Regular → Premium upgrades. Unknown invitation type → Premium alone does not prove an upgrade.

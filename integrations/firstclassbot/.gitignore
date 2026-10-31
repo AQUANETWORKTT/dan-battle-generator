@@ -1,4 +1,5 @@
 browser_profile_api_search/
+browser_profile_messaging_list/
 __pycache__/
 .env
 *.log
