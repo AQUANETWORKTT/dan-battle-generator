@@ -1,4 +1,4 @@
-"""Cancellable readiness waits: no overall deadline and no recipient-verification bypass."""
+"""Cancellable readiness waits with a shared per-recipient deadline."""
 import time
 
 
@@ -6,19 +6,26 @@ class UserStopped(Exception):
     pass
 
 
+class ReadinessExpired(UserStopped):
+    pass
+
+
 class WaitControl:
-    def __init__(self, page, should_stop, report=None):
+    def __init__(self, page, should_stop, report=None, deadline=None):
         self.page, self.should_stop, self.report = page, should_stop, report
+        self.deadline = deadline
         self.last_report = 0
 
     def check(self):
         if self.should_stop() or self.page.is_closed():
             raise UserStopped("Stopped by you.")
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise ReadinessExpired('Readiness wait expired before Send.')
 
     def pause(self, reason):
         self.check()
         if self.report and time.monotonic() - self.last_report > 15:
-            self.report(reason + " Waiting until ready. Use Skip person to move on, or Stop to end the list.")
+            self.report(reason + " Chat has a six-second limit, then one refresh before skipping. You can also use Skip person or Stop.")
             self.last_report = time.monotonic()
         self.page.wait_for_timeout(200)
         self.check()

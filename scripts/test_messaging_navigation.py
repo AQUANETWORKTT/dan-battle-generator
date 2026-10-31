@@ -1,6 +1,7 @@
 """Fixture-only checks: no TikTok, browser or real messages."""
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'integrations' / 'firstclassbot'))
 from messaging_navigation import send_with_navigation_retry
@@ -47,6 +48,84 @@ def clicked(context, name):
 
 
 class NavigationTests(unittest.TestCase):
+    def test_message_page_uses_six_seconds_then_one_refresh_and_skip(self):
+        clock, budgets, refreshes = [100.0], [], []
+        context = Context()
+        context.page.reload = lambda **kwargs: refreshes.append(kwargs)
+        def original(context, name):
+            page = context.new_page()
+            page.wait_for_url('**/business-suite/messages**')
+            budgets.append(page.control.deadline - clock[0])
+            clock[0] += 7
+            page.control.check()
+        with patch('messaging_navigation.time.monotonic', side_effect=lambda: clock[0]), patch('messaging_navigation.visible_challenge', return_value=False):
+            result = send_with_navigation_retry(original, context, 'stuck', SELECTOR, max_attempts=None, should_stop=lambda: False)
+        self.assertEqual(budgets, [6, 6])
+        self.assertEqual(len(refreshes), 1)
+        self.assertEqual(result[0], 'FAILED')
+        self.assertEqual(context.page.send_calls, 0)
+
+    def test_stuck_chat_refreshes_once_then_advances(self):
+        clock, calls, refreshes = [100.0], [], []
+        context = Context()
+        context.page.reload = lambda **kwargs: refreshes.append(kwargs)
+        def original(context, name):
+            page = context.new_page()
+            calls.append(name)
+            clock[0] += 46
+            page.control.check()
+        with patch('messaging_navigation.time.monotonic', side_effect=lambda: clock[0]), patch('messaging_navigation.visible_challenge', return_value=False):
+            result = send_with_navigation_retry(original, context, 'stuck', SELECTOR, max_attempts=None, should_stop=lambda: False)
+        self.assertEqual(result[0], 'FAILED')
+        self.assertEqual(len(refreshes), 1)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(context.page.send_calls, 0)
+
+    def test_captcha_is_skipped_without_refresh(self):
+        clock, refreshes = [100.0], []
+        context = Context()
+        context.page.reload = lambda **kwargs: refreshes.append(kwargs)
+        def original(context, name):
+            page = context.new_page()
+            clock[0] += 46
+            page.control.check()
+        with patch('messaging_navigation.time.monotonic', side_effect=lambda: clock[0]), patch('messaging_navigation.visible_challenge', return_value=True):
+            result = send_with_navigation_retry(original, context, 'challenge', SELECTOR, max_attempts=None, should_stop=lambda: False)
+        self.assertIn('CAPTCHA', result[1])
+        self.assertEqual(refreshes, [])
+        self.assertEqual(context.page.send_calls, 0)
+
+    def test_visible_challenge_detection_checks_visible_markers(self):
+        from messaging_navigation import visible_challenge
+        class Marker:
+            def __init__(self, visible): self.visible = visible
+            def count(self): return 1
+            def nth(self, index): return self
+            def is_visible(self): return self.visible
+        class Frame:
+            def __init__(self, visible): self.visible = visible
+            def locator(self, selector): return Marker(self.visible)
+            def get_by_text(self, pattern): return Marker(False)
+        page = Page()
+        page.frames = [Frame(True)]
+        self.assertTrue(visible_challenge(page))
+        page.frames = [Frame(False)]
+        self.assertFalse(visible_challenge(page))
+
+    def test_stuck_chat_deadline_records_failure_without_send(self):
+        clock = [100.0]
+        context = Context()
+        def original(context, name):
+            page = context.new_page()
+            clock[0] += 46
+            page.control.check()
+            self.fail('Expired creator must not reach Send')
+        with patch('messaging_navigation.time.monotonic', side_effect=lambda: clock[0]):
+            result = send_with_navigation_retry(original, context, 'stuck', SELECTOR, max_attempts=None, should_stop=lambda: False)
+        self.assertEqual(result[0], 'FAILED')
+        self.assertIn('Readiness wait expired', result[1])
+        self.assertEqual(context.page.send_calls, 0)
+
     def test_chat_readiness_and_one_tab_reused_for_multiple_recipients(self):
         context, session = Context(), {}
         self.assertEqual(send_with_navigation_retry(clicked, context, 'one', SELECTOR, session=session)[0], 'SEND_ATTEMPTED')

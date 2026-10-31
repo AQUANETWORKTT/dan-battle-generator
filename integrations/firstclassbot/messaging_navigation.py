@@ -1,5 +1,7 @@
 """Wait for chat readiness rather than TikTok's full-page load; retry only before Send."""
 from urllib.parse import urlparse
+import time
+import re
 from messaging_wait import WaitControl, ReadyLocator, RecipientLocator, UserStopped
 
 
@@ -111,6 +113,11 @@ class ChatPage:
     def wait_for_url(self, pattern, **kwargs):
         if "business-suite/messages" not in str(pattern):
             return self.page.wait_for_url(pattern, **kwargs)
+        if self.control:
+            # Message was clicked. Give the chat six seconds, including its
+            # frame, recipient verification and composer readiness.
+            self.control.deadline = time.monotonic() + 6
+            self.state['deadline'] = self.control.deadline
         # The Message button can render the conversation before analytics/media finish loading.
         if urlparse(self.page.url).hostname not in {"www.tiktok.com", "tiktok.com", "business.tiktok.com"}:
             raise RuntimeError("The message page left TikTok; no message was sent.")
@@ -126,9 +133,10 @@ class ChatPage:
 
 
 class ChatContext:
-    def __init__(self, context, selector, session, should_stop=None, report=None):
+    def __init__(self, context, selector, session, should_stop=None, report=None, deadline=None):
         self.context, self.selector, self.session = context, selector, session
         self.should_stop, self.report = should_stop, report
+        self.deadline = deadline
         self.state = {"attempted": False, "completed": False}
 
     def __getattr__(self, name):
@@ -139,18 +147,36 @@ class ChatContext:
         if page is None or page.is_closed():
             page = self.context.new_page()
             self.session["page"] = page
-        control = WaitControl(page, self.should_stop, self.report) if self.should_stop else None
+        control = WaitControl(page, self.should_stop, self.report, deadline=self.deadline) if self.should_stop else None
         return ChatPage(page, self.selector, self.state, control)
+
+
+def visible_challenge(page):
+    """Best-effort visible challenge check. Unknown detection prevents refresh."""
+    try:
+        for frame in page.frames:
+            markers = (
+                frame.locator('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [id*="captcha"], [class*="captcha"]'),
+                frame.get_by_text(re.compile(r'recaptcha|verify (?:that )?you(?: are|’re|\'re) human|complete the captcha', re.I)),
+            )
+            for marker in markers:
+                if any(marker.nth(index).is_visible() for index in range(min(marker.count(), 10))):
+                    return True
+        return False
+    except Exception:
+        return None
 
 
 def send_with_navigation_retry(original, context, username, selector, max_attempts=2, session=None, should_stop=None, report=None):
     session = session if session is not None else {}
     attempt = 0
+    refreshed = False
+    deadline = time.monotonic() + 45 if should_stop else None
     while max_attempts is None or attempt < max_attempts:
         if should_stop and should_stop():
             return 'CANCELLED', 'Stopped by you before Send.'
         attempt += 1
-        tracked = ChatContext(context, selector, session, should_stop, report)
+        tracked = ChatContext(context, selector, session, should_stop, report, deadline)
         try:
             status, detail = original(tracked, username)
         except Exception as error:
@@ -161,11 +187,29 @@ def send_with_navigation_retry(original, context, username, selector, max_attemp
             return "SEND_ATTEMPTED", "Send was invoked but completion is uncertain; continuing without retry."
         if should_stop and should_stop():
             return 'CANCELLED', 'Stopped by you before Send.'
+        active_deadline = tracked.state.get('deadline', deadline)
+        if active_deadline is not None and time.monotonic() >= active_deadline:
+            page = session.get('page')
+            challenge = visible_challenge(page) if page is not None and not page.is_closed() else None
+            if challenge:
+                return 'FAILED', 'Visible CAPTCHA challenge; skipping creator without refreshing or sending.'
+            if not refreshed and challenge is False:
+                refreshed = True
+                if report:
+                    report('Readiness wait expired (six seconds for chat). Refreshing once, then trying this creator again.')
+                try:
+                    page.reload(wait_until='commit', timeout=1000)
+                except Exception as error:
+                    if 'timeout' not in type(error).__name__.lower():
+                        return 'FAILED', 'Refresh failed before Send; moving to the next creator.'
+                deadline = time.monotonic() + 45
+                continue
+            return 'FAILED', 'Readiness wait expired (six seconds for chat); no Send invoked. Moving to next creator.'
         if max_attempts is None and status not in {'SENT','SEND_ATTEMPTED','SKIPPED'}:
             page = session.get('page')
             if page is not None and page.is_closed():
                 return 'CANCELLED', 'You closed the messaging browser.'
-            # Readiness waits remain cancellable and unbounded inside the proxies.
+            # Readiness waits share the per-recipient deadline inside the proxies.
             # A completed adapter failure (such as mismatched composer text) is
             # recorded once and returned so the list can move to the next name.
             return status, detail

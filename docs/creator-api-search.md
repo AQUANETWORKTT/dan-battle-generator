@@ -104,6 +104,12 @@ Completed per-recipient errors, including composer text mismatch, are recorded a
 
 Skip person cancels the current recipient's readiness wait and advances the list without ending the run. A Send already invoked stays recorded as an attempt and is not retried. It does not refresh or solve CAPTCHA challenges.
 
+Update: the GUI now gives each creator a shared 45-second readiness budget, replacing the indefinite waiting behavior described above. If the profile, chat, composer or recipient checks remain stuck, it records FAILED before Send and advances to the next creator. Stop and Skip person still cancel sooner. Send-attempt tracking takes priority over expiry so a possible send is never retried or mislabeled as a pre-send failure. No refresh loop or CAPTCHA bypass is performed.
+
+Stuck-chat recovery: after the first 45-second readiness expiry, check for visible CAPTCHA markers/text across loaded frames. A normal stuck page gets one refresh and one further 45-second attempt, then moves on. A visible challenge, an unreadable challenge check, or a failed refresh is skipped instead. Challenge detection is best-effort, not a guarantee of recognizing every TikTok challenge. No refresh is attempted after Send has been invoked.
+
+Chat timing update: after clicking Message, the chat frame, recipient and composer share a six-second readiness limit. If that expires, an ordinary stuck chat gets one refresh and another attempt, with the same six-second chat limit. Profile opening retains its separate 45-second cap. Visible CAPTCHA challenges are skipped without refreshing. This replaces the earlier 45-second chat wait; it is a fixed chat budget, not visual progress detection.
+
 Startup now opens the inbox directly and reuses that initial tab, closing other tabs in this dedicated messaging profile after the user signs in. The video home feed no longer remains in the background. After a completed Send click, a controlled adapter exit skips the old eight-second delivery-bubble wait and records SEND_ATTEMPTED. This reduces bot-side waiting; it does not speed up TikTok's servers or claim verified delivery. Selecting a new recipient still uses their profile's Message button and can reload the inbox. Persistent in-inbox recipient switching has not been implemented or verified.
 
 ## Eligibility changes and diamond ordering
