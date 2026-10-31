@@ -92,6 +92,10 @@ This mode imports the existing FirstClassBot messaging adapter without starting 
 
 This mode was tested with fixtures; no real messages were sent during implementation. Actual recipient/confirmation selectors are inherited from the existing bot and may require an update if TikTok changes its UI. The contact-history sync picks up the resulting original bot records. Website downloads and scans never themselves authorise or trigger messaging.
 
+If automatic confirmation returns UNKNOWN, the conversation now remains open and the local window asks the user whether the message is visibly sent. Yes records a user-confirmed SENT and continues without resending; No stops and retains the uncertain reservation. A stop request bypasses this prompt. This is a manual fallback, not a claim that automatic detection has been verified against TikTok's current UI. The specific lucianlung9 record was marked SENT only after the user explicitly confirmed seeing the message in the conversation.
+
+Available export cards also provide Copy TXT. Copy TXT and TXT/CSV downloads share the same descending-diamond ordering, deduplication and unknown-last handling; the pasted-list sender preserves the pasted order.
+
 ## Eligibility changes and diamond ordering
 
 The Eligibility Changes section reads the confirmed Available/Ineligible records already retained in all saved scan jobs. No extra SQL migration, API key or history table is required. It paginates through all stored jobs, ignores Failed/Pending states, and compares each creator's consecutive confirmed observations. First sightings establish a baseline. It reports Ineligible → Available (including Premium), and confirmed Regular → Premium upgrades. Unknown invitation type → Premium alone does not prove an upgrade.

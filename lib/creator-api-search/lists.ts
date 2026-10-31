@@ -5,6 +5,10 @@ export function sortByDiamonds<T extends {username:string;diamonds?:number|null}
  return [...rows].sort((a,b)=>{const left=value(a),right=value(b);if(left===null&&right!==null)return 1;if(left!==null&&right===null)return -1;return (right??0)-(left??0)||a.username.localeCompare(b.username,'en');});
 }
 
+export function orderedUsernames(names:string[],totals:Record<string,number|null|undefined>):string[]{
+ return sortByDiamonds([...new Set(names)].map(username=>({username,diamonds:totals[username]??null}))).map(row=>row.username);
+}
+
 export function availableLists<T extends {username:string;diamonds?:number|null}>(rows:T[],eligibility:Record<string,Eligibility>,contacts:Contact[]){
  const blocked=new Set(contacts.map(row=>row.username));
  const all=sortByDiamonds(rows.filter(row=>eligibility[row.username]?.status==='Available'&&Boolean(eligibility[row.username]?.checkedAt)));

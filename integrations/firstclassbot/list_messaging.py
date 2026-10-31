@@ -95,6 +95,7 @@ def main():
     def run(names, message):
         try:
             from playwright.sync_api import sync_playwright
+            from message_review import ReviewContext
             bot = load_existing_bot()
             bot.init_database()
             with sync_playwright() as playwright:
@@ -111,8 +112,21 @@ def main():
                     for name in names:
                         if stop.is_set():
                             break
-                        status, detail = send_one(bot, context, name, message)
+                        review = ReviewContext(context)
+                        status, detail = send_one(bot, review, name, message)
                         report(f"@{name}: {status} — {detail}")
+                        if status == "UNKNOWN" and not stop.is_set():
+                            response = {"event": threading.Event(), "confirmed": False}
+                            report("The conversation is still open. Confirm only if you can see this message as sent.")
+                            events.put(("review", (name, response)))
+                            while not response["event"].wait(0.25):
+                                if stop.is_set():
+                                    break
+                            if response["confirmed"] and not stop.is_set():
+                                bot.record_message(name, "SENT", "Confirmed by the user in the visible TikTok conversation.")
+                                status = "SENT"
+                                report(f"@{name}: SENT — confirmed by you; no resend was performed.")
+                        review.close_review_pages()
                         if status not in {"SENT", "SKIPPED"}:
                             report("Stopped because delivery was not confirmed. Review this conversation in TikTok; it will not be retried automatically.")
                             stop.set()
@@ -170,6 +184,13 @@ def main():
                 log.configure(state="disabled")
             elif kind == "login":
                 login_button.configure(state="normal")
+            elif kind == "review":
+                name, response = value
+                if stop.is_set():
+                    response["event"].set()
+                    continue
+                response["confirmed"] = messagebox.askyesno("Confirm this message", f"Check the open TikTok conversation with @{name}.\n\nCan you see the approved message as sent?\n\nYes records it as sent and continues without resending. No stops the list and leaves it unconfirmed.")
+                response["event"].set()
             elif kind == "done":
                 state["running"] = False
                 start_button.configure(state="normal")

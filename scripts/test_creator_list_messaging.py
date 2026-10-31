@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "integrations" / "firstclassbot"))
 import list_messaging as sender
+from message_review import ReviewContext
 
 
 class FakeBot:
@@ -78,6 +79,20 @@ class MessagingTests(unittest.TestCase):
         self.assertIn("some huge creators on here 🤝", text)
         self.assertIn("🚀", text)
         self.assertTrue(text.endswith("if you’re interested 🙌"))
+
+    def test_uncertain_conversation_is_kept_open_until_review_cleanup(self):
+        class Page:
+            closed = False
+            def is_closed(self): return self.closed
+            def close(self): self.closed = True
+        class Context:
+            def new_page(self): return Page()
+        review = ReviewContext(Context())
+        proxy = review.new_page()
+        proxy.close()
+        self.assertFalse(proxy.is_closed())
+        review.close_review_pages()
+        self.assertTrue(proxy.is_closed())
 
 
 if __name__ == "__main__":
