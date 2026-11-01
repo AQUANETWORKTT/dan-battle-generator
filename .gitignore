@@ -42,3 +42,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Private local profile reviews and their separate browser session
+/integrations/firstclassbot/profile_review_data/
+/integrations/firstclassbot/browser_profile_review/

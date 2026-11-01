@@ -118,6 +118,16 @@ Current chat timeout: 12 seconds per attempt, replacing six seconds. This covers
 
 Latest update: the chat budget is now **20 seconds per attempt**, replacing 12. Before entering text, the composer is explicitly clicked and its focus checked. If focus fails or the page drops the input, focus/fill/readback is retried within the same budget; fill replaces text rather than appending. Send remains gated by the existing recipient and complete-text checks. One same-conversation refresh is retained, with no retry of an attempted Send.
 
+### View-only profile review
+
+Open `integrations/firstclassbot/Start Profile Review.cmd`, or restart the existing pasted-list panel and press **View mode · review & tag profiles**. The embedded entry copies the pasted names. Stop an active messaging run before switching from that panel.
+
+Paste usernames, start viewing, tick Girl/Boy/Foreign/High potential, and press **Complete & next**. The default holds each profile until that action or Next; Previous, Pause/Resume and Stop are provided. Girl and Boy are mutually exclusive, while Foreign and High potential are independent manual tags. The optional auto-advance checkbox visits the next loaded profile after two active seconds. Paused time does not consume that interval. Tags are disabled during navigation so a click cannot attach to a different creator. Completion is explicit; visiting or skipping a profile does not complete its review.
+
+The completed saved lists can be filtered to Girls, Boys, Foreign or Unmarked, optionally requiring High potential. Copy list and TXT export contain usernames; CSV includes their tags. Tags save immediately and survive reopening; Complete marks the record eligible for these completed-result exports. Data is local to this computer under `integrations/firstclassbot/profile_review_data/reviews.sqlite3` and is excluded from Git, as is the separate review browser profile. No new environment variables or SQL migration is needed.
+
+This mode never loads the messaging adapter, opens a message composer, sends invitations or messages, reads previous-message filters, or changes messaging/contact history. It uses its own review database only; viewing someone does not mark them as messaged. Existing real message history remains unchanged. Sign into TikTok manually if the separate review browser needs it; redirects away from the requested profile are not presented as a loaded creator. Tests cover profile-only navigation, manual/automatic advancement, pause timing, saved tags, completion, exports and redirects. The new panel was also visually checked on Windows.
+
 Startup now opens the inbox directly and reuses that initial tab, closing other tabs in this dedicated messaging profile after the user signs in. The video home feed no longer remains in the background. After a completed Send click, a controlled adapter exit skips the old eight-second delivery-bubble wait and records SEND_ATTEMPTED. This reduces bot-side waiting; it does not speed up TikTok's servers or claim verified delivery. Selecting a new recipient still uses their profile's Message button and can reload the inbox. Persistent in-inbox recipient switching has not been implemented or verified.
 
 ## Eligibility changes and diamond ordering
