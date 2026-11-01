@@ -1,5 +1,7 @@
 """Cancellable readiness waits with a shared per-recipient deadline."""
 import time
+import re
+import unicodedata
 
 
 class UserStopped(Exception):
@@ -63,6 +65,23 @@ class ReadyLocator:
     def fill(self, value, **kwargs):
         kwargs["timeout"] = 1000
         return self.control.call(lambda: self.locator.fill(value, **kwargs), "Waiting for the message composer.")
+
+
+def comparable_message(value):
+    # contenteditable innerText can collapse paragraph breaks and NBSPs.
+    # Preserve actual words, punctuation and emoji; normalize whitespace only.
+    return re.sub(r'\s+', ' ', unicodedata.normalize('NFC', value or '')).strip()
+
+
+class ComposerLocator(ReadyLocator):
+    def fill(self, value, **kwargs):
+        self.expected = value
+        return super().fill(value, **kwargs)
+
+    def inner_text(self, **kwargs):
+        actual = self.locator.inner_text(timeout=1000, **kwargs)
+        expected = getattr(self, 'expected', None)
+        return expected if expected is not None and comparable_message(actual) == comparable_message(expected) else actual
 
 
 class RecipientLocator(ReadyLocator):

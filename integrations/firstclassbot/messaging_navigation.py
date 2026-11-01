@@ -2,7 +2,7 @@
 from urllib.parse import urlparse
 import time
 import re
-from messaging_wait import WaitControl, ReadyLocator, RecipientLocator, UserStopped
+from messaging_wait import WaitControl, ReadyLocator, RecipientLocator, ComposerLocator, UserStopped
 
 
 class SendClickCompleted(Exception):
@@ -45,6 +45,11 @@ class ChatFrame:
 
     def get_by_role(self, role, **kwargs):
         locator = self.frame.get_by_role(role, **kwargs)
+        if role == 'textbox' and kwargs.get('name') == 'Send a message...' and self.control:
+            restriction = self.frame.get_by_text(re.compile(r'You can only send 1 message until', re.I))
+            if any(restriction.nth(i).is_visible() for i in range(min(restriction.count(), 5))):
+                raise UserStopped('TikTok limits this conversation to one pending message request; no additional message sent.')
+            return ComposerLocator(locator, self.control)
         if role == "button" and kwargs.get("name") == "Send":
             if self.control:
                 self.control.check()
@@ -58,28 +63,38 @@ class ChatFrame:
 
 
 class ChatElement:
-    def __init__(self, element, state, control=None):
+    def __init__(self, element, state, control=None, page=None):
         self.element, self.state, self.control = element, state, control
+        self.page = page
+
+    def regular_messages(self):
+        return self.page is not None and urlparse(self.page.url).path.rstrip('/') == '/messages'
+
+    def current_element(self):
+        return self.page.get_by_role('textbox', name='Send a message...') if self.regular_messages() else self.element
 
     def __getattr__(self, name):
         return getattr(self.element, name)
 
     @property
     def first(self):
-        return ReadyLocator(self.element.first, self.control) if self.control else self.element.first
+        element = self.current_element()
+        return ReadyLocator(element.first, self.control) if self.control else element.first
 
     def count(self):
         if not self.control:
-            return self.element.count()
+            return self.current_element().count()
         while True:
             self.control.check()
-            count = self.control.call(self.element.count, "Waiting for the conversation frame.")
+            count = self.control.call(lambda: self.current_element().count(), "Waiting for the conversation frame.")
             if count == 1:
                 return count
             self.control.pause("Waiting for a single unambiguous conversation frame.")
 
     @property
     def content_frame(self):
+        if self.regular_messages():
+            return ChatFrame(self.page, self.state, self.control)
         return ChatFrame(self.element.content_frame, self.state, self.control)
 
 
@@ -95,6 +110,12 @@ class ChatPage:
         pass
 
     def goto(self, url, **kwargs):
+        resume = self.state.get('resume')
+        if resume:
+            if url != resume['profile_url'] or self.page.url != resume['chat_url']:
+                raise UserStopped('Refreshed conversation changed unexpectedly; skipping without Send.')
+            return None
+        self.state['profile_url'] = url
         if not self.control:
             return self.page.goto(url, **kwargs)
         self.control.check()
@@ -107,6 +128,8 @@ class ChatPage:
         return self.control.call(lambda: self.page.wait_for_url(url, wait_until="domcontentloaded", timeout=1000), "TikTok is still loading the profile.")
 
     def get_by_role(self, role, **kwargs):
+        if self.state.get('resume') and role == 'button' and kwargs.get('name') == 'Message':
+            return ResumedMessageButton(self.page, self.state['resume']['chat_url'], self.control)
         locator = self.page.get_by_role(role, **kwargs)
         return ReadyLocator(locator, self.control) if self.control else locator
 
@@ -121,23 +144,37 @@ class ChatPage:
         # The Message button can render the conversation before analytics/media finish loading.
         if urlparse(self.page.url).hostname not in {"www.tiktok.com", "tiktok.com", "business.tiktok.com"}:
             raise RuntimeError("The message page left TikTok; no message was sent.")
-        locator = self.page.locator(self.selector).first
         if self.control:
-            ReadyLocator(locator, self.control).wait_for(state="visible")
+            def ready_surface():
+                element = self.page.get_by_role('textbox', name='Send a message...') if urlparse(self.page.url).path.rstrip('/') == '/messages' else self.page.locator(self.selector)
+                element.first.wait_for(state='visible', timeout=1000)
+            self.control.call(ready_surface, 'The conversation is still loading.')
         else:
-            locator.wait_for(state="visible", timeout=30000)
+            self.page.locator(self.selector).first.wait_for(state="visible", timeout=30000)
 
     def locator(self, selector):
         locator = self.page.locator(selector)
-        return ChatElement(locator, self.state, self.control) if selector == self.selector else locator
+        return ChatElement(locator, self.state, self.control, self.page) if selector == self.selector else locator
+
+
+class ResumedMessageButton:
+    """Already in the refreshed recipient chat; do not click Message again."""
+    def __init__(self, page, chat_url, control):
+        self.page, self.chat_url, self.control = page, chat_url, control
+
+    def click(self, **kwargs):
+        if self.control:
+            self.control.check()
+        if self.page.url != self.chat_url:
+            raise UserStopped('Refreshed conversation changed unexpectedly; skipping without Send.')
 
 
 class ChatContext:
-    def __init__(self, context, selector, session, should_stop=None, report=None, deadline=None):
+    def __init__(self, context, selector, session, should_stop=None, report=None, deadline=None, resume=None):
         self.context, self.selector, self.session = context, selector, session
         self.should_stop, self.report = should_stop, report
         self.deadline = deadline
-        self.state = {"attempted": False, "completed": False}
+        self.state = {"attempted": False, "completed": False, 'resume': resume}
 
     def __getattr__(self, name):
         return getattr(self.context, name)
@@ -171,12 +208,13 @@ def send_with_navigation_retry(original, context, username, selector, max_attemp
     session = session if session is not None else {}
     attempt = 0
     refreshed = False
+    resume = None
     deadline = time.monotonic() + 45 if should_stop else None
     while max_attempts is None or attempt < max_attempts:
         if should_stop and should_stop():
             return 'CANCELLED', 'Stopped by you before Send.'
         attempt += 1
-        tracked = ChatContext(context, selector, session, should_stop, report, deadline)
+        tracked = ChatContext(context, selector, session, should_stop, report, deadline, resume)
         try:
             status, detail = original(tracked, username)
         except Exception as error:
@@ -198,6 +236,10 @@ def send_with_navigation_retry(original, context, username, selector, max_attemp
                 if report:
                     report('Readiness wait expired (six seconds for chat). Refreshing once, then trying this creator again.')
                 try:
+                    parsed = urlparse(page.url)
+                    profile_url = tracked.state.get('profile_url') or (resume or {}).get('profile_url')
+                    if parsed.hostname in {'www.tiktok.com', 'tiktok.com'} and parsed.path in {'/messages', '/business-suite/messages'} and profile_url:
+                        resume = {'profile_url': profile_url, 'chat_url': page.url}
                     page.reload(wait_until='commit', timeout=1000)
                 except Exception as error:
                     if 'timeout' not in type(error).__name__.lower():

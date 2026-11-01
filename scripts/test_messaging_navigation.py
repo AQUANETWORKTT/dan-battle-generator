@@ -48,6 +48,47 @@ def clicked(context, name):
 
 
 class NavigationTests(unittest.TestCase):
+    def test_regular_messages_uses_page_composer_without_iframe(self):
+        from messaging_navigation import ChatPage
+        from messaging_wait import WaitControl
+        class RootPage(Page):
+            url = 'https://www.tiktok.com/messages?u=123'
+            def get_by_role(self, *args, **kwargs): return Locator(self)
+        page = RootPage()
+        proxy = ChatPage(page, SELECTOR, {}, WaitControl(page, lambda: False))
+        proxy.wait_for_url('**/business-suite/messages**')
+        self.assertIs(proxy.locator(SELECTOR).content_frame.frame, page)
+        self.assertEqual(page.ready_checks, 1)
+
+    def test_refresh_reuses_exact_conversation_without_reopening_profile(self):
+        from messaging_navigation import ChatPage
+        from messaging_wait import WaitControl
+        page = Page()
+        page.url = 'https://www.tiktok.com/messages?u=123'
+        page.goto = lambda *args, **kwargs: self.fail('Must not navigate to profile after chat refresh')
+        state = {'resume': {'profile_url': 'https://www.tiktok.com/@one', 'chat_url': page.url}}
+        proxy = ChatPage(page, SELECTOR, state, WaitControl(page, lambda: False))
+        proxy.goto('https://www.tiktok.com/@one')
+        proxy.get_by_role('button', name='Message', exact=True).click()
+        self.assertEqual(page.send_calls, 0)
+        page.url = 'https://www.tiktok.com/messages?u=999'
+        with self.assertRaises(Exception):
+            proxy.goto('https://www.tiktok.com/@one')
+
+    def test_composer_whitespace_is_normalized_without_ignoring_wrong_text(self):
+        from messaging_wait import ComposerLocator, WaitControl
+        class Editor:
+            text = ''
+            def fill(self, text, **kwargs): self.text = text.replace('\n\n', '\n').replace(' ', '\u00a0')
+            def inner_text(self, **kwargs): return self.text
+        editor = Editor()
+        proxy = ComposerLocator(editor, WaitControl(Page(), lambda: False))
+        expected = 'Hello 👀\n\nSecond paragraph 🤝'
+        proxy.fill(expected)
+        self.assertEqual(proxy.inner_text(), expected)
+        editor.text = 'Different message'
+        self.assertEqual(proxy.inner_text(), 'Different message')
+
     def test_message_page_uses_six_seconds_then_one_refresh_and_skip(self):
         clock, budgets, refreshes = [100.0], [], []
         context = Context()
