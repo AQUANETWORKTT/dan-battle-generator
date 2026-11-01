@@ -27,7 +27,7 @@ class WaitControl:
     def pause(self, reason):
         self.check()
         if self.report and time.monotonic() - self.last_report > 15:
-            self.report(reason + " Chat has a six-second limit, then one refresh before skipping. You can also use Skip person or Stop.")
+            self.report(reason + " Chat has a 12-second limit, then one refresh before skipping. You can also use Skip person or Stop.")
             self.last_report = time.monotonic()
         self.page.wait_for_timeout(200)
         self.check()

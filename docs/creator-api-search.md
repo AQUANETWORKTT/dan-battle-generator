@@ -114,6 +114,8 @@ The retry now resumes the exact refreshed chat URL and bypasses the legacy profi
 
 A live draft-only check in a loaded conversation on 1 November 2026 passed composer entry and verification; Send was intercepted and disabled, the draft was cleared, and no contact-history records were changed. The adapter also supports the regular `/messages` page's top-level composer instead of requiring a Business Suite iframe. Live checking showed that some chats take longer than the requested six-second budget to become usable, so those still refresh once and skip if late.
 
+Current chat timeout: 12 seconds per attempt, replacing six seconds. This covers chat loading, recipient checks and composer readiness; the single refresh stays on the same conversation and gets another 12 seconds. Sending still requires recipient and text verification. Completed or uncertain Send invocations are recorded before advancing and are never refreshed or retried as loading failures.
+
 Startup now opens the inbox directly and reuses that initial tab, closing other tabs in this dedicated messaging profile after the user signs in. The video home feed no longer remains in the background. After a completed Send click, a controlled adapter exit skips the old eight-second delivery-bubble wait and records SEND_ATTEMPTED. This reduces bot-side waiting; it does not speed up TikTok's servers or claim verified delivery. Selecting a new recipient still uses their profile's Message button and can reload the inbox. Persistent in-inbox recipient switching has not been implemented or verified.
 
 ## Eligibility changes and diamond ordering

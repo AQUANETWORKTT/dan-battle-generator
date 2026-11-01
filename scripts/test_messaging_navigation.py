@@ -89,7 +89,7 @@ class NavigationTests(unittest.TestCase):
         editor.text = 'Different message'
         self.assertEqual(proxy.inner_text(), 'Different message')
 
-    def test_message_page_uses_six_seconds_then_one_refresh_and_skip(self):
+    def test_message_page_uses_twelve_seconds_then_one_refresh_and_skip(self):
         clock, budgets, refreshes = [100.0], [], []
         context = Context()
         context.page.reload = lambda **kwargs: refreshes.append(kwargs)
@@ -97,11 +97,11 @@ class NavigationTests(unittest.TestCase):
             page = context.new_page()
             page.wait_for_url('**/business-suite/messages**')
             budgets.append(page.control.deadline - clock[0])
-            clock[0] += 7
+            clock[0] += 13
             page.control.check()
         with patch('messaging_navigation.time.monotonic', side_effect=lambda: clock[0]), patch('messaging_navigation.visible_challenge', return_value=False):
             result = send_with_navigation_retry(original, context, 'stuck', SELECTOR, max_attempts=None, should_stop=lambda: False)
-        self.assertEqual(budgets, [6, 6])
+        self.assertEqual(budgets, [12, 12])
         self.assertEqual(len(refreshes), 1)
         self.assertEqual(result[0], 'FAILED')
         self.assertEqual(context.page.send_calls, 0)
