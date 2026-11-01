@@ -2,12 +2,31 @@
 import queue
 import sqlite3
 import threading
+import time
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
+
+
+def wait_for_posts(page, stop, timeout=10):
+    """Wait for actual visible video tiles, not just the profile HTML shell."""
+    if getattr(page, 'inspect_available', True) is False:
+        return 'opened'
+    deadline = time.monotonic() + timeout
+    while not stop.is_set() and not page.is_closed():
+        error = page.get_by_text('Something went wrong', exact=True)
+        if any(error.nth(i).is_visible() for i in range(min(error.count(), 5))):
+            return 'error'
+        videos = page.locator('a[href*="/video/"]')
+        if any(videos.nth(i).is_visible() for i in range(min(videos.count(), 30))):
+            return 'ready'
+        if time.monotonic() >= deadline:
+            return 'unconfirmed'
+        page.wait_for_timeout(200)
+    return 'stopped'
 
 
 class ReviewStore:
@@ -18,13 +37,15 @@ class ReviewStore:
             db.execute('CREATE TABLE IF NOT EXISTS reviews(username TEXT PRIMARY KEY, gender TEXT, foreign_profile INTEGER NOT NULL DEFAULT 0, potential INTEGER NOT NULL DEFAULT 0, viewed_at TEXT NOT NULL, completed INTEGER NOT NULL DEFAULT 0)')
             if 'completed' not in {row[1] for row in db.execute('PRAGMA table_info(reviews)')}:
                 db.execute('ALTER TABLE reviews ADD COLUMN completed INTEGER NOT NULL DEFAULT 0')
+            if 'gamer' not in {row[1] for row in db.execute('PRAGMA table_info(reviews)')}:
+                db.execute('ALTER TABLE reviews ADD COLUMN gamer INTEGER NOT NULL DEFAULT 0')
 
     def viewed(self, username):
         with closing(sqlite3.connect(self.filename)) as db, db:
             db.execute('INSERT INTO reviews(username,viewed_at) VALUES(?,?) ON CONFLICT(username) DO UPDATE SET viewed_at=excluded.viewed_at', (username, datetime.now(timezone.utc).isoformat()))
 
     def tag(self, username, field):
-        if field not in {'girl', 'boy', 'foreign_profile', 'potential'}:
+        if field not in {'girl', 'boy', 'foreign_profile', 'potential', 'gamer'}:
             raise ValueError('Unknown review tag')
         # Update one field only so other tags and the viewed date are preserved.
         self.viewed(username)
@@ -43,7 +64,7 @@ class ReviewStore:
         with closing(sqlite3.connect(self.filename)) as db:
             db.row_factory = sqlite3.Row
             rows = [dict(row) for row in db.execute('SELECT * FROM reviews ORDER BY username')]
-        return [r for r in rows if (category == 'All' or category == 'Girls' and r['gender'] == 'girl' or category == 'Boys' and r['gender'] == 'boy' or category == 'Foreign' and r['foreign_profile'] or category == 'Unmarked' and not r['gender'] and not r['foreign_profile'] and not r['potential']) and (not potential_only or r['potential']) and (not completed_only or r['completed'])]
+        return [r for r in rows if (category == 'All' or category == 'Girls' and r['gender'] == 'girl' or category == 'Boys' and r['gender'] == 'boy' or category == 'Foreign' and r['foreign_profile'] or category == 'Gamer' and r['gamer'] or category == 'Unmarked' and not r['gender'] and not r['foreign_profile'] and not r['potential'] and not r['gamer']) and (not potential_only or r['potential']) and (not completed_only or r['completed'])]
 
 
 def review_profiles(page, names, stop, paused, commands, publish, seconds=2, auto_advance=None):
@@ -63,6 +84,16 @@ def review_profiles(page, names, stop, paused, commands, publish, seconds=2, aut
             page.goto('https://www.tiktok.com/@' + name, wait_until='domcontentloaded', timeout=20000)
             if urlsplit(page.url).path.rstrip('/').lower() != '/@' + name.lower():
                 raise RuntimeError('TikTok did not open the requested profile.')
+            posts = wait_for_posts(page, stop)
+            if posts == 'error':
+                if not publish('retry_posts', name):
+                    break
+                page.reload(wait_until='domcontentloaded', timeout=20000)
+                if urlsplit(page.url).path.rstrip('/').lower() != '/@' + name.lower():
+                    raise RuntimeError('Profile changed during refresh.')
+                posts = wait_for_posts(page, stop)
+            if posts == 'stopped':
+                break
         except Exception:
             if not publish('error', name):
                 break
@@ -70,6 +101,12 @@ def review_profiles(page, names, stop, paused, commands, publish, seconds=2, aut
             continue
         if not publish('profile', (name, index + 1, len(names))):
             break
+        if posts == 'opened':
+            if not publish('normal_browser', name):
+                break
+        elif posts != 'ready':
+            if not publish('posts_warning', name):
+                break
         elapsed, direction = 0.0, 1
         while not stop.is_set():
             if page.is_closed():
@@ -79,7 +116,7 @@ def review_profiles(page, names, stop, paused, commands, publish, seconds=2, aut
                 break
             except queue.Empty:
                 pass
-            if auto_advance is not None and auto_advance.is_set() and elapsed >= seconds and not paused.is_set():
+            if posts in {'ready','opened'} and auto_advance is not None and auto_advance.is_set() and elapsed >= seconds and not paused.is_set():
                 break
             # Pump Playwright events even while paused. Time spent paused does
             # not consume the viewing interval.
@@ -96,7 +133,7 @@ def open_review(parent, initial_text=''):
 
     window = tk.Toplevel(parent)
     window.title('First Class — View mode')
-    window.geometry('490x810+10+40')
+    window.geometry('490x870+10+40')
     window.configure(bg='#101015')
     try:
         store = ReviewStore(ROOT / 'profile_review_data' / 'reviews.sqlite3')
@@ -106,7 +143,7 @@ def open_review(parent, initial_text=''):
         return
     stop, paused, auto_advance = threading.Event(), threading.Event(), threading.Event()
     commands, events = queue.Queue(), queue.Queue()
-    state = {'running': False, 'current': None}
+    state = {'running': False, 'current': None, 'error': None}
     title = tk.StringVar(value='Paste profiles, then start viewing')
     status = tk.StringVar(value='Tick your tags, then Complete & next')
     auto_enabled = tk.BooleanVar(value=False)
@@ -123,7 +160,7 @@ def open_review(parent, initial_text=''):
     tag_frame = tk.Frame(window, bg='#101015')
     tag_frame.pack(fill='x', padx=15, pady=12)
     tag_buttons = {}
-    tag_labels = {'girl':'Girl','boy':'Boy','foreign_profile':'Foreign','potential':'High potential'}
+    tag_labels = {'girl':'Girl','boy':'Boy','foreign_profile':'Foreign','potential':'High potential','gamer':'Gamer'}
 
     def filtered():
         return store.rows(category.get(), potential_only.get(), completed_only=True)
@@ -145,7 +182,7 @@ def open_review(parent, initial_text=''):
             except Exception as error:
                 messagebox.showerror('Tag not saved', str(error), parent=window)
 
-    for index, (field, label) in enumerate([('girl', 'Girl'), ('boy', 'Boy'), ('foreign_profile', 'Foreign'), ('potential', 'High potential')]):
+    for index, (field, label) in enumerate(tag_labels.items()):
         button = tk.Button(tag_frame, text=label, command=lambda f=field: tag(f), state='disabled', padx=10, pady=10)
         button.grid(row=index // 2, column=index % 2, sticky='ew', padx=3, pady=3)
         tag_buttons[field] = button
@@ -161,14 +198,10 @@ def open_review(parent, initial_text=''):
 
     def worker(names):
         try:
-            from playwright.sync_api import sync_playwright
-            with sync_playwright() as p:
-                context = p.chromium.launch_persistent_context(str(ROOT / 'browser_profile_review'), headless=False, viewport={'width':1000,'height':850}, args=['--window-position=510,40'])
-                try:
-                    page = context.pages[0] if context.pages else context.new_page()
-                    review_profiles(page, names, stop, paused, commands, publish, auto_advance=auto_advance)
-                finally:
-                    context.close()
+            from normal_browser_review import NormalBrowserReview
+            events.put(('browser_setup', None, None))
+            with NormalBrowserReview(stop) as page:
+                review_profiles(page, names, stop, paused, commands, publish, auto_advance=auto_advance)
         except Exception as error:
             events.put(('fatal', str(error), None))
         finally:
@@ -186,6 +219,7 @@ def open_review(parent, initial_text=''):
         while not commands.empty():
             commands.get_nowait()
         state['running'] = True
+        state['error'] = None
         start_button.configure(state='disabled')
         pause_button.configure(text='Pause')
         names_box.configure(state='disabled')
@@ -229,7 +263,7 @@ def open_review(parent, initial_text=''):
     tk.Label(window, text='SAVED LISTS', bg='#101015', fg='#ffe447', font=('Arial', 12, 'bold')).pack(anchor='w', padx=15, pady=(14, 5))
     filters = tk.Frame(window, bg='#101015')
     filters.pack(fill='x', padx=15)
-    dropdown = ttk.Combobox(filters, textvariable=category, values=['All','Girls','Boys','Foreign','Unmarked'], state='readonly', width=14)
+    dropdown = ttk.Combobox(filters, textvariable=category, values=['All','Girls','Boys','Foreign','Gamer','Unmarked'], state='readonly', width=14)
     dropdown.pack(side='left')
     dropdown.bind('<<ComboboxSelected>>', lambda event: refresh_tags())
     tk.Checkbutton(filters, text='High potential only', variable=potential_only, command=refresh_tags).pack(side='left', padx=8)
@@ -238,15 +272,15 @@ def open_review(parent, initial_text=''):
 
     def copy_list():
         window.clipboard_clear()
-        window.clipboard_append('\n'.join(r['username'] for r in filtered()))
-        status.set('Copied the filtered saved list.')
+        window.clipboard_append(grouped_review_text(store.rows(completed_only=True)))
+        status.set('Copied all completed results in five sections. Foreign creators excluded.')
 
     def export():
-        filename = filedialog.asksaveasfilename(parent=window, defaultextension='.txt', filetypes=[('Username list','*.txt'),('Results with tags','*.csv')], initialfile='reviewed-creators.txt')
+        filename = filedialog.asksaveasfilename(parent=window, defaultextension='.txt', filetypes=[('Grouped results','*.txt'),('Grouped results table','*.csv')], initialfile='reviewed-creators.txt')
         if filename:
             try:
-                export_reviews(filename, filtered())
-                status.set('Saved the filtered username list.')
+                export_reviews(filename, store.rows(completed_only=True))
+                status.set('Saved all completed results in five sections. Foreign creators excluded.')
             except Exception as error:
                 messagebox.showerror('Export failed', str(error), parent=window)
 
@@ -260,7 +294,7 @@ def open_review(parent, initial_text=''):
     tk.Button(exports, text='Copy list', command=copy_list, pady=7).pack(side='left')
     tk.Button(exports, text='Download results', command=export, pady=7).pack(side='left', padx=7)
     tk.Button(exports, text='View filtered list', command=load_filtered, pady=7).pack(side='left')
-    tk.Label(window, text='Girl / Boy are mutually exclusive. Foreign and High potential can be combined with either. Click a highlighted tag again to remove it.', bg='#101015', fg='#b8b8bf', wraplength=455, justify='left').pack(anchor='w', padx=15, pady=15)
+    tk.Label(window, text='Copy/download includes all completed reviews in five sections, regardless of these filters. Foreign creators are always excluded. High potential creators have their own sections; Gamer tags also appear under Gamers.', bg='#101015', fg='#b8b8bf', wraplength=455, justify='left').pack(anchor='w', padx=15, pady=15)
 
     def drain():
         while not events.empty():
@@ -269,7 +303,7 @@ def open_review(parent, initial_text=''):
                 if kind == 'loading':
                     state['current'] = None
                     title.set(f'Loading @{value[0]}')
-                    status.set(f'{value[1]} of {value[2]} · tags disabled until this profile loads')
+                    status.set(f'{value[1]} of {value[2]} · if prompted, click Open profile window in the Chrome controller tab')
                 elif kind == 'profile':
                     store.viewed(value[0])
                     state['current'] = value[0]
@@ -278,7 +312,16 @@ def open_review(parent, initial_text=''):
                 elif kind == 'error':
                     state['current'] = None
                     status.set(f'Could not load @{value}; moving to the next profile.')
+                elif kind == 'retry_posts':
+                    status.set('TikTok could not load the posts. Refreshing this profile once…')
+                elif kind == 'posts_warning':
+                    status.set('Posts could not be confirmed: TikTok may have an error, or this profile may be private/empty. Auto-advance is held; use Next to skip or Complete & next after reviewing.')
+                elif kind == 'normal_browser':
+                    status.set('Opened in your normal Chrome. Inspect the posts, tick tags, then Complete & next. Keep the controller tab open.')
+                elif kind == 'browser_setup':
+                    status.set('Opening normal Chrome. Click Open profile window once in its controller tab, then keep that tab open.')
                 elif kind == 'fatal':
+                    state['error'] = value
                     status.set('Stopped: ' + value)
                 elif kind == 'done':
                     state['running'] = False
@@ -286,7 +329,7 @@ def open_review(parent, initial_text=''):
                     start_button.configure(state='normal')
                     pause_button.configure(text='Pause')
                     names_box.configure(state='normal')
-                    status.set('Viewing stopped or finished. Your tags are saved.')
+                    status.set('Stopped: ' + state['error'] if state['error'] else 'Viewing stopped or finished. Your tags are saved.')
                 refresh_tags()
             except Exception as error:
                 stop.set()
@@ -307,16 +350,32 @@ def open_review(parent, initial_text=''):
     return window
 
 
+def grouped_review_sections(rows):
+    eligible = {r['username']: r for r in rows if r.get('completed') and not r.get('foreign_profile')}
+    ordered = [eligible[name] for name in sorted(eligible)]
+    return [
+        ('Boys', [r['username'] for r in ordered if r.get('gender') == 'boy' and not r.get('potential')]),
+        ('Girls', [r['username'] for r in ordered if r.get('gender') == 'girl' and not r.get('potential')]),
+        ('High potential boys', [r['username'] for r in ordered if r.get('gender') == 'boy' and r.get('potential')]),
+        ('High potential girls', [r['username'] for r in ordered if r.get('gender') == 'girl' and r.get('potential')]),
+        ('Gamers', [r['username'] for r in ordered if r.get('gamer')]),
+    ]
+
+
+def grouped_review_text(rows):
+    return '\n\n'.join(heading + '\n' + '\n'.join(names) for heading, names in grouped_review_sections(rows)).rstrip() + '\n'
+
+
 def export_reviews(filename, rows):
+    sections = grouped_review_sections(rows)
     if Path(filename).suffix.lower() == '.csv':
         import csv
         with Path(filename).open('w', encoding='utf-8-sig', newline='') as output:
             writer = csv.writer(output)
-            writer.writerow(['Username','Girl / Boy','Foreign','High potential'])
-            writer.writerows((r['username'], r['gender'] or '', 'Yes' if r['foreign_profile'] else 'No', 'Yes' if r['potential'] else 'No') for r in rows)
+            writer.writerow(['Section','Username'])
+            writer.writerows((heading, name) for heading, names in sections for name in names)
     else:
-        names = [r['username'] for r in rows]
-        Path(filename).write_text('\n'.join(names) + ('\n' if names else ''), encoding='utf-8')
+        Path(filename).write_text(grouped_review_text(rows), encoding='utf-8')
 
 
 if __name__ == '__main__':

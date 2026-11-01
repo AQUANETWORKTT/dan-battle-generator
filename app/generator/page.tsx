@@ -7,6 +7,7 @@ import * as htmlToImage from "html-to-image";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { FIRST_CLASS_CAPTAINS, FIRST_CLASS_CREATORS, FIRST_CLASS_VICE_CAPTAINS } from "@/lib/first-class-tournament";
+import H2HPosterBuilder from "./H2HPosterBuilder";
 
 type Battle = {
   id: string;
@@ -19,7 +20,7 @@ type Battle = {
   image2: string;
 };
 
-type Mode = "single" | "mass" | "2v2" | "team" | "glory" | "manager";
+type Mode = "single" | "mass" | "h2h" | "2v2" | "team" | "glory" | "manager";
 type TwoVTwoBattle = {
   home1: string; home2: string; away1: string; away2: string;
   image1: string; image2: string; image3: string; image4: string;
@@ -925,6 +926,7 @@ export default function BattleGeneratorPage() {
   const isCrewShowdownWorkspace = workspace === "crew-showdown";
 
   const [activeMode, setActiveMode] = useState<Mode>("single");
+  const [h2hBusy, setH2HBusy] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -933,6 +935,7 @@ export default function BattleGeneratorPage() {
     if (nextWorkspace === "posters") setActiveMode("team");
     else if (nextWorkspace === "crew-showdown" || params.get("mode") === "glory") setActiveMode("glory");
     else if (params.get("mode") === "manager") setActiveMode("manager");
+    else if (params.get("mode") === "h2h") setActiveMode("h2h");
   }, []);
   const [raceToGloryRows, setRaceToGloryRows] = useState<RaceToGloryRow[]>(() =>
     Array.from({ length: 20 }, () => ({ teamName: "", diamonds: "" }))
@@ -1226,7 +1229,7 @@ export default function BattleGeneratorPage() {
     setTemplateStatus(`Loaded ${template.name}.`);
   }
 
-  function switchPosterMode(mode: "single" | "mass" | "2v2") {
+  function switchPosterMode(mode: "single" | "mass" | "h2h" | "2v2") {
     setActiveMode(mode);
     const defaultId = mode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
     const template = templates.find((item) => item.id === defaultId);
@@ -2208,7 +2211,7 @@ export default function BattleGeneratorPage() {
     setMassDate("");
   }
 
-  async function fetchTikTokAvatar(username: string) {
+  async function fetchTikTokAvatar(username: string, signal?: AbortSignal) {
     const cleanUsername = username.replace("@", "").trim().toLowerCase();
     if (!cleanUsername) return "";
     const normalizedUsername = cleanUsername.replace(/[^a-z0-9]/g, "");
@@ -2219,6 +2222,7 @@ export default function BattleGeneratorPage() {
       // Matches the proven Aqua Dashboard lookup: return TikTok's image URL directly.
       const res = await fetch("/api/tiktok-avatar", {
         method: "POST",
+        signal,
         headers: {
           "Content-Type": "application/json",
         },
@@ -2824,13 +2828,15 @@ export default function BattleGeneratorPage() {
   function PosterPreview({
     battle,
     scale = 0.3,
+    h2h = false,
   }: {
     battle: Battle;
     scale?: number;
+    h2h?: boolean;
   }) {
     const combinedDateTime =
       battle.date && battle.time
-        ? `${battle.date} | ${battle.time}`
+        ? `${battle.date}${h2h ? '┃' : ' | '}${battle.time}`
         : battle.date || battle.time;
 
     const activeTemplate = normalizeTemplateJson(templateJson);
@@ -2928,10 +2934,19 @@ function renderText(
 
   const element = activeTemplate[key];
   const isSelected = editMode && selectedElement === key;
-  const fontSize =
+  let fontSize =
     key === "date"
       ? element.fontSize || fallbackSize
       : autoFontSize(value, element, fallbackSize);
+  if (h2h && typeof document !== 'undefined') {
+    const context = document.createElement('canvas').getContext('2d');
+    if (context) {
+      context.font = `${element.fontWeight || 900} ${fontSize}px '${element.fontFamily || 'Luckiest Guy'}'`;
+      const measured = context.measureText(value).width + Math.max(0,value.length-1) * (element.letterSpacing ?? 1);
+      const available = Math.max(1,element.width - 12 - 2*(element.strokeWidth ?? 2));
+      if (measured > available) fontSize = Math.max(10,Math.floor(fontSize * available / measured));
+    }
+  }
 
  const content = (
   <div
@@ -2950,7 +2965,7 @@ function renderText(
       fontSize,
       fontWeight: element.fontWeight || 900,
       textTransform:
-        element.uppercase === false ? "none" : "uppercase",
+        h2h ? "uppercase" : element.uppercase === false ? "none" : "uppercase",
     }}
   >
     <span
@@ -3098,7 +3113,7 @@ function renderText(
 
   function TemplateSelectorPanel({ compact = false }: { compact?: boolean }) {
     const activeDefaultTemplateId = activeMode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
-    const posterTypeLabel = activeMode === "2v2" ? "2v2" : "Single / Mass";
+    const posterTypeLabel = activeMode === "2v2" ? "2v2" : activeMode === "h2h" ? "H2H" : "Single / Mass";
     return (
       <div className={compact ? "space-y-3" : "bg-black/35 border border-cyan-300/20 rounded-xl p-5 space-y-4"}>
         <div className="flex items-center justify-between gap-3">
@@ -4388,6 +4403,7 @@ function renderText(
             <button
               type="button"
               onClick={() => switchPosterMode("single")}
+              disabled={h2hBusy}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "single"
                   ? "bg-yellow-300 text-black"
@@ -4400,6 +4416,7 @@ function renderText(
             <button
               type="button"
               onClick={() => switchPosterMode("mass")}
+              disabled={h2hBusy}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "mass"
                   ? "bg-yellow-300 text-black"
@@ -4409,9 +4426,14 @@ function renderText(
               Mass Poster Generator
             </button>
 
+            <button type="button" onClick={() => switchPosterMode("h2h")} disabled={h2hBusy} className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${activeMode === 'h2h' ? 'bg-yellow-300 text-black' : 'bg-black/40 text-white border border-white/20 hover:border-yellow-300'}`}>
+              H2H Posters
+            </button>
+
             <button
               type="button"
               onClick={() => switchPosterMode("2v2")}
+              disabled={h2hBusy}
               className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${
                 activeMode === "2v2"
                   ? "bg-yellow-300 text-black"
@@ -4693,6 +4715,15 @@ function renderText(
         {activeMode === "glory" && RaceToGloryBuilder()}
           </>
         )}
+        <div hidden={editMode || activeMode !== 'h2h'}>
+          <H2HPosterBuilder
+            templateControls={TemplateSelectorPanel({compact:true})}
+            renderPoster={(battle,scale) => PosterPreview({battle,scale,h2h:true})}
+            getAvatar={fetchTikTokAvatar}
+            exportPoster={makePosterBlob}
+            onBusyChange={setH2HBusy}
+          />
+        </div>
       </div>
     </div>
   );

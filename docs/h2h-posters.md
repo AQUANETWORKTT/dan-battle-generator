@@ -1,0 +1,16 @@
+# H2H posters
+
+Open the existing generator and choose **H2H Posters**, or use `/generator?mode=h2h`. It uses the same login, saved battle templates, template editor and picture lookup as the existing generator. No database migration, new environment variables or separate dashboard is required.
+
+1. Choose a saved poster template and the event day, month and year using dropdowns. Month/year changes clamp invalid days (for example 31 January to 28 February).
+2. Paste a Time / Creator 1 / Creator 2 spreadsheet range, Markdown table, CSV or plain rows. Username spelling, dots and underscores are retained, and all poster text is automatically uppercase. A button loads the supplied 16 matchups for Monday 2 November 2026.
+3. Pasted times are always respected, including five-minute and arbitrary-minute times. For rows without times, enable interval timing and choose a start time and any whole-minute interval. Generated times cannot roll silently into the next day. Individual times can also be edited in the schedule table.
+4. Press **Preview all posters**. This automatically fetches pictures and renders every poster, not just the selected pair. Pictures are fetched once per unique username, sequentially using the existing lookup. Lookup/download failures are shown as labelled drag-and-drop boxes; drop a picture into its creator's box or click to upload. A replacement follows that creator in both orientations and every matchup. Previously loaded pictures are reused.
+5. Review both orientations of every matchup in the gallery. Names and pictures swap together; both posters retain the same date and exact time, formatted as `MONDAY 2ND NOVEMBER┃8:05PM`. The current two-creator template layout is reused; a new custom H2H layout was not supplied.
+6. Download all posters or the selected pair as a ZIP. The 16 supplied matchups produce 32 PNGs. ZIPs include a matchup CSV, and numbered filenames prevent accidental overwrites. A selected pair can download once its own pictures are ready, even if other rows still need pictures.
+
+Invalid names/times, self-matchups and duplicate/reversed pairs at the same time block export. Creators appearing in multiple matchups produce a warning. Missing, broken or timed-out pictures and export failures do not silently produce partial ZIPs. H2H does not import battles into the calendar or send messages. Editing templates uses the existing shared template editor; opening/closing it retains the H2H batch during this page session.
+
+Validation: `npm run test:h2h`, `npx tsc --noEmit`, and `npm run build`. `scripts/check_h2h_ui.py` tests a local production server using fixture templates/pictures: date dropdowns, all 32 automatic full previews, uppercase text, exact 8:07PM, both PNG orientations, ZIP manifest, missing-picture drag/drop reflected on both sides, duplicates, and existing Single/2v2 navigation. Set `TEST_PORTAL_PASSWORD` and optionally `H2H_TEST_URL` (localhost only). Artifacts go under `tmp/h2h-ui`. Live read-only lookups returned pictures for penii1722 and dad.of.286; availability of every other live picture is not assumed.
+
+Main files: `app/generator/page.tsx` (tab and renderer integration), `app/generator/H2HPosterBuilder.tsx` (H2H controls/export), `lib/h2h-posters.ts` (parsing/timing/validation/orientations), `scripts/test-h2h-posters.cjs` and `scripts/check_h2h_ui.py` (checks).
