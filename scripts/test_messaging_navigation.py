@@ -48,6 +48,23 @@ def clicked(context, name):
 
 
 class NavigationTests(unittest.TestCase):
+    def test_composer_retries_focus_and_dropped_input_before_returning(self):
+        from messaging_wait import ComposerLocator, WaitControl
+        class Editor:
+            def __init__(self): self.clicks = 0; self.fills = 0; self.text = ''
+            def click(self, **kwargs): self.clicks += 1
+            def evaluate(self, expression, **kwargs): return self.clicks >= 2
+            def fill(self, value, **kwargs):
+                self.fills += 1
+                if self.fills >= 2: self.text = value
+            def inner_text(self, **kwargs): return self.text
+        editor = Editor()
+        composer = ComposerLocator(editor, WaitControl(Page(), lambda: False))
+        composer.fill('Complete message 👀')
+        self.assertEqual(editor.clicks, 3)
+        self.assertEqual(editor.fills, 2)
+        self.assertEqual(composer.inner_text(), 'Complete message 👀')
+
     def test_regular_messages_uses_page_composer_without_iframe(self):
         from messaging_navigation import ChatPage
         from messaging_wait import WaitControl
@@ -79,6 +96,8 @@ class NavigationTests(unittest.TestCase):
         from messaging_wait import ComposerLocator, WaitControl
         class Editor:
             text = ''
+            def click(self, **kwargs): pass
+            def evaluate(self, expression, **kwargs): return True
             def fill(self, text, **kwargs): self.text = text.replace('\n\n', '\n').replace(' ', '\u00a0')
             def inner_text(self, **kwargs): return self.text
         editor = Editor()
@@ -89,7 +108,7 @@ class NavigationTests(unittest.TestCase):
         editor.text = 'Different message'
         self.assertEqual(proxy.inner_text(), 'Different message')
 
-    def test_message_page_uses_twelve_seconds_then_one_refresh_and_skip(self):
+    def test_message_page_uses_twenty_seconds_then_one_refresh_and_skip(self):
         clock, budgets, refreshes = [100.0], [], []
         context = Context()
         context.page.reload = lambda **kwargs: refreshes.append(kwargs)
@@ -97,11 +116,11 @@ class NavigationTests(unittest.TestCase):
             page = context.new_page()
             page.wait_for_url('**/business-suite/messages**')
             budgets.append(page.control.deadline - clock[0])
-            clock[0] += 13
+            clock[0] += 21
             page.control.check()
         with patch('messaging_navigation.time.monotonic', side_effect=lambda: clock[0]), patch('messaging_navigation.visible_challenge', return_value=False):
             result = send_with_navigation_retry(original, context, 'stuck', SELECTOR, max_attempts=None, should_stop=lambda: False)
-        self.assertEqual(budgets, [12, 12])
+        self.assertEqual(budgets, [20, 20])
         self.assertEqual(len(refreshes), 1)
         self.assertEqual(result[0], 'FAILED')
         self.assertEqual(context.page.send_calls, 0)

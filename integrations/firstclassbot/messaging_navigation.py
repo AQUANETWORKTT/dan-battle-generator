@@ -137,9 +137,9 @@ class ChatPage:
         if "business-suite/messages" not in str(pattern):
             return self.page.wait_for_url(pattern, **kwargs)
         if self.control:
-            # Message was clicked. Give the chat twelve seconds, including its
+            # Message was clicked. Give the chat twenty seconds, including its
             # frame, recipient verification and composer readiness.
-            self.control.deadline = time.monotonic() + 12
+            self.control.deadline = time.monotonic() + 20
             self.state['deadline'] = self.control.deadline
         # The Message button can render the conversation before analytics/media finish loading.
         if urlparse(self.page.url).hostname not in {"www.tiktok.com", "tiktok.com", "business.tiktok.com"}:
@@ -234,7 +234,7 @@ def send_with_navigation_retry(original, context, username, selector, max_attemp
             if not refreshed and challenge is False:
                 refreshed = True
                 if report:
-                    report('Readiness wait expired (12 seconds for chat). Refreshing once, then trying this creator again.')
+                    report('Readiness wait expired (20 seconds for chat). Refreshing once, then trying this creator again.')
                 try:
                     parsed = urlparse(page.url)
                     profile_url = tracked.state.get('profile_url') or (resume or {}).get('profile_url')
@@ -246,7 +246,7 @@ def send_with_navigation_retry(original, context, username, selector, max_attemp
                         return 'FAILED', 'Refresh failed before Send; moving to the next creator.'
                 deadline = time.monotonic() + 45
                 continue
-            return 'FAILED', 'Readiness wait expired (12 seconds for chat); no Send invoked. Moving to next creator.'
+            return 'FAILED', 'Readiness wait expired (20 seconds for chat); no Send invoked. Moving to next creator.'
         if max_attempts is None and status not in {'SENT','SEND_ATTEMPTED','SKIPPED'}:
             page = session.get('page')
             if page is not None and page.is_closed():

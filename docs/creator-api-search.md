@@ -116,6 +116,8 @@ A live draft-only check in a loaded conversation on 1 November 2026 passed compo
 
 Current chat timeout: 12 seconds per attempt, replacing six seconds. This covers chat loading, recipient checks and composer readiness; the single refresh stays on the same conversation and gets another 12 seconds. Sending still requires recipient and text verification. Completed or uncertain Send invocations are recorded before advancing and are never refreshed or retried as loading failures.
 
+Latest update: the chat budget is now **20 seconds per attempt**, replacing 12. Before entering text, the composer is explicitly clicked and its focus checked. If focus fails or the page drops the input, focus/fill/readback is retried within the same budget; fill replaces text rather than appending. Send remains gated by the existing recipient and complete-text checks. One same-conversation refresh is retained, with no retry of an attempted Send.
+
 Startup now opens the inbox directly and reuses that initial tab, closing other tabs in this dedicated messaging profile after the user signs in. The video home feed no longer remains in the background. After a completed Send click, a controlled adapter exit skips the old eight-second delivery-bubble wait and records SEND_ATTEMPTED. This reduces bot-side waiting; it does not speed up TikTok's servers or claim verified delivery. Selecting a new recipient still uses their profile's Message button and can reload the inbox. Persistent in-inbox recipient switching has not been implemented or verified.
 
 ## Eligibility changes and diamond ordering

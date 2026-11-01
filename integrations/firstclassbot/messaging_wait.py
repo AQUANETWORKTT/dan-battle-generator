@@ -27,7 +27,7 @@ class WaitControl:
     def pause(self, reason):
         self.check()
         if self.report and time.monotonic() - self.last_report > 15:
-            self.report(reason + " Chat has a 12-second limit, then one refresh before skipping. You can also use Skip person or Stop.")
+            self.report(reason + " Chat has a 20-second limit, then one refresh before skipping. You can also use Skip person or Stop.")
             self.last_report = time.monotonic()
         self.page.wait_for_timeout(200)
         self.check()
@@ -76,7 +76,17 @@ def comparable_message(value):
 class ComposerLocator(ReadyLocator):
     def fill(self, value, **kwargs):
         self.expected = value
-        return super().fill(value, **kwargs)
+        kwargs['timeout'] = 1000
+        def focus_and_fill():
+            self.locator.click(timeout=1000, no_wait_after=True)
+            if not self.locator.evaluate('(e) => e === e.ownerDocument.activeElement || e.contains(e.ownerDocument.activeElement)', timeout=1000):
+                raise RuntimeError('Composer has not gained focus yet.')
+            self.control.check()
+            self.locator.fill(value, **kwargs)
+            actual = self.locator.inner_text(timeout=1000)
+            if comparable_message(actual) != comparable_message(value):
+                raise RuntimeError('Waiting for the complete message to appear in the composer.')
+        return self.control.call(focus_and_fill, 'Waiting to focus and fill the message box.')
 
     def inner_text(self, **kwargs):
         actual = self.locator.inner_text(timeout=1000, **kwargs)
