@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript'),assert=require('node:assert/strict');
+const box={exports:{},Map,Set};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/atlas-team-posters.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,box);
+const p=box.exports;
+const item={name:'team-poster-one',template_json:{managerKey:'Manager.One@Atlas.test',backgroundUrl:'keep-background',elements:[{id:'username-1',kind:'username',value:'old'},{id:'diamonds-1',kind:'diamonds',value:'old'},{id:'avatar-1',kind:'avatar',imageUrl:'old'},{id:'username-hours-1',kind:'username',value:'old'},{id:'avatar-hours-1',kind:'avatar',imageUrl:'old'},{id:'hours-1',kind:'hours',value:'old'},{id:'username-5',kind:'username',value:'STALE'},{id:'title',kind:'text',value:'KEEP TITLE'}]}};
+const data=[{creator_id:'1',creator_username:'diamond_leader',manager_email:'manager.one@atlas.test',diamonds:'12,500',live_hours:2},{creator_id:'2',creator_username:'hours_leader',manager_email:'manager.one@atlas.test',diamonds:100,live_hours:8.5},{creator_id:'3',creator_username:'other_manager',manager_email:'other@atlas.test',diamonds:99999,live_hours:99},{creator_id:'4',creator_username:'excluded',manager_email:'excluded@atlas.test',diamonds:99999,live_hours:99}];
+const assignments={managerGroups:{excludedatlastest:'Excluded'}};
+const rows=p.atlasPosterRows(item,[...data,data[0]],assignments);
+assert.equal(rows.length,2);assert.equal(p.atlasPosterRows({...item,template_json:{...item.template_json,managerKey:'atlas-all'}},data,assignments).length,3);
+const filled=p.fillAtlasPoster(item,rows,new Map([['diamond_leader','red'],['hours_leader','blue']]));
+const elements=Object.fromEntries(filled.elements.map(e=>[e.id,e]));
+assert.equal(elements['username-1'].value,'DIAMOND_LEADER');assert.equal(elements['diamonds-1'].value,'12.5K');assert.equal(elements['avatar-1'].imageUrl,'red');
+assert.equal(elements['username-hours-1'].value,'HOURS_LEADER');assert.equal(elements['hours-1'].value,'8.5H');assert.equal(elements['avatar-hours-1'].imageUrl,'blue');
+assert.equal(elements['username-5'].value,'');assert.equal(elements.title.value,'KEEP TITLE');assert.equal(filled.backgroundUrl,'keep-background');
+assert.equal(item.template_json.elements[0].value,'old');
+assert.equal(p.atlasHours({live_duration:'2h 30m 0s'}),2.5);assert.equal(p.atlasPosterLabel('atlas-team-poster'),'All Atlas');
+assert.equal(p.atlasPosterManager(item,[{key:'manageroneatlastest',email:'manager.one@atlas.test',name:'One'}]).name,'One');
+console.log('Atlas team-poster checks passed: manager/email matching, exclusions, deduplication, separate diamonds/hours ranks, picture mapping, empty-slot clearing and preserved templates.');

@@ -47,3 +47,6 @@ next-env.d.ts
 /integrations/firstclassbot/profile_review_data/
 /integrations/firstclassbot/browser_profile_review/
 /integrations/firstclassbot/browser_profile_review_chrome/
+
+# Local Atlas UI verification downloads and screenshots
+/tmp/atlas-posters-ui/

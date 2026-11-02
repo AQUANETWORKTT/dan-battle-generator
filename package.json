@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:atlas": "node scripts/test-atlas-portal.cjs",
+    "test:atlas-posters": "node scripts/test-atlas-team-posters.cjs",
     "test:creator-api-search": "node scripts/test-creator-api-search.cjs",
     "test:h2h": "node scripts/test-h2h-posters.cjs"
   },

@@ -19,7 +19,8 @@ lock.on('error',error=>{
 lock.listen(endpoint,()=>{
  report('\nBackstage availability checker — '+new Date().toISOString()+'\n');
  report('Keep this window open. Backstage connects automatically after you sign in.\n');
- const child=spawn('python',['-u',path.join(__dirname,'worker.py'),...process.argv.slice(2)],{cwd:root,env:process.env,stdio:['inherit','pipe','pipe']});
+ const python=process.env.CREATOR_SEARCH_PYTHON || ['C:\\Python314\\python.exe',path.join(process.env.LOCALAPPDATA||'','Programs','Python','Python314','python.exe')].find(candidate=>fs.existsSync(candidate)) || 'python';
+ const child=spawn(python,['-u',path.join(__dirname,'worker.py'),...process.argv.slice(2)],{cwd:root,env:{...process.env,PYTHONIOENCODING:'utf-8'},stdio:['inherit','pipe','pipe']});
  child.stdout.on('data',data=>report(data.toString()));
  child.stderr.on('data',data=>report(data.toString()));
  child.on('error',()=>{report('Could not start Python. Install Python and the checker requirements first.\n');lock.close();log.end();process.exitCode=1;});

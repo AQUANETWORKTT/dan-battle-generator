@@ -39,6 +39,24 @@ class PostReadinessTests(unittest.TestCase):
 
 
 class ReviewTests(unittest.TestCase):
+    def test_clear_removes_only_review_rows_and_persists(self):
+        scratch = Path(__file__).resolve().parents[1] / 'tmp'
+        scratch.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as folder:
+            filename = Path(folder)/'reviews.sqlite3'
+            store = ReviewStore(filename)
+            store.tag('one','boy')
+            store.complete('one')
+            with sqlite3.connect(filename) as db:
+                db.execute('CREATE TABLE fixture_other_data(value TEXT)')
+                db.execute("INSERT INTO fixture_other_data VALUES('keep')")
+            db.close()
+            store.clear()
+            self.assertEqual(ReviewStore(filename).rows(), [])
+            with sqlite3.connect(filename) as db:
+                self.assertEqual(db.execute('SELECT value FROM fixture_other_data').fetchone()[0], 'keep')
+            db.close()
+
     def setUp(self):
         mocked = patch('profile_review.wait_for_posts', return_value='ready')
         self.posts = mocked.start()

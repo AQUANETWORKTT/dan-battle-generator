@@ -60,6 +60,10 @@ class ReviewStore:
         with closing(sqlite3.connect(self.filename)) as db, db:
             db.execute('UPDATE reviews SET completed=1 WHERE username=?', (username,))
 
+    def clear(self):
+        with closing(sqlite3.connect(self.filename)) as db, db:
+            db.execute('DELETE FROM reviews')
+
     def rows(self, category='All', potential_only=False, completed_only=False):
         with closing(sqlite3.connect(self.filename)) as db:
             db.row_factory = sqlite3.Row
@@ -133,7 +137,7 @@ def open_review(parent, initial_text=''):
 
     window = tk.Toplevel(parent)
     window.title('First Class — View mode')
-    window.geometry('490x870+10+40')
+    window.geometry('490x910+10+40')
     window.configure(bg='#101015')
     try:
         store = ReviewStore(ROOT / 'profile_review_data' / 'reviews.sqlite3')
@@ -294,6 +298,25 @@ def open_review(parent, initial_text=''):
     tk.Button(exports, text='Copy list', command=copy_list, pady=7).pack(side='left')
     tk.Button(exports, text='Download results', command=export, pady=7).pack(side='left', padx=7)
     tk.Button(exports, text='View filtered list', command=load_filtered, pady=7).pack(side='left')
+
+    def clear_reviews():
+        if state['running']:
+            messagebox.showinfo('Stop viewing first', 'Press Stop and wait for viewing to finish, then clear saved reviews.', parent=window)
+            return
+        if not messagebox.askyesno('Clear saved reviews?', 'Remove all saved viewing tags and completed reviews?\n\nThis empties the Boys, Girls, High potential and Gamers result lists. Messaging history and downloaded files are not changed.', parent=window, default='no'):
+            return
+        try:
+            store.clear()
+            state['current'] = None
+            category.set('All')
+            potential_only.set(False)
+            title.set('Saved reviews cleared')
+            status.set('Your viewing lists are empty. Paste a list to start a fresh review.')
+            refresh_tags()
+        except Exception as error:
+            messagebox.showerror('Could not clear reviews', str(error), parent=window)
+
+    tk.Button(window, text='Clear saved reviews', command=clear_reviews, fg='#a81717', pady=7).pack(anchor='w', padx=15, pady=(10,0))
     tk.Label(window, text='Copy/download includes all completed reviews in five sections, regardless of these filters. Foreign creators are always excluded. High potential creators have their own sections; Gamer tags also appear under Gamers.', bg='#101015', fg='#b8b8bf', wraplength=455, justify='left').pack(anchor='w', padx=15, pady=15)
 
     def drain():
