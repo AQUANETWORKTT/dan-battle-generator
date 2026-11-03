@@ -31,6 +31,10 @@ const external=/\b(horizon|respawn|paradise|atlas|dragonheart|vanguard|honey\s*b
 export function firstClassStarCreator(row:Record<string,unknown>,groups:Record<string,string>){
  const manager=managerIdentity(row.manager_email||row.creator_network_manager||row['Creator Network manager']||row.email);
  const group=groups[manager]||'';
+ // Saved Manager Assignments are the current affiliation authority. Uploads
+ // can retain an old sub-agency label after the manager moves into First Class.
+ if(/^(Team Dan(?: \/ James)?|Team Mike \/ Indi|First Class)$/i.test(group))return true;
+ if(external.test(group.replace(/[_-]/g,' ')))return false;
  const agency=String(row.agency||'').trim();
  const affiliation=[agency,row.team,row.group_name,group].map(v=>String(v||'').replace(/[_-]/g,' ')).join(' ');
  if(external.test(affiliation))return false;

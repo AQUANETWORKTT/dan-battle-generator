@@ -9,6 +9,9 @@ assert.equal(model.starTotal({awards:{'gift-gallery':{stars:10},'jungle-giants':
 for(const agency of ['Horizon','Respawn','Paradise','Atlas','Dragonheart','Vanguard','Honey Bloom','Trident','Aqua'])assert.equal(model.firstClassStarCreator({agency,creator_username:'firstclass_person'},{}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'manager@example.com'},{managerexamplecom:'Respawn'}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'normal@example.com'},{}),true);
+assert.equal(model.firstClassStarCreator({agency:'Trident',team:'Trident',group_name:'DF - TEAM MARCY',manager_email:'trident125@mail.com'},{trident125mailcom:'Team Dan / James'}),true);
+assert.equal(model.firstClassStarCreator({agency:'Respawn',manager_email:'jbollins997@example.com'},{jbollins997examplecom:'Team Mike / Indi'}),true);
+assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'former_fc@example.com'},{formerfcexamplecom:'Horizon'}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',group_name:'Dragonheart sub agency'},{}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'jbollins997@example.com'},{}),false);
 const valid={creatorId:'10001',campaign:'gift-gallery',stars:0,revision:0};assert(model.validStarInput(valid));
