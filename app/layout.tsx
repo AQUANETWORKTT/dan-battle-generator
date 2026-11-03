@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import {managementShareImages,isManagementSite} from '@/lib/management-share-image';
 
 const isEventsSpace = process.env.SITE_MODE === "events";
 const isAtlasSpace = process.env.SITE_MODE === "atlas";
@@ -10,9 +11,11 @@ export const metadata: Metadata = {
   title: isAtlasSpace ? "Atlas Creator Network · Agency Tools" : isEventsSpace ? "First Class Event Space" : "First Class Agency Hub",
   description: isAtlasSpace ? "Atlas Creator Network poster generator and template editor." : isEventsSpace ? "First Class events and creator leaderboards." : "First Class Agency Hub for creator intelligence and management.",
   openGraph: {
+    ...managementShareImages,
     title: isAtlasSpace ? "Atlas Creator Network · Agency Tools" : isEventsSpace ? "First Class Event Space" : "First Class Agency Hub",
     description: isAtlasSpace ? "Atlas Creator Network poster generator and template editor." : isEventsSpace ? "First Class events and creator leaderboards." : "First Class Agency Hub for creator intelligence and management.",
   },
+  ...(isManagementSite ? {twitter:{card:'summary_large_image',...managementShareImages}} : {}),
 };
 
 export default function RootLayout({

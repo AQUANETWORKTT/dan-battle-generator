@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import {managementShareImages} from '@/lib/management-share-image';
 
 export const metadata: Metadata = {
   title: "Sunset Showdown Leaderboard",
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
     title: "Sunset Showdown Leaderboard",
     description: "View the live Sunset Showdown rankings.",
     images: ["/sunset-showdown/logo.png"],
+    ...managementShareImages,
   },
 };
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import {managementShareImages} from '@/lib/management-share-image';
 
 const title = "Race to the Top — Event Finished | First Class";
 const description = "Race to the Top has finished. The live leaderboard and creator links are no longer available.";
@@ -10,12 +11,14 @@ export const metadata: Metadata = {
     title,
     description,
     images: [{ url: "/race-to-the-top-logo.png", alt: "Race to the Top" }],
+    ...managementShareImages,
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
     images: ["/race-to-the-top-logo.png"],
+    ...managementShareImages,
   },
 };
 
