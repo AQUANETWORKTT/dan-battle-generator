@@ -13,7 +13,7 @@ export default function OnboardingLoginPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password, area: "onboarding" }),
     });
-    if (response.ok) location.assign("/onboarding");
+    if (response.ok) location.assign(new URLSearchParams(window.location.search).get('next')==='/star-tracker'?'/star-tracker':"/onboarding");
     else setError("INCORRECT PASSWORD");
   }
 

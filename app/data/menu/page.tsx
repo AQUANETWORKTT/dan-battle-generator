@@ -61,6 +61,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
     { href: "/data/recruitment-leaderboard", number: "16", label: "Monthly growth", title: "Recruitment Leaderboard", description: "Rank every active manager by calendar-month recruits and download a dynamic leaderboard PNG.", accent: "yellow" },
   ] },
   { title: "Events", description: "Plan agency events and keep every campaign task in one place.", accent: "pink", workspaces: [
+    { href: '/star-tracker', number: '36', label: 'Jungle competition', title: "I’m a Streamer, Get Me Out of Here!", description: 'Star Tracker · Award campaign stars, track totals and view the First Class leaderboard.', accent: 'emerald' },
     { href: "/data/event-planner", number: "24", label: "Campaign planning", title: "Event Planner", description: "Create Head-to-Head, Showcase and Other events with an editable preparation checklist.", accent: "pink" },
     { href: "/data/todo-calendar", number: "25", label: "Shared operations", title: "To-Do List Calendar", description: "Add shared jobs to any day and keep the agency's daily work visible.", accent: "pink" },
   ] },

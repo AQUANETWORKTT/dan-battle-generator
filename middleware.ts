@@ -62,6 +62,7 @@ export function middleware(req: NextRequest) {
   }
 
   const isEventsSpace = process.env.SITE_MODE === "events";
+  if(!isEventsSpace&&(path==='/star-tracker'||path==='/api/star-tracker'))return NextResponse.next();
   // The server page and scoped API validate this separate signed session.
   // No leadership access is granted by visiting the Poster Generator.
   if(!isEventsSpace&&(path==='/poster-generator'||path.startsWith('/api/poster-generator/')))return NextResponse.next();

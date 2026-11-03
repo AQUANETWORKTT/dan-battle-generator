@@ -50,3 +50,4 @@ next-env.d.ts
 
 # Local Atlas UI verification downloads and screenshots
 /tmp/atlas-posters-ui/
+/tmp/star-tracker-ui/

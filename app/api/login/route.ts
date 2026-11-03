@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { SEARCH_COOKIE, searchSessionToken } from "@/lib/creator-api-search/auth";
+import {STAR_COOKIE,starSessionToken} from '@/lib/star-tracker-auth';
 
 export async function POST(req: Request) {
   const { password, area } = await req.json();
@@ -8,6 +9,8 @@ export async function POST(req: Request) {
     if (String(password || "").trim().toLowerCase() !== "ash1") return NextResponse.json({ success: false }, { status: 401 });
 
     const response = NextResponse.json({ success: true });
+    const starSession=starSessionToken();
+    if(starSession)response.cookies.set(STAR_COOKIE,starSession,{path:'/',maxAge:30*86400,httpOnly:true,sameSite:'lax',secure:new URL(req.url).protocol==='https:'});
     response.cookies.set("first-class-onboarding-auth", "true", {
       path: "/",
       maxAge: 60 * 60 * 24 * 30,

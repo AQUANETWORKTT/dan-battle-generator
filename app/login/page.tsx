@@ -9,6 +9,7 @@ const cards = [
   { href: "/login/poster-generator", eyebrow: "FIRST CLASS", title: "MANAGER POSTER GENERATOR", description: <>SINGLE, 2V2 AND H2H<br />POSTER DOWNLOADS.</>, tone: "border-white/30 bg-black/65 hover:border-yellow-300/60 hover:bg-black/75", label: "text-yellow-100" },
   { href: "https://firstclassbattles.space", eyebrow: "AGENCY NETWORK", title: "BATTLE NETWORK", description: <>BATTLE SHEETS, MATCHING<br />AND POSTER DOWNLOADS.</>, tone: "border-sky-300/45 bg-sky-950/25 hover:border-sky-200 hover:bg-sky-900/30", label: "text-sky-100" },
   { href: "/login/onboarding", eyebrow: "FIRST CLASS", title: "ONBOARDING", description: <>Onboarding new creators for the first 14 days of joining.</>, tone: "border-violet-300/45 bg-violet-950/30 hover:border-violet-200 hover:bg-violet-900/35", label: "text-violet-100" },
+  { href: '/star-tracker', eyebrow: 'STAR TRACKER', title: "I’m a Streamer, Get Me Out of Here!", description: <>Star Tracker<br/><span className="text-sm text-yellow-100/80">Earn your stars. Climb the jungle leaderboard.</span></>, tone: 'border-yellow-300/60 bg-emerald-950/90 hover:border-yellow-200', label: 'text-yellow-100' },
 ];
 
 export default function LoginPage() {
@@ -32,10 +33,11 @@ function LoginPageContent() {
           <p className="font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-wide text-white">FIRST CLASS <span className="text-yellow-300">SPACE</span></p>
           <p className="mt-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-100/60">AGENCY ACCESS</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((card) => (
-            <Link key={card.href} href={card.href} className={`flex min-h-[260px] flex-col rounded-2xl border p-7 text-white shadow-lg shadow-black/30 transition hover:-translate-y-1 ${card.tone}`}>
+            <Link key={card.href} href={card.href} style={card.href==='/star-tracker'?{backgroundImage:"linear-gradient(180deg,rgba(1,24,13,.48),rgba(1,24,13,.95)),url('/star-tracker/jungle-landscape.png')",backgroundSize:'cover',backgroundPosition:'center'}:undefined} className={`flex min-h-[260px] flex-col rounded-2xl border p-7 text-white shadow-lg shadow-black/30 transition hover:-translate-y-1 ${card.tone}`}>
               <p className="text-xs font-black uppercase tracking-[.22em] text-yellow-200">{card.eyebrow}</p>
+              {card.href==='/star-tracker'&&<div className="mt-3 flex gap-2" aria-hidden="true"><img src="/star-tracker/gold-star.png" alt="" width={28} height={28}/><img src="/star-tracker/gold-star.png" alt="" width={28} height={28}/></div>}
               <h1 className="mt-3 min-h-[3rem] font-[family-name:var(--font-norwester)] text-3xl uppercase leading-none text-white">{card.title}</h1>
               <p className="mt-4 text-base leading-7 text-white/90">{card.description}</p>
               <span className={`mt-auto pt-7 text-xs font-black uppercase tracking-widest ${card.label}`}>ENTER HERE →</span>
