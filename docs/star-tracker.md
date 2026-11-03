@@ -12,7 +12,7 @@ Creators come from the latest non-month-total `creator_daily_stats` upload, pagi
 
 Storage follows the existing Onboarding/workspace convention in `poster_templates`, using **one separate namespaced row per creator and campaign**, named `streamer-star-tracker-v1:<creator ID>:<campaign>`. These are settings records, excluded from poster-template selectors by the existing template shape filter. No SQL or new environment variables are required. The server uses the existing `SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL`; the browser receives neither service credentials nor unfiltered agency data. This uses the existing table's database access model; API access additionally requires a signed Leadership/tracker session.
 
-Starting Stars are fixed at 10. The seven campaign values are absolute, nonnegative whole-number awards (0–1,000,000), never additive mutations. The unique existing `poster_templates.name` constraint prevents duplicate creator/campaign records. A revision comparison prevents lost updates; conflicts return the current saved value rather than overwriting it. Repeating a save of the same value returns success without adding stars. Existing creator information and onboarding records are never updated by this feature.
+Starting Stars are fixed at 10. The campaign values are absolute, nonnegative whole-number awards (0–1,000,000), never additive mutations. The unique existing `poster_templates.name` constraint prevents duplicate creator/campaign records. A revision comparison prevents lost updates; conflicts return the current saved value rather than overwriting it. Repeating a save of the same value returns success without adding stars. Existing creator information and onboarding records are never updated by this feature.
 
 ## Editing
 
@@ -20,11 +20,11 @@ Starting Stars are fixed at 10. The seven campaign values are absolute, nonnegat
 
 All new manual and bulk changes retain before/after values and timestamps in their award record. **Download backup** exports all stored campaign cells and bulk-operation records, including retained awards for creators no longer in the latest roster. The backup includes confirmed database values, not unfinished local edits. This is additional recoverability within the existing shared Supabase storage, not a claim of an external automated disaster-recovery backup.
 
-Blank award fields are saved as zero. Desktop tables fit without sideways scrolling; phone tables retain horizontal scrolling. The jungle scenery covers the viewport behind the entire scrolling page.
+Blank award fields are saved as zero. Campaign columns scroll horizontally on desktop and phones, with the username/star-count column pinned. There are 22 campaign fields, plus username and Starting Stars (24 visible columns). All 21 unique campaign names in the supplied expanded list are present; Valid Days 1st is retained. Jungle Treasure Gift appears once. The visible labels The Jungle Ambush and Venomous Victory reuse their existing stored IDs, preserving prior awards. All new campaigns also work with bulk updates, totals, history and backups without a database migration. The jungle scenery covers the viewport behind the entire scrolling page.
 
 Fields save on blur or Enter. Save edits saves all unfinished values. Totals show valid local edits immediately; sorting updates after confirmation so a row does not jump while typing. Failed saves remain on screen with retry/use-saved controls. Local browser drafts are backed up and restored after reopening; these drafts are not confirmed awards until a successful save. Refresh is disabled while edits are unfinished. A navigation warning protects unfinished edits. A failed network request never displays a successful save. Another device's confirmed awards load on refresh/reopening.
 
-The nine-column table scrolls inside its own region, with sticky headers and username cells; Total Stars stays in the username cell. Forty rows per page limit rendering on phones. The leaderboard and username search use the complete fetched roster.
+The campaign table scrolls inside its own region, with sticky headers and username cells; Total Stars stays in the username cell. Forty rows per page limit rendering on phones. The leaderboard and username search use the complete fetched roster.
 
 ## Assets
 

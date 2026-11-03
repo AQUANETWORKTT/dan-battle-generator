@@ -4,8 +4,24 @@ export const STAR_CAMPAIGNS=[
  {id:'crocodile-countdown',label:'Crocodile Countdown'},
  {id:'jungle-marathon',label:'The Jungle Marathon'},
  {id:'jungle-giants',label:'Jungle Giants'},
- {id:'jungle-ambush',label:'Jungle Ambush'},
- {id:'venemous-victory',label:'Venemous Victory'},
+ {id:'jungle-ambush',label:'The Jungle Ambush'},
+ // Keep the existing stored ID while correcting the visible spelling.
+ {id:'venemous-victory',label:'Venomous Victory'},
+ {id:'snake-bite',label:'Snake Bite'},
+ {id:'jungle-storm',label:'Jungle Storm'},
+ {id:'walk-of-fear',label:'The Walk of Fear'},
+ {id:'jungle-riddle-trail',label:'Jungle Riddle Trail'},
+ {id:'jungle-bingo',label:'Jungle Bingo'},
+ {id:'jungle-treasure-gift',label:'Jungle Treasure Gift'},
+ {id:'royal-rumble',label:'The Royal Rumble'},
+ {id:'star-hunt',label:'Star Hunt'},
+ {id:'star-steal-shield',label:'Star Steal / Shield'},
+ {id:'escape-the-jungle',label:'Escape the Jungle'},
+ {id:'great-escape',label:'The Great Escape'},
+ {id:'star-showdown',label:'The Star Showdown'},
+ {id:'double-survival-trial',label:'Double Survival Trial'},
+ {id:'survive-the-night',label:'Survive the Night'},
+ {id:'jungle-costume-challenge',label:'Jungle Costume Challenge'},
 ] as const;
 export type CampaignId=typeof STAR_CAMPAIGNS[number]['id'];
 export type StarAward={creatorId:string;campaign:CampaignId;stars:number;revision:number;updatedAt:string;history?:{before:number;after:number;at:string;kind:'edit'|'bulk';operationId?:string;requestedDelta?:number}[]};

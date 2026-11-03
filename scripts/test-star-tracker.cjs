@@ -4,7 +4,10 @@ function load(file,deps={}){const box={exports:{},require:name=>{if(name==='serv
 const plain=value=>JSON.parse(JSON.stringify(value));
 const model=load('lib/star-tracker.ts'),search=load('lib/creator-api-search/auth.ts'),auth=load('lib/star-tracker-auth.ts',{'./creator-api-search/auth':search});
 assert.equal(model.STARTING_STARS,10);
-assert.deepEqual(plain(model.STAR_CAMPAIGNS.map(c=>c.label)),['Valid Days 1st','Gift Gallery','Crocodile Countdown','The Jungle Marathon','Jungle Giants','Jungle Ambush','Venemous Victory']);
+assert.equal(model.STAR_CAMPAIGNS.length,22);assert.equal(new Set(model.STAR_CAMPAIGNS.map(c=>c.id)).size,22);
+for(const label of ['Snake Bite','The Jungle Marathon','Gift Gallery','Jungle Giants','The Jungle Ambush','Venomous Victory','Crocodile Countdown','Jungle Storm','The Walk of Fear','Jungle Riddle Trail','Jungle Bingo','Jungle Treasure Gift','The Royal Rumble','Star Hunt','Star Steal / Shield','Escape the Jungle','The Great Escape','The Star Showdown','Double Survival Trial','Survive the Night','Jungle Costume Challenge'])assert.equal(model.STAR_CAMPAIGNS.filter(c=>c.label===label).length,1,label);
+assert.equal(model.STAR_CAMPAIGNS.find(c=>c.label==='Venomous Victory').id,'venemous-victory');
+assert.equal(model.starTotal({awards:{'venemous-victory':{stars:7},'jungle-costume-challenge':{stars:4}}}),21);
 assert.equal(model.starTotal({awards:{'gift-gallery':{stars:10},'jungle-giants':{stars:10},'crocodile-countdown':{stars:5}}}),35);
 for(const agency of ['Horizon','Respawn','Paradise','Atlas','Dragonheart','Vanguard','Honey Bloom','Trident','Aqua'])assert.equal(model.firstClassStarCreator({agency,creator_username:'firstclass_person'},{}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'manager@example.com'},{managerexamplecom:'Respawn'}),false);

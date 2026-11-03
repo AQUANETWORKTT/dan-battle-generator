@@ -84,8 +84,11 @@ with sync_playwright() as p:
     page.route('**/api/star-tracker*',fixture)
     tile.click()
     page.get_by_role('region',name='Scrollable campaign awards').wait_for()
-    assert page.get_by_role('columnheader').count()==9
-    assert page.get_by_role('columnheader').all_text_contents()==['Creator’s username','Starting Stars','Valid Days 1st','Gift Gallery','Crocodile Countdown','The Jungle Marathon','Jungle Giants','Jungle Ambush','Venemous Victory']
+    assert page.get_by_role('columnheader').count()==24
+    headings=page.get_by_role('columnheader').all_text_contents()
+    assert headings[:9]==['Creator’s username','Starting Stars','Valid Days 1st','Gift Gallery','Crocodile Countdown','The Jungle Marathon','Jungle Giants','The Jungle Ambush','Venomous Victory']
+    assert headings.count('Jungle Treasure Gift')==1
+    assert headings[-1]=='Jungle Costume Challenge'
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'Page overflowed phone width'
     assert page.locator('tbody tr').count()==40
     gift=page.get_by_label('Gift Gallery stars for alpha',exact=True)
@@ -182,9 +185,17 @@ with sync_playwright() as p:
     page.screenshot(path=str(out/'leaderboard-mobile.png'),full_page=True)
     page.set_viewport_size({'width':1440,'height':1000})
     page.get_by_role('button',name='Campaign tracker',exact=True).click()
-    assert region.evaluate('element=>element.scrollWidth<=element.clientWidth'), 'Desktop table did not fit'
+    assert region.evaluate('element=>element.scrollWidth>element.clientWidth'), 'Campaign columns did not scroll'
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'Desktop page overflowed'
+    region.evaluate('element=>element.scrollLeft=element.scrollWidth')
+    page.get_by_label('Jungle Costume Challenge stars for alpha_new',exact=True).fill('4')
+    page.get_by_label('Jungle Costume Challenge stars for alpha_new',exact=True).press('Enter')
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    assert creators[0]['awards']['jungle-costume-challenge']['stars']==4
+    assert creators[0]['awards']['gift-gallery']['stars']==3
+    assert abs(page.locator('tbody tr').first.locator('th').bounding_box()['x']-region.bounding_box()['x'])<3
     assert page.locator('main > div').first.evaluate('element=>getComputedStyle(element).position')=='fixed'
     page.screenshot(path=str(out/'tracker-desktop.png'),full_page=True)
     assert not errors,errors
     browser.close()
-print('Star Tracker browser checks passed: front tile, signed onboarder access, phone width, nine columns, sticky names, 40-row paging, search across all creators, edit/save/reload, zero, validation, offline draft recovery, conflicts and leaderboard.')
+print('Star Tracker browser checks passed: front tile, signed onboarder access, phone width, 24 scrollable columns, sticky names, 40-row paging, search across all creators, edit/save/reload, zero, validation, offline draft recovery, conflicts and leaderboard.')
