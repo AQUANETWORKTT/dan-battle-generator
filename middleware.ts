@@ -44,6 +44,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // This standalone creator view is public regardless of existing login cookies.
+  if(path==='/star-leaderboard'||path==='/api/star-leaderboard'||path==='/api/star-leaderboard/avatar')return NextResponse.next();
   const isSubspaceBattleEntry = path === "/battle-network" && req.nextUrl.searchParams.get("source") === "subspace-manager" && req.nextUrl.searchParams.get("agency") === "respawn";
   const isSubspaceBattleSession = req.cookies.get("subspace-battle-entry")?.value === "respawn";
 
