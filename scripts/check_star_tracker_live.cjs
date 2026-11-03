@@ -31,8 +31,10 @@ const db=createClient(process.env.NEXT_PUBLIC_SUBMISSIONS_SUPABASE_URL,process.e
  const cellNames=targets.map(c=>'streamer-star-tracker-v1:'+c.id+':gift-gallery');
  for(const cellName of cellNames){const before=await db.from('poster_templates').select('name').eq('name',cellName).maybeSingle();assert(!before.error);assert(!before.data);}
  try{
-  const input={operationId,campaign:'gift-gallery',delta:-1,usernames:targets.map(c=>c.username)};
+  const missingName='missing_test_'+operationId.slice(0,8);assert(!first.data.creators.some(c=>c.username===missingName));
+  const input={operationId,campaign:'gift-gallery',delta:-1,usernames:[...targets.map(c=>c.username),missingName]};
   const bulk=await api('POST',input);assert.equal(bulk.status,200);assert(bulk.data.done);assert.equal(bulk.data.total,2);assert(bulk.data.awards.every(a=>a.stars===0&&a.history.some(h=>h.operationId===operationId)));
+  assert(bulk.data.missingUsernames.includes(missingName));
   const retry=await api('POST',input);assert.equal(retry.status,200);assert(retry.data.done);assert.equal(retry.data.awards.length,0);
   const reopened=await api();assert.equal(reopened.status,200);for(const target of targets)assert.equal(reopened.data.creators.find(c=>c.id===target.id).awards['gift-gallery'].stars,0);
   const backup=await fetch(base+'/api/star-tracker?backup=1',{headers:{Cookie:cookie}});assert(backup.ok);const archive=await backup.json();assert(archive.records.some(r=>r.name===operationName));

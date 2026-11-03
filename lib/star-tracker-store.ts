@@ -24,8 +24,9 @@ export async function readTracker(){
  return {latestDate:roster.latestDate,creators};
 }
 export class StarConflict extends Error{constructor(public award:StarAward){super('This award changed on another device. Review the saved value before trying again.');}}
+export class StarCreatorMissing extends Error{constructor(){super('This creator is missing from the current roster.');}}
 export async function saveStarAward(input:{creatorId:string;campaign:CampaignId;stars:number;revision:number},operation?:{id:string;delta:number}){
- if(!(await trackerRoster()).creators.some(c=>c.id===input.creatorId))throw Error('This creator is not in the current First Class roster. Refresh the creator list.');
+ if(!(await trackerRoster()).creators.some(c=>c.id===input.creatorId))throw new StarCreatorMissing();
  const db=database(),name=STAR_PREFIX+input.creatorId+':'+input.campaign;
  const current=await db.from('poster_templates').select('template_json').eq('name',name).maybeSingle();fail(current.error);
  const previous=current.data?.template_json as StarAward|undefined;
@@ -48,22 +49,25 @@ export async function saveStarAward(input:{creatorId:string;campaign:CampaignId;
 }
 
 export const STAR_BULK_PREFIX='streamer-star-tracker-bulk-v1:';
-type BulkOperation=StarBulkInput&{targets:{id:string;username:string}[];completedIds:string[];revision:number;createdAt:string;updatedAt:string};
+type BulkOperation=StarBulkInput&{targets:{id:string;username:string}[];completedIds:string[];skippedIds?:string[];missingUsernames?:string[];revision:number;createdAt:string;updatedAt:string};
 async function bulkRecord(name:string){const result=await database().from('poster_templates').select('template_json').eq('name',name).maybeSingle();fail(result.error);return result.data?.template_json as BulkOperation|undefined;}
 export async function bulkStarAwards(input:StarBulkInput){
  const db=database(),name=STAR_BULK_PREFIX+input.operationId,usernames=[...new Set(input.usernames.map(n=>n.replace(/^@/,'').toLowerCase()))].sort();
  let operation=await bulkRecord(name);
  if(!operation){
-  const roster=await trackerRoster(),byName=new Map(roster.creators.map(c=>[c.username.toLowerCase(),c]));
-  const unknown=usernames.filter(n=>!byName.has(n));if(unknown.length)throw Error('Not found in the First Class roster: '+unknown.join(', ')+'. No changes were made.');
-  const at=new Date().toISOString();operation={...input,usernames,targets:usernames.map(n=>byName.get(n)!),completedIds:[],revision:0,createdAt:at,updatedAt:at};
+  const roster=await trackerRoster(true),byName=new Map(roster.creators.map(c=>[c.username.toLowerCase(),c]));
+  const unknown=usernames.filter(n=>!byName.has(n));
+  const at=new Date().toISOString();operation={...input,usernames,targets:usernames.flatMap(n=>byName.has(n)?[byName.get(n)!]:[]),missingUsernames:unknown,completedIds:[],skippedIds:[],revision:0,createdAt:at,updatedAt:at};
   const insert=await db.from('poster_templates').insert({name,template_json:operation,background_url:null,updated_at:at});
   if(insert.error?.code==='23505')operation=await bulkRecord(name);else fail(insert.error);
  }
  if(!operation||operation.campaign!==input.campaign||operation.delta!==input.delta||JSON.stringify(operation.usernames)!==JSON.stringify(usernames))throw Error('This bulk operation ID belongs to a different request. Start a new bulk edit.');
  const batch=operation.targets.filter(c=>!operation!.completedIds.includes(c.id)).slice(0,30);
+ const currentIds=new Set((await trackerRoster(true)).creators.map(c=>c.id));
+ const skipped=batch.filter(c=>!currentIds.has(c.id));
  const awards:StarAward[]=[],errors:{username:string;message:string}[]=[];
  for(let i=0;i<batch.length;i+=5)await Promise.all(batch.slice(i,i+5).map(async target=>{
+  if(!currentIds.has(target.id))return;
   try{
    for(let attempt=0;attempt<5;attempt++){
     const current=await db.from('poster_templates').select('template_json').eq('name',STAR_PREFIX+target.id+':'+input.campaign).maybeSingle();fail(current.error);
@@ -72,17 +76,18 @@ export async function bulkStarAwards(input:StarBulkInput){
     const stars=Math.max(0,(prior?.stars||0)+input.delta);if(stars>1000000)throw Error('This award would exceed 1,000,000 stars.');
     try{awards.push(await saveStarAward({creatorId:target.id,campaign:input.campaign,stars,revision:prior?.revision||0},{id:input.operationId,delta:input.delta}));return;}catch(error){if(error instanceof StarConflict&&attempt<4)continue;throw error;}
    }
-  }catch(error){errors.push({username:target.username,message:error instanceof Error?error.message:'Save failed.'});}
+  }catch(error){if(error instanceof StarCreatorMissing)skipped.push(target);else errors.push({username:target.username,message:error instanceof Error?error.message:'Save failed.'});}
  }));
  // Cell-level operation IDs survive a timeout even if this progress write fails.
  // Merging progress with a revision check also supports simultaneous retries.
  for(let attempt=0;attempt<5;attempt++){
   const fresh=await bulkRecord(name);if(!fresh)throw Error('Bulk operation record is missing. Retry using the same operation ID.');
-  const next={...fresh,completedIds:[...new Set([...fresh.completedIds,...awards.map(a=>a.creatorId)])],revision:fresh.revision+1,updatedAt:new Date().toISOString()};
+  const next={...fresh,completedIds:[...new Set([...fresh.completedIds,...awards.map(a=>a.creatorId),...skipped.map(c=>c.id)])],skippedIds:[...new Set([...(fresh.skippedIds||[]),...skipped.map(c=>c.id)])],missingUsernames:[...new Set([...(fresh.missingUsernames||[]),...skipped.map(c=>c.username)])],revision:fresh.revision+1,updatedAt:new Date().toISOString()};
   const saved=await db.from('poster_templates').update({template_json:next,updated_at:next.updatedAt}).eq('name',name).eq('template_json->>revision',String(fresh.revision)).select('template_json').maybeSingle();fail(saved.error);
   if(saved.data){operation=next;break;}if(attempt===4)throw Error('Another request is updating this bulk edit. Retry the same operation.');
  }
- return {operationId:input.operationId,done:operation.completedIds.length===operation.targets.length,completed:operation.completedIds.length,total:operation.targets.length,awards,errors};
+ const skippedCount=operation.skippedIds?.length||0;
+ return {operationId:input.operationId,done:operation.completedIds.length===operation.targets.length,completed:operation.completedIds.length-skippedCount,total:operation.targets.length-skippedCount,missingUsernames:operation.missingUsernames||[],awards,errors};
 }
 export async function starTrackerBackup(){
  const records:{name:string;template_json:unknown}[]=[];

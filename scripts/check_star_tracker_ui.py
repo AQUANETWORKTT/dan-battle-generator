@@ -29,13 +29,17 @@ def fixture(route):
         b=route.request.post_data_json
         if b['operationId'] not in bulk_operations:
             awards=[]
+            missing=[]
             for name in set(n.lower().lstrip('@') for n in b['usernames']):
-                c=next(c for c in creators if c['username'].lower()==name)
+                c=next((c for c in creators if c['username'].lower()==name),None)
+                if c is None:
+                    missing.append(name)
+                    continue
                 prior=c['awards'].get(b['campaign'],{})
                 award={'creatorId':c['id'],'campaign':b['campaign'],'stars':max(0,prior.get('stars',0)+b['delta']),'revision':prior.get('revision',0)+1,'updatedAt':'2026-11-03T10:00:00Z'}
                 c['awards'][b['campaign']]=award
                 awards.append(award)
-            bulk_operations[b['operationId']]={'operationId':b['operationId'],'done':True,'total':len(awards),'completed':len(awards),'awards':awards,'errors':[]}
+            bulk_operations[b['operationId']]={'operationId':b['operationId'],'done':True,'total':len(awards),'completed':len(awards),'awards':awards,'errors':[],'missingUsernames':missing}
         if bulk_fail_once:
             bulk_fail_once=False
             route.fulfill(status=503,content_type='application/json',body=json.dumps({'error':'Test interrupted response. Resume safely.'}))
@@ -129,8 +133,8 @@ with sync_playwright() as p:
     page.get_by_role('button',name='Bulk stars',exact=False).click()
     names=page.get_by_label('Bulk creator usernames',exact=True)
     names.fill('@alpha\ncreator_01\n@alpha\nnot_a_creator')
-    assert page.get_by_role('button',name='Submit bulk stars',exact=True).is_disabled()
-    names.fill('@alpha\ncreator_01\n@alpha')
+    assert page.get_by_role('button',name='Submit bulk stars',exact=True).is_enabled()
+    page.get_by_text('These creators are missing:',exact=False).wait_for()
     page.get_by_label('Bulk stars per creator',exact=True).fill('5')
     bulk_fail_once=True
     page.get_by_role('button',name='Submit bulk stars',exact=True).click()
@@ -141,6 +145,7 @@ with sync_playwright() as p:
     page.get_by_role('button',name='Bulk edit saved',exact=True).wait_for()
     assert creators[0]['awards']['gift-gallery']['stars']==16
     assert creators[1]['awards']['gift-gallery']['stars']==5
+    page.get_by_text('1 missing and skipped.',exact=False).wait_for()
     assert len(bulk_operations)==1
     page.get_by_role('button',name='New bulk edit',exact=True).click()
     page.get_by_label('Bulk creator usernames',exact=True).fill('alpha\ncreator_01')
@@ -154,6 +159,14 @@ with sync_playwright() as p:
         page.get_by_role('link',name='Download backup',exact=True).click()
     download.value.save_as(out/'backup.json')
     assert json.loads((out/'backup.json').read_text())['format']=='first-class-star-tracker-backup-v1'
+    creators[0]['username']='alpha_new'
+    page.get_by_role('button',name='Refresh creators',exact=False).click()
+    renamed=page.get_by_label('Gift Gallery stars for alpha_new',exact=True)
+    renamed.wait_for()
+    assert renamed.input_value()=='0'
+    renamed.fill('3');renamed.press('Enter')
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    assert creators[0]['id']=='10001' and creators[0]['awards']['gift-gallery']['stars']==3
     region=page.get_by_role('region',name='Scrollable campaign awards')
     region.evaluate('element=>{element.scrollLeft=900;element.scrollTop=250;}')
     first=page.locator('tbody tr').nth(4).locator('th')

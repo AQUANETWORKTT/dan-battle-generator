@@ -46,7 +46,7 @@ function request(body={},signed=true,origin='http://localhost:3105'){return {coo
  roster[0].creator_username='renamed_creator';roster.push({creator_id:'80001',creator_username:'new_creator',agency:'First Class',stat_date:'2026-11-02'});
  restored=await store.readTracker();assert.equal(restored.creators.length,1006);assert.equal(restored.creators.find(c=>c.id==='10001').username,'renamed_creator');assert(restored.creators.find(c=>c.id==='10001').awards['jungle-giants']);
  const conflict=await api.PATCH(request({...valid,stars:20,revision:0}));assert.equal(conflict.status,409);assert.equal((await conflict.json()).award.revision,3);
- await assert.rejects(()=>store.saveStarAward({...valid,creatorId:'90001'}),/not in the current First Class roster/);
+ await assert.rejects(()=>store.saveStarAward({...valid,creatorId:'90001'}),/missing from the current roster/);
  const uuid=()=>require('node:crypto').randomUUID();
  const bulk={operationId:uuid(),campaign:'gift-gallery',delta:5,usernames:['creator_1','CREATOR_1','creator_2']};
  assert(model.validStarBulkInput(bulk));assert(!model.validStarBulkInput({...bulk,delta:0}));
@@ -64,7 +64,18 @@ function request(body={},signed=true,origin='http://localhost:3105'){return {coo
  cell=(await store.readTracker()).creators.find(c=>c.id==='10004').awards['gift-gallery'];assert.equal(cell.stars,4);assert.equal(cell.history.filter(h=>h.operationId===same.operationId).length,1);
  await Promise.all([store.bulkStarAwards({...same,operationId:uuid(),delta:3,usernames:['creator_1']}),store.bulkStarAwards({...same,operationId:uuid(),delta:7,usernames:['creator_1']})]);
  cell=(await store.readTracker()).creators.find(c=>c.id==='10002').awards['gift-gallery'];assert.equal(cell.stars,10);
- const count=tables.poster_templates.length;await assert.rejects(()=>store.bulkStarAwards({...bulk,operationId:uuid(),usernames:['not_a_creator']}),/No changes were made/);assert.equal(tables.poster_templates.length,count);
+ const missing=await store.bulkStarAwards({...bulk,operationId:uuid(),usernames:['not_a_creator']});assert(missing.done);assert.equal(missing.total,0);assert.deepEqual(plain(missing.missingUsernames),['not_a_creator']);
+ const mixed=await store.bulkStarAwards({...bulk,operationId:uuid(),usernames:['not_a_creator','creator_2']});assert(mixed.done);assert.equal(mixed.total,1);assert.deepEqual(plain(mixed.missingUsernames),['not_a_creator']);assert.equal(mixed.awards.length,1);
+ const beforeRename=(await store.readTracker()).creators.find(c=>c.id==='10001').awards['gift-gallery'].stars;
+ const renamedInput={...bulk,operationId:uuid(),delta:2,usernames:['renamed_creator']};await store.bulkStarAwards(renamedInput);
+ let renamed=(await store.readTracker()).creators.find(c=>c.id==='10001');assert.equal(renamed.awards['gift-gallery'].stars,beforeRename+2);assert.equal(renamed.awards['jungle-giants'].stars,10);
+ roster[0].creator_username='newest_creator';result=await store.bulkStarAwards(renamedInput);assert(result.done);
+ await store.bulkStarAwards({...renamedInput,operationId:uuid(),delta:1,usernames:['newest_creator']});renamed=(await store.readTracker()).creators.find(c=>c.id==='10001');assert.equal(renamed.username,'newest_creator');assert.equal(renamed.awards['gift-gallery'].stars,beforeRename+3);
+ const longInput={operationId:uuid(),campaign:'jungle-ambush',delta:1,usernames:Array.from({length:31},(_,i)=>'creator_'+(i+1))};result=await store.bulkStarAwards(longInput);assert(!result.done);
+ const longJob=tables.poster_templates.find(r=>r.name===store.STAR_BULK_PREFIX+longInput.operationId).template_json;
+ const departed=longJob.targets.find(c=>!longJob.completedIds.includes(c.id));const departedRow=roster.find(r=>r.creator_id===departed.id);departedRow.agency='Respawn';
+ result=await store.bulkStarAwards(longInput);assert(result.done);assert.equal(result.total,30);assert.equal(result.completed,30);assert(result.missingUsernames.includes(departed.username));assert.equal(result.errors.length,0);departedRow.agency='First Class';
+ console.log('Identity/missing tests passed: new usernames use the same Creator ID and awards; mixed missing names and departed creators are skipped without blocking matched updates.');
  const backup=await store.starTrackerBackup();assert.equal(backup.format,'first-class-star-tracker-backup-v1');assert(backup.records.some(r=>r.name===job.name));
  console.log('Bulk tests passed: username matching/deduplication, add/remove, zero floor, interrupted replay, preserved history, simultaneous requests, concurrent additions and downloadable backup.');
  console.log('Star Tracker tests passed: exact columns, 10 starting stars, totals, all agency exclusions, >1000 creators, stable IDs, permanent store/reload, zero, idempotent retries, concurrent revision conflicts and signed API access.');
