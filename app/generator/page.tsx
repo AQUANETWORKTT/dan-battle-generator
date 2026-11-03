@@ -545,6 +545,7 @@ function getTimeOptions() {
     const minute = minutes % 60;
 
     if (hour24 === 24) {
+      options.push("11:59PM");
       options.push("12:00AM");
       continue;
     }
