@@ -29,6 +29,11 @@ export default function Tracker(){
   }catch(error){setLoadError(error instanceof Error?error.message:'Could not load creators.');}finally{setLoading(false);}
  }
  useEffect(()=>{void load();},[]);
+ useEffect(()=>{
+  const refresh=()=>{if(!loading&&!Object.keys(drafts).length&&!active.current.size&&document.visibilityState==='visible')void load();};
+  const timer=window.setInterval(refresh,60000);window.addEventListener('focus',refresh);
+  return()=>{window.clearInterval(timer);window.removeEventListener('focus',refresh);};
+ },[drafts,loading]);
  useEffect(()=>{if(!restored.current)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));}catch{if(Object.keys(drafts).length)setNotice('Browser draft backup is unavailable. Save your edits before leaving this page.');}},[drafts]);
  useEffect(()=>{function warn(e:BeforeUnloadEvent){if(Object.keys(drafts).length||active.current.size){e.preventDefault();e.returnValue='';}}window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[drafts]);
  function total(creator:StarCreator){return starTotal(creator)+STAR_CAMPAIGNS.reduce((sum,c)=>{const draft=drafts[cellKey(creator.id,c.id)];return sum+(draft&&isNumber(draft.value)?Number(draft.value)-(creator.awards[c.id]?.stars||0):0);},0);}
