@@ -62,6 +62,9 @@ export function middleware(req: NextRequest) {
   }
 
   const isEventsSpace = process.env.SITE_MODE === "events";
+  // The server page and scoped API validate this separate signed session.
+  // No leadership access is granted by visiting the Poster Generator.
+  if(!isEventsSpace&&(path==='/poster-generator'||path.startsWith('/api/poster-generator/')))return NextResponse.next();
   const isBLeaderboard = path === "/recruitment-leaderboard-b" || path.startsWith("/recruitment-leaderboard-b/");
   const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/") || isBLeaderboard;
   const isRecruitmentLeaderboardApi = path === "/api/data-analysis/recruitment-leaderboard";

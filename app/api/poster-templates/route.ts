@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { cookies } from 'next/headers';
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 const TEAM_DAN_POSTER_TEMPLATE_NAME = "team-dan-poster";
 const DEFAULT_SETTING_KEYS = ["poster-template-default", "poster-template-2v2-default"];
+const MANAGER_ACCESS_SETTING = 'manager-poster-template-access';
 
 function isBattleTemplate(template: unknown, name: unknown) {
   const layout = template as Record<string, unknown> | null;
@@ -38,6 +40,7 @@ export async function GET() {
     return NextResponse.json({
       templates: (templatesResult.data || []).filter((item) => isBattleTemplate(item.template_json, item.name)),
       defaults,
+      managerTemplateIds: (templatesResult.data || []).find(item=>item.name===MANAGER_ACCESS_SETTING)?.template_json?.allowedIds || [],
     });
   } catch (error) {
     return NextResponse.json(
@@ -45,6 +48,22 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(request: Request) {
+  if((await cookies()).get('first-class-space-auth')?.value!=='true')return NextResponse.json({error:'Leadership access required.'},{status:403});
+  try {
+    const body=await request.json();
+    if(!Array.isArray(body.allowedIds)||body.allowedIds.some((id:unknown)=>typeof id!=='string'))return NextResponse.json({error:'Choose saved template IDs.'},{status:400});
+    const {data,error}=await submissionsSupabase.from('poster_templates').select('id,name,template_json');
+    if(error)throw Error(error.message);
+    const validIds=new Set((data||[]).filter(item=>isBattleTemplate(item.template_json,item.name)).map(item=>item.id));
+    const allowedIds=[...new Set<string>(body.allowedIds)];
+    if(allowedIds.some(id=>!validIds.has(id)))return NextResponse.json({error:'A selected template no longer exists. Reload the page and try again.'},{status:400});
+    const saved=await submissionsSupabase.from('poster_templates').upsert({name:MANAGER_ACCESS_SETTING,template_json:{allowedIds},background_url:null,updated_at:new Date().toISOString()},{onConflict:'name'});
+    if(saved.error)throw Error(saved.error.message);
+    return NextResponse.json({managerTemplateIds:allowedIds});
+  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Could not save manager template access.'},{status:500});}
 }
 
 export async function POST(request: Request) {
