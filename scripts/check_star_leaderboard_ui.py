@@ -9,6 +9,9 @@ base=os.environ.get('STAR_UI_BASE','http://localhost:3107')
 assert urlparse(base).hostname in ('localhost','127.0.0.1')
 rows=[{'username':f'creator{i:03}', 'team':'Team Lauren', 'stars':120 if i<2 else 80 if i<4 else 10, 'rank':1 if i<2 else 2 if i<4 else 3, 'joint':True} for i in range(103)]
 rows[0]['username']='a_very_long_creator_name1'
+rows[0]['team']='Team Dump Creators (CROSS AGENCY)'
+rows[1]['team']='Team INDI (OWNER)'
+rows[2]['team']='Team KJB'
 picture='<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" fill="#46634f"/><circle cx="28" cy="20" r="11" fill="#d6c18d"/><ellipse cx="28" cy="50" rx="21" ry="17" fill="#bbae8c"/></svg>'
 with sync_playwright() as p:
     browser=p.chromium.launch()
@@ -23,7 +26,20 @@ with sync_playwright() as p:
         expect(page.get_by_label('Joint rank 1',exact=True)).to_have_count(2)
         expect(page.get_by_label('Joint rank 2',exact=True)).to_have_count(2)
         assert page.locator('a').count()==0
+        expect(page.get_by_text('Team Mike / Indy',exact=True)).to_have_count(2)
+        expect(page.get_by_text('Team Dan / James',exact=True)).to_have_count(1)
+        assert page.get_by_text('Chase the stars.',exact=True).count()==0
+        assert page.get_by_text('THE JUNGLE STANDINGS',exact=True).count()==0
+        assert page.get_by_text('LIVE STANDINGS',exact=True).count()==0
+        assert page.get_by_text('JOINT STARS, JOINT RANK',exact=True).count()==0
+        assert page.locator('main').evaluate("e=>getComputedStyle(e).textTransform")=="uppercase"
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
+        page.evaluate('window.scrollTo(0,600)')
+        page.wait_for_function("document.querySelector('[aria-hidden=true]').style.getPropertyValue('--scenery-shift')!=='0px'")
+        page.emulate_media(reduced_motion='reduce')
+        page.wait_for_function("document.querySelector('[aria-hidden=true]').style.getPropertyValue('--scenery-shift')==='0px'")
+        page.evaluate('window.scrollTo(0,0)')
+        page.emulate_media(reduced_motion='no-preference')
         page.get_by_text('@a_very_long_creator_name1',exact=True).click()
         assert page.url==base+'/star-leaderboard'
         search=page.get_by_role('searchbox',name='Search all creators')

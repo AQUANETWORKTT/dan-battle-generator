@@ -9,3 +9,5 @@ The creator deployment proxies the fixed Management `/api/star-leaderboard` endp
 Pictures use saved poster fallback avatars first, otherwise TikTok profile scraping, with lazy image loading and cached image responses. TikTok may withhold an image; matching initials remain visible if it cannot be loaded. Neither pictures nor usernames navigate away from the leaderboard.
 
 Checks: `node scripts/test-star-leaderboard.cjs`, `python scripts/check_star_leaderboard_ui.py`, and `npm run build`.
+
+The display uses uppercase lettering and separate floating rows with a compact search box. Mike Hales, Indy Owner and Dump Creators labels display as Team Mike / Indy; KJB displays as Team Dan / James. These are leaderboard display aliases; Manager Assignments are not rewritten. The background moves gently on scroll and stays still when reduced motion is enabled.
