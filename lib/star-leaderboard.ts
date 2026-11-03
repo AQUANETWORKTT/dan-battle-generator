@@ -5,7 +5,7 @@ const LOCAL_PICTURES:Record<string,string>={cerilaw83:'/avatars/cerilaw83.jpg',s
 export function localStarAvatar(username:string){return LOCAL_PICTURES[username.toLowerCase()]||'';}
 export function leaderboardTeam(label:string){
  const key=label.replace(/^team\s+/i,'').toLowerCase().replace(/[^a-z0-9]/g,'');
- if(/^(mikehales(?:jb)?|ind[yi](?:owner)?|dumpcreators(?:crossagency)?|mike(?:and)?ind[yi])$/.test(key))return 'Team Mike / Indy';
+ if(/^(mikehales(?:jb)?|ind[yi](?:owner)?|dumpcreators(?:crossagency)?|mike(?:and)?ind[yi])$/.test(key))return 'Team Mike / Indi';
  if(key==='kjb'||key==='danjames'||key==='danandjames')return 'Team Dan / James';
  return label;
 }

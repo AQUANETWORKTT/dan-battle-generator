@@ -10,4 +10,4 @@ Pictures use saved poster fallback avatars first, otherwise TikTok profile scrap
 
 Checks: `node scripts/test-star-leaderboard.cjs`, `python scripts/check_star_leaderboard_ui.py`, and `npm run build`.
 
-The display uses uppercase lettering and separate floating rows with a compact search box. Mike Hales, Indy Owner and Dump Creators labels display as Team Mike / Indy; KJB displays as Team Dan / James. These are leaderboard display aliases; Manager Assignments are not rewritten. The background moves gently on scroll and stays still when reduced motion is enabled.
+The display uses uppercase lettering and separate floating rows with a compact search box. Mike Hales, Indi Owner and Dump Creators labels display as Team Mike / Indi; KJB displays as Team Dan / James. These are leaderboard display aliases; Manager Assignments are not rewritten. The background moves gently on scroll and stays still when reduced motion is enabled.

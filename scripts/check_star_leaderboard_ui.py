@@ -26,7 +26,7 @@ with sync_playwright() as p:
         expect(page.get_by_label('Joint rank 1',exact=True)).to_have_count(2)
         expect(page.get_by_label('Joint rank 2',exact=True)).to_have_count(2)
         assert page.locator('a').count()==0
-        expect(page.get_by_text('Team Mike / Indy',exact=True)).to_have_count(2)
+        expect(page.get_by_text('Team Mike / Indi',exact=True)).to_have_count(2)
         expect(page.get_by_text('Team Dan / James',exact=True)).to_have_count(1)
         assert page.get_by_text('Chase the stars.',exact=True).count()==0
         assert page.get_by_text('THE JUNGLE STANDINGS',exact=True).count()==0
