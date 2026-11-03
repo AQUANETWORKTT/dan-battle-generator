@@ -84,11 +84,11 @@ with sync_playwright() as p:
     page.route('**/api/star-tracker*',fixture)
     tile.click()
     page.get_by_role('region',name='Scrollable campaign awards').wait_for()
-    assert page.get_by_role('columnheader').count()==24
+    assert page.get_by_role('columnheader').count()==25
     headings=page.get_by_role('columnheader').all_text_contents()
     assert headings[:9]==['Creator’s username','Starting Stars','Valid Days 1st','Gift Gallery','Crocodile Countdown','The Jungle Marathon','Jungle Giants','The Jungle Ambush','Venomous Victory']
     assert headings.count('Jungle Treasure Gift')==1
-    assert headings[-1]=='Jungle Costume Challenge'
+    assert headings[-2:]==['Jungle Costume Challenge','Manual Star Adjustments']
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), 'Page overflowed phone width'
     assert page.locator('tbody tr').count()==40
     gift=page.get_by_label('Gift Gallery stars for alpha',exact=True)
@@ -193,9 +193,28 @@ with sync_playwright() as p:
     page.get_by_role('button',name='All changes saved',exact=True).wait_for()
     assert creators[0]['awards']['jungle-costume-challenge']['stars']==4
     assert creators[0]['awards']['gift-gallery']['stars']==3
+    manual=page.get_by_label('Manual Star Adjustments stars for alpha_new',exact=True)
+    assert manual.input_value()=='0'
+    page.get_by_role('button',name='Increase manual stars for alpha_new',exact=True).click()
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    assert manual.input_value()=='1'
+    page.get_by_role('button',name='Decrease manual stars for alpha_new',exact=True).click()
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    page.get_by_role('button',name='Decrease manual stars for alpha_new',exact=True).click()
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    assert manual.input_value()=='-1'
+    page.get_by_role('button',name='Decrease manual stars for creator_01',exact=True).click()
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    assert page.get_by_label('Manual Star Adjustments stars for creator_01',exact=True).is_visible(), 'Row jumped away while using arrows'
+    page.get_by_role('button',name='Increase manual stars for creator_01',exact=True).click()
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    page.reload()
+    page.get_by_role('region',name='Scrollable campaign awards').wait_for()
+    assert page.get_by_label('Manual Star Adjustments stars for alpha_new',exact=True).input_value()=='-1'
+    assert creators[0]['awards']['manual-star-adjustments']['stars']==-1
     assert abs(page.locator('tbody tr').first.locator('th').bounding_box()['x']-region.bounding_box()['x'])<3
     assert page.locator('main > div').first.evaluate('element=>getComputedStyle(element).position')=='fixed'
     page.screenshot(path=str(out/'tracker-desktop.png'),full_page=True)
     assert not errors,errors
     browser.close()
-print('Star Tracker browser checks passed: front tile, signed onboarder access, phone width, 24 scrollable columns, sticky names, 40-row paging, search across all creators, edit/save/reload, zero, validation, offline draft recovery, conflicts and leaderboard.')
+print('Star Tracker browser checks passed: front tile, signed onboarder access, phone width, 25 scrollable columns and saved manual adjustment arrows, sticky names, 40-row paging, search across all creators, edit/save/reload, zero, validation, offline draft recovery, conflicts and leaderboard.')

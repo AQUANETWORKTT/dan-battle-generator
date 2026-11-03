@@ -4,7 +4,9 @@ function load(file,deps={}){const box={exports:{},require:name=>{if(name==='serv
 const plain=value=>JSON.parse(JSON.stringify(value));
 const model=load('lib/star-tracker.ts'),search=load('lib/creator-api-search/auth.ts'),auth=load('lib/star-tracker-auth.ts',{'./creator-api-search/auth':search});
 assert.equal(model.STARTING_STARS,10);
-assert.equal(model.STAR_CAMPAIGNS.length,22);assert.equal(new Set(model.STAR_CAMPAIGNS.map(c=>c.id)).size,22);
+assert.equal(model.STAR_CAMPAIGNS.length,23);assert.equal(new Set(model.STAR_CAMPAIGNS.map(c=>c.id)).size,23);
+assert.equal(model.STAR_CAMPAIGNS.at(-1).label,'Manual Star Adjustments');
+assert.equal(model.starTotal({awards:{}}),10);assert.equal(model.starTotal({awards:{'manual-star-adjustments':{stars:-3}}}),7);
 for(const label of ['Snake Bite','The Jungle Marathon','Gift Gallery','Jungle Giants','The Jungle Ambush','Venomous Victory','Crocodile Countdown','Jungle Storm','The Walk of Fear','Jungle Riddle Trail','Jungle Bingo','Jungle Treasure Gift','The Royal Rumble','Star Hunt','Star Steal / Shield','Escape the Jungle','The Great Escape','The Star Showdown','Double Survival Trial','Survive the Night','Jungle Costume Challenge'])assert.equal(model.STAR_CAMPAIGNS.filter(c=>c.label===label).length,1,label);
 assert.equal(model.STAR_CAMPAIGNS.find(c=>c.label==='Venomous Victory').id,'venemous-victory');
 assert.equal(model.starTotal({awards:{'venemous-victory':{stars:7},'jungle-costume-challenge':{stars:4}}}),21);
@@ -18,6 +20,7 @@ assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'fo
 assert.equal(model.firstClassStarCreator({agency:'First Class',group_name:'Dragonheart sub agency'},{}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'jbollins997@example.com'},{}),false);
 const valid={creatorId:'10001',campaign:'gift-gallery',stars:0,revision:0};assert(model.validStarInput(valid));
+assert(model.validStarInput({...valid,campaign:'manual-star-adjustments',stars:-1}));assert(!model.validStarInput({...valid,campaign:'manual-star-adjustments',stars:-1000001}));
 assert.deepEqual(plain(model.parseStarUsernames('@ONE, one; https://www.tiktok.com/@two?lang=en\n@@bad')), {usernames:['one','two'],invalid:['@@bad']});
 for(const override of [{stars:-1},{stars:1.5},{stars:'2'},{stars:1000001},{revision:-1},{campaign:'starting'},{creatorId:'username'}])assert(!model.validStarInput({...valid,...override}));
 const token=auth.starSessionToken();assert(auth.starSessionValid(token));assert(!auth.starSessionValid('true'));assert(!auth.starSessionValid(token.replace('star-tracker','leadership')));assert(!auth.starSessionValid(token.slice(0,-1)+(token.endsWith('0')?'1':'0')));assert(!auth.starSessionValid(auth.starSessionToken(Date.now()-31*86400000)));
@@ -80,6 +83,13 @@ function request(body={},signed=true,origin='http://localhost:3105'){return {coo
  result=await store.bulkStarAwards(longInput);assert(result.done);assert.equal(result.total,30);assert.equal(result.completed,30);assert(result.missingUsernames.includes(departed.username));assert.equal(result.errors.length,0);departedRow.agency='First Class';
  console.log('Identity/missing tests passed: new usernames use the same Creator ID and awards; mixed missing names and departed creators are skipped without blocking matched updates.');
  const backup=await store.starTrackerBackup();assert.equal(backup.format,'first-class-star-tracker-backup-v1');assert(backup.records.some(r=>r.name===job.name));
+ const beforeManual=(await store.readTracker()).creators.find(c=>c.id==='10001');const beforeTotal=model.starTotal(beforeManual);
+ const adjustment=await store.saveStarAward({...valid,campaign:'manual-star-adjustments',stars:-3});assert.equal(adjustment.stars,-3);
+ let withManual=(await store.readTracker()).creators.find(c=>c.id==='10001');assert.equal(model.starTotal(withManual),beforeTotal-3);
+ await store.saveStarAward({...valid,campaign:'manual-star-adjustments',stars:-2,revision:adjustment.revision});withManual=(await store.readTracker()).creators.find(c=>c.id==='10001');assert.equal(model.starTotal(withManual),beforeTotal-2);
+ assert.equal((await store.readTracker()).creators.find(c=>c.id==='10002').awards['manual-star-adjustments'],undefined);
+ const manualBulk=await store.bulkStarAwards({operationId:uuid(),campaign:'manual-star-adjustments',delta:-1,usernames:['creator_2']});assert.equal(manualBulk.awards[0].stars,-1);
+ console.log('Manual adjustments passed: zero default, positive/negative validation, persistence, totals and signed bulk adjustment.');
  console.log('Bulk tests passed: username matching/deduplication, add/remove, zero floor, interrupted replay, preserved history, simultaneous requests, concurrent additions and downloadable backup.');
  console.log('Star Tracker tests passed: exact columns, 10 starting stars, totals, all agency exclusions, >1000 creators, stable IDs, permanent store/reload, zero, idempotent retries, concurrent revision conflicts and signed API access.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

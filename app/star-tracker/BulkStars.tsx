@@ -39,7 +39,7 @@ export default function BulkStars({creators,disabled,onAwards,onBusyChange,onCom
  return <section className={styles.bulk}>
   <button type="button" className={styles.bulkToggle} aria-expanded={open} onClick={()=>setOpen(v=>!v)}>Bulk stars <span>{open?'−':'+'}</span></button>
   {open&&<div className={styles.bulkBody}>
-   <p>Paste creator usernames, choose a campaign, then add or remove stars. Each creator is counted once. Missing creators are skipped; everyone matched is updated. Removals stop at zero.</p>
+   <p>Paste creator usernames, choose a campaign, then add or remove stars. Each creator is counted once. Missing creators are skipped; everyone matched is updated. {campaign==='manual-star-adjustments'?'Manual adjustments can be positive or negative.':'Removals stop at zero.'}</p>
    <div className={styles.bulkGrid}>
     <label className={styles.bulkNames}><span>Creator usernames</span><textarea aria-label="Bulk creator usernames" value={text} disabled={busy||Boolean(pending)} onChange={e=>{setText(e.target.value);changed();}} placeholder={'@creator_one\n@creator_two\n@creator_three'}/></label>
     <div className={styles.bulkOptions}>

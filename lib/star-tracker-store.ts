@@ -1,6 +1,6 @@
 import 'server-only';
 import {database} from './creator-api-search/db';
-import {starRoster,type StarAward,type StarCreator,type CampaignId,type StarBulkInput} from './star-tracker';
+import {starRoster,minimumStarValue,type StarAward,type StarCreator,type CampaignId,type StarBulkInput} from './star-tracker';
 
 export const STAR_PREFIX='streamer-star-tracker-v1:';
 type Roster={latestDate:string;creators:{id:string;username:string}[]};
@@ -73,7 +73,7 @@ export async function bulkStarAwards(input:StarBulkInput){
     const current=await db.from('poster_templates').select('template_json').eq('name',STAR_PREFIX+target.id+':'+input.campaign).maybeSingle();fail(current.error);
     const prior=current.data?.template_json as StarAward|undefined;
     if(prior?.history?.some(h=>h.operationId===input.operationId)){awards.push(prior);return;}
-    const stars=Math.max(0,(prior?.stars||0)+input.delta);if(stars>1000000)throw Error('This award would exceed 1,000,000 stars.');
+    const stars=Math.max(minimumStarValue(input.campaign),(prior?.stars||0)+input.delta);if(stars>1000000)throw Error('This award would exceed 1,000,000 stars.');
     try{awards.push(await saveStarAward({creatorId:target.id,campaign:input.campaign,stars,revision:prior?.revision||0},{id:input.operationId,delta:input.delta}));return;}catch(error){if(error instanceof StarConflict&&attempt<4)continue;throw error;}
    }
   }catch(error){if(error instanceof StarCreatorMissing)skipped.push(target);else errors.push({username:target.username,message:error instanceof Error?error.message:'Save failed.'});}

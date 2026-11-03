@@ -22,11 +22,13 @@ export const STAR_CAMPAIGNS=[
  {id:'double-survival-trial',label:'Double Survival Trial'},
  {id:'survive-the-night',label:'Survive the Night'},
  {id:'jungle-costume-challenge',label:'Jungle Costume Challenge'},
+ {id:'manual-star-adjustments',label:'Manual Star Adjustments'},
 ] as const;
 export type CampaignId=typeof STAR_CAMPAIGNS[number]['id'];
 export type StarAward={creatorId:string;campaign:CampaignId;stars:number;revision:number;updatedAt:string;history?:{before:number;after:number;at:string;kind:'edit'|'bulk';operationId?:string;requestedDelta?:number}[]};
 export type StarCreator={id:string;username:string;awards:Partial<Record<CampaignId,StarAward>>};
 export const STARTING_STARS=10;
+export function minimumStarValue(campaign:unknown){return campaign==='manual-star-adjustments'?-1000000:0;}
 export function parseStarUsernames(text:string){
  const names=new Set<string>(),invalid:string[]=[];
  for(const token of text.split(/[\s,;]+/).filter(Boolean)){
@@ -67,5 +69,5 @@ export function starRoster(rows:Record<string,unknown>[],groups:Record<string,st
 }
 export function validStarInput(body:unknown):body is {creatorId:string;campaign:CampaignId;stars:number;revision:number}{
  const b=body as Record<string,unknown>|null;
- return Boolean(b&&/^\d{5,30}$/.test(String(b.creatorId||''))&&STAR_CAMPAIGNS.some(c=>c.id===b.campaign)&&typeof b.stars==='number'&&Number.isSafeInteger(b.stars)&&b.stars>=0&&b.stars<=1000000&&typeof b.revision==='number'&&Number.isSafeInteger(b.revision)&&b.revision>=0);
+ return Boolean(b&&/^\d{5,30}$/.test(String(b.creatorId||''))&&STAR_CAMPAIGNS.some(c=>c.id===b.campaign)&&typeof b.stars==='number'&&Number.isSafeInteger(b.stars)&&b.stars>=minimumStarValue(b.campaign)&&b.stars<=1000000&&typeof b.revision==='number'&&Number.isSafeInteger(b.revision)&&b.revision>=0);
 }

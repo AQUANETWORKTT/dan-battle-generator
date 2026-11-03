@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {STAR_CAMPAIGNS,STARTING_STARS,starTotal,type CampaignId,type StarCreator,type StarAward} from '@/lib/star-tracker';
+import {STAR_CAMPAIGNS,STARTING_STARS,starTotal,minimumStarValue,type CampaignId,type StarCreator,type StarAward} from '@/lib/star-tracker';
 import styles from './tracker.module.css';
 import BulkStars from './BulkStars';
 
@@ -10,7 +10,7 @@ type Draft={value:string;revision:number};
 type Payload={creators:StarCreator[];latestDate:string};
 const DRAFT_KEY='first-class-star-tracker-drafts-v1';
 const cellKey=(id:string,campaign:CampaignId)=>id+':'+campaign;
-const isNumber=(value:string)=>(value.trim()===''||/^\d+$/.test(value))&&Number(value)<=1000000;
+const isNumber=(value:string,campaign:CampaignId)=>(value.trim()===''||(campaign==='manual-star-adjustments'?/^-?\d+$/:/^\d+$/).test(value))&&Number(value)>=minimumStarValue(campaign)&&Number(value)<=1000000;
 function Star({size=26}:{size?:number}){return <Image src="/star-tracker/gold-star.png" alt="" width={size} height={size} className={styles.star}/>;}
 
 export default function Tracker(){
@@ -18,6 +18,7 @@ export default function Tracker(){
  const [query,setQuery]=useState(''),[sort,setSort]=useState('total'),[view,setView]=useState<'tracker'|'leaderboard'>('tracker'),[page,setPage]=useState(0);
  const [drafts,setDrafts]=useState<Record<string,Draft>>({}),[errors,setErrors]=useState<Record<string,string>>({}),[saving,setSaving]=useState<string[]>([]),[saved,setSaved]=useState<string[]>([]),[notice,setNotice]=useState('');
  const [bulkBusy,setBulkBusy]=useState(false);
+ const [manualOrder,setManualOrder]=useState<string[]|null>(null);
  const active=useRef(new Set<string>()),restored=useRef(false);
  async function load(){
   setLoading(true);setLoadError('');
@@ -38,22 +39,23 @@ export default function Tracker(){
  },[drafts,loading,bulkBusy]);
  useEffect(()=>{if(!restored.current)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));}catch{if(Object.keys(drafts).length)setNotice('Browser draft backup is unavailable. Save your edits before leaving this page.');}},[drafts]);
  useEffect(()=>{function warn(e:BeforeUnloadEvent){if(Object.keys(drafts).length||active.current.size||bulkBusy){e.preventDefault();e.returnValue='';}}window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[drafts,bulkBusy]);
- function total(creator:StarCreator){return starTotal(creator)+STAR_CAMPAIGNS.reduce((sum,c)=>{const draft=drafts[cellKey(creator.id,c.id)];return sum+(draft&&isNumber(draft.value)?Number(draft.value)-(creator.awards[c.id]?.stars||0):0);},0);}
+ function total(creator:StarCreator){return starTotal(creator)+STAR_CAMPAIGNS.reduce((sum,c)=>{const draft=drafts[cellKey(creator.id,c.id)];return sum+(draft&&isNumber(draft.value,c.id)?Number(draft.value)-(creator.awards[c.id]?.stars||0):0);},0);}
  const ranked=useMemo(()=>[...data.creators].sort((a,b)=>starTotal(b)-starTotal(a)||a.username.localeCompare(b.username)),[data.creators]);
  const ranks=new Map(ranked.map((c,i)=>[c.id,i+1]));
+ const tableRanked=useMemo(()=>{if(!manualOrder)return ranked;const byId=new Map(ranked.map(c=>[c.id,c]));return manualOrder.flatMap(id=>byId.has(id)?[byId.get(id)!]:[]);},[ranked,manualOrder]);
  const filtered=useMemo(()=>{
-  const list=(view==='leaderboard'||sort==='total'?ranked:[...data.creators].sort((a,b)=>a.username.localeCompare(b.username))).filter(c=>c.username.toLowerCase().includes(query.trim().replace(/^@/,'').toLowerCase()));
+  const list=(view==='leaderboard'?ranked:sort==='total'?tableRanked:[...data.creators].sort((a,b)=>a.username.localeCompare(b.username))).filter(c=>c.username.toLowerCase().includes(query.trim().replace(/^@/,'').toLowerCase()));
   return list;
- },[ranked,data.creators,view,sort,query]);
+ },[ranked,tableRanked,data.creators,view,sort,query]);
  const visible=filtered.slice(page*40,(page+1)*40),dirtyCount=Object.keys(drafts).length;
  function edit(creator:StarCreator,campaign:CampaignId,value:string){
   const key=cellKey(creator.id,campaign);setDrafts(old=>({...old,[key]:{value,revision:old[key]?.revision??creator.awards[campaign]?.revision??0}}));setSaved(old=>old.filter(v=>v!==key));
-  if(isNumber(value))setErrors(old=>{const next={...old};delete next[key];return next;});
+  if(isNumber(value,campaign))setErrors(old=>{const next={...old};delete next[key];return next;});
  }
  function acceptAward(award:StarAward){setData(old=>({...old,creators:old.creators.map(c=>c.id===award.creatorId?{...c,awards:{...c.awards,[award.campaign]:award}}:c)}));}
- async function save(creator:StarCreator,campaign:CampaignId){
-  const key=cellKey(creator.id,campaign),draft=drafts[key];if(!draft||active.current.has(key))return;
-  if(!isNumber(draft.value)){setErrors(old=>({...old,[key]:'Enter a whole number from 0 to 1,000,000. Use 0 for no stars.'}));return;}
+ async function save(creator:StarCreator,campaign:CampaignId,override?:Draft){
+  const key=cellKey(creator.id,campaign),draft=override||drafts[key];if(!draft||active.current.has(key))return;
+  if(!isNumber(draft.value,campaign)){setErrors(old=>({...old,[key]:`Enter a whole number from ${minimumStarValue(campaign).toLocaleString()} to 1,000,000. Use 0 for no stars.`}));return;}
   active.current.add(key);setSaving([...active.current]);setErrors(old=>{const next={...old};delete next[key];return next;});
   try{
    const response=await fetch('/api/star-tracker',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({creatorId:creator.id,campaign,stars:Number(draft.value),revision:draft.revision})});const body=await response.json();
@@ -61,6 +63,12 @@ export default function Tracker(){
    acceptAward(body.award);setNotice('');setDrafts(old=>{const next={...old};if(next[key]?.value===draft.value)delete next[key];return next;});setSaved(old=>[...old.filter(v=>v!==key),key]);
   }catch(error){setErrors(old=>({...old,[key]:error instanceof Error?error.message:'Save failed. Your edit is still here.'}));}
   finally{active.current.delete(key);setSaving([...active.current]);}
+ }
+ function adjustManual(creator:StarCreator,delta:number){
+  const campaign='manual-star-adjustments',key=cellKey(creator.id,campaign);if(active.current.has(key)||bulkBusy)return;
+  const existing=drafts[key],current=existing&&isNumber(existing.value,campaign)?Number(existing.value):creator.awards[campaign]?.stars??0;
+  const value=String(Math.max(-1000000,Math.min(1000000,current+delta))),revision=existing?.revision??creator.awards[campaign]?.revision??0;
+  edit(creator,campaign,value);void save(creator,campaign,{value,revision});
  }
  function discard(key:string){setDrafts(old=>{const next={...old};delete next[key];return next;});setErrors(old=>{const next={...old};delete next[key];return next;});}
  async function saveAll(){for(const creator of data.creators)for(const campaign of STAR_CAMPAIGNS)if(drafts[cellKey(creator.id,campaign.id)])await save(creator,campaign.id);}
@@ -92,7 +100,22 @@ export default function Tracker(){
      <p className={styles.scrollHint}>Swipe the table sideways to see every campaign → <span>Usernames and star counts stay in view.</span></p>
      <div className={styles.tableScroll} role="region" aria-label="Scrollable campaign awards" tabIndex={0}>
       <table className={styles.table}><thead><tr><th scope="col">Creator’s username</th><th scope="col">Starting Stars</th>{STAR_CAMPAIGNS.map(c=><th scope="col" key={c.id}>{c.label}</th>)}</tr></thead><tbody>
-       {visible.map(creator=><tr key={creator.id}><th scope="row"><span className={styles.username}>@{creator.username}</span><span className={styles.rowTotal}><Star size={19}/><b data-total={creator.id}>{total(creator).toLocaleString()}</b></span></th><td><span className={styles.starting}><Star size={32}/><b>{STARTING_STARS}</b></span></td>{STAR_CAMPAIGNS.map(c=>{const key=cellKey(creator.id,c.id),draft=drafts[key],error=errors[key],isSaving=saving.includes(key);return <td key={c.id} className={error?styles.cellError:''}><input type="text" inputMode="numeric" pattern="[0-9]*" aria-label={`${c.label} stars for ${creator.username}`} aria-invalid={Boolean(error)} value={draft?.value??String(creator.awards[c.id]?.stars??0)} disabled={isSaving||bulkBusy} onChange={e=>edit(creator,c.id,e.target.value)} onBlur={()=>{if(!errors[key])void save(creator,c.id);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void save(creator,c.id);}if(e.key==='Escape')discard(key);}}/><span className={styles.cellStatus}>{isSaving?'Saving…':error?'Not saved':draft?'Unsaved':saved.includes(key)?'✓ Saved':''}</span>{error&&<div role="alert" className={styles.cellMessage}><p>{error}</p><button onClick={()=>void save(creator,c.id)}>Retry my value</button><button onClick={()=>discard(key)}>Use saved value ({creator.awards[c.id]?.stars??0})</button></div>}</td>;})}</tr>)}
+       {visible.map(creator=><tr key={creator.id}>
+        <th scope="row"><span className={styles.username}>@{creator.username}</span><span className={styles.rowTotal}><Star size={19}/><b data-total={creator.id}>{total(creator).toLocaleString()}</b></span></th>
+        <td><span className={styles.starting}><Star size={32}/><b>{STARTING_STARS}</b></span></td>
+        {STAR_CAMPAIGNS.map(c=>{
+         const key=cellKey(creator.id,c.id),draft=drafts[key],error=errors[key],isSaving=saving.includes(key),manual=c.id==='manual-star-adjustments';
+         return <td key={c.id} className={error?styles.cellError:''}>
+          <div className={manual?styles.adjustment:undefined} tabIndex={manual?0:undefined} onFocusCapture={()=>{if(manual)setManualOrder(current=>current||ranked.map(row=>row.id));}} onBlurCapture={e=>{if(manual&&!e.currentTarget.contains(e.relatedTarget as Node|null))setManualOrder(null);}}>
+           {manual&&<button type="button" aria-label={`Decrease manual stars for ${creator.username}`} disabled={isSaving||bulkBusy} onMouseDown={e=>e.preventDefault()} onClick={e=>{e.currentTarget.parentElement?.focus();adjustManual(creator,-1);}}>↓</button>}
+           <input type="text" inputMode={manual?'text':'numeric'} pattern={manual?'-?[0-9]*':'[0-9]*'} aria-label={`${c.label} stars for ${creator.username}`} aria-invalid={Boolean(error)} value={draft?.value??String(creator.awards[c.id]?.stars??0)} disabled={isSaving||bulkBusy} onChange={e=>edit(creator,c.id,e.target.value)} onBlur={()=>{if(!errors[key])void save(creator,c.id);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void save(creator,c.id);}if(e.key==='Escape')discard(key);}}/>
+           {manual&&<button type="button" aria-label={`Increase manual stars for ${creator.username}`} disabled={isSaving||bulkBusy} onMouseDown={e=>e.preventDefault()} onClick={e=>{e.currentTarget.parentElement?.focus();adjustManual(creator,1);}}>↑</button>}
+          </div>
+          <span className={styles.cellStatus}>{isSaving?'Saving…':error?'Not saved':draft?'Unsaved':saved.includes(key)?'✓ Saved':''}</span>
+          {error&&<div role="alert" className={styles.cellMessage}><p>{error}</p><button onClick={()=>void save(creator,c.id)}>Retry my value</button><button onClick={()=>discard(key)}>Use saved value ({creator.awards[c.id]?.stars??0})</button></div>}
+         </td>;
+        })}
+       </tr>)}
       </tbody></table>
      </div>
     </>}

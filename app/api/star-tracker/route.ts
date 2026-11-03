@@ -23,7 +23,7 @@ export async function PATCH(req:NextRequest){
  const origin=req.headers.get('origin'),host=req.headers.get('host')||req.nextUrl.host;
  if(origin&&origin!==req.nextUrl.protocol+'//'+host)return NextResponse.json({error:'Origin not allowed.'},{status:403});
  try{
-  const input=await req.json();if(!validStarInput(input))return NextResponse.json({error:'Enter a whole number of stars from 0 to 1,000,000.'},{status:400});
+  const input=await req.json();if(!validStarInput(input))return NextResponse.json({error:'Enter a whole number from 0 to 1,000,000. Manual Star Adjustments also allow negative numbers down to −1,000,000.'},{status:400});
   return NextResponse.json({award:await saveStarAward(input)},{headers:{'Cache-Control':'private, no-store'}});
  }catch(error){if(error instanceof StarConflict)return NextResponse.json({error:error.message,award:error.award},{status:409});return NextResponse.json({error:error instanceof Error?error.message:'Could not save stars. Your change has been kept on screen.'},{status:500});}
 }
