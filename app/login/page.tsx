@@ -9,7 +9,7 @@ const cards = [
   { href: "/login/poster-generator", eyebrow: "FIRST CLASS", title: "MANAGER POSTER GENERATOR", description: <>SINGLE, 2V2 AND H2H<br />POSTER DOWNLOADS.</>, tone: "border-white/30 bg-black/65 hover:border-yellow-300/60 hover:bg-black/75", label: "text-yellow-100" },
   { href: "https://firstclassbattles.space", eyebrow: "AGENCY NETWORK", title: "BATTLE NETWORK", description: <>BATTLE SHEETS, MATCHING<br />AND POSTER DOWNLOADS.</>, tone: "border-sky-300/45 bg-sky-950/25 hover:border-sky-200 hover:bg-sky-900/30", label: "text-sky-100" },
   { href: "/login/onboarding", eyebrow: "FIRST CLASS", title: "ONBOARDING", description: <>Onboarding new creators for the first 14 days of joining.</>, tone: "border-violet-300/45 bg-violet-950/30 hover:border-violet-200 hover:bg-violet-900/35", label: "text-violet-100" },
-  { href: '/star-tracker', eyebrow: 'STAR TRACKER', title: "I’m a Streamer, Get Me Out of Here!", description: <>Star Tracker<br/><span className="text-sm text-yellow-100/80">Earn your stars. Climb the jungle leaderboard.</span></>, tone: 'border-yellow-300/60 bg-emerald-950/90 hover:border-yellow-200', label: 'text-yellow-100' },
+  { href: '/star-tracker', eyebrow: 'STAR TRACKER', title: "I’m a Streamer, Get Me OUTTA Here!", description: <>Star Tracker<br/><span className="text-sm text-yellow-100/80">Earn your stars. Climb the jungle leaderboard.</span></>, tone: 'border-yellow-300/60 bg-emerald-950/90 hover:border-yellow-200', label: 'text-yellow-100' },
 ];
 
 export default function LoginPage() {

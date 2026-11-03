@@ -1,4 +1,4 @@
-# I'm a Streamer, Get Me Out of Here! – Star Tracker
+# I'm a Streamer, Get Me OUTTA Here! – Star Tracker
 
 ## Access and navigation
 
@@ -13,6 +13,12 @@ Storage follows the existing Onboarding/workspace convention in `poster_template
 Starting Stars are fixed at 10. The seven campaign values are absolute, nonnegative whole-number awards (0–1,000,000), never additive mutations. The unique existing `poster_templates.name` constraint prevents duplicate creator/campaign records. A revision comparison prevents lost updates; conflicts return the current saved value rather than overwriting it. Repeating a save of the same value returns success without adding stars. Existing creator information and onboarding records are never updated by this feature.
 
 ## Editing
+
+**Bulk stars** accepts pasted usernames or TikTok profile links, deduplicates them, and matches against the full First Class roster before submission. Choose a campaign, add/remove and stars per creator. Unknown or invalid names must be fixed before submitting. Remove operations stop at zero. Requests process up to 30 creators at a time, using a server-persisted operation ID and per-award history markers. Refreshing/retrying an interrupted operation resumes with the same ID and cannot add the same operation twice, even if progress saving failed after an award was written. Concurrent additions merge through revision retries. Cancelling remaining work preserves already saved awards.
+
+All new manual and bulk changes retain before/after values and timestamps in their award record. **Download backup** exports all stored campaign cells and bulk-operation records, including retained awards for creators no longer in the latest roster. The backup includes confirmed database values, not unfinished local edits. This is additional recoverability within the existing shared Supabase storage, not a claim of an external automated disaster-recovery backup.
+
+Blank award fields are saved as zero. Desktop tables fit without sideways scrolling; phone tables retain horizontal scrolling. The jungle scenery covers the viewport behind the entire scrolling page.
 
 Fields save on blur or Enter. Save edits saves all unfinished values. Totals show valid local edits immediately; sorting updates after confirmation so a row does not jump while typing. Failed saves remain on screen with retry/use-saved controls. Local browser drafts are backed up and restored after reopening; these drafts are not confirmed awards until a successful save. Refresh is disabled while edits are unfinished. A navigation warning protects unfinished edits. A failed network request never displays a successful save. Another device's confirmed awards load on refresh/reopening.
 

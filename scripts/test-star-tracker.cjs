@@ -12,6 +12,7 @@ assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'no
 assert.equal(model.firstClassStarCreator({agency:'First Class',group_name:'Dragonheart sub agency'},{}),false);
 assert.equal(model.firstClassStarCreator({agency:'First Class',manager_email:'jbollins997@example.com'},{}),false);
 const valid={creatorId:'10001',campaign:'gift-gallery',stars:0,revision:0};assert(model.validStarInput(valid));
+assert.deepEqual(plain(model.parseStarUsernames('@ONE, one; https://www.tiktok.com/@two?lang=en\n@@bad')), {usernames:['one','two'],invalid:['@@bad']});
 for(const override of [{stars:-1},{stars:1.5},{stars:'2'},{stars:1000001},{revision:-1},{campaign:'starting'},{creatorId:'username'}])assert(!model.validStarInput({...valid,...override}));
 const token=auth.starSessionToken();assert(auth.starSessionValid(token));assert(!auth.starSessionValid('true'));assert(!auth.starSessionValid(token.replace('star-tracker','leadership')));assert(!auth.starSessionValid(token.slice(0,-1)+(token.endsWith('0')?'1':'0')));assert(!auth.starSessionValid(auth.starSessionToken(Date.now()-31*86400000)));
 const roster=Array.from({length:1005},(_,i)=>({creator_id:String(10001+i),creator_username:'creator_'+i,agency:'First Class',stat_date:'2026-11-02',manager_email:'internal@example.com'}));
@@ -43,5 +44,25 @@ function request(body={},signed=true,origin='http://localhost:3105'){return {coo
  restored=await store.readTracker();assert.equal(restored.creators.length,1006);assert.equal(restored.creators.find(c=>c.id==='10001').username,'renamed_creator');assert(restored.creators.find(c=>c.id==='10001').awards['jungle-giants']);
  const conflict=await api.PATCH(request({...valid,stars:20,revision:0}));assert.equal(conflict.status,409);assert.equal((await conflict.json()).award.revision,3);
  await assert.rejects(()=>store.saveStarAward({...valid,creatorId:'90001'}),/not in the current First Class roster/);
+ const uuid=()=>require('node:crypto').randomUUID();
+ const bulk={operationId:uuid(),campaign:'gift-gallery',delta:5,usernames:['creator_1','CREATOR_1','creator_2']};
+ assert(model.validStarBulkInput(bulk));assert(!model.validStarBulkInput({...bulk,delta:0}));
+ assert.equal((await api.POST(request(bulk,false))).status,401);assert.equal((await api.POST(request({...bulk,delta:0}))).status,400);
+ let result=await store.bulkStarAwards(bulk);assert(result.done);assert.equal(result.total,2);assert(result.awards.every(a=>a.stars===5));
+ result=await store.bulkStarAwards(bulk);assert(result.done);assert.equal(result.awards.length,0);
+ let cell=(await store.readTracker()).creators.find(c=>c.id==='10002').awards['gift-gallery'];assert.equal(cell.stars,5);
+ await store.saveStarAward({...valid,creatorId:'10002',stars:9,revision:cell.revision});
+ // Simulate a timeout after cells were committed but before job progress saved.
+ const job=tables.poster_templates.find(r=>r.name===store.STAR_BULK_PREFIX+bulk.operationId);job.template_json.completedIds=[];
+ result=await store.bulkStarAwards(bulk);assert(result.done);
+ cell=(await store.readTracker()).creators.find(c=>c.id==='10002').awards['gift-gallery'];assert.equal(cell.stars,9);assert(cell.history.some(h=>h.operationId===bulk.operationId));
+ const remove={...bulk,operationId:uuid(),delta:-20};result=await store.bulkStarAwards(remove);assert(result.awards.every(a=>a.stars===0));
+ const same={operationId:uuid(),campaign:'gift-gallery',delta:4,usernames:['creator_3']};await Promise.all([store.bulkStarAwards(same),store.bulkStarAwards(same)]);
+ cell=(await store.readTracker()).creators.find(c=>c.id==='10004').awards['gift-gallery'];assert.equal(cell.stars,4);assert.equal(cell.history.filter(h=>h.operationId===same.operationId).length,1);
+ await Promise.all([store.bulkStarAwards({...same,operationId:uuid(),delta:3,usernames:['creator_1']}),store.bulkStarAwards({...same,operationId:uuid(),delta:7,usernames:['creator_1']})]);
+ cell=(await store.readTracker()).creators.find(c=>c.id==='10002').awards['gift-gallery'];assert.equal(cell.stars,10);
+ const count=tables.poster_templates.length;await assert.rejects(()=>store.bulkStarAwards({...bulk,operationId:uuid(),usernames:['not_a_creator']}),/No changes were made/);assert.equal(tables.poster_templates.length,count);
+ const backup=await store.starTrackerBackup();assert.equal(backup.format,'first-class-star-tracker-backup-v1');assert(backup.records.some(r=>r.name===job.name));
+ console.log('Bulk tests passed: username matching/deduplication, add/remove, zero floor, interrupted replay, preserved history, simultaneous requests, concurrent additions and downloadable backup.');
  console.log('Star Tracker tests passed: exact columns, 10 starting stars, totals, all agency exclusions, >1000 creators, stable IDs, permanent store/reload, zero, idempotent retries, concurrent revision conflicts and signed API access.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

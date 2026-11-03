@@ -8,9 +8,23 @@ export const STAR_CAMPAIGNS=[
  {id:'venemous-victory',label:'Venemous Victory'},
 ] as const;
 export type CampaignId=typeof STAR_CAMPAIGNS[number]['id'];
-export type StarAward={creatorId:string;campaign:CampaignId;stars:number;revision:number;updatedAt:string};
+export type StarAward={creatorId:string;campaign:CampaignId;stars:number;revision:number;updatedAt:string;history?:{before:number;after:number;at:string;kind:'edit'|'bulk';operationId?:string;requestedDelta?:number}[]};
 export type StarCreator={id:string;username:string;awards:Partial<Record<CampaignId,StarAward>>};
 export const STARTING_STARS=10;
+export function parseStarUsernames(text:string){
+ const names=new Set<string>(),invalid:string[]=[];
+ for(const token of text.split(/[\s,;]+/).filter(Boolean)){
+  let name=token.trim();
+  if(/^https?:\/\//i.test(name)){try{const url=new URL(name);if(!/(^|\.)tiktok\.com$/i.test(url.hostname))throw Error();name=url.pathname.replace(/^\/@/,'').replace(/\/$/,'');}catch{invalid.push(token);continue;}}
+  name=name.replace(/^@/,'').toLowerCase();if(/^[a-z0-9._]{1,24}$/.test(name))names.add(name);else invalid.push(token);
+ }
+ return {usernames:[...names],invalid};
+}
+export type StarBulkInput={operationId:string;campaign:CampaignId;delta:number;usernames:string[]};
+export function validStarBulkInput(value:unknown):value is StarBulkInput{
+ const b=value as StarBulkInput|null;
+ return Boolean(b&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(b.operationId||'')&&STAR_CAMPAIGNS.some(c=>c.id===b.campaign)&&Number.isSafeInteger(b.delta)&&b.delta!==0&&Math.abs(b.delta)<=1000000&&Array.isArray(b.usernames)&&b.usernames.length>0&&b.usernames.length<=2000&&b.usernames.every(n=>typeof n==='string'&&/^@?[a-z0-9._]{1,24}$/i.test(n)));
+}
 export function starTotal(creator:StarCreator){return STARTING_STARS+STAR_CAMPAIGNS.reduce((sum,c)=>sum+(creator.awards[c.id]?.stars||0),0);}
 export const managerIdentity=(value:unknown)=>String(value||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'').replace(/^kaydenmads$/,'firstclassagencykaydenoutlookcom');
 const external=/\b(horizon|respawn|paradise|atlas|dragonheart|vanguard|honey\s*bloom|trident|aqua|apollo|empire|atlantis)\b/i;

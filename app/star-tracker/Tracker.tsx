@@ -4,18 +4,20 @@ import Image from 'next/image';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {STAR_CAMPAIGNS,STARTING_STARS,starTotal,type CampaignId,type StarCreator,type StarAward} from '@/lib/star-tracker';
 import styles from './tracker.module.css';
+import BulkStars from './BulkStars';
 
 type Draft={value:string;revision:number};
 type Payload={creators:StarCreator[];latestDate:string};
 const DRAFT_KEY='first-class-star-tracker-drafts-v1';
 const cellKey=(id:string,campaign:CampaignId)=>id+':'+campaign;
-const isNumber=(value:string)=>/^\d+$/.test(value)&&Number(value)<=1000000;
+const isNumber=(value:string)=>(value.trim()===''||/^\d+$/.test(value))&&Number(value)<=1000000;
 function Star({size=26}:{size?:number}){return <Image src="/star-tracker/gold-star.png" alt="" width={size} height={size} className={styles.star}/>;}
 
 export default function Tracker(){
  const [data,setData]=useState<Payload>({creators:[],latestDate:''}),[loaded,setLoaded]=useState(false),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState('');
  const [query,setQuery]=useState(''),[sort,setSort]=useState('total'),[view,setView]=useState<'tracker'|'leaderboard'>('tracker'),[page,setPage]=useState(0);
  const [drafts,setDrafts]=useState<Record<string,Draft>>({}),[errors,setErrors]=useState<Record<string,string>>({}),[saving,setSaving]=useState<string[]>([]),[saved,setSaved]=useState<string[]>([]),[notice,setNotice]=useState('');
+ const [bulkBusy,setBulkBusy]=useState(false);
  const active=useRef(new Set<string>()),restored=useRef(false);
  async function load(){
   setLoading(true);setLoadError('');
@@ -30,12 +32,12 @@ export default function Tracker(){
  }
  useEffect(()=>{void load();},[]);
  useEffect(()=>{
-  const refresh=()=>{if(!loading&&!Object.keys(drafts).length&&!active.current.size&&document.visibilityState==='visible')void load();};
+  const refresh=()=>{if(!loading&&!bulkBusy&&!Object.keys(drafts).length&&!active.current.size&&document.visibilityState==='visible')void load();};
   const timer=window.setInterval(refresh,60000);window.addEventListener('focus',refresh);
   return()=>{window.clearInterval(timer);window.removeEventListener('focus',refresh);};
- },[drafts,loading]);
+ },[drafts,loading,bulkBusy]);
  useEffect(()=>{if(!restored.current)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));}catch{if(Object.keys(drafts).length)setNotice('Browser draft backup is unavailable. Save your edits before leaving this page.');}},[drafts]);
- useEffect(()=>{function warn(e:BeforeUnloadEvent){if(Object.keys(drafts).length||active.current.size){e.preventDefault();e.returnValue='';}}window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[drafts]);
+ useEffect(()=>{function warn(e:BeforeUnloadEvent){if(Object.keys(drafts).length||active.current.size||bulkBusy){e.preventDefault();e.returnValue='';}}window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[drafts,bulkBusy]);
  function total(creator:StarCreator){return starTotal(creator)+STAR_CAMPAIGNS.reduce((sum,c)=>{const draft=drafts[cellKey(creator.id,c.id)];return sum+(draft&&isNumber(draft.value)?Number(draft.value)-(creator.awards[c.id]?.stars||0):0);},0);}
  const ranked=useMemo(()=>[...data.creators].sort((a,b)=>starTotal(b)-starTotal(a)||a.username.localeCompare(b.username)),[data.creators]);
  const ranks=new Map(ranked.map((c,i)=>[c.id,i+1]));
@@ -46,6 +48,7 @@ export default function Tracker(){
  const visible=filtered.slice(page*40,(page+1)*40),dirtyCount=Object.keys(drafts).length;
  function edit(creator:StarCreator,campaign:CampaignId,value:string){
   const key=cellKey(creator.id,campaign);setDrafts(old=>({...old,[key]:{value,revision:old[key]?.revision??creator.awards[campaign]?.revision??0}}));setSaved(old=>old.filter(v=>v!==key));
+  if(isNumber(value))setErrors(old=>{const next={...old};delete next[key];return next;});
  }
  function acceptAward(award:StarAward){setData(old=>({...old,creators:old.creators.map(c=>c.id===award.creatorId?{...c,awards:{...c.awards,[award.campaign]:award}}:c)}));}
  async function save(creator:StarCreator,campaign:CampaignId){
@@ -61,7 +64,7 @@ export default function Tracker(){
  }
  function discard(key:string){setDrafts(old=>{const next={...old};delete next[key];return next;});setErrors(old=>{const next={...old};delete next[key];return next;});}
  async function saveAll(){for(const creator of data.creators)for(const campaign of STAR_CAMPAIGNS)if(drafts[cellKey(creator.id,campaign.id)])await save(creator,campaign.id);}
- function safeLeave(event:React.MouseEvent){if(dirtyCount&&!window.confirm('Some edits are not saved yet. Leave this page? Your draft will stay on this device.'))event.preventDefault();}
+ function safeLeave(event:React.MouseEvent){if((dirtyCount||bulkBusy)&&!window.confirm('Some edits are not saved yet. Leave this page? Your draft will stay on this device.'))event.preventDefault();}
 
  return <main className={styles.page}>
   <div className={styles.scenery} aria-hidden="true"/>
@@ -69,26 +72,27 @@ export default function Tracker(){
    <nav className={styles.nav}><Link href="/login" onClick={safeLeave}>← First Class Space</Link><span>First Class Agency · Competition HQ</span></nav>
    <header className={styles.hero}>
     <div className={styles.eyebrow}><span/> THE JUNGLE IS CALLING</div>
-    <h1>I’m a Streamer,<br/><span>Get Me Out of Here!</span></h1>
+    <h1>I’m a Streamer,<br/><span>Get Me OUTTA Here!</span></h1>
     <div className={styles.subtitle}><Star size={32}/><p>Star Tracker</p><Star size={32}/></div>
     <p className={styles.intro}>Every challenge counts. Every star brings you closer.</p>
-    <div className={styles.summary}><div><span>IN THE JUNGLE</span><strong>{loaded?data.creators.length.toLocaleString():'—'} <small>creators</small></strong></div><div><span>STARS COLLECTED</span><strong><Star size={25}/>{loaded?data.creators.reduce((sum,c)=>sum+total(c),0).toLocaleString():'—'}</strong></div><div><span>EVERY CREATOR STARTS WITH</span><strong><Star size={25}/>10 <small>stars</small></strong></div></div>
+    <div className={styles.summary}><div><span>IN THE JUNGLE</span><strong>{loaded?data.creators.length.toLocaleString():'—'} <small>creators</small></strong></div><div><span>EVERY CREATOR STARTS WITH</span><strong><Star size={25}/>10 <small>stars</small></strong></div></div>
    </header>
    <section className={styles.panel} aria-label="Star Tracker">
     <div className={styles.toolbar}>
      <div className={styles.tabs}><button aria-pressed={view==='tracker'} onClick={()=>{setView('tracker');setPage(0);}}>Campaign tracker</button><button aria-pressed={view==='leaderboard'} onClick={()=>{setView('leaderboard');setPage(0);}}>Leaderboard</button></div>
-     <div className={styles.tools}><button disabled={loading||dirtyCount>0||saving.length>0} onClick={()=>void load()}>↻ Refresh creators</button><button className={styles.primary} disabled={!dirtyCount||saving.length>0} onMouseDown={e=>e.preventDefault()} onClick={()=>void saveAll()}>{saving.length?'Saving…':dirtyCount?`Save edits (${dirtyCount})`:'All changes saved'}</button></div>
+     <div className={styles.tools}><a href="/api/star-tracker?backup=1" download>Download backup</a><button disabled={loading||dirtyCount>0||saving.length>0||bulkBusy} onClick={()=>void load()}>↻ Refresh creators</button><button className={styles.primary} disabled={!dirtyCount||saving.length>0||bulkBusy} onMouseDown={e=>e.preventDefault()} onClick={()=>void saveAll()}>{saving.length?'Saving…':dirtyCount?`Save edits (${dirtyCount})`:'All changes saved'}</button></div>
     </div>
+    {loaded&&<BulkStars creators={data.creators} disabled={dirtyCount>0||saving.length>0} onAwards={awards=>awards.forEach(acceptAward)} onBusyChange={setBulkBusy}/>}
     <div className={styles.filters}><label><span>Find a creator</span><input type="search" value={query} placeholder="Search username…" onChange={e=>{setQuery(e.target.value);setPage(0);}}/></label><label><span>Sort creators</span><select value={view==='leaderboard'?'total':sort} disabled={view==='leaderboard'} onChange={e=>{setSort(e.target.value);setPage(0);}}><option value="total">Total Stars · Highest first</option><option value="name">Username · A–Z</option></select></label></div>
     <div className={styles.status} aria-live="polite"><span>{saving.length?'Saving your stars…':dirtyCount?`${dirtyCount} unfinished ${dirtyCount===1?'edit':'edits'} · totals include your edits`:loaded?'Changes save when you leave a field or press Enter.':'Loading your First Class creators…'}</span>{data.latestDate&&<span>Creator data: {new Date(data.latestDate+'T12:00:00').toLocaleDateString('en-GB')}</span>}</div>
     {notice&&<p className={styles.notice}>{notice}</p>}
     {loadError&&<div role="alert" className={styles.error}>{loadError} <button onClick={()=>void load()}>Try again</button></div>}
     {loading&&!loaded&&<div className={styles.empty} role="status">Gathering the camp…</div>}
     {loaded&&view==='tracker'&&<>
-     <p className={styles.scrollHint}>Swipe the table sideways to see every campaign → <span>Usernames and totals stay in view.</span></p>
+     <p className={styles.scrollHint}>Swipe the table sideways to see every campaign → <span>Usernames and star counts stay in view.</span></p>
      <div className={styles.tableScroll} role="region" aria-label="Scrollable campaign awards" tabIndex={0}>
       <table className={styles.table}><thead><tr><th scope="col">Creator’s username</th><th scope="col">Starting Stars</th>{STAR_CAMPAIGNS.map(c=><th scope="col" key={c.id}>{c.label}</th>)}</tr></thead><tbody>
-       {visible.map(creator=><tr key={creator.id}><th scope="row"><span className={styles.username}>@{creator.username}</span><span className={styles.rowTotal}><Star size={19}/><b data-total={creator.id}>{total(creator).toLocaleString()}</b><span>Total Stars</span></span></th><td><span className={styles.starting}><Star size={32}/><b>{STARTING_STARS}</b></span></td>{STAR_CAMPAIGNS.map(c=>{const key=cellKey(creator.id,c.id),draft=drafts[key],error=errors[key],isSaving=saving.includes(key);return <td key={c.id} className={error?styles.cellError:''}><input type="text" inputMode="numeric" pattern="[0-9]*" aria-label={`${c.label} stars for ${creator.username}`} aria-invalid={Boolean(error)} value={draft?.value??String(creator.awards[c.id]?.stars??0)} disabled={isSaving} onChange={e=>edit(creator,c.id,e.target.value)} onBlur={()=>{if(!errors[key])void save(creator,c.id);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void save(creator,c.id);}if(e.key==='Escape')discard(key);}}/><span className={styles.cellStatus}>{isSaving?'Saving…':error?'Not saved':draft?'Unsaved':saved.includes(key)?'✓ Saved':''}</span>{error&&<div role="alert" className={styles.cellMessage}><p>{error}</p><button onClick={()=>void save(creator,c.id)}>Retry my value</button><button onClick={()=>discard(key)}>Use saved value ({creator.awards[c.id]?.stars??0})</button></div>}</td>;})}</tr>)}
+       {visible.map(creator=><tr key={creator.id}><th scope="row"><span className={styles.username}>@{creator.username}</span><span className={styles.rowTotal}><Star size={19}/><b data-total={creator.id}>{total(creator).toLocaleString()}</b></span></th><td><span className={styles.starting}><Star size={32}/><b>{STARTING_STARS}</b></span></td>{STAR_CAMPAIGNS.map(c=>{const key=cellKey(creator.id,c.id),draft=drafts[key],error=errors[key],isSaving=saving.includes(key);return <td key={c.id} className={error?styles.cellError:''}><input type="text" inputMode="numeric" pattern="[0-9]*" aria-label={`${c.label} stars for ${creator.username}`} aria-invalid={Boolean(error)} value={draft?.value??String(creator.awards[c.id]?.stars??0)} disabled={isSaving||bulkBusy} onChange={e=>edit(creator,c.id,e.target.value)} onBlur={()=>{if(!errors[key])void save(creator,c.id);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void save(creator,c.id);}if(e.key==='Escape')discard(key);}}/><span className={styles.cellStatus}>{isSaving?'Saving…':error?'Not saved':draft?'Unsaved':saved.includes(key)?'✓ Saved':''}</span>{error&&<div role="alert" className={styles.cellMessage}><p>{error}</p><button onClick={()=>void save(creator,c.id)}>Retry my value</button><button onClick={()=>discard(key)}>Use saved value ({creator.awards[c.id]?.stars??0})</button></div>}</td>;})}</tr>)}
       </tbody></table>
      </div>
     </>}
@@ -96,7 +100,7 @@ export default function Tracker(){
     {loaded&&!filtered.length&&<p className={styles.empty}>{data.creators.length?'No creators match your search.':'No First Class creators found in the latest upload. Existing awards are safely stored.'}</p>}
     <footer className={styles.pagination}><span>{filtered.length?`${page*40+1}–${Math.min((page+1)*40,filtered.length)} of ${filtered.length.toLocaleString()} creators`:'0 creators'}</span><div><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>← Previous</button><button disabled={(page+1)*40>=filtered.length} onClick={()=>setPage(p=>p+1)}>Next →</button></div></footer>
    </section>
-   <p className={styles.footnote}>FIRST CLASS AGENCY · I’M A STREAMER, GET ME OUT OF HERE!<br/><span>Starting stars + campaign awards = Total Stars</span></p>
+   <p className={styles.footnote}>FIRST CLASS AGENCY · I’M A STREAMER, GET ME OUTTA HERE!<br/><span>Starting stars + campaign awards = Total Stars</span></p>
   </div>
  </main>;
 }

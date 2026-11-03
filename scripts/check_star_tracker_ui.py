@@ -3,7 +3,7 @@ import copy
 import json
 import os
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs
 from playwright.sync_api import sync_playwright
 
 base=os.environ.get('STAR_TRACKER_TEST_URL','http://127.0.0.1:3105')
@@ -14,11 +14,32 @@ creators=[{'id':str(10001+i),'username':'alpha' if i==0 else 'zulu' if i==50 els
 fail=False
 conflict=False
 patches=[]
+bulk_operations={}
+bulk_fail_once=False
 
 def fixture(route):
-    global fail,conflict
+    global fail,conflict,bulk_fail_once
+    if parse_qs(urlsplit(route.request.url).query).get('backup')==['1']:
+        route.fulfill(status=200,content_type='application/json',headers={'Content-Disposition':'attachment; filename="star-tracker-backup.json"'},body=json.dumps({'format':'first-class-star-tracker-backup-v1','creators':creators}))
+        return
     if route.request.method=='GET':
         route.fulfill(status=200,content_type='application/json',body=json.dumps({'creators':creators,'latestDate':'2026-11-02'}))
+        return
+    if route.request.method=='POST':
+        b=route.request.post_data_json
+        if b['operationId'] not in bulk_operations:
+            awards=[]
+            for name in set(n.lower().lstrip('@') for n in b['usernames']):
+                c=next(c for c in creators if c['username'].lower()==name)
+                prior=c['awards'].get(b['campaign'],{})
+                award={'creatorId':c['id'],'campaign':b['campaign'],'stars':max(0,prior.get('stars',0)+b['delta']),'revision':prior.get('revision',0)+1,'updatedAt':'2026-11-03T10:00:00Z'}
+                c['awards'][b['campaign']]=award
+                awards.append(award)
+            bulk_operations[b['operationId']]={'operationId':b['operationId'],'done':True,'total':len(awards),'completed':len(awards),'awards':awards,'errors':[]}
+        if bulk_fail_once:
+            bulk_fail_once=False
+            route.fulfill(status=503,content_type='application/json',body=json.dumps({'error':'Test interrupted response. Resume safely.'}))
+        else:route.fulfill(status=200,content_type='application/json',body=json.dumps(bulk_operations[b['operationId']]))
         return
     assert route.request.method=='PATCH'
     b=route.request.post_data_json
@@ -56,7 +77,7 @@ with sync_playwright() as p:
     assert tile.count()==1
     tile.scroll_into_view_if_needed()
     page.screenshot(path=str(out/'front-mobile.png'),full_page=True)
-    page.route('**/api/star-tracker',fixture)
+    page.route('**/api/star-tracker*',fixture)
     tile.click()
     page.get_by_role('region',name='Scrollable campaign awards').wait_for()
     assert page.get_by_role('columnheader').count()==9
@@ -76,6 +97,9 @@ with sync_playwright() as p:
     gift.fill('0');gift.press('Enter')
     page.get_by_role('button',name='All changes saved',exact=True).wait_for()
     assert creators[0]['awards']['gift-gallery']['stars']==0
+    gift.fill('');gift.press('Enter')
+    page.get_by_role('button',name='All changes saved',exact=True).wait_for()
+    assert page.get_by_label('Gift Gallery stars for alpha',exact=True).input_value()=='0'
     before=len(patches)
     gift.fill('-1');gift.press('Enter')
     page.get_by_text('Enter a whole number from 0 to 1,000,000.',exact=False).wait_for()
@@ -99,6 +123,37 @@ with sync_playwright() as p:
     page.get_by_role('button',name='Retry my value',exact=True).click()
     page.get_by_role('button',name='All changes saved',exact=True).wait_for()
     assert patches[-1]['revision']==7 and creators[0]['awards']['gift-gallery']['stars']==11
+    assert page.get_by_text('STARS COLLECTED',exact=True).count()==0
+    assert page.locator('tbody th').get_by_text('Total Stars',exact=True).count()==0
+    page.get_by_role('heading',name='Get Me OUTTA Here!',exact=False).wait_for()
+    page.get_by_role('button',name='Bulk stars',exact=False).click()
+    names=page.get_by_label('Bulk creator usernames',exact=True)
+    names.fill('@alpha\ncreator_01\n@alpha\nnot_a_creator')
+    assert page.get_by_role('button',name='Submit bulk stars',exact=True).is_disabled()
+    names.fill('@alpha\ncreator_01\n@alpha')
+    page.get_by_label('Bulk stars per creator',exact=True).fill('5')
+    bulk_fail_once=True
+    page.get_by_role('button',name='Submit bulk stars',exact=True).click()
+    page.get_by_text('Test interrupted response.',exact=False).wait_for()
+    page.reload()
+    page.get_by_role('button',name='Resume bulk edit',exact=True).wait_for()
+    page.get_by_role('button',name='Resume bulk edit',exact=True).click()
+    page.get_by_role('button',name='Bulk edit saved',exact=True).wait_for()
+    assert creators[0]['awards']['gift-gallery']['stars']==16
+    assert creators[1]['awards']['gift-gallery']['stars']==5
+    assert len(bulk_operations)==1
+    page.get_by_role('button',name='New bulk edit',exact=True).click()
+    page.get_by_label('Bulk creator usernames',exact=True).fill('alpha\ncreator_01')
+    page.get_by_label('Bulk star action',exact=True).select_option('remove')
+    page.get_by_label('Bulk stars per creator',exact=True).fill('20')
+    page.get_by_role('button',name='Submit bulk stars',exact=True).click()
+    page.get_by_role('button',name='Bulk edit saved',exact=True).wait_for()
+    assert creators[0]['awards']['gift-gallery']['stars']==0
+    assert creators[1]['awards']['gift-gallery']['stars']==0
+    with page.expect_download() as download:
+        page.get_by_role('link',name='Download backup',exact=True).click()
+    download.value.save_as(out/'backup.json')
+    assert json.loads((out/'backup.json').read_text())['format']=='first-class-star-tracker-backup-v1'
     region=page.get_by_role('region',name='Scrollable campaign awards')
     region.evaluate('element=>{element.scrollLeft=900;element.scrollTop=250;}')
     first=page.locator('tbody tr').nth(4).locator('th')
@@ -114,6 +169,8 @@ with sync_playwright() as p:
     page.screenshot(path=str(out/'leaderboard-mobile.png'),full_page=True)
     page.set_viewport_size({'width':1440,'height':1000})
     page.get_by_role('button',name='Campaign tracker',exact=True).click()
+    assert region.evaluate('element=>element.scrollWidth<=element.clientWidth'), 'Desktop table did not fit'
+    assert page.locator('main > div').first.evaluate('element=>getComputedStyle(element).position')=='fixed'
     page.screenshot(path=str(out/'tracker-desktop.png'),full_page=True)
     assert not errors,errors
     browser.close()
