@@ -25,12 +25,12 @@ async function handle(req:NextRequest){
    if(path[1]==='results'&&path[2]&&req.method==='POST')return NextResponse.json(await service.completeJob(path[2],await req.json()));
   }
   if(path[0]==='contacts'&&req.method==='GET')return NextResponse.json(await service.contacts(req.nextUrl.searchParams.get('cursor')));
-  if(path[0]==='changes'&&req.method==='GET')return NextResponse.json(await service.eligibilityChanges());
-  if(path[0]==='scans'&&req.method==='POST'){const body=await req.json();return NextResponse.json({run:await service.newScan(body.previousRunId)},{status:201});}
+  if(path[0]==='changes'&&req.method==='GET')return NextResponse.json(await service.eligibilityChanges(req.nextUrl.searchParams.get('region')));
+  if(path[0]==='scans'&&req.method==='POST'){const body=await req.json();return NextResponse.json({run:await service.newScan(body.previousRunId,body.region)},{status:201});}
   if(path[0]==='runs'){
    if(path[2]==='stop'&&req.method==='POST')return NextResponse.json({run:await service.stopScan(path[1])});
-   if(path.length===1&&req.method==='GET')return NextResponse.json({runs:await service.history(req.nextUrl.searchParams.get('before'))});
-   if(path.length===1&&req.method==='POST')return NextResponse.json({run:await service.createRun()},{status:201});
+   if(path.length===1&&req.method==='GET')return NextResponse.json({runs:await service.history(req.nextUrl.searchParams.get('before'),req.nextUrl.searchParams.get('region')||'GB')});
+   if(path.length===1&&req.method==='POST'){const body=await req.json().catch(()=>({}));return NextResponse.json({run:await service.createRun(body.region)},{status:201});}
    if(path.length===2&&req.method==='GET')return NextResponse.json({run:await service.withEligibility(await service.getRun(path[1]))});
    if(path[2]==='advance'&&req.method==='POST')return NextResponse.json({run:await service.withEligibility(await service.advance(path[1]))});
    if(path[2]==='retry'&&req.method==='POST')return NextResponse.json({run:await service.withEligibility(await service.advance(path[1],true))});
