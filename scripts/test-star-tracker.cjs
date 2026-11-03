@@ -41,7 +41,8 @@ const next={json:(data,opts)=>Response.json(data,opts)};
 const api=load('app/api/star-tracker/route.ts',{'next/server':{NextResponse:next},'@/lib/star-tracker-auth':auth,'@/lib/star-tracker-store':store,'@/lib/star-tracker':model});
 function request(body={},signed=true,origin='http://localhost:3105'){return {cookies:{get:name=>signed&&name===auth.STAR_COOKIE?{value:token}:undefined},headers:new Headers({host:'localhost:3105',origin}),nextUrl:new URL('http://localhost:3105/api/star-tracker'),json:async()=>body};}
 (async()=>{
- assert.equal((await api.GET(request({},false))).status,401);assert.equal((await api.PATCH(request(valid,false))).status,401);assert.equal((await api.PATCH(request(valid,true,'https://elsewhere.test'))).status,403);assert.equal((await api.PATCH(request({...valid,stars:-1}))).status,400);
+ assert.equal((await api.GET(request({},false))).status,200);assert.equal((await api.PATCH(request(valid,false))).status,200);assert.equal((await api.PATCH(request(valid,true,'https://elsewhere.test'))).status,403);assert.equal((await api.PATCH(request({...valid,stars:-1}))).status,400);
+ env.SITE_MODE='atlas';assert.equal((await api.GET(request({},false))).status,404);delete env.SITE_MODE;
  const first=await store.readTracker();assert.equal(first.creators.length,1005);assert.equal(model.starTotal(first.creators[0]),10);
  const saved=await store.saveStarAward(valid);assert.equal(saved.stars,0);assert.equal(saved.revision,1);
  const repeated=await store.saveStarAward(valid);assert.equal(repeated.revision,1);assert.equal(tables.poster_templates.filter(row=>row.name.startsWith(store.STAR_PREFIX)).length,1);
@@ -56,7 +57,7 @@ function request(body={},signed=true,origin='http://localhost:3105'){return {coo
  const uuid=()=>require('node:crypto').randomUUID();
  const bulk={operationId:uuid(),campaign:'gift-gallery',delta:5,usernames:['creator_1','CREATOR_1','creator_2']};
  assert(model.validStarBulkInput(bulk));assert(!model.validStarBulkInput({...bulk,delta:0}));
- assert.equal((await api.POST(request(bulk,false))).status,401);assert.equal((await api.POST(request({...bulk,delta:0}))).status,400);
+ assert.equal((await api.POST(request({...bulk,delta:0},false))).status,400);assert.equal((await api.POST(request({...bulk,delta:0}))).status,400);
  let result=await store.bulkStarAwards(bulk);assert(result.done);assert.equal(result.total,2);assert(result.awards.every(a=>a.stars===5));
  result=await store.bulkStarAwards(bulk);assert(result.done);assert.equal(result.awards.length,0);
  let cell=(await store.readTracker()).creators.find(c=>c.id==='10002').awards['gift-gallery'];assert.equal(cell.stars,5);

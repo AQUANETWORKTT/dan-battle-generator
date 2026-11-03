@@ -66,11 +66,8 @@ def fixture(route):
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
     context=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=1)
-    assert context.request.get(base+'/api/star-tracker').status==401
-    login=context.request.post(base+'/api/login',data={'area':'onboarding','password':'ash1'})
-    assert login.ok
-    assert any(c['name']=='first-class-star-tracker-auth' and c['httpOnly'] for c in context.cookies())
-    assert not any(c['name']=='first-class-space-auth' for c in context.cookies())
+    assert context.request.get(base+'/api/star-tracker').ok
+    assert not context.cookies(), 'Fresh visitor should need no login or cached session'
     assert context.request.get(base+'/data/menu',max_redirects=0).status in {303,307,308}
     page=context.new_page()
     errors=[]
@@ -217,4 +214,4 @@ with sync_playwright() as p:
     page.screenshot(path=str(out/'tracker-desktop.png'),full_page=True)
     assert not errors,errors
     browser.close()
-print('Star Tracker browser checks passed: front tile, signed onboarder access, phone width, 25 scrollable columns and saved manual adjustment arrows, sticky names, 40-row paging, search across all creators, edit/save/reload, zero, validation, offline draft recovery, conflicts and leaderboard.')
+print('Star Tracker browser checks passed: front tile, password-free fresh-visitor access, phone width, 25 scrollable columns and saved manual adjustment arrows, sticky names, 40-row paging, search across all creators, edit/save/reload, zero, validation, offline draft recovery, conflicts and leaderboard.')
