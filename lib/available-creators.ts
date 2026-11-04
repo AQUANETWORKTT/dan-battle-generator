@@ -2,7 +2,7 @@ import {allowedRecruitmentName,username,type Eligibility,type Ranking,type Run} 
 
 export type AvailableCreator = Ranking & {
   invitationType:string; checkedAt:string; snapshotAt:string; nameVerified:boolean;
-  messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
+  actionToken?:string; messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
 };
 export type AvailabilityJob={id:string;run_id:string;created_at:string;results:Record<string,Eligibility>};
 
@@ -49,4 +49,8 @@ export function availabilityLabel(checkedAt:string,now=Date.now()){
   const day=(value:Date)=>{const parts=format.formatToParts(value);const n=(kind:string)=>Number(parts.find(part=>part.type===kind)?.value);return Date.UTC(n('year'),n('month')-1,n('day'));};
   const elapsed=Math.max(0,Math.round((day(new Date(now))-day(date))/86400000));
   return elapsed===0?'AVAILABLE TODAY':elapsed===1?'AVAILABLE YESTERDAY':`AVAILABLE ${elapsed} DAYS AGO`;
+}
+
+export function hiddenUntilRescan(checkedAt:string,hiddenAt?:string){
+  return Boolean(hiddenAt&&Date.parse(checkedAt)<=Date.parse(hiddenAt));
 }

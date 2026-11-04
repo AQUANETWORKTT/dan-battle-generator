@@ -4,10 +4,11 @@ import {database,checked,JOBS,RUNS} from './creator-api-search/db';
 import {SearchError} from './creator-api-search/service';
 import {reportDates,reportHistory} from './creator-api-search/reports';
 import {username,allowedRecruitmentName} from './creator-api-search/types';
-import {availableDirectory,latestObservations,safeAvatar,type AvailableCreator,type AvailabilityJob} from './available-creators';
+import {hiddenUntilRescan,availableDirectory,latestObservations,safeAvatar,type AvailableCreator,type AvailabilityJob} from './available-creators';
 
 const MESSAGED='available-creator-messaged-v1:';
-const messageKey=(row:AvailableCreator)=>MESSAGED+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
+const messageKey=(row:{username:string;creatorId?:string})=>MESSAGED+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
+const hiddenKey=(row:{username:string;creatorId?:string})=>'available-creator-hidden-v1:'+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
 const PROFILE='available-creator-profile-v1:';
 type Directory=ReturnType<typeof availableDirectory>&{refreshedAt:string;dateWindow:string[]};
 let cached:{until:number;value:Directory}|undefined;
@@ -19,10 +20,12 @@ async function load(){
   for(let i=0;i<ids.length;i+=25){const {data}=await checked(database().from(RUNS).select('id,payload,updated_at').in('id',ids.slice(i,i+25)));runs.push(...data||[]);}
   const directory=availableDirectory(observations,runs),dates=reportDates();
   // Read existing performance caches; merely viewing the board never spends API credits.
-  const keys=directory.rows.flatMap(row=>[messageKey(row),PROFILE+row.username,'creator-profile-report-history-v1:'+row.username+':'+[...dates].sort().join(',')]);
+  const keys=directory.rows.flatMap(row=>[hiddenKey(row),messageKey(row),PROFILE+row.username,'creator-profile-report-history-v1:'+row.username+':'+[...dates].sort().join(',')]);
   const records=new Map<string,any>();
   for(let i=0;i<keys.length;i+=320){await Promise.all(Array.from({length:Math.min(4,Math.ceil((keys.length-i)/80))},async(_,batch)=>{const start=i+batch*80;const {data}=await checked(database().from('poster_templates').select('name,template_json').in('name',keys.slice(start,start+80)));for(const record of data||[])records.set(record.name,record.template_json);}));}
   directory.rows=directory.rows.filter(row=>{
+    const hidden=records.get(hiddenKey(row));
+    if(hiddenUntilRescan(row.checkedAt,hidden?.hiddenAt))return false;
     const message=records.get(messageKey(row));
     if(message?.messagedAt)row.messagedAt=message.messagedAt;
     const profile=records.get(PROFILE+row.username);
@@ -42,7 +45,7 @@ export async function readAvailableCreators(){
 export async function updateAvailableCreator(value:unknown,includeHistory=false){
   const name=username(value),directory=await readAvailableCreators();
   if(!name||!directory.rows.some(row=>row.username===name))throw new SearchError('Choose a currently Available creator from this panel.',404);
-  const targets=new Set([directory,...(cached?[cached.value]:[])]);
+  const targets=new Set([...(directory?[directory]:[]),...(cached?[cached.value]:[])]);
   if(includeHistory){
     const history=await reportHistory({username:name,dates:reportDates()});
     for(const target of targets){const row=target.rows.find(row=>row.username===name);if(row)row.history=history;}
@@ -61,12 +64,19 @@ export async function updateAvailableCreator(value:unknown,includeHistory=false)
   return {excluded:false,profile};
 }
 
-export async function markAvailableCreatorMessaged(value:unknown,messaged:unknown){
+export async function markAvailableCreatorMessaged(value:unknown,messaged:unknown,identity?:{username:string;creatorId?:string}){
   if(typeof messaged!=='boolean')throw new SearchError('Choose whether the creator has been messaged.');
-  const name=username(value),directory=await readAvailableCreators(),row=directory.rows.find(item=>item.username===name);
+  const name=username(value),directory=identity?cached?.value:await readAvailableCreators(),row=identity||directory?.rows.find(item=>item.username===name);
   if(!row)throw new SearchError('This creator is no longer available on the panel.',404);
   const messagedAt=messaged?new Date().toISOString():null;
   await checked(database().from('poster_templates').upsert({name:messageKey(row),template_json:{messagedAt},background_url:null,updated_at:new Date().toISOString()},{onConflict:'name'}));
-  for(const target of new Set([directory,...(cached?[cached.value]:[])])){const item=target.rows.find(item=>item.username===name);if(item)item.messagedAt=messagedAt||undefined;}
+  for(const target of new Set([...(directory?[directory]:[]),...(cached?[cached.value]:[])])){const item=target.rows.find(item=>item.username===name);if(item)item.messagedAt=messagedAt||undefined;}
   return {username:name,messagedAt};
+}
+
+export async function hideAvailableCreator(identity:{username:string;creatorId?:string}){
+  const hiddenAt=new Date().toISOString();
+  await checked(database().from('poster_templates').upsert({name:hiddenKey(identity),template_json:{hiddenAt},background_url:null,updated_at:hiddenAt},{onConflict:'name'}));
+  if(cached)cached.value.rows=cached.value.rows.filter(row=>row.username!==identity.username);
+  return {username:identity.username,hiddenAt};
 }

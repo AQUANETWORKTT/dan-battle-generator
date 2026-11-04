@@ -6,6 +6,9 @@ assert.equal(model.availabilityLabel('2026-11-04T00:01:00Z',Date.parse('2026-11-
 assert.equal(model.availabilityLabel('2026-11-03T23:59:00Z',Date.parse('2026-11-04T00:01:00Z')),'AVAILABLE YESTERDAY');
 assert.equal(model.availabilityLabel('2026-11-02T12:00:00Z',Date.parse('2026-11-04T12:00:00Z')),'AVAILABLE 2 DAYS AGO');
 assert.equal(model.availabilityLabel('2026-10-24T23:30:00Z',Date.parse('2026-10-25T23:30:00Z')),'AVAILABLE TODAY');
+assert(model.hiddenUntilRescan('2026-11-04T10:00:00Z','2026-11-04T11:00:00Z'));
+assert(!model.hiddenUntilRescan('2026-11-04T12:00:00Z','2026-11-04T11:00:00Z'));
+assert(!model.hiddenUntilRescan('2026-11-04T10:00:00Z'));
 const stamp='2026-11-04T12:00:00Z',later='2026-11-04T13:00:00Z';
 function job(id,name,status,checkedAt=stamp,extra={}){return {id,run_id:'run',created_at:later,results:{[name]:{username:name,status,checkedAt,invitationType:'Regular',...extra}}};}
 const jobs=[job('1','gone','Available'),job('2','gone','Ineligible',later),job('3','good','Available',stamp,{name:'Sam ⭐ .𖥔 ݁ ཐི༏ཋྀ .𖥔 ݁'}),job('4','excluded','Available',later,{name:'محمد ⭐'}),job('5','failed','Available'),job('6','failed','Failed',later),{...job('7','good','Pending'),results:{good:{username:'good',status:'Pending'}}},job('8','renamed_old','Available',stamp,{creatorId:'12345'}),job('9','renamed_new','Ineligible',later,{creatorId:'12345'})];
@@ -21,7 +24,7 @@ class Reply extends Response{static json(body,init={}){return new Reply(JSON.str
 class SearchError extends Error{constructor(message,status=400){super(message);this.status=status;}}
 class ProviderError extends Error{}
 let reads=0,updates=0,marks=0;
-const route=load('app/api/available-creators/route.ts',{'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
+const route=load('app/api/available-creators/route.ts',{'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},hideAvailableCreator:async()=>({hiddenAt:stamp}),markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
 function request(method='GET',access='',admin=false,body={}){return {method,nextUrl:new URL('https://firstclassagency.management/api/available-creators'+(access?'?access='+access:'')),cookies:{get:key=>({value:admin?(key==='signed'?'valid':'true'):'true'})},headers:new Headers({origin:'https://firstclassagency.management'}),json:async()=>body};}
 (async()=>{
  let body='{"avatarLarger":"https:\\u002F\\u002Fexample.test/a?x=1\\u0026y=2"}';
@@ -40,6 +43,8 @@ function request(method='GET',access='',admin=false,body={}){return {method,next
  await assert.rejects(store.updateAvailableCreator('good',true),/quota reached/);assert.equal(paid,1,'history does not scrape photos');
  assert.equal((await store.readAvailableCreators()).rows[0].live,null);assert.equal(pages,2);
 
+ const actionToken=auth.creatorActionToken({username:'good',creatorId:'123'});assert(auth.creatorActionIdentity(actionToken,'good'));assert(!auth.creatorActionIdentity(actionToken,'other'));assert(!auth.creatorActionIdentity(actionToken+'x','good'));
+ const beforePages=pages;await store.markAvailableCreatorMessaged('good',true,{username:'good'});assert.equal(pages,beforePages,'signed actions do not rebuild directory');
  const marked=await store.markAvailableCreatorMessaged('good',true);
  assert(marked.messagedAt);assert.equal((await store.readAvailableCreators()).rows[0].messagedAt,marked.messagedAt);
  assert.equal(records.get('available-creator-messaged-v1:name:good').messagedAt,marked.messagedAt);
@@ -47,10 +52,13 @@ function request(method='GET',access='',admin=false,body={}){return {method,next
  assert.equal(records.get('available-creator-messaged-v1:name:good').messagedAt,null);
  await assert.rejects(store.markAvailableCreatorMessaged('gone',true),/no longer available/);
  await assert.rejects(store.markAvailableCreatorMessaged('good','yes'),/Choose whether/);
- assert.equal((await route.POST(request('POST',token,false,{action:'messaged',username:'good',messaged:true}))).status,200);assert.equal(marks,1);
- assert.equal((await route.POST(request('POST','',false,{action:'messaged',username:'good',messaged:true}))).status,401);
- assert.equal((await route.POST(request('POST','',true,{action:'messaged',username:'good',messaged:true}))).status,403);
- const badMessage=request('POST',token,false,{action:'messaged',username:'good',messaged:true});badMessage.headers.set('origin','https://wrong.example');assert.equal((await route.POST(badMessage)).status,403);assert.equal(marks,1);
+ assert.equal((await route.POST(request('POST',token,false,{action:'messaged',username:'good',actionToken:auth.creatorActionToken({username:'good'}),messaged:true}))).status,200);assert.equal(marks,1);
+ assert.equal((await route.POST(request('POST','',false,{action:'messaged',username:'good',actionToken:auth.creatorActionToken({username:'good'}),messaged:true}))).status,401);
+ assert.equal((await route.POST(request('POST','',true,{action:'messaged',username:'good',actionToken:auth.creatorActionToken({username:'good'}),messaged:true}))).status,403);
+ const badMessage=request('POST',token,false,{action:'messaged',username:'good',actionToken:auth.creatorActionToken({username:'good'}),messaged:true});badMessage.headers.set('origin','https://wrong.example');assert.equal((await route.POST(badMessage)).status,403);assert.equal(marks,1);
+ assert.equal((await route.POST(request('POST',token,false,{action:'hide',username:'good',actionToken:auth.creatorActionToken({username:'good'})}))).status,200);
+ assert.equal((await route.POST(request('POST',token,false,{action:'hide',username:'good'}))).status,403);
+ await store.hideAvailableCreator({username:'good'});assert.equal((await store.readAvailableCreators()).rows.length,0);assert(records.get('available-creator-hidden-v1:name:good').hiddenAt);
  assert.equal((await route.GET(request())).status,401);assert.equal(reads,0);
  const viewer=await route.GET(request('GET',token));assert.equal(viewer.status,200);assert.equal(viewer.headers.get('cache-control'),'private, no-store');
  assert.equal((await route.POST(request('POST',token,false,{action:'enrich',username:'good'}))).status,401);assert.equal(updates,0);
