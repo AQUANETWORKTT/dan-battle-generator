@@ -2,7 +2,7 @@ import {allowedRecruitmentName,username,type Eligibility,type Ranking,type Run} 
 
 export type AvailableCreator = Ranking & {
   invitationType:string; checkedAt:string; snapshotAt:string; nameVerified:boolean;
-  avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
+  messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
 };
 export type AvailabilityJob={id:string;run_id:string;created_at:string;results:Record<string,Eligibility>};
 
@@ -41,3 +41,12 @@ export function availableDirectory(observations:ReturnType<typeof latestObservat
 }
 
 export function safeAvatar(value:unknown){if(typeof value!=='string')return undefined;try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password?url.href:undefined;}catch{return undefined;}}
+
+// Calendar days in London, rather than rolling 24-hour periods (including DST).
+export function availabilityLabel(checkedAt:string,now=Date.now()){
+  const date=new Date(checkedAt);if(!Number.isFinite(date.getTime()))return 'AVAILABILITY NOT CHECKED';
+  const format=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'});
+  const day=(value:Date)=>{const parts=format.formatToParts(value);const n=(kind:string)=>Number(parts.find(part=>part.type===kind)?.value);return Date.UTC(n('year'),n('month')-1,n('day'));};
+  const elapsed=Math.max(0,Math.round((day(new Date(now))-day(date))/86400000));
+  return elapsed===0?'AVAILABLE TODAY':elapsed===1?'AVAILABLE YESTERDAY':`AVAILABLE ${elapsed} DAYS AGO`;
+}
