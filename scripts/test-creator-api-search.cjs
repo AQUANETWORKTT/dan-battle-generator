@@ -5,7 +5,7 @@ const types=load('lib/creator-api-search/types.ts'),auth=load('lib/creator-api-s
 for(const value of ['José','Jose\u0301','Алекс','علي','李明','𝓢𝓪𝓶','Kate'])assert(types.outsideEnglishLetters(value),value);
 for(const value of ['Sam','Alex ❤️','Lily 🏳️‍🌈','Ben 🇬🇧','123 ._-','.𖥔 ݁ ཐི༏ཋྀ .𖥔 ݁','Sam .𖥔 ݁ ཐི༏ཋྀ .𖥔 ݁'])assert(!types.outsideEnglishLetters(value),value);
 const namesFixture={leagues:[{code:'A1'},{code:'A2'}],results:{A1:types.parseRankings({data:[{username:'blocked',name:'José'},{username:'okay',nickname:'Sam ❤️'},{username:'alt',name:'Sam',nickname:'Σαμ'}]},'A1'),A2:[{username:'blocked',name:'ASCII duplicate'}]}};
-assert.deepEqual(Array.from(types.uniqueRankings(namesFixture),row=>row.username),['okay']);
+assert.deepEqual(Array.from(types.uniqueRankings(namesFixture),row=>row.username),['okay']);assert.equal(types.reviewRankings(namesFixture).length,3);assert.equal(types.reviewRankings(namesFixture).filter(r=>r.excludedForName).length,2);
 const copy=value=>JSON.parse(JSON.stringify(value));
 const priorityFixture={leagues:[{code:'D5'},{code:'A2'},{code:'B1'},{code:'A1'}],results:{D5:[{username:'low',rank:1}],A2:[{username:'middle',rank:1},{username:'top',rank:9}],B1:[{username:'later',rank:1}],A1:[{username:'second',rank:2},{username:'top',rank:1}]}};
 assert.deepEqual(copy(types.backstageRankings(priorityFixture).map(row=>row.username)),['top','second','middle','later','low']);
