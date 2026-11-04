@@ -52,6 +52,10 @@ class Manager:
     def __exit__(self,*args):pass
 
 class Tests(unittest.TestCase):
+    def test_friendly_checked_dates(self):
+        self.assertEqual(reports.friendly_date('2026-11-04T17:10:00Z'),'4th November, 17:10')
+        self.assertEqual(reports.friendly_date('2026-11-11T12:00:00Z',False),'11th November')
+        self.assertEqual(reports.friendly_date('2026-11-21T12:00:00Z',False),'21st November')
     def test_profile_live_offline_foreign_and_wrong_host(self):
         with tempfile.TemporaryDirectory() as temp:
             folder=Path(temp);row=creator('demo_creator');page=Page()
@@ -86,7 +90,7 @@ class Tests(unittest.TestCase):
                 if row['username']=='two' and len(calls)==1:ctrl.stop.set();ctrl.check()
                 calls.append(row['username']);return {'profileStatus':'Unavailable','liveStatus':'Unavailable','profileNote':'Fixture capture.'}
             with self.assertRaises(reports.Cancelled):reports.run_report(data,temp,control,lambda _:None,lambda _:None,history_client=Client(),capture_fn=capture,browser_factory=lambda _:Context())
-            self.assertEqual(calls,['one']);self.assertTrue((Path(temp)/'creator-profile-live-report.pdf').is_file())
+            self.assertEqual(calls,['one']);self.assertTrue((Path(temp)/'available-creator-report.pdf').is_file())
             def finish(page,row,folder,ctrl):calls.append(row['username']);return {'profileStatus':'Unavailable','liveStatus':'Unavailable'}
             reports.run_report(data,temp,reports.Control(),lambda _:None,lambda _:None,history_client=Client(),capture_fn=finish,browser_factory=lambda _:Context())
             self.assertEqual(calls,['one','two']);self.assertEqual(lookups,['one','two'])

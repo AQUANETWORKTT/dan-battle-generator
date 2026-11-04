@@ -161,6 +161,18 @@ def capture_creator(page,row,folder,control):
     except Exception as error:result['liveNote']=str(error)[:300]
     return result
 
+def friendly_date(value,include_time=True):
+    try:
+        from zoneinfo import ZoneInfo
+        date=datetime.fromisoformat(str(value).replace('Z','+00:00'))
+        if date.tzinfo is None:date=date.replace(tzinfo=timezone.utc)
+        try:date=date.astimezone(ZoneInfo('Europe/London'))
+        except Exception:date=date.astimezone()
+        day=date.day;suffix='th' if 11<=day%100<=13 else {1:'st',2:'nd',3:'rd'}.get(day%10,'th')
+        return f'{day}{suffix} {date.strftime("%B")}' + (date.strftime(', %H:%M') if include_time else '')
+    except Exception:return 'Date not recorded'
+
+
 def write_pdf(manifest,state,folder):
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import HexColor
@@ -169,64 +181,69 @@ def write_pdf(manifest,state,folder):
     from reportlab.platypus import Paragraph
     from reportlab.lib.styles import ParagraphStyle
     from xml.sax.saxutils import escape
-    width,height=landscape(A4);gold=HexColor('#c69c38');ink=HexColor('#152019');muted=HexColor('#56675c')
-    filename=folder/'creator-profile-live-report.pdf';temporary=folder/'creator-profile-live-report.tmp.pdf'
+    width,height=landscape(A4);gold=HexColor('#c69c38');ink=HexColor('#152019');muted=HexColor('#657367')
+    filename=folder/'available-creator-report.pdf';temporary=folder/'available-creator-report.tmp.pdf'
     pdf=canvas.Canvas(str(temporary),pagesize=(width,height),pageCompression=1)
-    pdf.setTitle('First Class — Creator Profile + LIVE Report');pdf.setAuthor('First Class Agency')
+    pdf.setTitle('Available Creator Report | First Class Agency');pdf.setAuthor('First Class Agency')
     style=ParagraphStyle('body',fontName='Helvetica',fontSize=9,leading=13,textColor=muted)
     def text(value,x,y,max_width,size=9,color=ink):
         block=Paragraph(escape(str(value)),ParagraphStyle('line',parent=style,fontSize=size,leading=size+4,textColor=color));_,h=block.wrap(max_width,200);block.drawOn(pdf,x,y-h);return h
-    def heading(title,subtitle):
-        pdf.setFillColor(ink);pdf.rect(0,height-88,width,88,fill=1,stroke=0)
-        pdf.setFillColor(gold);pdf.setFont('Helvetica-Bold',10);pdf.drawString(30,height-25,'FIRST CLASS AGENCY  /  CREATOR REPORT')
-        text(title,30,height-37,width-60,23,HexColor('#ffffff'));text(subtitle,30,height-68,width-60,8,HexColor('#e0d6b8'))
+    def heading(title,subtitle,creator=False):
+        pdf.setFillColor(ink);pdf.rect(0,height-94,width,94,fill=1,stroke=0)
+        pdf.setFillColor(gold);pdf.setFont('Helvetica-Bold',10);pdf.drawString(30,height-25,'FIRST CLASS AGENCY')
+        pdf.setFont('Helvetica',8);pdf.drawRightString(width-30,height-25,'AVAILABLE CREATOR REPORT')
+        text(title,30,height-37,width-(220 if creator else 60),24,HexColor('#ffffff'))
+        text(subtitle,30,height-72,width-60,9,HexColor('#e0d6b8'))
     def footer(index,total):
-        pdf.setFillColor(muted);pdf.setFont('Helvetica',7);pdf.drawString(30,18,'READ-ONLY CAPTURE  |  NO MESSAGES OR INVITATIONS SENT');pdf.drawRightString(width-30,18,f'{index} / {total}')
+        pdf.setFillColor(muted);pdf.setFont('Helvetica',7);pdf.drawString(30,18,'FIRST CLASS AGENCY');pdf.drawRightString(width-30,18,f'{index} / {total}')
     rows=sorted([row for row in state['creators'].values() if not row.get('capture',{}).get('excluded')],key=priority)
-    heading('Profile + LIVE review','Prepared '+manifest['generatedAt']+'  |  '+manifest.get('region','')+' rankings')
-    text(f'{len(rows)} creator pages',35,height-116,width-70,28)
-    text('History window: '+' / '.join(manifest['dateWindow']),35,height-163,width-70,12)
-    complete=sum(row.get('history',{}).get('threeDayTotal') is not None for row in rows)
-    captured=sum(row.get('capture',{}).get('profileStatus')=='Captured' for row in rows)
-    text(f'{complete} complete three-day histories  |  {captured} captured profiles',35,height-196,width-70,12)
-    notes=[
-        'Complete three-day totals sort first, highest to lowest. Partial histories follow in known-total order; missing days are unknown, never zero.',
-        'Only explicitly daily TikLeap history records are summed. Ranking snapshots are shown separately and are not treated as daily earnings.',
-        'Backstage status is the saved result at the stated check time. It may have changed since that check; this report does not send invitations or recheck availability.',
-        'Profile and LIVE screenshots show what was visible at capture time. Offline, blocked, unverified or failed captures are labelled instead of substituting another creator.',
-        f'{sum(bool(row.get("capture",{}).get("excluded")) for row in state["creators"].values())} creators excluded after their current nickname failed the lettering filter.',
-    ]
-    y=height-242
-    for note in notes:y-=text(note,35,y,width-70,11)+17
+    heading('Available Creator Report','Prepared '+friendly_date(manifest['generatedAt']))
+    text(f'{len(rows)} available creators',35,height-125,width-70,29)
+    text('Diamonds: '+' / '.join(friendly_date(date,False) for date in manifest['dateWindow']),35,height-177,width-70,12)
+    text('Profiles, live snapshots and recent diamond performance in one place.',35,height-220,width-70,13)
+    notes=['Use View Profile on any creator page to open their TikTok profile.','Creators with complete three-day diamond totals appear first, highest to lowest.','Missing figures are shown as Not available. Live screenshots show the moment they were captured.']
+    y=height-277
+    for note in notes:y-=text(note,35,y,width-70,12)+18
+    excluded=sum(bool(row.get('capture',{}).get('excluded')) for row in state['creators'].values())
+    if excluded:text(f'{excluded} accounts were removed by the lettering filter.',35,y-10,width-70,10)
     footer(1,len(rows)+1);pdf.showPage()
     for index,row in enumerate(rows,1):
         name=row['username'];availability=row['availability'];history=row.get('history',unknown_history(manifest['dateWindow'],'History not fetched.'));capture=row.get('capture',{})
-        heading('@'+name,f'{index} of {len(rows)}  |  {availability.get("invitationType","Unknown")}  |  Backstage: Available  |  checked {availability.get("checkedAt","Unknown")}')
-        pdf.linkURL('https://www.tiktok.com/@'+name,(28,height-65,width-28,height-33),relative=0,thickness=0)
-        total=history.get('threeDayTotal');summary=f'{total:,.0f} DIAMONDS / 3 COMPLETE DAYS' if total is not None else (f'PARTIAL HISTORY: {history.get("knownDays",0)}/3 DAYS  |  KNOWN TOTAL {history.get("knownTotal",0):,.0f}' if history.get('knownDays') else 'HISTORY UNAVAILABLE / NO VERIFIED DAILY FIGURES')
-        text(summary,30,height-100,width-60,13)
-        latest=row.get('rankingDiamonds');snapshot='Unknown' if latest is None else f'{latest:,.0f}'
-        text('Ranking snapshot: '+snapshot+' diamonds (not a daily total)  |  fetched '+row.get('snapshotAt','Unknown'),30,height-123,width-60,8)
-        panel_width=(width-76)/2;panel_y=127;panel_h=292
-        for side,label,status_key,image_key,note_key in [(0,'PROFILE','profileStatus','profileImage','profileNote'),(1,'LIVE','liveStatus','liveImage','liveNote')]:
+        invitation=availability.get('invitationType','Unknown')
+        if invitation=='Unknown':invitation='Type not recorded'
+        heading('@'+name,f'{invitation}  |  Backstage available  |  Checked '+friendly_date(availability.get('checkedAt')),True)
+        profile_url='https://www.tiktok.com/@'+name
+        pdf.linkURL(profile_url,(28,height-69,width-190,height-35),relative=0,thickness=0)
+        button_x=width-156;button_y=height-65
+        pdf.setFillColor(gold);pdf.roundRect(button_x,button_y,126,29,7,fill=1,stroke=0)
+        pdf.setFillColor(ink);pdf.setFont('Helvetica-Bold',10);pdf.drawCentredString(button_x+63,button_y+10,'View Profile')
+        pdf.linkURL(profile_url,(button_x,button_y,button_x+126,button_y+29),relative=0,thickness=0)
+        total=history.get('threeDayTotal')
+        summary=f'{total:,.0f} diamonds over 3 days' if total is not None else (f'{history.get("knownTotal",0):,.0f} diamonds / {history.get("knownDays",0)} of 3 days available' if history.get('knownDays') else 'Diamond history not available')
+        text(summary,30,height-110,width-60,16)
+        latest=row.get('rankingDiamonds')
+        if latest is not None:text(f'Latest ranking snapshot: {latest:,.0f} diamonds',30,height-137,width-60,9)
+        panel_width=(width-76)/2;panel_y=118;panel_h=292
+        for side,label,status_key,image_key in [(0,'Profile','profileStatus','profileImage'),(1,'Live','liveStatus','liveImage')]:
             x=30+side*(panel_width+16)
-            pdf.setFillColor(HexColor('#f1f4ee'));pdf.roundRect(x,panel_y,panel_width,panel_h,8,fill=1,stroke=0)
-            pdf.setFillColor(gold);pdf.setFont('Helvetica-Bold',9);pdf.drawString(x+12,panel_y+panel_h-19,label+' / '+capture.get(status_key,'Not captured').upper())
+            pdf.setFillColor(HexColor('#f1f4ee'));pdf.roundRect(x,panel_y,panel_width,panel_h,9,fill=1,stroke=0)
+            pdf.setFillColor(gold);pdf.setFont('Helvetica-Bold',10);pdf.drawString(x+13,panel_y+panel_h-21,label)
             image=capture.get(image_key)
-            if image==name+('-profile.jpg' if side==0 else '-live.jpg') and (folder/image).is_file():
-                try:pdf.drawImage(ImageReader(str(folder/image)),x+9,panel_y+42,width=panel_width-18,height=panel_h-75,preserveAspectRatio=True,anchor='c',mask='auto')
-                except Exception:text('Saved screenshot could not be embedded.',x+15,panel_y+180,panel_width-30,11)
-            else:text(capture.get(note_key,'Capture not completed. Resume the same report file to continue.'),x+17,panel_y+190,panel_width-34,11)
-            text(capture.get(note_key,'')+'  '+capture.get('capturedAt',''),x+12,panel_y+35,panel_width-24,7)
-            target='https://www.tiktok.com/@'+name+('/live' if side else '')
-            pdf.linkURL(target,(x,panel_y,x+panel_width,panel_y+panel_h),relative=0,thickness=0)
+            valid_image=image==name+('-profile.jpg' if side==0 else '-live.jpg') and (folder/image).is_file()
+            if valid_image:
+                try:pdf.drawImage(ImageReader(str(folder/image)),x+9,panel_y+10,width=panel_width-18,height=panel_h-46,preserveAspectRatio=True,anchor='c',mask='auto')
+                except Exception:text('Screenshot not available',x+20,panel_y+165,panel_width-40,13)
+            else:
+                message='Profile screenshot not available' if side==0 else 'Not live at capture' if capture.get(status_key)=='Offline' else 'Live screenshot not available'
+                text(message,x+20,panel_y+165,panel_width-40,13)
+            pdf.linkURL(profile_url+('/live' if side else ''),(x,panel_y,x+panel_width,panel_y+panel_h),relative=0,thickness=0)
         for i,day in enumerate(history.get('days',[])):
             x=30+i*(width-60)/3
-            text(day['date'],x,108,(width-72)/3,9)
-            text('UNKNOWN' if day.get('diamonds') is None else f'{day["diamonds"]:,.0f} diamonds',x,89,(width-72)/3,13)
-        if history.get('error'):text('History: '+history['error'],30,56,width-60,7)
+            text(friendly_date(day['date'],False),x,99,(width-72)/3,9)
+            text('Not available' if day.get('diamonds') is None else f'{day["diamonds"]:,.0f} diamonds',x,78,(width-72)/3,14)
         footer(index+1,len(rows)+1);pdf.showPage()
     pdf.save();temporary.replace(filename);return filename
+
 
 def _run_report_unlocked(manifest,folder,control,report,sign_in,history_client=None,capture_fn=capture_creator,browser_factory=None,retry_failed=False):
     folder=Path(folder);folder.mkdir(parents=True,exist_ok=True);state_file=folder/'progress.json'
@@ -296,10 +313,10 @@ def run_report(manifest,folder,control,report,sign_in,**kwargs):
 def main():
     import tkinter as tk
     from tkinter import filedialog,messagebox,scrolledtext
-    window=tk.Tk();window.title('First Class — Profile + LIVE Reports');window.geometry('880x760');window.configure(bg='#101510')
+    window=tk.Tk();window.title('First Class — Available Creator Reports');window.geometry('880x760');window.configure(bg='#101510')
     selected={'file':None,'folder':None,'manifest':None,'running':False,'pdf':None};control=Control();signed_in=threading.Event();events=queue.Queue()
     def log(value):events.put(('log',value))
-    tk.Label(window,text='PROFILE + LIVE PDF REPORTS',bg='#101510',fg='#f5d571',font=('Arial',20,'bold')).pack(anchor='w',padx=20,pady=(20,8))
+    tk.Label(window,text='AVAILABLE CREATOR REPORTS',bg='#101510',fg='#f5d571',font=('Arial',20,'bold')).pack(anchor='w',padx=20,pady=(20,8))
     tk.Label(window,text='Load the report file downloaded from Creator API Search. Captures never send messages or invitations.',bg='#101510',fg='white',wraplength=800,justify='left').pack(anchor='w',padx=20)
     summary=tk.StringVar(value='No report file selected.')
     tk.Label(window,textvariable=summary,bg='#101510',fg='#c7d9c6',wraplength=800,justify='left').pack(anchor='w',padx=20,pady=12)
@@ -331,11 +348,26 @@ def main():
         if control.paused.is_set():control.paused.clear();pause_button.configure(text='Pause')
         else:control.paused.set();pause_button.configure(text='Resume')
     def open_pdf():
-        path=selected.get('pdf') or (selected['folder']/'creator-profile-live-report.pdf' if selected.get('folder') else None)
+        path=selected.get('pdf') or (selected['folder']/'available-creator-report.pdf' if selected.get('folder') else None)
         if path and path.is_file():os.startfile(str(path))
         else:messagebox.showinfo('PDF','No PDF has been generated yet.',parent=window)
     for title,callback in [('Load report file',load),('Output folder',choose_folder),('Start / resume',start),('Continue after sign-in',signed_in.set),('Stop',control.stop.set),('Open PDF',open_pdf)]:tk.Button(actions,text=title,command=callback,padx=9,pady=8).pack(side='left',padx=(0,5),pady=5)
-    pause_button=tk.Button(window,text='Pause',command=toggle_pause,padx=15,pady=7);pause_button.pack(anchor='w',padx=20,pady=5)
+    def rebuild_pdf():
+        if selected['running']:
+            messagebox.showinfo('Report is running','Stop the current run before rebuilding the PDF.',parent=window);return
+        if not selected['manifest'] or not selected['folder']:
+            messagebox.showinfo('Load your report','Load the same report file and output folder first.',parent=window);return
+        try:
+            with report_lock(selected['folder']):
+                state=json.loads((selected['folder']/'progress.json').read_text(encoding='utf-8'))
+                if state.get('fingerprint')!=selected['manifest']['fingerprint']:raise ValueError('Choose the output folder for this report file.')
+                selected['pdf']=write_pdf(selected['manifest'],state,selected['folder'])
+            log('PDF updated using saved screenshots. No new captures or API lookups were needed. '+str(selected['pdf']))
+        except FileNotFoundError:messagebox.showinfo('No saved captures','Run the report first, or choose its existing output folder.',parent=window)
+        except Exception as error:messagebox.showerror('Could not rebuild PDF',str(error),parent=window)
+    secondary=tk.Frame(window,bg='#101510');secondary.pack(fill='x',padx=20,pady=5)
+    pause_button=tk.Button(secondary,text='Pause',command=toggle_pause,padx=15,pady=7);pause_button.pack(side='left')
+    tk.Button(secondary,text='Rebuild PDF from saved captures',command=rebuild_pdf,padx=15,pady=7,bg='#dfc977').pack(side='left',padx=8)
     retry=tk.BooleanVar(value=False);tk.Checkbutton(window,text='Retry failed history / profile captures when resuming',variable=retry,bg='#101510',fg='white',selectcolor='#263e29').pack(anchor='w',padx=20)
     tk.Label(window,text='History is collected first; the TikTok browser opens when capture begins. Leave that browser open. Offline or unverified LIVE screens are labelled. Stop preserves work. No messaging history is changed.',bg='#101510',fg='#a9bca9',wraplength=800,justify='left').pack(anchor='w',padx=20,pady=12)
     output=scrolledtext.ScrolledText(window,state='disabled',font=('Consolas',10));output.pack(fill='both',expand=True,padx=20,pady=(0,20))
