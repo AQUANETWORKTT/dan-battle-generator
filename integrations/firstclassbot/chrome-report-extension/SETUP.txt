@@ -1,0 +1,41 @@
+FIRST CLASS — NORMAL CHROME REPORT CAPTURE
+
+ONE-TIME INSTALL
+1. In your normal Google Chrome, open chrome://extensions
+2. Turn on Developer mode (top right).
+3. Click Load unpacked and select this chrome-report-extension folder.
+4. Open https://www.tiktok.com in that Chrome. Sign in and check posts load.
+5. While ON THE TIKTOK TAB, click the First Class report extension icon
+   (find it under the puzzle-piece Extensions button if needed).
+   A separate connection controller opens. Keep both windows open.
+
+EACH REPORT
+1. Reopen Start Creator Reports.cmd. Load the same downloaded report JSON.
+   Keep its original output folder to reuse saved diamond data and progress.
+2. Leave Use normal Chrome (extension) ticked and press Start / resume.
+3. Once history finishes, press Copy Chrome connection in the report builder.
+4. Paste it into the extension controller and click Connect & capture.
+5. Leave the TikTok tab active in its own window. Do not navigate that tab
+   yourself during capture. You can use other windows.
+
+The first normal-Chrome run retakes the old automated-browser screenshots,
+including those previously marked Captured but showing broken posts.
+Already saved diamond history is reused. Later resumes skip completed
+normal-Chrome captures; tick Retry failed history / profile captures to retry
+unavailable captures. A fresh connection is needed after restarting a run.
+
+Pause / Stop are in the report builder. Disconnect only disconnects Chrome;
+press Stop in the builder if you want it to finish a partial PDF.
+Rebuild PDF from saved captures changes the PDF without taking new pictures.
+
+ACCESS
+The extension needs access to TikTok, the local connection (127.0.0.1), and
+temporary screenshot access to the TikTok tab where you click its icon.
+It does not request all-website access, browser cookies, or messaging rights.
+It verifies the creator before taking screenshots, sends them only to your
+local builder, and does not solve verification challenges or send messages.
+If the tab navigates away from TikTok, reconnect by clicking the extension
+icon on TikTok again. This is required for Chrome's screenshot permission.
+
+If TikTok still fails to show posts, it refreshes once, then records the
+capture as unavailable. It cannot guarantee TikTok will load every profile.

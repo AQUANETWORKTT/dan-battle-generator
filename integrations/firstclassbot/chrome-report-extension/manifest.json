@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "First Class — Creator Report Capture",
+  "version": "1.0.0",
+  "description": "Capture verified TikTok profiles and LIVE pages for your local First Class report builder.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://www.tiktok.com/*", "http://127.0.0.1/*"],
+  "action": {"default_title": "Connect this TikTok tab to First Class Reports"},
+  "background": {"service_worker": "background.js"}
+}

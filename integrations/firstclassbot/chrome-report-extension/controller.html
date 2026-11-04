@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><title>First Class · Chrome report capture</title><style>
+body{background:#101510;color:#eee;font:16px Arial;padding:28px;line-height:1.6}h1{color:#f5d571;font-size:25px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #62745d;border-radius:8px;background:#182018;color:white}button{padding:12px 18px;margin:14px 8px 12px 0;background:#f5d571;border:0;border-radius:8px;font-weight:bold;cursor:pointer}#status{white-space:pre-wrap;color:#cbe3c4}small{color:#aab9a6}</style></head><body>
+<h1>FIRST CLASS · REPORT CAPTURE</h1>
+<p>Paste the connection copied from the report builder. Keep this controller and its TikTok tab open.</p>
+<label>Report builder connection<input id="connection" placeholder="http://127.0.0.1:…" autocomplete="off"></label>
+<button id="connect">Connect & capture</button><button id="stop">Disconnect</button>
+<p id="status">Open TikTok in normal Chrome, then click this extension on that TikTok tab.</p>
+<small>This uses the selected TikTok tab. Do not use that tab for other browsing during capture. It never sends messages or invitations. Screenshots go only to the local report builder.</small>
+<script src="controller.js"></script></body></html>

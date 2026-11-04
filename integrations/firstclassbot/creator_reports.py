@@ -245,7 +245,7 @@ def write_pdf(manifest,state,folder):
     pdf.save();temporary.replace(filename);return filename
 
 
-def _run_report_unlocked(manifest,folder,control,report,sign_in,history_client=None,capture_fn=capture_creator,browser_factory=None,retry_failed=False):
+def _run_report_unlocked(manifest,folder,control,report,sign_in,history_client=None,capture_fn=capture_creator,browser_factory=None,retry_failed=False,normal_chrome=None):
     folder=Path(folder);folder.mkdir(parents=True,exist_ok=True);state_file=folder/'progress.json'
     if state_file.is_file():
         state=json.loads(state_file.read_text(encoding='utf-8'))
@@ -263,7 +263,16 @@ def _run_report_unlocked(manifest,folder,control,report,sign_in,history_client=N
                 if 'allowance reached' in str(error) or 'connection was denied' in str(error):raise
                 row['history']=unknown_history(manifest['dateWindow'],str(error))
             atomic_json(state_file,state)
-        pending=[row for row in sorted(state['creators'].values(),key=priority) if 'capture' not in row or (retry_failed and (row['capture'].get('profileStatus')!='Captured' or row['capture'].get('liveStatus') not in {'Captured','Offline'}) and not row['capture'].get('excluded'))]
+        pending=[row for row in sorted(state['creators'].values(),key=priority) if 'capture' not in row or (normal_chrome and row['capture'].get('source')!='normal-chrome') or (retry_failed and (row['capture'].get('profileStatus')!='Captured' or row['capture'].get('liveStatus') not in {'Captured','Offline'}) and not row['capture'].get('excluded'))]
+        if pending and normal_chrome:
+            from chrome_report_bridge import ChromeReportBridge
+            with ChromeReportBridge(control) as bridge:
+                normal_chrome(bridge.url)
+                report('Connect the Chrome extension using Copy Chrome connection. Keep its controller and TikTok tab open.')
+                for index,row in enumerate(pending,1):
+                    control.check();report(f'Normal Chrome {index}/{len(pending)}: @{row["username"]}')
+                    row['capture']=bridge.capture(row,folder);atomic_json(state_file,state)
+            pending=[]
         if pending:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as playwright:
@@ -332,18 +341,18 @@ def main():
         if selected['running']:return
         value=filedialog.askdirectory(title='Choose report output folder')
         if value:selected['folder']=Path(value);summary.set('Output: '+value)
-    def worker(retry_failed):
+    def worker(retry_failed,use_normal):
         try:
             def sign_in(ctrl):
                 while not signed_in.wait(.2):ctrl.check()
-            output=run_report(selected['manifest'],selected['folder'],control,log,sign_in,retry_failed=retry_failed);selected['pdf']=output;log('Finished. PDF saved to '+str(output))
+            output=run_report(selected['manifest'],selected['folder'],control,log,sign_in,retry_failed=retry_failed,normal_chrome=(lambda url:events.put(('chrome',url))) if use_normal else None);selected['pdf']=output;log('Finished. PDF saved to '+str(output))
         except Cancelled:log('Stopped. Reload this report file and Start again to resume. Any partial PDF is saved in the output folder.')
         except Exception as error:log(str(error)+' Completed work remains saved; resume the same file and folder.')
         finally:events.put(('done',None))
     def start():
         if selected['running']:return
         if not selected['manifest'] or not selected['folder']:messagebox.showinfo('Load a report','Load a report file first.',parent=window);return
-        selected['running']=True;control.stop.clear();control.paused.clear();signed_in.clear();threading.Thread(target=worker,args=(retry.get(),),daemon=True).start()
+        selected['running']=True;control.stop.clear();control.paused.clear();signed_in.clear();threading.Thread(target=worker,args=(retry.get(),use_chrome.get()),daemon=True).start()
     def toggle_pause():
         if control.paused.is_set():control.paused.clear();pause_button.configure(text='Pause')
         else:control.paused.set();pause_button.configure(text='Resume')
@@ -368,14 +377,23 @@ def main():
     secondary=tk.Frame(window,bg='#101510');secondary.pack(fill='x',padx=20,pady=5)
     pause_button=tk.Button(secondary,text='Pause',command=toggle_pause,padx=15,pady=7);pause_button.pack(side='left')
     tk.Button(secondary,text='Rebuild PDF from saved captures',command=rebuild_pdf,padx=15,pady=7,bg='#dfc977').pack(side='left',padx=8)
+    chrome_controls=tk.Frame(window,bg='#101510');chrome_controls.pack(fill='x',padx=20,pady=5)
+    use_chrome=tk.BooleanVar(value=True)
+    tk.Checkbutton(chrome_controls,text='Use normal Chrome (extension)',variable=use_chrome,bg='#101510',fg='white',selectcolor='#263e29').pack(side='left')
+    def copy_connection():
+        if not selected.get('connection'):messagebox.showinfo('Chrome connection','Press Start / resume. The connection becomes available after saved diamond history is loaded.',parent=window);return
+        window.clipboard_clear();window.clipboard_append(selected['connection']);log('Connection copied. Paste it into the Chrome extension controller.')
+    tk.Button(chrome_controls,text='Copy Chrome connection',command=copy_connection,padx=8,pady=7).pack(side='left',padx=5)
+    tk.Button(chrome_controls,text='Extension folder',command=lambda:os.startfile(str(ROOT/'chrome-report-extension')),padx=8,pady=7).pack(side='left')
     retry=tk.BooleanVar(value=False);tk.Checkbutton(window,text='Retry failed history / profile captures when resuming',variable=retry,bg='#101510',fg='white',selectcolor='#263e29').pack(anchor='w',padx=20)
-    tk.Label(window,text='History is collected first; the TikTok browser opens when capture begins. Leave that browser open. Offline or unverified LIVE screens are labelled. Stop preserves work. No messaging history is changed.',bg='#101510',fg='#a9bca9',wraplength=800,justify='left').pack(anchor='w',padx=20,pady=12)
+    tk.Label(window,text='Normal Chrome: install the extension, open TikTok, and click its extension icon on that tab. Start this report, copy its Chrome connection and paste it into the extension. Old automated screenshots are retaken; saved diamond history is reused. Keep both Chrome windows open. Stop preserves progress.',bg='#101510',fg='#a9bca9',wraplength=800,justify='left').pack(anchor='w',padx=20,pady=12)
     output=scrolledtext.ScrolledText(window,state='disabled',font=('Consolas',10));output.pack(fill='both',expand=True,padx=20,pady=(0,20))
     def drain():
         while True:
             try:kind,value=events.get_nowait()
             except queue.Empty:break
-            if kind=='done':selected['running']=False
+            if kind=='done':selected['running']=False;selected['connection']=None
+            elif kind=='chrome':selected['connection']=value;log('Chrome connection ready. Press Copy Chrome connection, then paste it into the extension.')
             else:output.configure(state='normal');output.insert('end',str(value)+'\n');output.see('end');output.configure(state='disabled')
         window.after(150,drain)
     def close():

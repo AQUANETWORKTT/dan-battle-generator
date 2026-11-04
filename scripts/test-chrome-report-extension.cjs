@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+async function scenario(changed=false){
+ const elements=Object.fromEntries(['status','connection','connect','stop'].map(id=>[id,{textContent:'',value:'http://127.0.0.1:34567/'+'a'.repeat(43)+'/'}]));
+ const command={id:'fixture-id',username:'demo_creator'},visits=[],results=[];let screenshots=0,tab={id:7,windowId:3,status:'complete',active:true,url:'https://www.tiktok.com/'};
+ const chrome={tabs:{update:async(id,patch)=>{assert.equal(id,7);tab={...tab,...patch};visits.push(patch.url);return tab;},get:async()=>({...tab}),reload:async()=>{},captureVisibleTab:async(window,options)=>{assert.equal(window,3);assert.equal(options.format,'jpeg');screenshots++;if(changed)tab.active=false;return 'data:image/jpeg;base64,test';}},scripting:{executeScript:async({func,args})=>[{result:func.name==='inspect'?{verified:true,posts:true,empty:false,error:false,offline:false,blocked:false,nickname:'Demo',url:tab.url}:null}]}};
+ const context={URL,AbortSignal,location:{href:'chrome-extension://test/controller.html?tab=7'},document:{getElementById:id=>elements[id]},chrome,setTimeout:fn=>{fn();return 1;},setInterval:()=>1,fetch:async(url,options)=>{if(url.endsWith('result')){results.push(JSON.parse(options.body));return {ok:true,json:async()=>({saved:true})};}return {ok:true,json:async()=>({command,paused:false,stopped:false})};}};
+ vm.createContext(context);vm.runInContext(fs.readFileSync('integrations/firstclassbot/chrome-report-extension/controller.js','utf8'),context);elements.connect.onclick();await vm.runInContext('poll()',context);
+ if(changed){assert.equal(results.length,0);assert(elements.status.textContent.includes('discarded'));}
+ else{assert.deepEqual(visits,['https://www.tiktok.com/@demo_creator','https://www.tiktok.com/@demo_creator/live']);assert.equal(screenshots,2);assert.equal(results.length,1);assert.equal(results[0].profile.verified,true);assert.equal(results[0].live.verified,true);await vm.runInContext('poll()',context);assert.equal(results.length,1);}
+ elements.connection.value='https://untrusted.example/';elements.connect.onclick();assert(elements.status.textContent.includes('Paste the full connection'));
+}
+(async()=>{await scenario();await scenario(true);console.log('PASS: correct profile/live navigation, verified captures, duplicate prevention, changed-tab screenshot rejection and loopback-only connections.');})().catch(error=>{console.error(error);process.exitCode=1;});
