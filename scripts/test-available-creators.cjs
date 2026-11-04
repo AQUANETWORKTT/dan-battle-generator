@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript'),assert=require('node:assert/strict');
 const env={SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY:'test-only-secret-with-more-than-thirty-two-characters'};
-function load(path,deps={}){const box={exports:{},require:name=>{if(name==='server-only')return {};if(name in deps)return deps[name];throw Error(name);},process:{env},URL,URLSearchParams,Buffer,Date,Map,Set,Promise};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,box);return box.exports;}
+function load(path,deps={},globals={}){const box={exports:{},require:name=>{if(name==='server-only')return {};if(name in deps)return deps[name];throw Error(name);},process:{env},URL,URLSearchParams,Buffer,Date,Map,Set,Promise,...globals};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,box);return box.exports;}
 const types=load('lib/creator-api-search/types.ts'),model=load('lib/available-creators.ts',{'./creator-api-search/types':types});
 const stamp='2026-11-04T12:00:00Z',later='2026-11-04T13:00:00Z';
 function job(id,name,status,checkedAt=stamp,extra={}){return {id,run_id:'run',created_at:later,results:{[name]:{username:name,status,checkedAt,invitationType:'Regular',...extra}}};}
@@ -20,12 +20,22 @@ let reads=0,updates=0;
 const route=load('app/api/available-creators/route.ts',{'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
 function request(method='GET',access='',admin=false,body={}){return {method,nextUrl:new URL('https://firstclassagency.management/api/available-creators'+(access?'?access='+access:'')),cookies:{get:key=>({value:admin?(key==='signed'?'valid':'true'):'true'})},headers:new Headers({origin:'https://firstclassagency.management'}),json:async()=>body};}
 (async()=>{
+ let body='{"avatarLarger":"https:\\u002F\\u002Fexample.test/a?x=1\\u0026y=2"}';
+ const scraper=load('lib/tiktok-profile-avatar.ts',{}, {AbortSignal,fetch:async()=>({ok:true,text:async()=>body})});
+ assert.equal(await scraper.scrapeTikTokAvatar('sample'),'https://example.test/a?x=1&y=2');
+ body='blocked';assert.equal(await scraper.scrapeTikTokAvatar('sample'),null);
+
  const manyJobs=[...Array.from({length:500},(_,i)=>job('old'+i,'old'+i,'Ineligible')),job('final','good','Available',later,{name:'Sam ⭐'})],records=new Map();let pages=0,paid=0;
  const database=()=>({from(table){return {select(){return this;},order(){return this;},eq(key,value){this.key=value;return this;},async range(from,to){pages++;return {data:manyJobs.slice(from,to+1),error:null};},async in(key,values){return {data:table==='runs'?[run]:values.filter(value=>records.has(value)).map(value=>({name:value,template_json:records.get(value)})),error:null};},async maybeSingle(){return {data:records.has(this.key)?{template_json:records.get(this.key)}:null,error:null};},async upsert(row){records.set(row.name,row.template_json);return {data:null,error:null};}};}});
- const store=load('lib/available-creators-store.ts',{'./creator-api-search/db':{database,checked:async query=>{const result=await query;if(result.error)throw Error('database failed');return result;},JOBS:'jobs',RUNS:'runs'},'./creator-api-search/service':{SearchError,creatorEndpoint:async(name)=>{paid++;return {body:{data:[{username:name,name:'Sam ⭐',avatar:'https://example.test/photo.jpg',is_live:true}]},fetchedAt:new Date().toISOString()};}},'./creator-api-search/reports':{reportDates:()=>['2026-11-03','2026-11-02','2026-11-01'],reportHistory:async()=>{throw Error('quota reached');}},'./creator-api-search/types':types,'./available-creators':model});
+ const store=load('lib/available-creators-store.ts',{'./creator-api-search/db':{database,checked:async query=>{const result=await query;if(result.error)throw Error('database failed');return result;},JOBS:'jobs',RUNS:'runs'},'./creator-api-search/service':{SearchError,creatorEndpoint:async(name)=>{paid++;return {body:{data:[{username:name,name:'Sam ⭐',avatar:'https://example.test/photo.jpg',is_live:true}]},fetchedAt:new Date().toISOString()};}},'./tiktok-profile-avatar':{scrapeTikTokAvatar:async()=>{paid++;return 'https://example.test/photo.jpg';}},'./creator-api-search/reports':{reportDates:()=>['2026-11-03','2026-11-02','2026-11-01'],reportHistory:async()=>{throw Error('quota reached');}},'./creator-api-search/types':types,'./available-creators':model});
  const saved=await store.readAvailableCreators();assert.equal(pages,2);assert.equal(paid,0);assert.equal(saved.rows.length,1);assert.equal(saved.rows[0].history,undefined);await store.readAvailableCreators();assert.equal(pages,2);
  await assert.rejects(store.updateAvailableCreator('not_available'),/currently Available/);assert.equal(paid,0);
- await assert.rejects(store.updateAvailableCreator('good'),/quota reached/);assert.equal(paid,1);assert(records.has('available-creator-profile-v1:good'));assert.equal((await store.readAvailableCreators()).rows[0].avatar,'https://example.test/photo.jpg');
+ await store.updateAvailableCreator('good');assert.equal(paid,1);assert(records.has('available-creator-profile-v1:good'));assert.equal((await store.readAvailableCreators()).rows[0].avatar,'https://example.test/photo.jpg');
+ assert.equal(pages,2,'saving a picture must not reload all scans');
+ await store.updateAvailableCreator('good');assert.equal(paid,1,'normal scraper photo reused');
+ await assert.rejects(store.updateAvailableCreator('good',true),/quota reached/);assert.equal(paid,1,'history does not scrape photos');
+ assert.equal((await store.readAvailableCreators()).rows[0].live,null);assert.equal(pages,2);
+
  assert.equal((await route.GET(request())).status,401);assert.equal(reads,0);
  const viewer=await route.GET(request('GET',token));assert.equal(viewer.status,200);assert.equal(viewer.headers.get('cache-control'),'private, no-store');
  assert.equal((await route.POST(request('POST',token,false,{action:'enrich',username:'good'}))).status,401);assert.equal(updates,0);
