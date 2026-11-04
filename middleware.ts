@@ -46,6 +46,9 @@ export function middleware(req: NextRequest) {
 
   // This standalone creator view is public regardless of existing login cookies.
   if(path==='/star-leaderboard'||path==='/api/star-leaderboard'||path==='/api/star-leaderboard/avatar')return NextResponse.next();
+  // Validate signed, read-only manager links at the page/API even when the
+  // visitor previously used the restricted Subspace Battle Network entry.
+  if(process.env.SITE_MODE!=='events'&&(path==='/available-creators'||path==='/api/available-creators'))return NextResponse.next();
   const isSubspaceBattleEntry = path === "/battle-network" && req.nextUrl.searchParams.get("source") === "subspace-manager" && req.nextUrl.searchParams.get("agency") === "respawn";
   const isSubspaceBattleSession = req.cookies.get("subspace-battle-entry")?.value === "respawn";
 

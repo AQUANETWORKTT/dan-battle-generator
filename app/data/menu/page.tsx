@@ -49,6 +49,7 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
   { title: "Creator Recruitment", description: "Find and review potential creators from Tikleap rankings without leaving Data Space.", accent: "sky", workspaces: [
     { href: "/data/creator-api-search", number: "36", label: "Official TikLeap API", title: "Creator API Search", description: "Fetch UK leagues, look up creators and check Backstage availability with saved history and exports.", accent: "sky" },
+    { href: "/data/available-creators", number: "37", label: "Shared recruitment directory", title: "Available Creators", description: "Browse confirmed Backstage results, compare diamonds and share a read-only creator panel with managers.", accent: "emerald" },
     { href: "/daily-rankings", number: "06", label: "Tikleap", title: "League Checker", description: "Use the original Tikleap daily-ranking and live-league checker.", accent: "sky" },
     { href: "/data/creator-recruitment", number: "29", label: "Tikleap", title: "Rankings Checker", description: "Browse Tikleap rankings or live leagues, then check eligibility without leaving Data Space.", accent: "sky" },
   ] },
