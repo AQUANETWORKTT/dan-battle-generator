@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 import time
 import re
 from messaging_wait import WaitControl, ReadyLocator, RecipientLocator, ComposerLocator, UserStopped
+from name_filter import check_profile_name
 
 
 class SendClickCompleted(Exception):
@@ -17,6 +18,8 @@ class SendButton:
         return getattr(self.locator, name)
 
     def click(self, **kwargs):
+        if self.state.get('name_filter_blocked'):
+            raise RuntimeError('Profile name filter blocked this creator; no message sent.')
         if self.control:
             while True:
                 self.control.check()
@@ -130,6 +133,12 @@ class ChatPage:
     def get_by_role(self, role, **kwargs):
         if self.state.get('resume') and role == 'button' and kwargs.get('name') == 'Message':
             return ResumedMessageButton(self.page, self.state['resume']['chat_url'], self.control)
+        if role == 'button' and kwargs.get('name') == 'Message' and urlparse(self.page.url).path.startswith('/@'):
+            try:
+                check_profile_name(self.page)
+            except Exception as error:
+                self.state['name_filter_blocked'] = str(error)
+                raise RuntimeError('Profile name check failed; skipped without sending.') from error
         locator = self.page.get_by_role(role, **kwargs)
         return ReadyLocator(locator, self.control) if self.control else locator
 
@@ -219,6 +228,8 @@ def send_with_navigation_retry(original, context, username, selector, max_attemp
             status, detail = original(tracked, username)
         except Exception as error:
             status, detail = "FAILED", str(error)
+        if tracked.state.get('name_filter_blocked') and not tracked.state['attempted']:
+            return 'FAILED', tracked.state['name_filter_blocked']
         if tracked.state["completed"]:
             return (status, detail) if status == "SENT" else ("SEND_ATTEMPTED", "Send clicked; delivery unverified. Continuing without resending.")
         if tracked.state["attempted"]:

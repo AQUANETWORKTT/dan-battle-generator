@@ -6,6 +6,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 from contact_history import read_contacts
+from name_filter import outside_english_letters
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent
@@ -19,7 +20,10 @@ def parse_names(text):
         if not value:
             continue
         match = re.fullmatch(r"https?://(?:www\.)?tiktok\.com/@([a-zA-Z0-9._]{1,24})(?:[/?#].*)?", value)
-        name = (match.group(1) if match else value).lstrip("@").lower()
+        raw_name = (match.group(1) if match else value).lstrip("@")
+        if outside_english_letters(raw_name):
+            continue
+        name = raw_name.lower()
         if not re.fullmatch(r"[a-z0-9._]{1,24}", name):
             invalid.append(value)
         elif name not in seen:

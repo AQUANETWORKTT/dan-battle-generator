@@ -1,8 +1,8 @@
-import type {Contact,Eligibility} from './types';
+import {allowedRecruitmentName,type Contact,type Eligibility} from './types';
 
 export function sortByDiamonds<T extends {username:string;diamonds?:number|null}>(rows:T[]):T[]{
  const value=(row:T)=>typeof row.diamonds==='number'&&Number.isFinite(row.diamonds)&&row.diamonds>=0?row.diamonds:null;
- return [...rows].sort((a,b)=>{const left=value(a),right=value(b);if(left===null&&right!==null)return 1;if(left!==null&&right===null)return -1;return (right??0)-(left??0)||a.username.localeCompare(b.username,'en');});
+ return rows.filter(allowedRecruitmentName).sort((a,b)=>{const left=value(a),right=value(b);if(left===null&&right!==null)return 1;if(left!==null&&right===null)return -1;return (right??0)-(left??0)||a.username.localeCompare(b.username,'en');});
 }
 
 export function orderedUsernames(names:string[],totals:Record<string,number|null|undefined>):string[]{

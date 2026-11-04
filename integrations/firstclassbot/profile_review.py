@@ -7,6 +7,7 @@ from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
+from name_filter import outside_english_letters
 
 ROOT = Path(__file__).resolve().parent
 
@@ -374,7 +375,7 @@ def open_review(parent, initial_text=''):
 
 
 def grouped_review_sections(rows):
-    eligible = {r['username']: r for r in rows if r.get('completed') and not r.get('foreign_profile')}
+    eligible = {r['username']: r for r in rows if r.get('completed') and not r.get('foreign_profile') and not outside_english_letters(r['username'], r.get('nickname'))}
     ordered = [eligible[name] for name in sorted(eligible)]
     return [
         ('Boys', [r['username'] for r in ordered if r.get('gender') == 'boy' and not r.get('potential')]),
