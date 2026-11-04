@@ -16,13 +16,13 @@ class Nickname:
 class Page:
     url='https://www.tiktok.com/@alex'
     def __init__(self,text):self.text=text;self.buttons=0
-    def locator(self,selector):return Nickname(self.text)
+    def locator(self,selector):return Nickname(self.text if 'user-title' in selector else 'alex')
     def get_by_role(self,*args,**kwargs):self.buttons+=1;return object()
 class Tests(unittest.TestCase):
     def test_letters(self):
-        for text in ['José','Jose\u0301','Алекс','علي','李明','Σαμ','𝓢𝓪𝓶','Kate']:
+        for text in ['José','Jose\u0301','Алекс','علي','李明','Σαμ','𝓢𝓪𝓶','Kate','محمد .𖥔 ݁ ཐི༏ཋྀ','བོད']:
             self.assertTrue(outside_english_letters(text),text)
-        for text in ['Sam','ALEX_99','James ❤️','Lily 🏳️‍🌈','Ben 🇬🇧','123 ._-','']:
+        for text in ['Sam','ALEX_99','James ❤️','Lily 🏳️‍🌈','Ben 🇬🇧','123 ._-','','.𖥔 ݁ ཐི༏ཋྀ .𖥔 ݁','Sam .𖥔 ݁ ཐི༏ཋྀ .𖥔 ݁']:
             self.assertFalse(outside_english_letters(text),text)
     def test_pasted_names_are_not_transliterated(self):
         self.assertEqual(parse_names('alex José Kate ben'),(['alex','ben'],[]))

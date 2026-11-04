@@ -1,6 +1,10 @@
 """Availability preflight only: one newline-separated submission for up to 30 creators."""
 import re
 from backstage_checker import BACKSTAGE_URL
+from name_filter import outside_english_letters
+
+def backstage_nickname(text,username):
+    return '\n'.join(line.strip() for line in text.splitlines() if line.strip() and line.strip().lstrip('@').lower()!=username)
 
 
 class ScanStopped(Exception):
@@ -64,15 +68,16 @@ def check_batch(page, usernames, max_attempts=3, should_stop=lambda: False):
                 actual = cells.nth(0).locator("p").first.inner_text().strip().lower().lstrip("@")
                 if actual in remaining:
                     invitation = classify_invitation(cells.nth(2).inner_text()) if cells.count() > 2 else "Unknown"
-                    matched.setdefault(actual, []).append((cells.nth(1).inner_text().strip(), invitation))
+                    nickname = backstage_nickname(cells.nth(0).inner_text(), actual)
+                    matched.setdefault(actual, []).append((cells.nth(1).inner_text().strip(), invitation, nickname))
             for name, statuses in matched.items():
                 if len(statuses) != 1:
                     review[name] = {"username": name, "status": "Pending", "reason": "Multiple exact username rows require manual review."}
                     continue
-                status_text, invitation = statuses[0]
+                status_text, invitation, nickname = statuses[0]
                 status = classify_status(status_text)
                 if status != "Pending":
-                    confirmed[name] = {"username": name, "status": status, "reason": status_text[:1000], "invitationType": invitation}
+                    confirmed[name] = {"username": name, "status": status, "reason": status_text[:1000], "invitationType": invitation, "name":nickname, "excludedForName":outside_english_letters(name,nickname)}
                 else:
                     review[name] = {"username": name, "status": "Pending", "reason": "Unrecognised Backstage status requires manual review: " + status_text[:850]}
         except ScanStopped:

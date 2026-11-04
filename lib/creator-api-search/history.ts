@@ -1,4 +1,4 @@
-import type {Eligibility} from './types';
+import {allowedRecruitmentName,type Eligibility} from './types';
 
 export type Observation=Eligibility&{runId:string;jobId:string};
 export type EligibilityChange={username:string;previousUsername:string;kind:'Became available'|'Became premium';invitationType:string;diamonds:number|null;changedAt:string;lastCheckedAt:string;previousCheckedAt:string;previousReason:string;reason:string;matchedBy:'Creator ID'|'Username';runId:string;networkReason?:string;networkCheckedAt?:string};
@@ -30,7 +30,7 @@ export function detectEligibilityChanges(input:Observation[]):EligibilityChange[
  }
  const result:EligibilityChange[]=[];
  for(const [key,event] of changes){
-  const latest=states.get(key)?.row;if(!latest||latest.status!=='Available')continue;
+  const latest=states.get(key)?.row;if(!latest||!allowedRecruitmentName(latest)||latest.status!=='Available')continue;
   const handleOwner=names.get(latest.username);
   if(handleOwner?.key.startsWith('id:')&&key.startsWith('id:')&&handleOwner.key!==key)continue;
   result.push({...event,username:latest.username,invitationType:latest.invitationType||'Unknown',diamonds:latest.diamonds??event.diamonds,lastCheckedAt:latest.checkedAt!,reason:latest.reason});

@@ -3,6 +3,7 @@ import {databaseConfigured} from '@/lib/creator-api-search/db';
 import {ProviderError} from '@/lib/creator-api-search/provider';
 import {SEARCH_COOKIE,searchSessionValid} from '@/lib/creator-api-search/auth';
 import * as service from '@/lib/creator-api-search/service';
+import {reportManifest,reportHistory} from '@/lib/creator-api-search/reports';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=60;
@@ -19,12 +20,14 @@ async function handle(req:NextRequest){
   if(path[0]==='config'&&req.method==='GET')return NextResponse.json(await service.configuration());
   if(!databaseConfigured())return NextResponse.json({error:'Configure SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY and run supabase/creator_api_search.sql in the First Class project. This migration adds new feature tables only.'},{status:503});
   if(path[0]==='worker'){
+   if(path[1]==='report-history'&&req.method==='POST')return NextResponse.json(await reportHistory(await req.json()));
    if(path[1]==='contacts'&&req.method==='POST')return NextResponse.json(await service.syncContacts(await req.json()));
    if(path[1]==='active'&&path[2]&&req.method==='POST'){const body=await req.json();return NextResponse.json({active:await service.workerJobActive(path[2],String(body.leaseToken||''))});}
    if(path[1]==='claim'&&req.method==='POST'){const body=await req.json();return NextResponse.json({job:await service.claimJob(body.ready===true)});}
    if(path[1]==='results'&&path[2]&&req.method==='POST')return NextResponse.json(await service.completeJob(path[2],await req.json()));
   }
   if(path[0]==='contacts'&&req.method==='GET')return NextResponse.json(await service.contacts(req.nextUrl.searchParams.get('cursor')));
+  if(path[0]==='reports'&&path[1]==='manifest'&&req.method==='POST')return NextResponse.json(await reportManifest(await req.json()));
   if(path[0]==='changes'&&req.method==='GET')return NextResponse.json(await service.eligibilityChanges(req.nextUrl.searchParams.get('region')));
   if(path[0]==='scans'&&req.method==='POST'){const body=await req.json();return NextResponse.json({run:await service.newScan(body.previousRunId,body.region)},{status:201});}
   if(path[0]==='runs'){

@@ -52,3 +52,10 @@ next-env.d.ts
 /tmp/atlas-posters-ui/
 /tmp/star-tracker-ui/
 /tmp/star-leaderboard-ui/
+
+# Private report screenshots, progress and PDFs
+/integrations/firstclassbot/profile_report_data/
+/integrations/firstclassbot/browser_profile_reports/
+/tmp/profile-reports-ui/
+/tmp/pdfs/
+/output/pdf/

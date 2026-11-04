@@ -140,6 +140,10 @@ def main():
         from profile_review import open_review
         open_review(window, names_box.get('1.0', 'end'))
     tk.Button(mode_bar, text='View mode · review & tag profiles', command=view_mode, bg='#b9ddff', padx=12, pady=8).pack(side='left')
+    def report_mode():
+        import subprocess
+        subprocess.Popen(['node',str(ROOT/'start-reports.cjs')],cwd=str(ROOT.parent.parent),creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    tk.Button(mode_bar,text='Profile + LIVE PDF reports',command=report_mode,bg='#dfc977',padx=12,pady=8).pack(side='left',padx=8)
     tk.Label(window, text="Paste usernames — one per line", bg="#101015", fg="#ffe447", font=("Arial", 16, "bold")).pack(anchor="w", padx=18, pady=(15, 7))
     names_box = scrolledtext.ScrolledText(window, height=9, font=("Arial", 11))
     names_box.pack(fill="both", padx=18)

@@ -1,13 +1,13 @@
 export type Json = any;
 export type RankingRegion='GB'|'AU';
 export type EligibilityStatus = "Available" | "Ineligible" | "Pending" | "Failed";
-export type Eligibility = {username:string;status:EligibilityStatus;reason:string;checkedAt?:string;retryable?:boolean;jobId?:string;invitationType?:'Premium'|'Regular'|'Unknown';diamonds?:number|null;creatorId?:string};
+export type Eligibility = {username:string;name?:string;excludedForName?:boolean;status:EligibilityStatus;reason:string;checkedAt?:string;retryable?:boolean;jobId?:string;invitationType?:'Premium'|'Regular'|'Unknown';diamonds?:number|null;creatorId?:string};
 export type Contact = {username:string;status:'SENT'|'UNCERTAIN';messaged_at:string|null;source:string};
 export type Ranking = {username:string;league:string;rank:number|null;name?:string;excludedForName?:boolean;diamonds?:number|null;region?:string;creatorId?:string};
 export type League = {code:string;expected:number|null;status:"pending"|"fetching"|"complete"|"failed"|"missing";attempts:number;error?:string;next?:string|null;seen?:string[];pages?:number};
 export type RunData = {region?:RankingRegion;leagues:League[];results:Record<string,Ranking[]>;discovered:boolean;discoveryAttempts:number;nextAt?:string|null;error?:string;status:"running"|"waiting"|"paused"|"complete"|"partial"|"failed"|"stopped"};
 export type Run = {id:string;created_at:string;updated_at:string;status:RunData["status"];payload:RunData;summary:any;eligibility?:Record<string,Eligibility>};
-export function outsideEnglishLetters(...values:unknown[]){return values.some(value=>typeof value==='string'&&(/[A-Za-z]\p{M}/u.test(value)||[...value].some(char=>/\p{L}/u.test(char)&&!/[A-Za-z]/.test(char))));}
+export function outsideEnglishLetters(...values:unknown[]){return values.some(value=>{if(typeof value!=='string')return false;const text=value.replaceAll('ཐི༏ཋྀ','').replace(/[𖥔݁\uFE0E\uFE0F]/gu,'');return /[A-Za-z]\p{M}/u.test(text)||[...text].some(char=>/\p{L}/u.test(char)&&!/[A-Za-z]/.test(char));});}
 export function allowedRecruitmentName(row:{username:string;name?:string;excludedForName?:boolean}){return !row.excludedForName&&!outsideEnglishLetters(row.username,row.name);}
 export function excludedRankingNames(data:RunData){return new Set(Object.values(data.results).flat().filter(row=>!allowedRecruitmentName(row)).map(row=>row.username));}
 export function username(value:unknown){const name=String(value||"").trim().replace(/^@+/,"").toLowerCase();return /^[a-z0-9._]{1,24}$/.test(name)?name:"";}

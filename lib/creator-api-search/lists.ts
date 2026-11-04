@@ -11,7 +11,7 @@ export function orderedUsernames(names:string[],totals:Record<string,number|null
 
 export function availableLists<T extends {username:string;diamonds?:number|null}>(rows:T[],eligibility:Record<string,Eligibility>,contacts:Contact[]){
  const blocked=new Set(contacts.map(row=>row.username));
- const all=sortByDiamonds(rows.filter(row=>eligibility[row.username]?.status==='Available'&&Boolean(eligibility[row.username]?.checkedAt)));
+ const all=sortByDiamonds(rows.filter(row=>eligibility[row.username]?.status==='Available'&&allowedRecruitmentName({...row,name:eligibility[row.username]?.name||('name' in row?String(row.name):undefined),excludedForName:eligibility[row.username]?.excludedForName||('excludedForName' in row&&row.excludedForName===true)})&&Boolean(eligibility[row.username]?.checkedAt)));
  return {
   all,
   premium:all.filter(row=>eligibility[row.username].invitationType==='Premium'),
