@@ -2,7 +2,7 @@ import {allowedRecruitmentName,username,type Eligibility,type Ranking,type Run} 
 
 export type AvailableCreator = Ranking & {
   invitationType:string; checkedAt:string; snapshotAt:string; nameVerified:boolean;
-  actionToken?:string; messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
+  hiddenFromManager?:boolean; actionToken?:string; messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
 };
 export type AvailabilityJob={id:string;run_id:string;created_at:string;results:Record<string,Eligibility>};
 

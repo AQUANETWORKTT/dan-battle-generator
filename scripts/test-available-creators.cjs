@@ -24,7 +24,7 @@ class Reply extends Response{static json(body,init={}){return new Reply(JSON.str
 class SearchError extends Error{constructor(message,status=400){super(message);this.status=status;}}
 class ProviderError extends Error{}
 let reads=0,updates=0,marks=0;
-const route=load('app/api/available-creators/route.ts',{'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},hideAvailableCreator:async()=>({hiddenAt:stamp}),markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
+const route=load('app/api/available-creators/route.ts',{'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},dismissAvailableCreator:async()=>({hiddenAt:stamp}),hideAvailableCreator:async()=>({hiddenAt:stamp}),markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
 function request(method='GET',access='',admin=false,body={}){return {method,nextUrl:new URL('https://firstclassagency.management/api/available-creators'+(access?'?access='+access:'')),cookies:{get:key=>({value:admin?(key==='signed'?'valid':'true'):'true'})},headers:new Headers({origin:'https://firstclassagency.management'}),json:async()=>body};}
 (async()=>{
  let body='{"avatarLarger":"https:\\u002F\\u002Fexample.test/a?x=1\\u0026y=2"}';
@@ -58,6 +58,13 @@ function request(method='GET',access='',admin=false,body={}){return {method,next
  const badMessage=request('POST',token,false,{action:'messaged',username:'good',actionToken:auth.creatorActionToken({username:'good'}),messaged:true});badMessage.headers.set('origin','https://wrong.example');assert.equal((await route.POST(badMessage)).status,403);assert.equal(marks,1);
  assert.equal((await route.POST(request('POST',token,false,{action:'hide',username:'good',actionToken:auth.creatorActionToken({username:'good'})}))).status,200);
  assert.equal((await route.POST(request('POST',token,false,{action:'hide',username:'good'}))).status,403);
+ await store.dismissAvailableCreator({username:'good'});assert.equal((await store.readAvailableCreators()).rows[0].hiddenFromManager,true);assert(records.get('available-creator-dismissed-v1:name:good').hiddenAt);
+ assert.equal((await route.POST(request('POST',token,false,{action:'dismiss',username:'good',actionToken:auth.creatorActionToken({username:'good'})}))).status,200);
+ assert.equal((await route.POST(request('POST',token,false,{action:'dismiss',username:'good'}))).status,403);
+ directory.rows[0].hiddenFromManager=true;
+ assert.equal((await (await route.GET(request('GET',token))).json()).rows.length,0);
+ assert.equal((await (await route.GET(request('GET','',true))).json()).rows.length,1);
+ delete directory.rows[0].hiddenFromManager;reads=0;
  await store.hideAvailableCreator({username:'good'});assert.equal((await store.readAvailableCreators()).rows.length,0);assert(records.get('available-creator-hidden-v1:name:good').hiddenAt);
  assert.equal((await route.GET(request())).status,401);assert.equal(reads,0);
  const viewer=await route.GET(request('GET',token));assert.equal(viewer.status,200);assert.equal(viewer.headers.get('cache-control'),'private, no-store');

@@ -9,6 +9,7 @@ import {hiddenUntilRescan,availableDirectory,latestObservations,safeAvatar,type 
 const MESSAGED='available-creator-messaged-v1:';
 const messageKey=(row:{username:string;creatorId?:string})=>MESSAGED+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
 const hiddenKey=(row:{username:string;creatorId?:string})=>'available-creator-hidden-v1:'+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
+const dismissedKey=(row:{username:string;creatorId?:string})=>'available-creator-dismissed-v1:'+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
 const PROFILE='available-creator-profile-v1:';
 type Directory=ReturnType<typeof availableDirectory>&{refreshedAt:string;dateWindow:string[]};
 let cached:{until:number;value:Directory}|undefined;
@@ -20,10 +21,11 @@ async function load(){
   for(let i=0;i<ids.length;i+=25){const {data}=await checked(database().from(RUNS).select('id,payload,updated_at').in('id',ids.slice(i,i+25)));runs.push(...data||[]);}
   const directory=availableDirectory(observations,runs),dates=reportDates();
   // Read existing performance caches; merely viewing the board never spends API credits.
-  const keys=directory.rows.flatMap(row=>[hiddenKey(row),messageKey(row),PROFILE+row.username,'creator-profile-report-history-v1:'+row.username+':'+[...dates].sort().join(',')]);
+  const keys=directory.rows.flatMap(row=>[dismissedKey(row),hiddenKey(row),messageKey(row),PROFILE+row.username,'creator-profile-report-history-v1:'+row.username+':'+[...dates].sort().join(',')]);
   const records=new Map<string,any>();
   for(let i=0;i<keys.length;i+=320){await Promise.all(Array.from({length:Math.min(4,Math.ceil((keys.length-i)/80))},async(_,batch)=>{const start=i+batch*80;const {data}=await checked(database().from('poster_templates').select('name,template_json').in('name',keys.slice(start,start+80)));for(const record of data||[])records.set(record.name,record.template_json);}));}
   directory.rows=directory.rows.filter(row=>{
+    row.hiddenFromManager=Boolean(records.get(dismissedKey(row))?.hiddenAt);
     const hidden=records.get(hiddenKey(row));
     if(hiddenUntilRescan(row.checkedAt,hidden?.hiddenAt))return false;
     const message=records.get(messageKey(row));
@@ -78,5 +80,12 @@ export async function hideAvailableCreator(identity:{username:string;creatorId?:
   const hiddenAt=new Date().toISOString();
   await checked(database().from('poster_templates').upsert({name:hiddenKey(identity),template_json:{hiddenAt},background_url:null,updated_at:hiddenAt},{onConflict:'name'}));
   if(cached)cached.value.rows=cached.value.rows.filter(row=>row.username!==identity.username);
+  return {username:identity.username,hiddenAt};
+}
+
+export async function dismissAvailableCreator(identity:{username:string;creatorId?:string}){
+  const hiddenAt=new Date().toISOString();
+  await checked(database().from('poster_templates').upsert({name:dismissedKey(identity),template_json:{hiddenAt},background_url:null,updated_at:hiddenAt},{onConflict:'name'}));
+  const row=cached?.value.rows.find(row=>row.username===identity.username);if(row)row.hiddenFromManager=true;
   return {username:identity.username,hiddenAt};
 }
