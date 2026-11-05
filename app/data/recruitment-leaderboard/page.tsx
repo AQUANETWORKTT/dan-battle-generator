@@ -31,7 +31,7 @@ export default function RecruitmentLeaderboardPage() {
   async function load() {
     setStatus("LOADING RECRUITMENT DATA...");
     try {
-      const response = await fetch("/api/data-analysis/recruitment-leaderboard?period=month", { cache: "no-store" });
+      const response = await fetch("/api/data-analysis/recruitment-leaderboard?period=month&tier=A", { cache: "no-store" });
       const result = await response.json() as Data;
       if (!response.ok) return setStatus(result.error || "COULD NOT LOAD RECRUITMENT DATA.");
       setData(result);
