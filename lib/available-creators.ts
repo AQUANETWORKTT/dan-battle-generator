@@ -2,7 +2,7 @@ import {allowedRecruitmentName,username,type Eligibility,type Ranking,type Run} 
 
 export type AvailableCreator = Ranking & {
   invitationType:string; checkedAt:string; snapshotAt:string; nameVerified:boolean;
-  hiddenFromManager?:boolean; actionToken?:string; messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
+  diamondDays?:{date:string;diamonds:number|null}[]; hiddenFromManager?:boolean; actionToken?:string; messagedAt?:string; avatar?:string; live:boolean|null; profileAt?:string; history?:{days:{date:string;diamonds:number|null}[];threeDayTotal:number|null;knownDays:number;fetchedAt:string};
 };
 export type AvailabilityJob={id:string;run_id:string;created_at:string;results:Record<string,Eligibility>};
 
@@ -53,4 +53,12 @@ export function availabilityLabel(checkedAt:string,now=Date.now()){
 
 export function hiddenUntilRescan(checkedAt:string,hiddenAt?:string){
   return Boolean(hiddenAt&&Date.parse(checkedAt)<=Date.parse(hiddenAt));
+}
+
+export function recentDiamondTotal(row:AvailableCreator,days:number,now=Date.now()){
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));
+  const start=new Date(today+'T12:00:00Z');start.setUTCDate(start.getUTCDate()-days);
+  const from=start.toISOString().slice(0,10),values=new Map<string,number>();
+  for(const entry of [...(row.diamondDays||[]),...(row.history?.days||[])])if(entry.date>=from&&entry.date<today&&typeof entry.diamonds==='number'&&Number.isFinite(entry.diamonds)&&entry.diamonds>=0)values.set(entry.date,entry.diamonds);
+  return {total:[...values.values()].reduce((a,b)=>a+b,0),knownDays:values.size};
 }

@@ -24,7 +24,16 @@ async function load(){
   const keys=directory.rows.flatMap(row=>[dismissedKey(row),hiddenKey(row),messageKey(row),PROFILE+row.username,'creator-profile-report-history-v1:'+row.username+':'+[...dates].sort().join(',')]);
   const records=new Map<string,any>();
   for(let i=0;i<keys.length;i+=320){await Promise.all(Array.from({length:Math.min(4,Math.ceil((keys.length-i)/80))},async(_,batch)=>{const start=i+batch*80;const {data}=await checked(database().from('poster_templates').select('name,template_json').in('name',keys.slice(start,start+80)));for(const record of data||[])records.set(record.name,record.template_json);}));}
+  // Combine saved daily observations across report windows; never add duplicate dates.
+  const daily=new Map<string,Map<string,{diamonds:number|null;fetchedAt:string}>>();
+  for(let offset=0;;offset+=500){
+    const {data}=await checked(database().from('poster_templates').select('name,template_json').like('name','creator-profile-report-history-v1:%').order('name').range(offset,offset+499));
+    for(const record of data||[]){const history=record.template_json;const name=history?.username||record.name.split(':')[1];if(!daily.has(name))daily.set(name,new Map());
+      for(const day of history?.days||[]){const previous=daily.get(name)!.get(day.date);if(!previous||Date.parse(history.fetchedAt)>Date.parse(previous.fetchedAt))daily.get(name)!.set(day.date,{diamonds:day.diamonds,fetchedAt:history.fetchedAt});}
+    }if((data?.length||0)<500)break;
+  }
   directory.rows=directory.rows.filter(row=>{
+    row.diamondDays=[...(daily.get(row.username)||new Map())].map(([date,value])=>({date,diamonds:value.diamonds}));
     row.hiddenFromManager=Boolean(records.get(dismissedKey(row))?.hiddenAt);
     const hidden=records.get(hiddenKey(row));
     if(hiddenUntilRescan(row.checkedAt,hidden?.hiddenAt))return false;
@@ -44,12 +53,14 @@ export async function readAvailableCreators(){
   if(!pending)pending=load().then(value=>{cached={until:Date.now()+20000,value};return value;}).finally(()=>{pending=undefined;});
   return pending;
 }
-export async function updateAvailableCreator(value:unknown,includeHistory=false){
+export async function updateAvailableCreator(value:unknown,includeHistory=false,historyDays=3){
   const name=username(value),directory=await readAvailableCreators();
   if(!name||!directory.rows.some(row=>row.username===name))throw new SearchError('Choose a currently Available creator from this panel.',404);
   const targets=new Set([...(directory?[directory]:[]),...(cached?[cached.value]:[])]);
   if(includeHistory){
-    const history=await reportHistory({username:name,dates:reportDates()});
+    if(!Number.isInteger(historyDays)||historyDays<1||historyDays>30)throw new SearchError('Choose between 1 and 30 days.');
+    const yesterday=reportDates()[0];const dates=Array.from({length:historyDays},(_,i)=>{const d=new Date(yesterday+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-i);return d.toISOString().slice(0,10);});
+    const history=await reportHistory({username:name,dates},true);
     for(const target of targets){const row=target.rows.find(row=>row.username===name);if(row)row.history=history;}
     return {excluded:false,history};
   }
