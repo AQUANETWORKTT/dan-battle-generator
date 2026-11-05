@@ -65,7 +65,8 @@ export async function GET() {
     if (!endDate) return NextResponse.json({ month: "", groups: [], managers: [] });
     const end = new Date(`${endDate}T12:00:00`);
     const startDate = date(new Date(end.getFullYear(), end.getMonth(), 1, 12));
-    const assignments = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[] } } | null)?.assignments || {});
+    const assignments = ((settings?.template_json as { assignments?: { managerGroups?: Record<string, string>; managerNames?: Record<string, string>; deletedManagers?: string[]; bTierManagers?: string[] } } | null)?.assignments || {});
+    const bTier = new Set((assignments.bTierManagers || []).map(recruitmentManagerIdentity));
     const savedGroups = assignments.managerGroups || {};
     const savedNames = assignments.managerNames || {};
     const groupForManager = (manager: string) => Object.entries(savedGroups).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "Unassigned";
@@ -106,7 +107,7 @@ export async function GET() {
       current.diamonds += number(row.diamonds || row.Diamonds);
       managers.set(managerKey, current);
     }
-    const list = [...managers.values()].sort((a, b) => b.diamonds - a.diamonds || a.name.localeCompare(b.name));
+    const list = [...managers.values()].filter(manager => !bTier.has(recruitmentManagerIdentity(manager.key))).sort((a, b) => b.diamonds - a.diamonds || a.name.localeCompare(b.name));
     return NextResponse.json({ month: endDate.slice(0, 7), startDate, endDate, groups: [...new Set(list.map((manager) => manager.group))].sort(), managers: list });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load manager totals." }, { status: 500 });
