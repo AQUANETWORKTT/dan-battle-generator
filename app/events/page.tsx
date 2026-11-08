@@ -16,7 +16,6 @@ type EventCard = {
 };
 
 const currentEvents: EventCard[] = [
-  { name: "Race to the Top October", status: "1–31 October", logo: "/race-to-the-top-october-logo-clean.png", leaderboardHref: "/live/race-to-the-top-october", creatorHref: "/live/race-to-the-top-october", tone: "yellow" },
 ];
 
 const previousEvents: EventCard[] = [
