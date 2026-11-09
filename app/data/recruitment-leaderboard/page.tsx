@@ -14,6 +14,9 @@ const recruitmentTitleImageWidth = 435;
 // Keep this out of the shared API so the universal boards are unchanged.
 const manualCreditMonth = "2026-10";
 const manualCredit = 18;
+// November's agreed total applies only to this board, including its PNG export.
+// A December upload resumes the calculated total automatically.
+const danJamesTotalMonth = "2026-11";
 
 export default function RecruitmentLeaderboardPage() {
   const [data, setData] = useState<Data>({ period: "month", startDate: "", endDate: "", groups: [], managers: [], recruits: [] });
@@ -24,7 +27,9 @@ export default function RecruitmentLeaderboardPage() {
     ? [...data.managers.filter(manager => manager.key !== "mikehalesjb"), { key: "mikehalesjb", manager: "Mike & Indi", group: "Team Mike / Indi", recruits: 33 }]
     : data.managers)
     .filter((manager) => !selected.length || selected.includes(manager.group))
-    .map((manager) => ({ ...manager, recruits: manager.recruits + (data.endDate.startsWith(manualCreditMonth) && manager.key === "firstclassagencydan" ? manualCredit : 0) }))
+    .map((manager) => ({ ...manager, recruits: manager.key === "firstclassagencydan" && data.endDate.startsWith(danJamesTotalMonth)
+      ? 12
+      : manager.recruits + (data.endDate.startsWith(manualCreditMonth) && manager.key === "firstclassagencydan" ? manualCredit : 0) }))
     .sort((a, b) => b.recruits - a.recruits || a.manager.localeCompare(b.manager)), [data.managers, data.endDate, selected]);
   const rows = useMemo(() => managers.map((manager) => ({ name: manager.manager, value: `${manager.recruits} / 8` })), [managers]);
 

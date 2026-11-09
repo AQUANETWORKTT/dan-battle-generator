@@ -6,7 +6,10 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { H2H_EXAMPLE, h2hDate, h2hFilename, h2hInputTime, h2hMinutes, h2hPosters, h2hTime, parseH2H, validateH2H, type H2HPoster } from '@/lib/h2h-posters';
 
+import {parseH2H2v2,validateH2H2v2,h2h2v2Posters,H2H_2V2_EXAMPLE} from '@/lib/h2h-2v2';
+
 type Props = {
+  twoVTwo?: boolean;
   templateControls: ReactNode;
   renderPoster: (battle: H2HPoster, scale: number) => ReactNode;
   getAvatar: (username: string, signal?: AbortSignal) => Promise<string>;
@@ -45,7 +48,8 @@ async function verifyImage(source: string, signal?: AbortSignal) {
   });
 }
 
-export default function H2HPosterBuilder({templateControls,renderPoster,getAvatar,exportPoster,onBusyChange}: Props) {
+export default function H2HPosterBuilder({templateControls,renderPoster,getAvatar,exportPoster,onBusyChange,twoVTwo=false}: Props) {
+  const count=twoVTwo?4:2;
   const [paste,setPaste] = useState('');
   const [day,setDay] = useState('');
   const [month,setMonth] = useState(()=>String(new Date().getMonth()+1));
@@ -64,15 +68,15 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
   const frame = useRef<HTMLDivElement>(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(()=>()=>controller.current?.abort(),[]);
-  const parsed = useMemo(()=>parseH2H(paste,{fillMissing,start,interval}),[paste,fillMissing,start,interval]);
-  const checks = useMemo(()=>validateH2H(parsed.rows),[parsed.rows]);
+  const parsed = useMemo(()=>(twoVTwo?parseH2H2v2:parseH2H)(paste,{fillMissing,start,interval}),[paste,fillMissing,start,interval,twoVTwo]);
+  const checks = useMemo(()=>(twoVTwo?validateH2H2v2:validateH2H)(parsed.rows),[parsed.rows,twoVTwo]);
   const errors = [...parsed.errors,...checks.errors];
-  const names = [...new Map(parsed.rows.flatMap(row=>[row.name1,row.name2]).map(name=>[name.toLowerCase(),name])).values()];
+  const names = [...new Map(parsed.rows.flatMap(row=>[row.name1,row.name2,...(twoVTwo?[row.name3!,row.name4!]:[])]).map(name=>[name.toLowerCase(),name])).values()];
   const missing = names.filter(name=>!images[name.toLowerCase()]);
-  const posters = h2hDate(date) && !errors.length ? h2hPosters(parsed.rows,date,images) : [];
+  const posters = h2hDate(date) && !errors.length ? (twoVTwo?h2h2v2Posters:h2hPosters)(parsed.rows,date,images) : [];
   const selectedRow = parsed.rows.find(row=>row.id===selected) || parsed.rows[0];
   const previews = selectedRow ? posters.filter(p=>p.id.startsWith(selectedRow.id+'-')) : [];
-  const selectedMissing = previews.some(p=>!p.image1 || !p.image2);
+  const selectedMissing = previews.some(p=>!p.image1 || !p.image2 || (twoVTwo&&(!p.image3||!p.image4)));
 
   function markBusy(value: boolean) {setBusy(value);onBusyChange(value);}
   function changeMonth(value: string) {
@@ -106,7 +110,7 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
           if (!abort.signal.aborted) setImages(current=>({...current,[name.toLowerCase()]:data}));
         } catch {if(abort.signal.aborted) break;failed++;setImages(current=>{const next={...current};delete next[name.toLowerCase()];return next;});}
       }
-      setStatus(abort.signal.aborted ? 'Picture loading stopped. Pictures already loaded are kept.' : failed ? `${failed} pictures could not load. Retry or upload them below before downloading.` : 'Pictures loaded. Review both orientations and the schedule, then download.');
+      setStatus(abort.signal.aborted ? 'Picture loading stopped. Pictures already loaded are kept.' : failed ? `${failed} pictures could not load. Retry or upload them below before downloading.` : 'Pictures loaded. Review all orientations and the schedule, then download.');
     } finally {markBusy(false);}
   }
 
@@ -115,14 +119,14 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
     if (!file.type.startsWith('image/')) {setStatus('Choose an image file.');return;}
     const abort = new AbortController();controller.current=abort;markBusy(true);
     const url=URL.createObjectURL(file);
-    try {const data=await photoData(url,abort.signal);setImages(current=>({...current,[name.toLowerCase()]:data}));setStatus(`Picture updated for ${name}; both orientations use this picture.`);}
+    try {const data=await photoData(url,abort.signal);setImages(current=>({...current,[name.toLowerCase()]:data}));setStatus(`Picture updated for ${name}; all orientations use this picture.`);}
     catch(error){setStatus(error instanceof Error?error.message:'Upload failed.');}
     finally {URL.revokeObjectURL(url);markBusy(false);}
   }
 
   function updateTime(rowId: string, value: string) {
     const minutes=h2hMinutes(value);if(minutes===null)return;
-    setPaste(parsed.rows.map(row=>`${h2hInputTime(row.id===rowId?minutes:row.minutes)}\t${row.name1}\t${row.name2}`).join('\n'));
+    setPaste(parsed.rows.map(row=>`${h2hInputTime(row.id===rowId?minutes:row.minutes)}\t${row.name1}\t${row.name2}${twoVTwo?`\n\t${row.name3}\t${row.name4}`:''}`).join('\n'));
   }
 
   async function download(all: boolean) {
@@ -132,7 +136,7 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
     try {
       await document.fonts.ready;
       const zip=new JSZip();
-      const manifest=['File,Creator 1,Creator 2,Date,Time'];
+      const manifest=[twoVTwo?'File,Top left,Top right,Bottom left,Bottom right,Date,Time':'File,Creator 1,Creator 2,Date,Time'];
       for(let i=0;i<targets.length;i++) {
         if(abort.signal.aborted)throw Error('Download cancelled. No incomplete ZIP was saved.');
         const poster={...targets[i],id:'h2h-export-'+targets[i].id};
@@ -140,20 +144,20 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
         flushSync(()=>setExportBattle(poster));
         await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
         const elements=Array.from(frame.current?.querySelectorAll('img') || []);
-        if(elements.length<3)throw Error('The poster is missing its background or pictures.');
+        if(elements.length<count+1)throw Error('The poster is missing its background or pictures.');
         for(const element of elements) await verifyImage(element.src,abort.signal);
         const blob=await exportPoster(poster);
         if(!blob)throw Error(`Could not export ${poster.name1} vs ${poster.name2}. No incomplete ZIP was saved.`);
-        const filename=h2hFilename(poster,posters.findIndex(p=>p.id===targets[i].id));
+        const filename=twoVTwo?`${poster.name1}-${date}-${poster.time}-${String(posters.findIndex(p=>p.id===targets[i].id)+1).padStart(3,'0')}.png`.replace(/[^a-zA-Z0-9._-]/g,'-'):h2hFilename(poster,posters.findIndex(p=>p.id===targets[i].id));
         zip.file(filename,blob);
-        manifest.push([filename,poster.name1,poster.name2,date,poster.time].join(','));
+        manifest.push([filename,poster.name1,poster.name2,...(twoVTwo?[poster.name3,poster.name4]:[]),date,poster.time].join(','));
       }
       zip.file('matchups.csv',manifest.join('\n'));
       setStatus('Preparing ZIP…');
       const blob=await zip.generateAsync({type:'blob'});
       if(abort.signal.aborted)throw Error('Download cancelled.');
-      saveAs(blob,`H2H-${date}-${targets.length}-posters.zip`);
-      setStatus(`Downloaded ${targets.length} posters with both names and pictures swapped in each second orientation.`);
+      saveAs(blob,`H2H-${twoVTwo?'2V2-':''}${date}-${targets.length}-posters.zip`);
+      setStatus(`Downloaded ${targets.length} posters with names and pictures in their matching positions.`);
     } catch(error) {setStatus(error instanceof Error?error.message:'Download failed.');}
     finally {setExportBattle(null);markBusy(false);}
   }
@@ -161,8 +165,8 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
   return <div className="grid min-w-0 grid-cols-1 items-start gap-6 uppercase xl:grid-cols-[430px_minmax(0,1fr)]">
     <section className="min-w-0 space-y-5">
       <fieldset disabled={busy} className="min-w-0 space-y-4 rounded-xl border border-yellow-300/20 bg-black/35 p-5">
-        <h2 className="font-black uppercase tracking-widest text-yellow-300">Head-to-head posters</h2>
-        <p className="text-sm text-white/65">Two posters per matchup. Names, pictures and sides swap; the date and exact time stay the same.</p>
+        <h2 className="font-black uppercase tracking-widest text-yellow-300">Head-to-head {twoVTwo?'2v2 ':''}posters</h2>
+        <p className="text-sm text-white/65">{twoVTwo?'Four posters per matchup: A B / C D, C D / A B, B A / D C, D C / B A. Left-column creators form one team; right-column creators form the other.':'Two posters per matchup. Names, pictures and sides swap; the date and exact time stay the same.'}</p>
         {templateControls}
         <div className="grid grid-cols-3 gap-3">
           <label className="text-sm">Day<select aria-label="H2H event day" value={day} onChange={e=>setDay(e.target.value)} className={input+' mt-2'}><option value="">Day</option>{Array.from({length:daysInMonth},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></label>
@@ -174,15 +178,15 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
         {fillMissing && <div className="grid grid-cols-2 gap-3"><label className="text-sm">Start time<input aria-label="H2H start time" type="time" step={60} value={start} onChange={e=>setStart(e.target.value)} className={input+' mt-2'}/></label><label className="text-sm">Interval (minutes)<input aria-label="H2H interval minutes" type="number" min={1} max={1440} value={interval} onChange={e=>setInterval(Number(e.target.value))} className={input+' mt-2'}/></label></div>}
         <p className="text-xs text-white/55">Pasted times always win. 8:05PM, 8:07PM and any other minute are kept exactly.</p>
         <label className="block text-sm">Matchups<textarea aria-label="H2H matchups" rows={12} value={paste} onChange={e=>{setPaste(e.target.value);setPreviewRequested(false);}} placeholder={'8:00 PM\tdens2511\tItsriverlea\n8:05 PM\tpenii1722\tdad.of.286'} className={input+' mt-2 font-mono text-xs uppercase'}/></label>
-        <p className="text-xs text-white/55">Paste spreadsheet cells, a Markdown table, or one Time / Creator 1 / Creator 2 row per line. Two username columns also work with interval timing.</p>
-        <button className="text-sm font-bold text-cyan-200 underline" onClick={()=>{setPaste(H2H_EXAMPLE);setDay('2');setMonth('11');setYear('2026');setSelected('');setPreviewRequested(false);}}>Load your 16 matchups · 2 November 2026</button>
-        <button className={button+' w-full uppercase'} disabled={!posters.length||!!errors.length} onClick={previewAll}>Preview all {parsed.rows.length*2} posters</button>
-        <p className="text-xs text-white/55">Preview loads the pictures automatically and shows every poster in both orientations.</p>
+        <p className="text-xs text-white/55">{twoVTwo?'Paste two rows per matchup: Time / A / B, then blank time / C / D. Blank spacer rows are ignored.':'Paste spreadsheet cells, a Markdown table, or one Time / Creator 1 / Creator 2 row per line. Two username columns also work with interval timing.'}</p>
+        <button className="text-sm font-bold text-cyan-200 underline" onClick={()=>{setPaste(twoVTwo?H2H_2V2_EXAMPLE:H2H_EXAMPLE);if(!twoVTwo){setDay('2');setMonth('11');setYear('2026');}setSelected('');setPreviewRequested(false);}}>{twoVTwo?'Load your eight 2v2 matchups':'Load your 16 matchups - 2 November 2026'}</button>
+        <button className={button+' w-full uppercase'} disabled={!posters.length||!!errors.length} onClick={previewAll}>Preview all {parsed.rows.length*count} posters</button>
+        <p className="text-xs text-white/55">Preview loads the pictures automatically and shows every poster in all orientations.</p>
       </fieldset>
-      <div role="status" aria-live="polite" className="rounded-xl border border-white/15 bg-black/35 p-4 text-sm"><p className="mb-2 font-bold text-yellow-200">{parsed.rows.length} matchups · {parsed.rows.length*2} posters · {missing.length} pictures missing</p>{status}{busy && <button className="ml-3 font-bold text-red-200 underline" onClick={()=>controller.current?.abort()}>Cancel</button>}</div>
+      <div role="status" aria-live="polite" className="rounded-xl border border-white/15 bg-black/35 p-4 text-sm"><p className="mb-2 font-bold text-yellow-200">{parsed.rows.length} matchups · {parsed.rows.length*count} posters · {missing.length} pictures missing</p>{status}{busy && <button className="ml-3 font-bold text-red-200 underline" onClick={()=>controller.current?.abort()}>Cancel</button>}</div>
       {!!errors.length && <div role="alert" className="rounded-xl border border-red-300/30 bg-red-950/30 p-4 text-sm text-red-200">{errors.map((error,i)=><p key={i}>{error}</p>)}</div>}
       {!!checks.warnings.length && <div className="rounded-xl border border-amber-300/30 p-4 text-sm text-amber-200">{checks.warnings.map(w=><p key={w}>{w}</p>)}</div>}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><button className={button} disabled={busy||!posters.length||!!missing.length} onClick={()=>void download(true)}>Download all {posters.length || parsed.rows.length*2} posters</button><button className={button} disabled={busy||!previews.length||selectedMissing} onClick={()=>void download(false)}>Download selected pair</button></div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><button className={button} disabled={busy||!posters.length||!!missing.length} onClick={()=>void download(true)}>Download all {posters.length || parsed.rows.length*count} posters</button><button className={button} disabled={busy||!previews.length||selectedMissing} onClick={()=>void download(false)}>Download selected matchup</button></div>
       {!!names.length && <details className="rounded-xl border border-white/15 p-4" open={previewRequested && missing.length>0}><summary className="cursor-pointer font-bold text-yellow-200">Creator pictures · {names.length}</summary>
         <div className="mt-3 grid grid-cols-2 gap-3">{names.map(name=><label key={name.toLowerCase()} data-h2h-photo={name.toLowerCase()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(!busy)void upload(name,e.dataTransfer.files?.[0]);}} className={`flex min-h-44 min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-3 text-center ${images[name.toLowerCase()]?'border-white/20 bg-white/5':'border-yellow-300/60 bg-yellow-300/5'} ${busy?'opacity-60':''}`}>
           {images[name.toLowerCase()]?<img src={images[name.toLowerCase()]} alt={name} className="h-20 w-20 rounded-full object-cover"/>:<span className="flex h-20 w-20 items-center justify-center rounded-full bg-black/50 text-xs text-yellow-200">Missing photo</span>}
@@ -193,9 +197,9 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
       </details>}
     </section>
     <section className="min-w-0 space-y-5">
-      {!!parsed.rows.length && <div className="overflow-x-auto rounded-xl border border-white/15"><table className="w-full text-left text-sm"><thead className="bg-yellow-300/10 text-yellow-200"><tr><th className="p-3">Time</th><th className="p-3">Creator 1</th><th className="p-3">Creator 2</th><th className="p-3">Preview</th></tr></thead><tbody>{parsed.rows.map(row=><tr key={row.id} className={selectedRow?.id===row.id?'bg-white/10':'border-t border-white/10'}><td className="p-3"><input aria-label={`Time for ${row.name1} vs ${row.name2}`} type="time" step={60} value={h2hInputTime(row.minutes)} disabled={busy||!!errors.length} onChange={e=>updateTime(row.id,e.target.value)} className="rounded border border-white/20 bg-black p-2"/></td><td className="break-all p-3">{row.name1}</td><td className="break-all p-3">{row.name2}</td><td className="p-3"><button disabled={busy} className="font-bold text-cyan-200 underline" onClick={()=>setSelected(row.id)}>View pair</button></td></tr>)}</tbody></table></div>}
+      {!!parsed.rows.length && <div className="overflow-x-auto rounded-xl border border-white/15"><table className="w-full text-left text-sm"><thead className="bg-yellow-300/10 text-yellow-200"><tr><th className="p-3">Time</th><th className="p-3">Creator 1</th><th className="p-3">Creator 2</th><th className="p-3">Preview</th></tr></thead><tbody>{parsed.rows.map(row=><tr key={row.id} className={selectedRow?.id===row.id?'bg-white/10':'border-t border-white/10'}><td className="p-3"><input aria-label={`Time for ${row.name1} vs ${row.name2}`} type="time" step={60} value={h2hInputTime(row.minutes)} disabled={busy||!!errors.length} onChange={e=>updateTime(row.id,e.target.value)} className="rounded border border-white/20 bg-black p-2"/></td><td className="break-all p-3">{row.name1}{twoVTwo&&<><br/>{row.name3}</>}</td><td className="break-all p-3">{row.name2}{twoVTwo&&<><br/>{row.name4}</>}</td><td className="p-3"><button disabled={busy} className="font-bold text-cyan-200 underline" onClick={()=>setSelected(row.id)}>View matchup</button></td></tr>)}</tbody></table></div>}
       {(!previewRequested || !posters.length) && <div className="rounded-xl border border-dashed border-yellow-300/30 p-12 text-center text-white/55">Choose the day and month, add your matchups, then press Preview all posters. Pictures load automatically.</div>}
-      {previewRequested && !!posters.length && <div aria-label="All H2H poster previews" className="space-y-6"><p className="font-bold text-yellow-200">All {posters.length} poster previews</p>{parsed.rows.map(row=><article key={row.id} className={`rounded-xl border p-4 ${selectedRow?.id===row.id?'border-yellow-300/40':'border-white/15'}`}><h3 className="mb-4 break-all text-sm font-bold text-yellow-200">{row.name1.toUpperCase()} vs {row.name2.toUpperCase()} · {h2hDate(date)}┃{h2hTime(row.minutes)}</h3><div className="flex min-w-0 flex-wrap justify-center gap-4">{posters.filter(p=>p.id.startsWith(row.id+'-')).map((poster,i)=><div key={poster.id} data-h2h-preview={poster.id} className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-white/15 bg-black/30 p-3"><p className="mb-3 max-w-[290px] break-all text-center text-xs font-bold">{i+1}. {poster.name1} vs {poster.name2}</p>{renderPoster({...poster,id:'h2h-preview-'+poster.id},0.27)}</div>)}</div></article>)}</div>}
+      {previewRequested && !!posters.length && <div aria-label="All H2H poster previews" className="space-y-6"><p className="font-bold text-yellow-200">All {posters.length} poster previews</p>{parsed.rows.map(row=><article key={row.id} className={`rounded-xl border p-4 ${selectedRow?.id===row.id?'border-yellow-300/40':'border-white/15'}`}><h3 className="mb-4 break-all text-sm font-bold text-yellow-200">{row.name1.toUpperCase()} vs {row.name2.toUpperCase()} · {h2hDate(date)}┃{h2hTime(row.minutes)}</h3><div className="flex min-w-0 flex-wrap justify-center gap-4">{posters.filter(p=>p.id.startsWith(row.id+'-')).map((poster,i)=><div key={poster.id} data-h2h-preview={poster.id} className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-white/15 bg-black/30 p-3"><p className="mb-3 max-w-[290px] break-all text-center text-xs font-bold">{i+1}. {poster.name1} vs {poster.name2}{twoVTwo&&<><br/>{poster.name3} vs {poster.name4}</>}</p>{renderPoster({...poster,id:'h2h-preview-'+poster.id},0.27)}</div>)}</div></article>)}</div>}
     </section>
     <div ref={frame} aria-hidden="true" style={{position:'fixed',left:-12000,top:0,pointerEvents:'none'}}>{exportBattle && renderPoster(exportBattle,1)}</div>
   </div>;

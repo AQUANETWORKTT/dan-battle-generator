@@ -1,7 +1,8 @@
-export type H2HMatchup = { id: string; line: number; name1: string; name2: string; minutes: number };
+export type H2HMatchup = { id: string; line: number; name1: string; name2: string; name3?: string; name4?: string; minutes: number };
 export type H2HPoster = {
   id: string; date: string; manager: string; name1: string; name2: string;
   time: string; image1: string; image2: string;
+  name3?: string; name4?: string; image3?: string; image4?: string;
 };
 export type H2HTiming = { fillMissing: boolean; start: string; interval: number };
 

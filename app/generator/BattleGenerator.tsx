@@ -1,4 +1,5 @@
 "use client";
+import {h2hTeamSlots} from '@/lib/h2h-2v2';
 
 import { Fragment, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Rnd } from "react-rnd";
@@ -20,7 +21,7 @@ type Battle = {
   image2: string;
 };
 
-type Mode = "single" | "mass" | "h2h" | "2v2" | "team" | "glory" | "manager";
+type Mode = "single" | "mass" | "h2h" | "h2h2v2" | "2v2" | "team" | "glory" | "manager";
 type TwoVTwoBattle = {
   home1: string; home2: string; away1: string; away2: string;
   image1: string; image2: string; image3: string; image4: string;
@@ -1124,7 +1125,7 @@ export default function BattleGenerator({generationOnly=false}:{generationOnly?:
     const template = templates.find((item) => item.id === selectedTemplateId);
     if (!template) return;
 
-    const isTwoVTwo = activeMode === "2v2" || templateEditorMode === "2v2";
+    const isTwoVTwo = (activeMode === "2v2" || activeMode === "h2h2v2") || templateEditorMode === "2v2";
     const storageKey = isTwoVTwo ? TWO_V_TWO_DEFAULT_TEMPLATE_STORAGE_KEY : DEFAULT_TEMPLATE_STORAGE_KEY;
     const settingKey = isTwoVTwo ? TWO_V_TWO_DEFAULT_TEMPLATE_SETTING_KEY : DEFAULT_TEMPLATE_SETTING_KEY;
     rememberBrowserDefaultTemplateId(template.id, storageKey);
@@ -1231,7 +1232,7 @@ export default function BattleGenerator({generationOnly=false}:{generationOnly?:
     if (!editingTemplateName) setTemplateName(template.name);
     setUndoStack([]);
     updateWholeTemplateJson(template.template_json);
-    if (activeMode === "2v2" || templateEditorMode === "2v2") {
+    if ((activeMode === "2v2" || activeMode === "h2h2v2") || templateEditorMode === "2v2") {
       const saved = typeof window === "undefined" ? null : window.localStorage.getItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${template.id}`);
       try {
         setTwoVTwoTemplateJson(normalize2v2TemplateJson(saved ? JSON.parse(saved) : template.template_json));
@@ -1253,13 +1254,13 @@ export default function BattleGenerator({generationOnly=false}:{generationOnly?:
     finally{setManagerAccessSaving(false);}
   }
 
-  function switchPosterMode(mode: "single" | "mass" | "h2h" | "2v2") {
+  function switchPosterMode(mode: "single" | "mass" | "h2h" | "h2h2v2" | "2v2") {
     if(generationOnly && mode==='mass')return;
     setActiveMode(mode);
-    const defaultId = mode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
+    const defaultId = (mode === "2v2" || mode === "h2h2v2") ? twoVTwoDefaultTemplateId : defaultTemplateId;
     const template = templates.find((item) => item.id === defaultId);
     if (defaultId && defaultId !== selectedTemplateId) handleTemplateSelect(defaultId);
-    if (mode === "2v2" && defaultId && typeof window !== "undefined") {
+    if ((mode === "2v2" || mode === "h2h2v2") && defaultId && typeof window !== "undefined") {
       try {
         const savedLayout = window.localStorage.getItem(`${TWO_V_TWO_LAYOUT_STORAGE_KEY_PREFIX}${defaultId}`);
         setTwoVTwoTemplateJson(normalize2v2TemplateJson(savedLayout ? JSON.parse(savedLayout) : template?.template_json));
@@ -2833,24 +2834,26 @@ export default function BattleGenerator({generationOnly=false}:{generationOnly?:
     if (blob) saveAs(blob, cleanFileName(`${twoVTwoBattle.home1 || "HOME1"} & ${twoVTwoBattle.home2 || "HOME2"} VS ${twoVTwoBattle.away1 || "AWAY1"} & ${twoVTwoBattle.away2 || "AWAY2"} - ${twoVTwoBattle.date || "DATE"} - ${twoVTwoBattle.time || "TIME"}.png`));
   }
 
-  function TwoVTwoPosterPreview({ scale = 0.3 }: { scale?: number }) {
+  function TwoVTwoPosterPreview({ scale = 0.3, battle = twoVTwoBattle, posterId }: { scale?: number; battle?: TwoVTwoBattle; posterId?: string }) {
     const editingTwoVTwoTemplate = templateEditorMode === "2v2";
     const active = normalize2v2TemplateJson(editingTwoVTwoTemplate ? { ...templateJson, backgroundUrl: templateJson.backgroundUrl || BRAND.posterBackground } : { ...twoVTwoTemplateJson, backgroundUrl: twoVTwoTemplateJson.backgroundUrl || templateJson.backgroundUrl || BRAND.posterBackground });
+    const teamSlots = posterId ? h2hTeamSlots(active) : [1,2,3,4];
+    const slotKeys=(index:number)=>[`avatar${teamSlots[index]}`,`username${teamSlots[index]}`] as [TwoVTwoPosterElementKey,TwoVTwoPosterElementKey];
     const slots = [
-      ["avatar1", "username1", twoVTwoBattle.image1, twoVTwoBattle.home1, "Home 1"],
-      ["avatar2", "username2", twoVTwoBattle.image2, twoVTwoBattle.home2, "Home 2"],
-      ["avatar3", "username3", twoVTwoBattle.image3, twoVTwoBattle.away1, "Opponent 1"],
-      ["avatar4", "username4", twoVTwoBattle.image4, twoVTwoBattle.away2, "Opponent 2"],
+      [...slotKeys(0), battle.image1, battle.home1, "Home 1"],
+      [...slotKeys(1), battle.image2, battle.home2, "Home 2"],
+      [...slotKeys(2), battle.image3, battle.away1, "Opponent 1"],
+      [...slotKeys(3), battle.image4, battle.away2, "Opponent 2"],
     ] as const;
-    const dateText = [twoVTwoBattle.date, twoVTwoBattle.time].filter(Boolean).join(" | ");
+    const dateText = [battle.date, battle.time].filter(Boolean).join(posterId?"┃":" | ");
     const render = (key: TwoVTwoPosterElementKey, content: React.ReactNode, circle = false) => {
-      const element = active[key]; const selected = twoVTwoEditMode && twoVTwoSelectedElement === key;
+      const element = active[key]; const selected = (twoVTwoEditMode&&!posterId) && twoVTwoSelectedElement === key;
       const style = { left: element.x, top: element.y, width: element.width, height: element.height };
-      if (!twoVTwoEditMode) return <div key={key} className={`absolute ${circle ? "rounded-full overflow-hidden" : ""}`} style={style}>{content}</div>;
+      if (!(twoVTwoEditMode&&!posterId)) return <div key={key} className={`absolute ${circle ? "rounded-full overflow-hidden" : ""}`} style={style}>{content}</div>;
       return <Rnd key={key} scale={scale} bounds="parent" lockAspectRatio={circle} position={{ x: element.x, y: element.y }} size={{ width: element.width, height: element.height }} onMouseDown={() => { setTwoVTwoSelectedElement(key); if (templateEditorMode === "2v2") setSelectedElement(key as PosterElementKey); }} onDragStop={(_, data) => updateTwoVTwoElement(key, { x: Math.round(data.x), y: Math.round(data.y) })} onResizeStop={(_, __, ref, ___, position) => updateTwoVTwoElement(key, { x: Math.round(position.x), y: Math.round(position.y), width: Math.round(ref.offsetWidth), height: Math.round(ref.offsetHeight) })} className={`${circle ? "rounded-full overflow-hidden" : ""} ${selected ? "ring-[8px] ring-yellow-300" : "ring-[5px] ring-cyan-300/45"}`}>{content}</Rnd>;
     };
     const textStyle = (key: TwoVTwoPosterElementKey) => { const e = active[key]; return { fontFamily: `'${e.fontFamily || "Luckiest Guy"}', sans-serif`, fontSize: e.fontSize || 44, fontWeight: e.fontWeight || 900, color: e.color || "#5CEEFF", WebkitTextStroke: `${e.strokeWidth ?? 2}px ${e.strokeColor || "black"}`, textShadow: `${e.shadowX ?? 2}px ${e.shadowY ?? 2}px ${e.shadowBlur ?? 0}px ${e.shadowColor || "#000"}`, letterSpacing: `${e.letterSpacing ?? 1}px` } as CSSProperties; };
-    return <div className="overflow-hidden mx-auto bg-black rounded-lg" style={{ width: POSTER_WIDTH * scale, height: POSTER_HEIGHT * scale }}><div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}><div ref={twoVTwoPosterRef} className="relative w-[1080px] h-[1920px] overflow-hidden bg-black"><img src={active.backgroundUrl || BRAND.posterBackground} className="absolute inset-0 w-full h-full object-cover" alt="" />{slots.map(([avatar, username, image, name, label]) => <Fragment key={avatar}>{render(avatar, twoVTwoEditMode ? <div className="w-full h-full rounded-full border-[8px] border-dashed border-cyan-300 bg-black/60 flex items-center justify-center text-cyan-200 text-3xl font-black">{label}</div> : image ? <img crossOrigin="anonymous" src={addCacheBustToImageUrl(image, `${avatar}-${name}`)} className="w-full h-full rounded-full object-cover" alt="" /> : null, true)}{render(username, <div className="w-full h-full flex items-center justify-center text-center leading-none whitespace-nowrap uppercase" style={textStyle(username)}>{twoVTwoEditMode ? label : name}</div>)}</Fragment>)}{render("date", <div className="w-full h-full flex items-center justify-center text-center leading-none whitespace-nowrap uppercase" style={textStyle("date")}>{twoVTwoEditMode ? "DATE | TIME" : dateText}</div>)}</div></div></div>;
+    return <div className="overflow-hidden mx-auto bg-black rounded-lg" style={{ width: POSTER_WIDTH * scale, height: POSTER_HEIGHT * scale }}><div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}><div ref={node=>{if(posterId)posterRefs.current[posterId]=node;else twoVTwoPosterRef.current=node;}} className="relative w-[1080px] h-[1920px] overflow-hidden bg-black"><img src={active.backgroundUrl || BRAND.posterBackground} className="absolute inset-0 w-full h-full object-cover" alt="" />{slots.map(([avatar, username, image, name, label]) => <Fragment key={avatar}>{render(avatar, (twoVTwoEditMode&&!posterId) ? <div className="w-full h-full rounded-full border-[8px] border-dashed border-cyan-300 bg-black/60 flex items-center justify-center text-cyan-200 text-3xl font-black">{label}</div> : image ? <img crossOrigin="anonymous" src={addCacheBustToImageUrl(image, `${avatar}-${name}`)} className="w-full h-full rounded-full object-cover" alt="" /> : null, true)}{render(username, <div className="w-full h-full flex items-center justify-center text-center leading-none whitespace-nowrap uppercase" style={textStyle(username)}>{(twoVTwoEditMode&&!posterId) ? label : name}</div>)}</Fragment>)}{render("date", <div className="w-full h-full flex items-center justify-center text-center leading-none whitespace-nowrap uppercase" style={textStyle("date")}>{(twoVTwoEditMode&&!posterId) ? "DATE | TIME" : dateText}</div>)}</div></div></div>;
   }
 
   function PosterPreview({
@@ -3140,8 +3143,8 @@ function renderText(
   }
 
   function TemplateSelectorPanel({ compact = false }: { compact?: boolean }) {
-    const activeDefaultTemplateId = activeMode === "2v2" ? twoVTwoDefaultTemplateId : defaultTemplateId;
-    const posterTypeLabel = activeMode === "2v2" ? "2v2" : activeMode === "h2h" ? "H2H" : generationOnly ? "Single" : "Single / Mass";
+    const activeDefaultTemplateId = (activeMode === "2v2" || activeMode === "h2h2v2") ? twoVTwoDefaultTemplateId : defaultTemplateId;
+    const posterTypeLabel = (activeMode === "2v2" || activeMode === "h2h2v2") ? "2v2" : activeMode === "h2h" ? "H2H" : generationOnly ? "Single" : "Single / Mass";
     return (
       <div className={compact ? "space-y-3" : "bg-black/35 border border-cyan-300/20 rounded-xl p-5 space-y-4"}>
         <div className="flex items-center justify-between gap-3">
@@ -3151,7 +3154,7 @@ function renderText(
           {!generationOnly && <button
             type="button"
             onClick={() => {
-              const openingTwoVTwo = activeMode === "2v2";
+              const openingTwoVTwo = activeMode === "2v2" || activeMode === "h2h2v2";
               setTemplateEditorMode(openingTwoVTwo ? "2v2" : "single");
               if (openingTwoVTwo) {
                 updateWholeTemplateJson(twoVTwoTemplateJson as PosterTemplateJson);
@@ -4456,6 +4459,7 @@ function renderText(
               Mass Poster Generator
             </button>}
 
+            <button type="button" onClick={() => switchPosterMode("h2h2v2")} disabled={h2hBusy} className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest ${activeMode==='h2h2v2'?'bg-yellow-300 text-black':'bg-black/40 text-white border border-white/20'}`}>Head-to-head 2v2</button>
             <button type="button" onClick={() => switchPosterMode("h2h")} disabled={h2hBusy} className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${activeMode === 'h2h' ? 'bg-yellow-300 text-black' : 'bg-black/40 text-white border border-white/20 hover:border-yellow-300'}`}>
               H2H Posters
             </button>
@@ -4745,10 +4749,12 @@ function renderText(
         {activeMode === "glory" && RaceToGloryBuilder()}
           </>
         )}
-        <div hidden={editMode || activeMode !== 'h2h'}>
+        <div hidden={editMode || (activeMode !== 'h2h' && activeMode !== 'h2h2v2')}>
           <H2HPosterBuilder
+            key={activeMode==='h2h2v2'?'h2h2v2':'h2h'}
+            twoVTwo={activeMode==='h2h2v2'}
             templateControls={TemplateSelectorPanel({compact:true})}
-            renderPoster={(battle,scale) => PosterPreview({battle,scale,h2h:true})}
+            renderPoster={(battle,scale) => activeMode==='h2h2v2' ? TwoVTwoPosterPreview({scale,posterId:battle.id,battle:{home1:battle.name1,home2:battle.name3||'',away1:battle.name2,away2:battle.name4||'',image1:battle.image1,image2:battle.image3||'',image3:battle.image2,image4:battle.image4||'',date:battle.date,time:battle.time}}) : PosterPreview({battle,scale,h2h:true})}
             getAvatar={fetchTikTokAvatar}
             exportPoster={makePosterBlob}
             onBusyChange={setH2HBusy}
