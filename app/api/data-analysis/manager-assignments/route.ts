@@ -1,3 +1,4 @@
+import {invalidatePortalData} from '@/lib/manager-portal-cache';
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -120,6 +121,7 @@ export async function PUT(request: Request) {
     const assignments = normalize({ ...previous, ...input });
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { assignments }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    invalidatePortalData();
     return NextResponse.json({ assignments });
   } catch { return NextResponse.json({ error: "Invalid assignment data." }, { status: 400 }); }
 }

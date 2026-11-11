@@ -3,47 +3,48 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Manager = { key: string; manager: string; group: string; recruits: number; diamonds: number };
-type Data = { endDate: string; managers: Manager[]; error?: string };
+type Data = { tier?: "A" | "B"; endDate: string; managers: Manager[]; error?: string };
 const eligibleGroups = new Set(["Team Dan / James", "Team Mike / Indi"]);
 const format = new Intl.NumberFormat("en-GB");
 const displayName = (name: string) => name.replace(/^team\s+/i, "");
 
-export default function LeaderboardClient({ tier = "A" }: { tier?: "A" | "B" }) {
+export default function LeaderboardClient({ tier = "A", portal=false }: { tier?: "A" | "B"; portal?:boolean }) {
   const [data, setData] = useState<Data>({ endDate: "", managers: [] });
   const [error, setError] = useState("");
-  const [hasTabAccess, setHasTabAccess] = useState(false);
+  const [hasTabAccess, setHasTabAccess] = useState(portal);
   const managers = useMemo(() => data.managers.filter((manager) => eligibleGroups.has(manager.group) && !["teamdanjames", "firstclassagencydan", "firstclassagencyjames"].includes(manager.key) && manager.manager !== "Team Dan / James").sort((a, b) => b.recruits - a.recruits || b.diamonds - a.diamonds || a.manager.localeCompare(b.manager)), [data.managers]);
 
   useEffect(() => {
-    if (window.sessionStorage.getItem("first-class-recruitment-leaderboard-access") !== "true") {
+    if (!portal && window.sessionStorage.getItem("first-class-recruitment-leaderboard-access") !== "true") {
       window.location.replace(tier === "B" ? "/recruitment-leaderboard-b/access" : "/recruitment-leaderboard/access");
       return;
     }
 
     setHasTabAccess(true);
-    fetch(`/api/data-analysis/recruitment-leaderboard?period=month&tier=${tier}`, { cache: "no-store" })
+    fetch(portal?'/api/manager-portal/leaderboard':`/api/data-analysis/recruitment-leaderboard?period=month&tier=${tier}`, { cache: "no-store" })
       .then(async (response) => {
         const result = await response.json() as Data;
         if (!response.ok) throw new Error(result.error || "Could not load the leaderboard.");
         setData(result);
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not load the leaderboard."));
-  }, [tier]);
+  }, [tier,portal]);
 
   if (!hasTabAccess) {
     return <main className="min-h-screen bg-[#070608]" aria-label="Checking recruitment access" />;
   }
 
-  return <main className="min-h-screen bg-[#070608] bg-cover bg-fixed bg-center px-4 py-8 text-white sm:px-8 sm:py-12" style={{ backgroundImage: "linear-gradient(rgba(5,4,7,.88), rgba(5,4,7,.94)), url('/branding/first-class-data-bg.jpg')" }}>
-    <div className="mx-auto max-w-5xl">
+  const Frame=portal?'section':'main';
+  return <Frame className={portal?"portal-leaderboard text-white":"min-h-screen bg-[#070608] bg-cover bg-fixed bg-center px-4 py-8 text-white sm:px-8 sm:py-12"} style={portal?undefined:{ backgroundImage: "linear-gradient(rgba(5,4,7,.88), rgba(5,4,7,.94)), url('/branding/first-class-data-bg.jpg')" }}>
+    <div className={portal?"w-full":"mx-auto max-w-5xl"}>
       <header className="text-center">
-        <img src="/branding/first-class-recruitment-logo.png" alt="First Class Recruitment" className="mx-auto w-full max-w-[620px]" />
+        <img src="/branding/first-class-recruitment-logo.png" alt="First Class Recruitment" className={portal?"mx-auto w-full max-w-[380px]":"mx-auto w-full max-w-[620px]"} />
         <div className="mx-auto mt-7 h-px max-w-3xl bg-gradient-to-r from-transparent via-[#f5ca62] to-transparent" />
         <h1 className="mt-7 font-[family-name:var(--font-norwester)] text-4xl uppercase tracking-wide text-white sm:text-6xl">Recruitment <span className="text-[#f5ca62]">Leaderboard</span></h1>
         <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-white/55">Current calendar month · Live daily data</p>
       </header>
 
-      <section className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-[30px] border border-[#f5ca62]/40 bg-black/65 px-4 py-6 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm sm:px-8"><p className="text-center font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-[0.08em] text-[#ffe79a] sm:text-4xl">Monthly rewards</p><div className="mt-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10"><Reward place="First place" amount={tier === "B" ? "£25" : "£50"} tone="gold" /><Reward place="Second place" amount={tier === "B" ? "£15" : "£30"} tone="silver" /><Reward place="Third place" amount={tier === "B" ? "£10" : "£20"} tone="bronze" /></div></section>
+      <section className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-[30px] border border-[#f5ca62]/40 bg-black/65 px-4 py-6 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm sm:px-8"><p className="text-center font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-[0.08em] text-[#ffe79a] sm:text-4xl">Monthly rewards</p><div className="mt-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10"><Reward place="First place" amount={(data.tier||tier) === "B" ? "£25" : "£50"} tone="gold" /><Reward place="Second place" amount={(data.tier||tier) === "B" ? "£15" : "£30"} tone="silver" /><Reward place="Third place" amount={(data.tier||tier) === "B" ? "£10" : "£20"} tone="bronze" /></div></section>
 
       <section className="mt-9 overflow-hidden rounded-[28px] border border-[#f5ca62]/45 bg-black/75 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm">
         <div className="hidden grid-cols-[76px_minmax(0,1fr)_140px_150px] items-center gap-4 border-b border-[#f5ca62]/25 bg-[#f5ca62]/10 px-6 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#f5ca62] sm:grid"><span>Rank</span><span>Manager</span><span className="text-right">Recruits</span><span className="text-right">Recruit diamonds</span></div>
@@ -53,7 +54,7 @@ export default function LeaderboardClient({ tier = "A" }: { tier?: "A" | "B" }) 
       </section>
       <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-white/35">Recruit credit and diamonds are matched by permanent TikTok creator ID.</p>
     </div>
-  </main>;
+  </Frame>;
 }
 
 function ManagerRow({ manager, rank }: { manager: Manager; rank: number }) {

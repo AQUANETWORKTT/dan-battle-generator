@@ -43,3 +43,18 @@ Generated with the built-in image tool from the supplied logos:
 - `public/branding/first-class-ring-transparent.png`: remove only the area outside the gold ring, retaining the black centre and gold lettering.
 
 Ribbons are native SVG/CSS with slow motion and a reduced-motion fallback, not a video from Kling. The favicon and Apple icon are generated from the transparent-ring asset.
+
+
+## Upload-driven snapshots and daily quotes
+
+Portal summaries now use compressed, private Next.js data-cache snapshots tagged `first-class-portal-data`. The First Class snapshot is shared internally and filtered by the authenticated manager before returning data. The whole-agency snapshot is separate for incremental prediction. Neither is a public response cache. Snapshot keys change with the UK date so joining-day reminders remain current.
+
+Successful creator imports invalidate the tagged snapshots and rebuild the owner and incremental snapshots using `after()`. Mature total imports and Manager Assignments changes invalidate them as well. Development and inactivity results share the invalidation tag. Direct edits in Supabase outside these application routes do not trigger invalidation automatically. No new SQL tables are required for snapshots.
+
+Local repeat-request measurements: overview 0.08 seconds; incremental prediction 0.17 seconds, retaining the 5% result. The initial builds took 11.17 and 13.59 seconds respectively. Background warming after imports moves that work away from ordinary visits.
+
+The owner overview displays 100 original motivational quotes, selected deterministically by the Europe/London date and changing every 100-day cycle. No external quote API is used.
+
+Branding asset: `public/branding/first-class-management.png`, generated with the built-in image tool. Prompt: preserve the supplied FIRST CLASS angular metallic-gold lettering and black background; replace SPACE with centred MANAGEMENT in matching widely spaced uppercase gold lettering, with no extra decoration. The entrance now uses this wordmark.
+
+Local development also stores the compressed snapshot under the ignored `.next/cache/first-class-portal` directory. This avoids Next development mode bypassing its normal cache when the browser sends `Cache-Control: no-cache`. Upload invalidation rotates a local revision as well as invalidating the production cache tag. The first local build remains slower; repeat hard-refresh testing returned 0.10 seconds. Clearing `.next` removes these development snapshots. Quotes are original app text, not externally fetched or attributed quotations.

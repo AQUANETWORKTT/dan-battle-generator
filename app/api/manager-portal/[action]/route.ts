@@ -1,7 +1,14 @@
-import {MANAGER_POSTER_ONLY,MANAGER_POSTER_COOKIE} from '@/lib/manager-portal-mode';
+import {POSTER_COOKIE,posterSessionToken} from '@/lib/poster-generator-auth';
+import {MANAGER_POSTER_ONLY,MANAGER_POSTER_COOKIE,fullManagerAccess,KJB_PREVIEW_ACCESS} from '@/lib/manager-portal-mode';
+import {database} from '@/lib/creator-api-search/db';
+import {recruitmentManagerIdentity} from '@/lib/recruitment-manager-aliases';
+import {GET as recruitmentLeaderboard} from '@/app/api/data-analysis/recruitment-leaderboard/route';
 import {NextRequest,NextResponse} from 'next/server';
 import {SEARCH_COOKIE,searchSessionValid} from '@/lib/creator-api-search/auth';
 import {MANAGER_COOKIE,accountForSession,createSession,endSession,loginManager,publicAccount,syncAccounts,updateAccount,adminAccounts,resetDefaultPasswords,loginPosterManager} from '@/lib/manager-portal';
+import {loginActivity,londonDate} from '@/lib/manager-login-activity';
+import {loadCreatorDevelopment} from '@/lib/creator-development-server';
+import {loadInactiveCreators} from '@/lib/inactive-creators';
 import {loadOverview} from '@/lib/manager-overview-server';
 export const dynamic='force-dynamic';
 async function handle(req:NextRequest,context:{params:Promise<{action:string}>}){
@@ -11,20 +18,24 @@ async function handle(req:NextRequest,context:{params:Promise<{action:string}>})
  if(req.method!=='GET'){const origin=req.headers.get('origin');if(origin&&origin!==req.nextUrl.protocol+'//'+(req.headers.get('host')||req.nextUrl.host))return json({error:'Origin not allowed'},403);}
  try{
   const token=req.cookies.get(MANAGER_COOKIE)?.value;
-  const session=async(a:Parameters<typeof createSession>[0])=>{const response=json({account:publicAccount(a)});response.cookies.set(MANAGER_POSTER_ONLY?MANAGER_POSTER_COOKIE:MANAGER_COOKIE,await createSession(a),{httpOnly:true,secure:req.nextUrl.protocol==='https:',sameSite:'lax',path:'/',maxAge:604800});return response;};
-  if(action==='login'&&req.method==='POST'){const b=await req.json();if(MANAGER_POSTER_ONLY){if(typeof b.username!=='string'||b.username.length>64)return json({error:'Enter your manager username.'},400);return session(await loginPosterManager(b.username));}if(typeof b.username!=='string'||typeof b.password!=='string'||b.username.length>64||b.password.length>128)return json({error:'Enter your username and password.'},400);return session(await loginManager(b.username,b.password,req.headers.get('x-forwarded-for')?.split(',')[0]||'local'));}
-  if(action==='logout'&&req.method==='POST'){await endSession(token);await endSession(req.cookies.get(MANAGER_POSTER_COOKIE)?.value);const r=json({ok:true});r.cookies.set(MANAGER_COOKIE,'',{path:'/',maxAge:0});r.cookies.set(MANAGER_POSTER_COOKIE,'',{path:'/',maxAge:0});return r;}
-  if(action==='accounts'||action==='agency-overview'||action==='defaults'){
+  const session=async(a:Parameters<typeof createSession>[0],full=false)=>{const response=json({account:publicAccount(a)});response.cookies.set(full?MANAGER_COOKIE:MANAGER_POSTER_ONLY?MANAGER_POSTER_COOKIE:MANAGER_COOKIE,await createSession(a),{httpOnly:true,secure:req.nextUrl.protocol==='https:',sameSite:'lax',path:'/',maxAge:604800});return response;};
+  if(action==='login'&&req.method==='POST'){const b=await req.json();if(MANAGER_POSTER_ONLY){const posterToken=posterSessionToken();if(!posterToken)return json({error:'Poster access is not configured.'},503);const response=json({ok:true});response.cookies.set(POSTER_COOKIE,posterToken,{httpOnly:true,secure:req.nextUrl.protocol==='https:',sameSite:'lax',path:'/',maxAge:30*86400});return response;}if(typeof b.username!=='string'||typeof b.password!=='string'||b.username.length>64||b.password.length>128)return json({error:'Enter your username and password.'},400);return session(await loginManager(b.username,b.password,req.headers.get('x-forwarded-for')?.split(',')[0]||'local'));}
+  if(action==='kjb-login'&&req.method==='POST'){if(!KJB_PREVIEW_ACCESS)return json({error:'Access unavailable.'},403);const b=await req.json();if(typeof b.password!=='string'||b.password.length>128)return json({error:'Enter your password.'},400);const a=await loginManager('KJB',b.password,req.headers.get('x-forwarded-for')?.split(',')[0]||'local');if(!fullManagerAccess(a))return json({error:'Access unavailable.'},403);return session(a,true);}
+  if(action==='logout'&&req.method==='POST'){await endSession(token);await endSession(req.cookies.get(MANAGER_POSTER_COOKIE)?.value);const r=json({ok:true});r.cookies.set(MANAGER_COOKIE,'',{path:'/',maxAge:0});r.cookies.set(MANAGER_POSTER_COOKIE,'',{path:'/',maxAge:0});r.cookies.set(POSTER_COOKIE,'',{path:'/',maxAge:0});return r;}
+  if(action==='accounts'||action==='agency-overview'||action==='agency-inactive'||action==='agency-development'||action==='login-activity'||action==='defaults'){
    if(!searchSessionValid(req.cookies.get(SEARCH_COOKIE)?.value))return json({error:'Please sign in through Leadership to manage accounts.'},401);
+   if(action==='login-activity'&&req.method==='GET')return json(await loginActivity(req.nextUrl.searchParams.get('day')||londonDate()));
+   if(action==='agency-development'&&req.method==='GET')return json(await loadCreatorDevelopment(null));
+   if(action==='agency-inactive'&&req.method==='GET')return json(await loadInactiveCreators(null));
    if(action==='defaults'&&req.method==='POST')return json({accounts:await resetDefaultPasswords()});
    if(req.method==='GET')return json(action==='accounts'?{accounts:await adminAccounts()}:await loadOverview(null));
    if(action==='accounts'&&req.method==='POST'){const b=await req.json();if(typeof b.id!=='string'||!Number.isSafeInteger(b.version)||b.version<0||typeof b.username!=='string'||typeof b.enabled!=='boolean'||(b.password!==undefined&&typeof b.password!=='string'))return json({error:'Invalid account update.'},400);return json({account:publicAccount(await updateAccount(b.id,b.version,{username:b.username,enabled:b.enabled,...(b.password?{password:b.password}:{})}))});}
    return json({error:'Not allowed'},405);
   }
-  if(MANAGER_POSTER_ONLY)return json({error:'This section is temporarily unavailable. Please use the poster generator.'},403);
   const account=await accountForSession(token);if(!account)return json({error:'Please sign in to your manager account.'},401);
-  if(action==='me'&&req.method==='GET')return json({account:publicAccount(account)});
-  if(action==='overview'&&req.method==='GET')return json(await loadOverview(account.manager_key));
+  if(MANAGER_POSTER_ONLY&&!fullManagerAccess(account))return json({error:'This section is temporarily unavailable. Please use the poster generator.'},403);
+  if(action==='inactive'&&req.method==='GET')return json(await loadInactiveCreators(account.manager_key));
+  if(action==='overview'&&req.method==='GET')return json({...await loadOverview(account.manager_key),quoteSeed:Number(account.number)});
   return json({error:'Not found'},404);
  }catch(e){return json({error:e instanceof Error?e.message:'Unable to complete this request.'},400);}
 }

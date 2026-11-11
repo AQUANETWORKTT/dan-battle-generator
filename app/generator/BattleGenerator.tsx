@@ -4390,18 +4390,18 @@ function renderText(
     );
   }
 
-  if(generationOnly&&!templates.length)return <main className="min-h-screen bg-[#080806] p-8 text-white"><a href="/login" className="text-yellow-300">← First Class Space</a><h1 className="mt-8 text-3xl font-black uppercase text-yellow-300">Manager Poster Generator</h1><p role="status" className="mt-5 text-white/70">{templateStatus}</p></main>;
+  if(generationOnly&&!templates.length)return <section className="manager-generator-loading text-white"><h1 className="mt-8 text-3xl font-black uppercase text-yellow-300">Manager Poster Generator</h1><p role="status" className="mt-5 text-white/70">{templateStatus}</p></section>;
 
   return (
-    <div className="min-h-screen bg-[#080806] text-white p-8">
-      <div className="max-w-[1700px] mx-auto space-y-6">
-	<div className="flex gap-3 mb-4">
-  <a
-    href={generationOnly ? '/manager' : '/'}
+    <div className={generationOnly?"manager-generator-integrated text-white":"min-h-screen bg-[#080806] text-white p-8"}>
+      <div className={generationOnly?"w-full space-y-6":"max-w-[1700px] mx-auto space-y-6"}>
+	<div className={generationOnly?"hidden":"flex gap-3 mb-4"}>
+  {!generationOnly && <a
+    href="/"
     className="bg-yellow-300 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest hover:bg-yellow-200 transition"
   >
-    {generationOnly ? 'First Class Space' : 'Home'}
-  </a>
+    Home
+  </a>}
 
   {!generationOnly && <a
     href="/events"
@@ -4421,7 +4421,7 @@ function renderText(
             </h1>
 
             <p className="text-white/45 text-sm mt-2">
-              {isPostersWorkspace ? "Create, save and maintain reusable team poster layouts." : isCrewShowdownWorkspace ? "Load the live top 20, choose a layout and download the Crew Showdown leaderboard." : "Create individual posters or build them in bulk."}
+              {isPostersWorkspace ? "Create, save and maintain reusable team poster layouts." : isCrewShowdownWorkspace ? "Load the live top 20, choose a layout and download the Crew Showdown leaderboard." : generationOnly ? "Create your poster using an approved design." : "Create individual posters or build them in bulk."}
             </p>
           </div>
 
@@ -4586,7 +4586,7 @@ function renderText(
                 </button>
               </div>
 
-              <div className="bg-black/35 border border-white/15 rounded-xl p-5 space-y-4">
+              {!generationOnly && <div className="bg-black/35 border border-white/15 rounded-xl p-5 space-y-4">
                 <h2 className="text-yellow-300 font-black uppercase tracking-widest">
                   Or Paste One Battle Line
                 </h2>
@@ -4605,7 +4605,7 @@ function renderText(
                 >
                   {loading ? "Reading..." : "Read Single Row"}
                 </button>
-              </div>
+              </div>}
             </section>
 
             {PosterGrid({ previewBattle: singleBattle })}
