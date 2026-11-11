@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {GoldBackdrop} from "./components/GoldSpace";
 import { redirect } from "next/navigation";
 
 const spaces = [
@@ -20,15 +21,7 @@ const spaces = [
     accent: "from-yellow-300/20 via-yellow-300/5 to-transparent",
     marker: "02",
   },
-  {
-    eyebrow: "Agency planning",
-    title: "Task Space",
-    copy: "Create, assign and complete tasks for JD, DF, or both, with an optional creator reference.",
-    href: "/tasks",
-    action: "Open Task Space ✓",
-    accent: "from-emerald-300/20 via-emerald-300/5 to-transparent",
-    marker: "03",
-  },
+
 ];
 
 export default function HomePage() {
@@ -37,8 +30,8 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8">
-      <div className="pointer-events-none fixed inset-0 opacity-50 [background:radial-gradient(circle_at_75%_0%,rgba(250,204,21,0.16),transparent_28%),radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.05),transparent_25%)]" />
+    <main className="gold-stage leadership-home min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8">
+      <GoldBackdrop/>
 
       <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col">
         <header className="flex items-center justify-between border-b border-white/10 pb-5">
@@ -62,7 +55,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-4 lg:grid-cols-3 lg:gap-6">
+          <div className="mt-12 grid gap-4 lg:grid-cols-2 lg:gap-6">
             {spaces.map((space) => (
               <Link
                 key={space.href}

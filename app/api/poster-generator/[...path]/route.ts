@@ -1,3 +1,4 @@
+import {MANAGER_POSTER_COOKIE} from '@/lib/manager-portal-mode';
 import {NextRequest,NextResponse} from 'next/server';
 import {MANAGER_COOKIE,accountForSession} from '@/lib/manager-portal';
 import {GET as templates} from '@/app/api/poster-templates/route';
@@ -14,7 +15,7 @@ async function handle(request:NextRequest,context:{params:Promise<{path:string[]
   // so a local 127.0.0.1 login remains a same-origin request.
   const requestOrigin=request.nextUrl.protocol+'//'+(request.headers.get('host')||request.nextUrl.host);
   if(request.method!=='GET'&&origin&&origin!==requestOrigin)return NextResponse.json({error:'Origin not allowed.'},{status:403});
-  let account=null;try{account=await accountForSession(request.cookies.get(MANAGER_COOKIE)?.value);}catch{}
+  let account=null;try{account=await accountForSession(request.cookies.get(MANAGER_POSTER_COOKIE)?.value||request.cookies.get(MANAGER_COOKIE)?.value);}catch{}
   if(!account)return NextResponse.json({error:'Manager login required.'},{status:401});
   if(request.method==='GET'&&path==='templates'){
     const response=await templates();if(!response.ok)return response;

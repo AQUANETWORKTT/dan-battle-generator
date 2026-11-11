@@ -1,0 +1,4 @@
+import {redirect} from 'next/navigation';
+import {MANAGER_POSTER_ONLY} from '@/lib/manager-portal-mode';
+import CreatorReview from '../../CreatorReview';
+export default async function Page({params}:{params:Promise<{id:string}>}){if(MANAGER_POSTER_ONLY)redirect('/manager/posters');return <CreatorReview id={(await params).id}/>;}

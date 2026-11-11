@@ -5,12 +5,15 @@ import {STAR_COOKIE,starSessionToken} from '@/lib/star-tracker-auth';
 export async function POST(req: Request) {
   const { password, area } = await req.json();
 
+  if(area==='streamer'){
+    if(password!=='STREAMER2')return NextResponse.json({success:false},{status:401});
+    const token=starSessionToken();if(!token)return NextResponse.json({error:'Login is not configured.'},{status:503});
+    const response=NextResponse.json({success:true});response.cookies.set(STAR_COOKIE,token,{path:'/',maxAge:30*86400,httpOnly:true,sameSite:'lax',secure:new URL(req.url).protocol==='https:'});return response;
+  }
   if (area === "onboarding") {
     if (String(password || "").trim().toLowerCase() !== "ash1") return NextResponse.json({ success: false }, { status: 401 });
 
     const response = NextResponse.json({ success: true });
-    const starSession=starSessionToken();
-    if(starSession)response.cookies.set(STAR_COOKIE,starSession,{path:'/',maxAge:30*86400,httpOnly:true,sameSite:'lax',secure:new URL(req.url).protocol==='https:'});
     response.cookies.set("first-class-onboarding-auth", "true", {
       path: "/",
       maxAge: 60 * 60 * 24 * 30,

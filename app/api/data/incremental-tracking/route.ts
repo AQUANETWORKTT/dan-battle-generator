@@ -1,3 +1,4 @@
+import {loadOverview} from '@/lib/manager-overview-server';
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 import {DEFAULT_AGENCY_TARGET,incrementalTargets,incrementalPrediction} from '@/lib/incremental-targets';
@@ -38,7 +39,8 @@ export async function GET(request: Request) {
   if(target.error)return NextResponse.json({error:target.error.message},{status:500});
   const agencyTarget=Number(target.data?.template_json?.agencyTarget)||DEFAULT_AGENCY_TARGET;
   const days=new Date(Number(requestedMonth.slice(0,4)),Number(requestedMonth.slice(5)),0).getDate();
-  const entries=normalize((data?.template_json as Record<string, unknown> | null)?.entries).map(entry=>({...entry,prediction:incrementalPrediction(entry.diamonds,incrementalTargets(agencyTarget,days,entry.day))}));
+  let entries=normalize((data?.template_json as Record<string, unknown> | null)?.entries).map(entry=>({...entry,prediction:incrementalPrediction(entry.diamonds,incrementalTargets(agencyTarget,days,entry.day))}));
+  try{const live=await loadOverview(null,true);if(live.month===requestedMonth){entries=live.dailyTotals.map(entry=>({...entry,prediction:incrementalPrediction(entry.diamonds,incrementalTargets(agencyTarget,days,entry.day)),targetLabel:'Automatic',savedAt:live.latest}));return NextResponse.json({entries,agencyTarget,automatic:true});}}catch{return NextResponse.json({error:'Could not calculate the automatic chart from creator data. Please retry.'},{status:503});}
   return NextResponse.json({entries,agencyTarget});
 }
 

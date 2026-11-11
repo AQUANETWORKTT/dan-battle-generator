@@ -1,5 +1,6 @@
 "use client";
 
+import {GoldBackdrop} from "../components/GoldSpace";
 import Link from "next/link";
 import { Suspense } from "react";
 import { FormEvent, useMemo, useState } from "react";
@@ -30,13 +31,8 @@ function DataPasswordContent() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black px-4 py-8 text-white">
-      <div
-        className="fixed inset-0 scale-105 bg-cover bg-center blur-sm"
-        style={{ backgroundImage: "url('/branding/first-class-data-bg.jpg')" }}
-      />
-      <div className="fixed inset-0 bg-black/45" />
-      <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/70" />
+    <main className="gold-stage data-login relative min-h-screen overflow-hidden bg-black px-4 py-8 text-white">
+      <GoldBackdrop/>
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center">
         <Link
