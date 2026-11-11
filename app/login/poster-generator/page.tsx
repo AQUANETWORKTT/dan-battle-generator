@@ -1,9 +1,2 @@
-"use client";
-import Link from 'next/link';
-import {useState} from 'react';
-export default function PosterLogin(){
-  const [password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
-  return <main className="flex min-h-screen items-center justify-center bg-[#080806] p-5 text-white"><form className="w-full max-w-md rounded-3xl border border-yellow-300/25 bg-black/60 p-8" onSubmit={async event=>{event.preventDefault();setBusy(true);setError('');try{const response=await fetch('/api/poster-generator/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});const data=await response.json();if(!response.ok)throw Error(data.error||'Incorrect password.');window.location.assign('/poster-generator');}catch(e){setError(e instanceof Error?e.message:'Could not sign in.');setBusy(false);}}}>
-    <p className="text-xs font-black uppercase tracking-[.25em] text-yellow-200">First Class</p><h1 className="mt-3 font-[family-name:var(--font-norwester)] text-5xl uppercase">Manager Poster Generator</h1><p className="mt-4 text-sm text-white/60">Create and download posters using the designs enabled by Leadership.</p><label className="mt-7 block text-xs font-bold uppercase tracking-wider" htmlFor="poster-password">Password</label><input id="poster-password" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-black px-4 py-4 outline-none focus:border-yellow-300"/>{error&&<p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}<button disabled={busy} className="mt-5 w-full rounded-xl bg-yellow-300 py-4 text-xs font-black uppercase tracking-widest text-black disabled:opacity-50">{busy?'Opening…':'Open Poster Generator'}</button><Link href="/login" className="mt-5 block text-center text-xs text-yellow-200">← Back to First Class Space</Link>
-  </form></main>;
-}
+import {redirect} from 'next/navigation';
+export default function Page(){redirect('/login/manager');}

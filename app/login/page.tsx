@@ -1,50 +1,7 @@
 "use client";
-
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-
-const cards = [
-  { href: "/login/leadership", eyebrow: "FIRST CLASS", title: "LEADERSHIP", description: <>FOR OWNERS, HEAD OF OPERATIONS<br />AND SENIOR LEADERSHIP.</>, tone: "border-yellow-300/55 bg-yellow-300/15 hover:bg-yellow-300/25", label: "text-yellow-100" },
-  { href: "/login/poster-generator", eyebrow: "FIRST CLASS", title: "MANAGER POSTER GENERATOR", description: <>SINGLE, 2V2 AND H2H<br />POSTER DOWNLOADS.</>, tone: "border-white/30 bg-black/65 hover:border-yellow-300/60 hover:bg-black/75", label: "text-yellow-100" },
-  { href: "https://firstclassbattles.space", eyebrow: "AGENCY NETWORK", title: "BATTLE NETWORK", description: <>BATTLE SHEETS, MATCHING<br />AND POSTER DOWNLOADS.</>, tone: "border-sky-300/45 bg-sky-950/25 hover:border-sky-200 hover:bg-sky-900/30", label: "text-sky-100" },
-  { href: "/login/onboarding", eyebrow: "FIRST CLASS", title: "ONBOARDING", description: <>Onboarding new creators for the first 14 days of joining.</>, tone: "border-violet-300/45 bg-violet-950/30 hover:border-violet-200 hover:bg-violet-900/35", label: "text-violet-100" },
-  { href: '/star-tracker', eyebrow: 'STAR TRACKER', title: "I’m a Streamer, Get Me OUTTA Here!", description: <>Star Tracker<br/><span className="text-sm text-yellow-100/80">Earn your stars. Climb the jungle leaderboard.</span></>, tone: 'border-yellow-300/60 bg-emerald-950/90 hover:border-yellow-200', label: 'text-yellow-100' },
-];
-
-export default function LoginPage() {
-  return <Suspense fallback={null}><LoginPageContent /></Suspense>;
-}
-
-function LoginPageContent() {
-  const restrictedSubspaceEntry = useSearchParams().get("from") === "subspace-battle";
-
-  if (restrictedSubspaceEntry) {
-    return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 text-center"><div className="fixed inset-0 scale-105 bg-cover bg-center blur-sm" style={{ backgroundImage: "url('/branding/first-class-data-bg.jpg')" }} /><div className="fixed inset-0 bg-black/65" /><section className="relative z-10 w-full max-w-lg rounded-3xl border border-yellow-300/30 bg-black/70 p-9 shadow-2xl shadow-black/50"><p className="text-xs font-black uppercase tracking-[.25em] text-yellow-200">FIRST CLASS SPACE</p><h1 className="mt-4 font-[family-name:var(--font-norwester)] text-4xl uppercase text-white">GO BACK TO<br /><span className="text-yellow-300">BATTLE NETWORK</span></h1><p className="mt-4 text-sm text-white/65">THIS AREA ISN&apos;T AVAILABLE FROM THE SUB-AGENCY PORTAL.</p><Link href="/battle-network" className="mt-8 inline-flex rounded-xl bg-yellow-300 px-6 py-4 text-xs font-black uppercase tracking-wide text-black">RETURN TO BATTLE NETWORK</Link></section></main>;
-  }
-
-  return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4">
-      <div className="fixed inset-0 scale-105 bg-cover bg-center blur-sm" style={{ backgroundImage: "url('/branding/first-class-data-bg.jpg')" }} />
-      <div className="fixed inset-0 bg-black/45" />
-      <div className="fixed inset-0 bg-gradient-to-b from-black/20 via-slate-950/10 to-black/70" />
-      <div className="relative z-10 w-full max-w-5xl rounded-3xl border border-yellow-300/20 bg-black/45 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
-        <div className="mb-8 text-center">
-          <p className="font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-wide text-white">FIRST CLASS <span className="text-yellow-300">SPACE</span></p>
-          <p className="mt-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-100/60">AGENCY ACCESS</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {cards.map((card) => (
-            <Link key={card.href} href={card.href} style={card.href==='/star-tracker'?{backgroundImage:"linear-gradient(180deg,rgba(1,24,13,.48),rgba(1,24,13,.95)),url('/star-tracker/jungle-landscape.png')",backgroundSize:'cover',backgroundPosition:'center'}:undefined} className={`flex min-h-[260px] flex-col rounded-2xl border p-7 text-white shadow-lg shadow-black/30 transition hover:-translate-y-1 ${card.tone}`}>
-              <p className="text-xs font-black uppercase tracking-[.22em] text-yellow-200">{card.eyebrow}</p>
-              {card.href==='/star-tracker'&&<div className="mt-3 flex gap-2" aria-hidden="true"><img src="/star-tracker/gold-star.png" alt="" width={28} height={28}/><img src="/star-tracker/gold-star.png" alt="" width={28} height={28}/></div>}
-              <h1 className="mt-3 min-h-[3rem] font-[family-name:var(--font-norwester)] text-3xl uppercase leading-none text-white">{card.title}</h1>
-              <p className="mt-4 text-base leading-7 text-white/90">{card.description}</p>
-              <span className={`mt-auto pt-7 text-xs font-black uppercase tracking-widest ${card.label}`}>ENTER HERE →</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </main>
-  );
-}
+import Link from 'next/link';
+import {Suspense} from 'react';
+import {useSearchParams} from 'next/navigation';
+import {GoldBackdrop,SpaceLogo} from '../components/GoldSpace';
+export default function Page(){return <Suspense fallback={null}><Entrance/></Suspense>;}
+function Entrance(){const restricted=useSearchParams().get('from')==='subspace-battle';return <main className="gold-stage"><GoldBackdrop/><div className="space-entrance"><SpaceLogo/>{restricted?<div className="space-cards"><Link href="/battle-network" className="space-card"><h2>Battle Network</h2><p>Return to your agency workspace.</p><span className="space-card-enter">Return →</span></Link></div>:<div className="space-cards"><Link href="/login/leadership" className="space-card"><span className="space-card-number">01 / LEADERSHIP</span><h2>Leadership<br/>Space</h2><p>Agency intelligence, tools and the bigger picture.</p><span className="space-card-enter">Enter space <span>↗</span></span></Link><Link href="/login/manager" className="space-card"><span className="space-card-number">02 / YOUR TEAM</span><h2>Manager<br/>Portal</h2><p>Your creators, your daily focus and your poster generator.</p><span className="space-card-enter">Enter portal <span>↗</span></span></Link><Link href="/star-tracker" className="space-card"><div className="space-stars">{[1,2,3,4,5].map(n=><img key={n} src="/star-tracker/gold-star.png" alt=""/>)}</div><h2>I'm a Streamer,<br/>Get Me OUTTA Here!</h2><span className="space-card-enter">Enter <span>↗</span></span></Link></div>}</div></main>;}

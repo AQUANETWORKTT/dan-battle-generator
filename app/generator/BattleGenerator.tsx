@@ -917,7 +917,7 @@ function TimeSelect({
   );
 }
 
-export default function BattleGenerator({generationOnly=false}:{generationOnly?:boolean}) {
+export default function BattleGenerator({generationOnly=false,singleOnly=false}:{generationOnly?:boolean;singleOnly?:boolean}) {
   const stableId = useId().replaceAll(":", "");
   const posterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const twoVTwoPosterRef = useRef<HTMLDivElement | null>(null);
@@ -934,6 +934,7 @@ export default function BattleGenerator({generationOnly=false}:{generationOnly?:
     const params = new URLSearchParams(window.location.search);
     const nextWorkspace = generationOnly ? null : params.get("workspace");
     setWorkspace(nextWorkspace);
+    if(singleOnly){setActiveMode('single');return;}
     if(generationOnly){setActiveMode(params.get('mode')==='h2h'?'h2h':params.get('mode')==='2v2'?'2v2':'single');return;}
     if (nextWorkspace === "posters") setActiveMode("team");
     else if (nextWorkspace === "crew-showdown" || params.get("mode") === "glory") setActiveMode("glory");
@@ -1255,6 +1256,7 @@ export default function BattleGenerator({generationOnly=false}:{generationOnly?:
   }
 
   function switchPosterMode(mode: "single" | "mass" | "h2h" | "h2h2v2" | "2v2") {
+    if(singleOnly&&mode!=='single')return;
     if(generationOnly && mode==='mass')return;
     setActiveMode(mode);
     const defaultId = (mode === "2v2" || mode === "h2h2v2") ? twoVTwoDefaultTemplateId : defaultTemplateId;
@@ -4395,7 +4397,7 @@ function renderText(
       <div className="max-w-[1700px] mx-auto space-y-6">
 	<div className="flex gap-3 mb-4">
   <a
-    href={generationOnly ? '/login' : '/'}
+    href={generationOnly ? '/manager' : '/'}
     className="bg-yellow-300 text-black font-black px-4 py-3 rounded-lg uppercase tracking-widest hover:bg-yellow-200 transition"
   >
     {generationOnly ? 'First Class Space' : 'Home'}
@@ -4459,7 +4461,7 @@ function renderText(
               Mass Poster Generator
             </button>}
 
-            <button type="button" onClick={() => switchPosterMode("h2h2v2")} disabled={h2hBusy} className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest ${activeMode==='h2h2v2'?'bg-yellow-300 text-black':'bg-black/40 text-white border border-white/20'}`}>Head-to-head 2v2</button>
+            {!singleOnly&&<><button type="button" onClick={() => switchPosterMode("h2h2v2")} disabled={h2hBusy} className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest ${activeMode==='h2h2v2'?'bg-yellow-300 text-black':'bg-black/40 text-white border border-white/20'}`}>Head-to-head 2v2</button>
             <button type="button" onClick={() => switchPosterMode("h2h")} disabled={h2hBusy} className={`px-5 py-4 rounded-lg font-black uppercase tracking-widest transition ${activeMode === 'h2h' ? 'bg-yellow-300 text-black' : 'bg-black/40 text-white border border-white/20 hover:border-yellow-300'}`}>
               H2H Posters
             </button>
@@ -4475,7 +4477,7 @@ function renderText(
               }`}
             >
               2v2 Poster
-            </button>
+            </button></>}
 
             </>}
           </div>

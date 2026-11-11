@@ -70,6 +70,7 @@ export function middleware(req: NextRequest) {
   if(!isEventsSpace&&(path==='/star-tracker'||path==='/api/star-tracker'))return NextResponse.next();
   // The server page and scoped API validate this separate signed session.
   // No leadership access is granted by visiting the Poster Generator.
+  if(!isEventsSpace&&(path==='/manager'||path.startsWith('/manager/')||path.startsWith('/api/manager-portal/')))return NextResponse.next();
   if(!isEventsSpace&&(path==='/poster-generator'||path.startsWith('/api/poster-generator/')))return NextResponse.next();
   const isBLeaderboard = path === "/recruitment-leaderboard-b" || path.startsWith("/recruitment-leaderboard-b/");
   const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/") || isBLeaderboard;

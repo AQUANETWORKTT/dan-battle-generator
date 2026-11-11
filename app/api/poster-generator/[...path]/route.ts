@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {POSTER_COOKIE,posterSessionToken,posterSessionValid} from '@/lib/poster-generator-auth';
+import {MANAGER_COOKIE,accountForSession} from '@/lib/manager-portal';
 import {GET as templates} from '@/app/api/poster-templates/route';
 import {GET as fallbackAvatars} from '@/app/api/data-analysis/fallback-avatars/route';
 import {POST as avatar} from '@/app/api/tiktok-avatar/route';
@@ -14,13 +14,8 @@ async function handle(request:NextRequest,context:{params:Promise<{path:string[]
   // so a local 127.0.0.1 login remains a same-origin request.
   const requestOrigin=request.nextUrl.protocol+'//'+(request.headers.get('host')||request.nextUrl.host);
   if(request.method!=='GET'&&origin&&origin!==requestOrigin)return NextResponse.json({error:'Origin not allowed.'},{status:403});
-  if(path==='login'&&request.method==='POST'){
-    const body=await request.json().catch(()=>({}));
-    if(body.password!=='FC1')return NextResponse.json({error:'Incorrect password.'},{status:401});
-    const token=posterSessionToken();if(!token)return NextResponse.json({error:'Poster session signing is not configured. Set POSTER_GENERATOR_SESSION_SECRET.'},{status:503});
-    const response=NextResponse.json({success:true});response.cookies.set(POSTER_COOKIE,token,{httpOnly:true,sameSite:'lax',secure:request.nextUrl.protocol==='https:',path:'/',maxAge:30*24*60*60});return response;
-  }
-  if(!posterSessionValid(request.cookies.get(POSTER_COOKIE)?.value))return NextResponse.json({error:'Poster Generator access required.'},{status:401});
+  let account=null;try{account=await accountForSession(request.cookies.get(MANAGER_COOKIE)?.value);}catch{}
+  if(!account)return NextResponse.json({error:'Manager login required.'},{status:401});
   if(request.method==='GET'&&path==='templates'){
     const response=await templates();if(!response.ok)return response;
     const data=await response.json();

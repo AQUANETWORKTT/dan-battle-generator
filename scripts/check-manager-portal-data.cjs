@@ -1,0 +1,5 @@
+// Read-only schema/summary smoke check. Does not create or change accounts.
+require('@next/env').loadEnvConfig(process.cwd());
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
+function load(file){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,process,Buffer,Date,Map,Set,require:n=>n==='server-only'?{}:n==='next/cache'?{unstable_cache:f=>f}:n.startsWith('.')?load(path.resolve(path.dirname(file),n+'.ts')):require(n)});return exports;}
+(async()=>{const db=load('lib/creator-api-search/db.ts').database();const setup=await db.from('manager_portal_accounts').select('id').limit(1);console.log('Account tables:',setup.error?setup.error.code:'ready');const result=await load('lib/manager-overview-server.ts').loadOverview(null);console.log({latestUpload:result.latest,creatorCount:result.creators.length,priorityCount:result.priorities.length,coverageDays:result.coverage,comparisonReady:result.comparable});})().catch(e=>{console.error(e.message);process.exit(1)});
