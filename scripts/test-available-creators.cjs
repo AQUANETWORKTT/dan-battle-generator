@@ -2,6 +2,12 @@ const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript'),asser
 const env={SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY:'test-only-secret-with-more-than-thirty-two-characters'};
 function load(path,deps={},globals={}){const box={exports:{},require:name=>{if(name==='server-only')return {};if(name in deps)return deps[name];throw Error(name);},process:{env},URL,URLSearchParams,Buffer,Date,Map,Set,Promise,...globals};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,box);return box.exports;}
 const types=load('lib/creator-api-search/types.ts'),model=load('lib/available-creators.ts',{'./creator-api-search/types':types});
+const expiryNow=Date.parse('2026-11-11T12:00:00Z');
+assert.equal(model.managerAvailabilityRecent('2026-11-08T12:00:00Z',expiryNow),true);
+assert.equal(model.managerAvailabilityRecent('2026-11-08T11:59:59Z',expiryNow),false);
+assert.equal(model.managerAvailabilityRecent('2026-11-11T11:59:00Z',expiryNow),true);
+assert.equal(model.managerAvailabilityRecent('invalid',expiryNow),false);
+assert.equal(model.managerAvailabilityRecent('2026-11-12T12:00:00Z',expiryNow),false);
 assert.equal(model.availabilityLabel('2026-11-04T00:01:00Z',Date.parse('2026-11-04T23:59:00Z')),'AVAILABLE TODAY');
 assert.equal(model.availabilityLabel('2026-11-03T23:59:00Z',Date.parse('2026-11-04T00:01:00Z')),'AVAILABLE YESTERDAY');
 assert.equal(model.availabilityLabel('2026-11-02T12:00:00Z',Date.parse('2026-11-04T12:00:00Z')),'AVAILABLE 2 DAYS AGO');
@@ -28,7 +34,7 @@ class Reply extends Response{static json(body,init={}){return new Reply(JSON.str
 class SearchError extends Error{constructor(message,status=400){super(message);this.status=status;}}
 class ProviderError extends Error{}
 let reads=0,updates=0,marks=0;
-const route=load('app/api/available-creators/route.ts',{'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},dismissAvailableCreator:async()=>({hiddenAt:stamp}),hideAvailableCreator:async()=>({hiddenAt:stamp}),markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
+const route=load('app/api/available-creators/route.ts',{'@/lib/available-creators':model,'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},dismissAvailableCreator:async()=>({hiddenAt:stamp}),hideAvailableCreator:async()=>({hiddenAt:stamp}),markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
 function request(method='GET',access='',admin=false,body={}){return {method,nextUrl:new URL('https://firstclassagency.management/api/available-creators'+(access?'?access='+access:'')),cookies:{get:key=>({value:admin?(key==='signed'?'valid':'true'):'true'})},headers:new Headers({origin:'https://firstclassagency.management'}),json:async()=>body};}
 (async()=>{
  let body='{"avatarLarger":"https:\\u002F\\u002Fexample.test/a?x=1\\u0026y=2"}';
@@ -80,3 +86,4 @@ function request(method='GET',access='',admin=false,body={}){return {method,next
  env.SITE_MODE='atlas';assert.equal((await route.GET(request('GET',token))).status,404);env.SITE_MODE='events';assert.equal((await route.GET(request('GET',token))).status,404);
  console.log('PASS: latest actual checks, revoked/failed availability, ID-based rename, duplicate leagues, pending results, lettering exclusions, stale timestamps, safe avatar URLs, signed read-only links, expiry, tampering, paid-action restrictions, origin checks and deployment isolation.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+

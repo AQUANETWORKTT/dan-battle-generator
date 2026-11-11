@@ -4,6 +4,7 @@ import {managerViewAllowed,managerViewToken,creatorActionToken,creatorActionIden
 import {readAvailableCreators,updateAvailableCreator,markAvailableCreatorMessaged,hideAvailableCreator,dismissAvailableCreator} from '@/lib/available-creators-store';
 import {SearchError} from '@/lib/creator-api-search/service';
 import {ProviderError} from '@/lib/creator-api-search/provider';
+import {managerAvailabilityRecent} from '@/lib/available-creators';
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 export const maxDuration=60;
@@ -15,7 +16,7 @@ async function handle(req:NextRequest){
   if(!admin&&!manager)return NextResponse.json({error:'Use your manager link or sign in through Leadership.'},{status:401,headers});
   if(req.method==='POST'&&req.headers.get('origin')&&req.headers.get('origin')!==req.nextUrl.origin)return NextResponse.json({error:'Invalid request origin.'},{status:403,headers});
   try{
-    if(req.method==='GET'){const data=await readAvailableCreators();return NextResponse.json({...data,rows:data.rows.filter(row=>!manager||!row.hiddenFromManager).map(row=>({...row,actionToken:manager?creatorActionToken(row):undefined}))},{headers});}
+    if(req.method==='GET'){const data=await readAvailableCreators();const now=Date.now();return NextResponse.json({...data,rows:data.rows.filter(row=>!manager||(!row.hiddenFromManager&&managerAvailabilityRecent(row.checkedAt,now))).map(row=>({...row,actionToken:manager?creatorActionToken(row):undefined}))},{headers});}
     const body=await req.json();
     if(body.action==='messaged'||body.action==='hide'||body.action==='dismiss'){
       if(!manager)return NextResponse.json({error:'Use a current manager link to mark messages.'},{status:403,headers});

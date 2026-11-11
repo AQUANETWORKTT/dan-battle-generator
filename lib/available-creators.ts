@@ -51,6 +51,11 @@ export function availabilityLabel(checkedAt:string,now=Date.now()){
   return elapsed===0?'AVAILABLE TODAY':elapsed===1?'AVAILABLE YESTERDAY':`AVAILABLE ${elapsed} DAYS AGO`;
 }
 
+export function managerAvailabilityRecent(checkedAt:string,now=Date.now()){
+  const checked=Date.parse(checkedAt);
+  return Number.isFinite(checked)&&checked<=now&&now-checked<=3*24*60*60*1000;
+}
+
 export function hiddenUntilRescan(checkedAt:string,hiddenAt?:string){
   return Boolean(hiddenAt&&Date.parse(checkedAt)<=Date.parse(hiddenAt));
 }
