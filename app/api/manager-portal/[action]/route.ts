@@ -1,3 +1,4 @@
+import {listReminders,saveReminder,removeReminder,reminderDue} from '@/lib/manager-reminders';
 import {POSTER_COOKIE,posterSessionToken} from '@/lib/poster-generator-auth';
 import {MANAGER_POSTER_ONLY,MANAGER_POSTER_COOKIE,fullManagerAccess,KJB_PREVIEW_ACCESS} from '@/lib/manager-portal-mode';
 import {database} from '@/lib/creator-api-search/db';
@@ -22,8 +23,9 @@ async function handle(req:NextRequest,context:{params:Promise<{action:string}>})
   if(action==='login'&&req.method==='POST'){const b=await req.json();if(MANAGER_POSTER_ONLY){const posterToken=posterSessionToken();if(!posterToken)return json({error:'Poster access is not configured.'},503);const response=json({ok:true});response.cookies.set(POSTER_COOKIE,posterToken,{httpOnly:true,secure:req.nextUrl.protocol==='https:',sameSite:'lax',path:'/',maxAge:30*86400});return response;}if(typeof b.username!=='string'||typeof b.password!=='string'||b.username.length>64||b.password.length>128)return json({error:'Enter your username and password.'},400);return session(await loginManager(b.username,b.password,req.headers.get('x-forwarded-for')?.split(',')[0]||'local'));}
   if(action==='kjb-login'&&req.method==='POST'){if(!KJB_PREVIEW_ACCESS)return json({error:'Access unavailable.'},403);const b=await req.json();if(typeof b.password!=='string'||b.password.length>128)return json({error:'Enter your password.'},400);const a=await loginManager('KJB',b.password,req.headers.get('x-forwarded-for')?.split(',')[0]||'local');if(!fullManagerAccess(a))return json({error:'Access unavailable.'},403);return session(a,true);}
   if(action==='logout'&&req.method==='POST'){await endSession(token);await endSession(req.cookies.get(MANAGER_POSTER_COOKIE)?.value);const r=json({ok:true});r.cookies.set(MANAGER_COOKIE,'',{path:'/',maxAge:0});r.cookies.set(MANAGER_POSTER_COOKIE,'',{path:'/',maxAge:0});r.cookies.set(POSTER_COOKIE,'',{path:'/',maxAge:0});return r;}
-  if(action==='accounts'||action==='agency-overview'||action==='agency-inactive'||action==='agency-development'||action==='login-activity'||action==='defaults'){
+  if(action==='reminder-admin'||action==='accounts'||action==='agency-overview'||action==='agency-inactive'||action==='agency-development'||action==='login-activity'||action==='defaults'){
    if(!searchSessionValid(req.cookies.get(SEARCH_COOKIE)?.value))return json({error:'Please sign in through Leadership to manage accounts.'},401);
+   if(action==='reminder-admin'){const managers=await syncAccounts();if(req.method==='GET')return json({reminders:await listReminders(),managers});if(req.method==='POST'){const b=await req.json();if(b.remove){await removeReminder(b.remove);return json({ok:true});}return json({reminder:await saveReminder(b,managers.map(m=>m.managerKey))});}return json({error:'Not allowed'},405);}
    if(action==='login-activity'&&req.method==='GET')return json(await loginActivity(req.nextUrl.searchParams.get('day')||londonDate()));
    if(action==='agency-development'&&req.method==='GET')return json(await loadCreatorDevelopment(null));
    if(action==='agency-inactive'&&req.method==='GET')return json(await loadInactiveCreators(null));
@@ -34,6 +36,7 @@ async function handle(req:NextRequest,context:{params:Promise<{action:string}>})
   }
   const account=await accountForSession(token);if(!account)return json({error:'Please sign in to your manager account.'},401);
   if(MANAGER_POSTER_ONLY&&!fullManagerAccess(account))return json({error:'This section is temporarily unavailable. Please use the poster generator.'},403);
+  if(action==='reminders'&&req.method==='GET')return json({reminders:(await listReminders()).filter(r=>reminderDue(r)&&(r.all||r.managerKeys.includes(account.manager_key)))});
   if(action==='inactive'&&req.method==='GET')return json(await loadInactiveCreators(account.manager_key));
   if(action==='overview'&&req.method==='GET')return json({...await loadOverview(account.manager_key),quoteSeed:Number(account.number)});
   return json({error:'Not found'},404);

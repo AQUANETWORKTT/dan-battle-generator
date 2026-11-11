@@ -19,7 +19,7 @@ const accentStyles: Record<Accent, string> = {
   gray: "from-slate-300/10 via-slate-300/[0.02] to-transparent border-slate-300/15 group-hover:border-slate-300/20 text-slate-300",
 };
 
-const groups: Array<{ title: string; description: string; accent: Accent; workspaces: Workspace[] }> = [
+const originalGroups: Array<{ title: string; description: string; accent: Accent; workspaces: Workspace[] }> = [
   { title: "Our Data Space", description: "A shared place for the team to keep live working notes.", accent: "sky", workspaces: [
     { href: "/data/our-team", number: "44", label: "Team management", title: "Our Team Management", description: "Team performance, creator focus and development.", accent: "sky" },
     { href: "/data/notepad", number: "27", label: "Shared live notes", title: "Notepad", description: "One large shared page. Type freely and it saves automatically five seconds after you stop.", accent: "sky" },
@@ -79,7 +79,11 @@ const groups: Array<{ title: string; description: string; accent: Accent; worksp
   ] },
 ];
 
-const order = ["Our Data Space", "Leaderboards", "Creator Recruitment", "Creator/Agency Targets", "Creator Analysis", "Events", "Management", "Data Settings"];
+const hiddenSpaces=new Set(['/data/notepad','/daily-rankings','/data/creator-recruitment','/data/event-planner','/data/todo-calendar','/data/manager-onboarding-progress','/data/battle-network-settings','/data/battle-calendar','/data/telegram-bot-settings','/data/events-leaderboards-admin']);
+const unusedSpaces=new Set(['/data/incremental-data-tracking','/data/team-dan-target-tracker','/data/focus-target-tracker','/data/mature-creators-growth','/creator-intelligence','/data/recruitment-quality','/data/sub-agency-metrics','/data/starlight-creators','/data/creator-performance-review']);
+const groups=[...originalGroups.map(group=>({...group,description:group.title==='Our Data Space'?'':group.description,workspaces:[...group.workspaces.filter(item=>!hiddenSpaces.has(item.href)&&!unusedSpaces.has(item.href)),...(group.title==='Data Settings'?[{href:'/data/portal-resources',number:'45',label:'Manager library',title:'Portal Resources',description:'Manage folders, upload graphics and videos, and add copyable messages for managers.',accent:'sky' as Accent}]:[])]})).filter(group=>group.workspaces.length),{title:'Unused Spaces',description:'',accent:'gray' as Accent,workspaces:originalGroups.flatMap(group=>group.workspaces).filter(item=>unusedSpaces.has(item.href))}];
+
+const order = ["Our Data Space", "Leaderboards", "Creator Recruitment", "Creator/Agency Targets", "Creator Analysis", "Events", "Management", "Data Settings", "Unused Spaces"];
 
 export default function DataMenuPage() {
   return <DataAccessGuard><main className="gold-stage data-space-restyled min-h-screen overflow-hidden bg-[#080806] px-5 py-6 text-white sm:px-8 sm:py-8"><GoldBackdrop/><div className="relative mx-auto max-w-7xl">

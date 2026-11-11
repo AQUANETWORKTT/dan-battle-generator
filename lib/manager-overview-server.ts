@@ -28,10 +28,10 @@ async function readOverview(scope:string|null,allAgencies=false,_day?:string){
 }
 // Auth is checked before entering this cache. Each manager scope has a separate key.
 // Compress the shared snapshot to keep large agencies below hosting cache-entry limits.
-const cachedOverview=unstable_cache(async(allAgencies:boolean,day:string)=>gzipSync(JSON.stringify(await readOverview(null,allAgencies,day))).toString('base64'),['manager-overview-snapshot-v2'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+const cachedOverview=unstable_cache(async(allAgencies:boolean,day:string)=>gzipSync(JSON.stringify(await readOverview(null,allAgencies,day))).toString('base64'),['manager-overview-snapshot-v3'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
 export async function loadOverview(scope:string|null,allAgencies=false){
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const base=JSON.parse(gunzipSync(Buffer.from(await localPortalSnapshot(['overview-snapshot-v2',allAgencies,day],()=>cachedOverview(allAgencies,day)),'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>;
+ const base=JSON.parse(gunzipSync(Buffer.from(await localPortalSnapshot(['overview-snapshot-v3',allAgencies,day],()=>cachedOverview(allAgencies,day)),'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>;
  if(!scope)return base;
  const creators=base.creators.filter(c=>c.managerKey===scope),ids=new Set(creators.map(c=>c.username)),total=creators.reduce((s,c)=>s+c.diamonds,0);
  return {...base,scope:'Your team',creators,total,previousTotal:creators.reduce((s,c)=>s+c.previousComparable,0),priorities:base.priorities.filter(p=>ids.has(p.username)),previousRoster:base.previousRoster.filter(r=>r.managerKey===scope),newCreatorTotals:base.newCreatorTotals.filter(r=>r.managerKey===scope),topThreeShare:total?Math.round(creators.slice(0,3).reduce((s,c)=>s+c.diamonds,0)/total*100):0,dailyTotals:base.dailyTotals.map(d=>({day:d.day,diamonds:creators.reduce((s,c)=>s+c.potentialTimeline.filter(x=>Number(x.date.slice(-2))<=d.day).reduce((sum,x)=>sum+x.diamonds,0),0)}))};
