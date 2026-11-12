@@ -203,6 +203,7 @@ export function Summary({
     "today" | "daily" | "inactive" | "graduation" | "mature" | "maintain" | "unmanaged"
   >("today");
   const [morningTasks, setMorningTasks] = useState<{ total: number; completed: number } | null>(null);
+  const [showMasterTasks, setShowMasterTasks] = useState(false);
   const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
@@ -383,9 +384,10 @@ export function Summary({
         <div className="today-tasks-heading">
           <h2 className="today-reminders-title">Today’s tasks</h2>
           {morningTasks !== null && (
-            <p className="today-task-count">
-              {taskCompleted} / {taskTotal} completed
-            </p>
+            <div className="today-task-actions">
+              <p className="today-task-count">{taskCompleted} / {taskTotal} completed</p>
+              {owner && <button type="button" onClick={() => setShowMasterTasks((open) => !open)}>View tasks</button>}
+            </div>
           )}
         </div>
       )}
@@ -401,7 +403,7 @@ export function Summary({
           onCount={setMorningTasks}
         />
       )}
-      {tab === "today" && owner && <MasterTaskSummary data={data} />}
+      {tab === "today" && owner && showMasterTasks && <MasterTaskSummary data={data} />}
       {tab === "today" && (
         <ManagerReminders
           owner={owner}
@@ -519,17 +521,17 @@ function MasterTaskSummary({ data }: { data: Overview }) {
     return () => { active = false; };
   }, []);
   if (!loaded) return <p className="manager-muted">Loading task summary…</p>;
-  const team = new Map<string, { name: string; completed: number; tasks: string[] }>();
-  const register = (managerKey: string, manager: string, label: string, completed: boolean) => {
-    const entry = team.get(managerKey) || { name: manager, completed: 0, tasks: [] };
+  const team = new Map<string, { name: string; completed: number; groups: Record<string, string[]> }>();
+  const register = (managerKey: string, manager: string, group: string, label: string, completed: boolean) => {
+    const entry = team.get(managerKey) || { name: manager, completed: 0, groups: {} };
     if (completed) entry.completed += 1;
-    else entry.tasks.push(label);
+    else (entry.groups[group] ||= []).push(label);
     team.set(managerKey, entry);
   };
-  morning.forEach((item) => register(item.managerKey, item.manager, `Morning message · @${item.username}`, item.completed));
-  data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, `Profile picture · @${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
+  morning.forEach((item) => register(item.managerKey, item.manager, "Morning messages", `@${item.username}`, item.completed));
+  data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, "Change profile picture", `@${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
   const entries = [...team.entries()].sort(([, a], [, b]) => a.name.localeCompare(b.name));
-  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Uncompleted tasks</h2></div><span>{entries.reduce((total, [, entry]) => total + entry.tasks.length, 0)} remaining</span></header>{entries.map(([key, entry]) => { const total = entry.completed + entry.tasks.length; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{entry.tasks.length} remaining</em></summary>{entry.tasks.length ? <ul>{entry.tasks.map((task) => <li key={task}>{task}</li>)}</ul> : <p>All tasks complete.</p>}</details>; })}</section>;
+  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Manager task summary</h2></div></header>{entries.map(([key, entry]) => { const remaining = Object.values(entry.groups).flat().length, total = entry.completed + remaining; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{remaining} remaining</em></summary>{remaining ? <div className="master-task-groups">{Object.entries(entry.groups).map(([group, tasks]) => <details key={group}><summary>{group}: {tasks.length}</summary><ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul></details>)}</div> : <p>All tasks complete.</p>}</details>; })}</section>;
 }
 export default function Dashboard({
   creators = false,
