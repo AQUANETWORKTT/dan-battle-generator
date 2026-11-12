@@ -328,6 +328,8 @@ async function handle(
       return json({
         ...(await loadOverview(managedKeys)),
         quoteSeed: Number(account.number),
+        executiveKey: account.manager_key,
+        juniorManagerKeys: managedKeys.filter((key) => key !== account.manager_key),
       });
     return json({ error: "Not found" }, 404);
   } catch (e) {

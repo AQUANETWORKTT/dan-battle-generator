@@ -97,3 +97,4 @@
 .inactive-stat-label{display:inline-block;min-width:86px;margin:4px 8px 4px 0;color:#ddc58f;font-family:Arial,sans-serif;font-weight:700;font-size:11px;line-height:1.5;letter-spacing:.07em;text-transform:uppercase}.inactive-last-live{color:#eee8db;font-weight:600;font-size:14px}
 
 .development-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px}.development-overview{display:inline-flex;align-items:center;margin-top:0;padding:8px 12px;border:1px solid #d4b66866;border-radius:8px;color:#f0d596;font-size:12px;font-weight:600;background:#d4b66808}.development-overview:hover{background:#d4b66820;border-color:#e6c576}.development-overview:focus-visible{outline:2px solid #ffe18a;outline-offset:3px}
+.creator-roster-row.junior-creator{border-color:#58b9e577;box-shadow:0 7px 20px #0003,inset 3px 0 #58b9e5}

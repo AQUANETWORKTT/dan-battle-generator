@@ -26,6 +26,7 @@ type UnmanagedRecord = {
   createdAt: string;
 };
 type TaskRecord = { id: string; managerKey: string; completed: boolean };
+type PortalOverview = Overview & { executiveKey?: string; juniorManagerKeys?: string[] };
 const warmRequests = new Map<
   string,
   { at: number; promise: Promise<any>; value?: any }
@@ -545,7 +546,7 @@ export default function Dashboard({
   owner?: boolean;
   hideQuote?: boolean;
 }) {
-  const [source, setData] = useState<Overview | null>(null),
+  const [source, setData] = useState<PortalOverview | null>(null),
     [group, setGroup] = useState(""),
     [manager, setManager] = useState(""),
     [error, setError] = useState(""),
@@ -664,7 +665,7 @@ export default function Dashboard({
         </div>
       )}
       {error && <p className="manager-error">{error}</p>}
-      {owner && source && (
+      {source && (
         <div className="manager-filters">
           <label className="manager-muted">
             Group
@@ -680,7 +681,7 @@ export default function Dashboard({
                 );
               }}
             >
-              <option value="">All First Class groups</option>
+              <option value="">All managed groups</option>
               {[...new Set(source.creators.map((c) => c.group))]
                 .sort()
                 .map((g) => (
@@ -701,7 +702,7 @@ export default function Dashboard({
                 );
               }}
             >
-              <option value="">All managers</option>
+              <option value="">All managed creators</option>
               {[
                 ...new Map(
                   source.creators
@@ -712,7 +713,7 @@ export default function Dashboard({
                 .sort((a, b) => a[1].localeCompare(b[1]))
                 .map(([key, name]) => (
                   <option key={key} value={key}>
-                    {name}
+                    {source.executiveKey === key ? `${name} · My creators` : `${name} · Junior manager`}
                   </option>
                 ))}
             </select>
@@ -760,7 +761,10 @@ export default function Dashboard({
                   <article
                     className={
                       "creator-roster-row chat-colour-" +
-                      chatProfileColour(c.agencyDays, c.previousDiamonds).key
+                      chatProfileColour(c.agencyDays, c.previousDiamonds).key +
+                      (data.executiveKey && data.executiveKey !== c.managerKey
+                        ? " junior-creator"
+                        : "")
                     }
                     key={c.id}
                   >
@@ -780,7 +784,7 @@ export default function Dashboard({
                     <Picture username={c.username} />
                     <div className="creator-roster-name">
                       <h2>@{c.username}</h2>
-                      <span>This month</span>
+                      <span>{data.executiveKey && data.executiveKey !== c.managerKey ? `${c.manager} · Junior manager` : "This month"}</span>
                     </div>
                     <div className="creator-roster-stat main">
                       <span>Diamonds</span>
