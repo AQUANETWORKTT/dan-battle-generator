@@ -1,5 +1,5 @@
-// Temporary manager access: poster generation only.
-export const MANAGER_POSTER_ONLY=true;
+// Managers have normal portal access. Resources remain intentionally disabled.
+export const MANAGER_POSTER_ONLY=false;
 export const MANAGER_POSTER_COOKIE='first-class-manager-posters-only';
 export const KJB_PREVIEW_ACCESS=false;
 export const MANAGER_RESOURCES_ENABLED=false;
