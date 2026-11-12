@@ -505,22 +505,26 @@ export function Summary({
 function MasterTaskSummary({ data, onBack }: { data: Overview; onBack: () => void }) {
   const [morning, setMorning] = useState<Array<{ id: string; username: string; manager: string; managerKey: string; completed: boolean }>>([]);
   const [saved, setSaved] = useState<TaskRecord[]>([]);
+  const [managers, setManagers] = useState<Array<{ key: string; name: string; group: string }>>([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let active = true;
     Promise.all([
       fetch("/api/morning-messages?scope=owner", { cache: "no-store" }).then((response) => response.json()),
       fetch("/api/manager-tasks", { cache: "no-store" }).then((response) => response.json()),
-    ]).then(([messages, tasks]) => {
+      fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }).then((response) => response.json()),
+    ]).then(([messages, tasks, assignments]) => {
       if (!active) return;
       setMorning(messages.items || []);
       setSaved(tasks.records || []);
+      setManagers((assignments.managers || []).filter((manager: { group: string }) => manager.group === "Team Dan / James"));
       setLoaded(true);
     }).catch(() => active && setLoaded(true));
     return () => { active = false; };
   }, []);
   if (!loaded) return <p className="manager-muted">Loading task summary…</p>;
   const team = new Map<string, { name: string; completed: number; groups: Record<string, string[]> }>();
+  managers.forEach((manager) => team.set(manager.key, { name: manager.name, completed: 0, groups: {} }));
   const register = (managerKey: string, manager: string, group: string, label: string, completed: boolean) => {
     const entry = team.get(managerKey) || { name: manager, completed: 0, groups: {} };
     if (completed) entry.completed += 1;
