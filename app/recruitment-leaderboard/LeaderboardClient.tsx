@@ -44,8 +44,6 @@ export default function LeaderboardClient({ tier = "A", portal=false }: { tier?:
         <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-white/55">Current calendar month · Live daily data</p>
       </header>
 
-      <section className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-[30px] border border-[#f5ca62]/40 bg-black/65 px-4 py-6 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm sm:px-8"><p className="text-center font-[family-name:var(--font-norwester)] text-3xl uppercase tracking-[0.08em] text-[#ffe79a] sm:text-4xl">Monthly rewards</p><div className="mt-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10"><Reward place="First place" amount={(data.tier||tier) === "B" ? "£25" : "£50"} tone="gold" /><Reward place="Second place" amount={(data.tier||tier) === "B" ? "£15" : "£30"} tone="silver" /><Reward place="Third place" amount={(data.tier||tier) === "B" ? "£10" : "£20"} tone="bronze" /></div></section>
-
       <section className="mt-9 overflow-hidden rounded-[28px] border border-[#f5ca62]/45 bg-black/75 shadow-[0_0_60px_rgba(207,157,50,.12)] backdrop-blur-sm">
         <div className="hidden grid-cols-[76px_minmax(0,1fr)_140px_150px] items-center gap-4 border-b border-[#f5ca62]/25 bg-[#f5ca62]/10 px-6 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-[#f5ca62] sm:grid"><span>Rank</span><span>Manager</span><span className="text-right">Recruits</span><span className="text-right">Recruit diamonds</span></div>
         {managers.map((manager, index) => <ManagerRow key={manager.key} manager={manager} rank={index + 1} />)}
@@ -69,11 +67,3 @@ function ManagerRow({ manager, rank }: { manager: Manager; rank: number }) {
   </article>;
 }
 
-function Reward({ place, amount, tone }: { place: string; amount: string; tone: "gold" | "silver" | "bronze" }) {
-  const styles = {
-    gold: "bg-[linear-gradient(180deg,rgba(245,202,98,.20),rgba(245,202,98,.025))] text-[#ffe79a]",
-    silver: "border-x border-white/10 bg-[linear-gradient(180deg,rgba(226,232,240,.16),rgba(226,232,240,.02))] text-slate-100",
-    bronze: "bg-[linear-gradient(180deg,rgba(224,143,81,.16),rgba(224,143,81,.02))] text-[#eab27c]",
-  }[tone];
-  return <div className={`flex min-h-[132px] flex-col items-center justify-center px-2 py-4 text-center sm:min-h-[148px] ${styles}`}><p className="text-[9px] font-black uppercase tracking-[0.14em] opacity-65 sm:text-[10px]">{place}</p><p className="mt-3 font-[family-name:var(--font-norwester)] text-4xl leading-none sm:text-5xl">{amount}</p><p className="mt-2 text-[8px] font-black uppercase tracking-[0.12em] opacity-50">End of month prize</p></div>;
-}

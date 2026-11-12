@@ -2860,7 +2860,7 @@ export default function BattleGenerator({generationOnly=false,singleOnly=false}:
 
   function PosterPreview({
     battle,
-    scale = 0.3,
+    scale = 0.24,
     h2h = false,
   }: {
     battle: Battle;
@@ -3742,12 +3742,12 @@ function renderText(
     if (previewBattle) {
       return (
         <section className="grid grid-cols-1 2xl:grid-cols-2 gap-x-28 gap-y-16">
-          <div className="bg-black/30 p-4 rounded-xl text-left border border-yellow-300/20">
+          <div className="w-fit bg-black/30 p-4 rounded-xl text-left border border-yellow-300/20">
             <div className="text-xs text-yellow-200 font-black mb-3">
               LIVE TEMPLATE PREVIEW
             </div>
 
-            {PosterPreview({ battle: previewBattle })}
+            {PosterPreview({ battle: previewBattle, scale: 0.38 })}
           </div>
         </section>
       );
@@ -4394,6 +4394,19 @@ function renderText(
 
   return (
     <div className={generationOnly?"manager-generator-integrated text-white":"min-h-screen bg-[#080806] text-white p-8"}>
+      {generationOnly && (
+        <style jsx global>{`
+          .manager-generator-integrated .bg-yellow-400 { background-color: #c99a32 !important; }
+          .manager-generator-integrated .bg-yellow-300 { background-color: #d4af37 !important; }
+          .manager-generator-integrated .text-yellow-300 { color: #d4af37 !important; }
+          .manager-generator-integrated .text-yellow-200 { color: #e7c96e !important; }
+          .manager-generator-integrated [class*="border-yellow-"] { border-color: rgb(212 175 55 / var(--tw-border-opacity, 1)) !important; }
+          .manager-generator-integrated [class*="ring-yellow-"] { --tw-ring-color: #d4af37 !important; }
+          .manager-generator-integrated [class*="hover:bg-yellow-"]:hover { background-color: #e7c96e !important; }
+          .manager-generator-integrated [class*="hover:border-yellow-"]:hover,
+          .manager-generator-integrated [class*="focus:border-yellow-"]:focus { border-color: #d4af37 !important; }
+        `}</style>
+      )}
       <div className={generationOnly?"w-full space-y-6":"max-w-[1700px] mx-auto space-y-6"}>
 	<div className={generationOnly?"hidden":"flex gap-3 mb-4"}>
   {!generationOnly && <a
