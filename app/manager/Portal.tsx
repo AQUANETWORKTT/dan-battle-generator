@@ -212,8 +212,7 @@ export function Summary({
     profileCreators = data.creators.filter((creator) => creator.agencyDays === 15),
     profileCompleted = profileCreators.filter((creator) => taskRecords.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)).length,
     taskTotal = (morningTasks?.total || 0) + profileCreators.length,
-    taskCompleted = (morningTasks?.completed || 0) + profileCompleted,
-    tasksRemaining = taskTotal - taskCompleted;
+    taskCompleted = (morningTasks?.completed || 0) + profileCompleted;
   useEffect(() => {
     void fetch("/api/manager-tasks", { cache: "no-store" })
       .then((response) => response.json())
@@ -384,8 +383,8 @@ export function Summary({
         <div className="today-tasks-heading">
           <h2 className="today-reminders-title">Today’s tasks</h2>
           {morningTasks !== null && (
-            <p className={tasksRemaining ? "remaining" : "complete"}>
-              {taskCompleted} / {taskTotal} complete · {tasksRemaining ? `${tasksRemaining} tasks remaining` : "All tasks done"}
+            <p className="today-task-count">
+              {taskCompleted} / {taskTotal} completed
             </p>
           )}
         </div>
@@ -402,6 +401,7 @@ export function Summary({
           onCount={setMorningTasks}
         />
       )}
+      {tab === "today" && owner && <MasterTaskSummary data={data} />}
       {tab === "today" && (
         <ManagerReminders
           owner={owner}
@@ -500,6 +500,36 @@ export function Summary({
       )}
     </>
   );
+}
+function MasterTaskSummary({ data }: { data: Overview }) {
+  const [morning, setMorning] = useState<Array<{ id: string; username: string; manager: string; managerKey: string; completed: boolean }>>([]);
+  const [saved, setSaved] = useState<TaskRecord[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      fetch("/api/morning-messages?scope=owner", { cache: "no-store" }).then((response) => response.json()),
+      fetch("/api/manager-tasks", { cache: "no-store" }).then((response) => response.json()),
+    ]).then(([messages, tasks]) => {
+      if (!active) return;
+      setMorning(messages.items || []);
+      setSaved(tasks.records || []);
+      setLoaded(true);
+    }).catch(() => active && setLoaded(true));
+    return () => { active = false; };
+  }, []);
+  if (!loaded) return <p className="manager-muted">Loading task summary…</p>;
+  const team = new Map<string, { name: string; completed: number; tasks: string[] }>();
+  const register = (managerKey: string, manager: string, label: string, completed: boolean) => {
+    const entry = team.get(managerKey) || { name: manager, completed: 0, tasks: [] };
+    if (completed) entry.completed += 1;
+    else entry.tasks.push(label);
+    team.set(managerKey, entry);
+  };
+  morning.forEach((item) => register(item.managerKey, item.manager, `Morning message · @${item.username}`, item.completed));
+  data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, `Profile picture · @${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
+  const entries = [...team.entries()].sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Uncompleted tasks</h2></div><span>{entries.reduce((total, [, entry]) => total + entry.tasks.length, 0)} remaining</span></header>{entries.map(([key, entry]) => { const total = entry.completed + entry.tasks.length; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{entry.tasks.length} remaining</em></summary>{entry.tasks.length ? <ul>{entry.tasks.map((task) => <li key={task}>{task}</li>)}</ul> : <p>All tasks complete.</p>}</details>; })}</section>;
 }
 export default function Dashboard({
   creators = false,
