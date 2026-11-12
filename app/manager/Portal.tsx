@@ -411,23 +411,6 @@ export function Summary({
           <section className="profile-update-reminder profile-update-compact">
             <div>
               <h2>Profile picture changes</h2>
-              <div className="profile-reminder-downloads">
-                <span className="profile-picture-reference">
-                  <img
-                    src="/branding/chat-profiles/blue.png"
-                    alt="Blue profile picture"
-                  />
-                  Blue
-                </span>
-                <span>→</span>
-                <span className="profile-picture-reference">
-                  <img
-                    src="/branding/chat-profiles/bronze.png"
-                    alt="Bronze profile picture"
-                  />
-                  Bronze
-                </span>
-              </div>
               <p className="manager-muted">
                 These creators have reached day 15. Change their chat profile
                 picture from blue to bronze.
@@ -442,6 +425,11 @@ export function Summary({
                     <div>
                       <strong>@{c.username}</strong>
                       <span className="manager-muted">{c.manager}</span>
+                      <span className="profile-picture-change">
+                        <img src="/branding/chat-profiles/blue.png" alt="Blue profile picture" />
+                        <span>→</span>
+                        <img src="/branding/chat-profiles/bronze.png" alt="Bronze profile picture" />
+                      </span>
                     </div>
                     <span className="profile-update-colours">
                       <i />→<i />
