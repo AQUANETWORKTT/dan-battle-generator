@@ -19,35 +19,33 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
  const unique=new Map<string,Stat>();for(const r of daily)if(r.creator_id)unique.set(String(r.creator_id)+':'+r.stat_date,r);
  const values=[...unique.values()],date=new Date(latest+'T12:00:00Z'),month=latest.slice(0,7),previous=day(new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()-1,1))).slice(0,7);
  const cutoff=Math.min(date.getUTCDate(),new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),0)).getUTCDate());
- const weekStart=day(new Date(date.getTime()-6*86400000)),priorStart=day(new Date(date.getTime()-13*86400000));
  const latestRoster=new Map<string,Stat>();for(const r of rows)if(String(r.stat_date)===latest&&r.creator_id)latestRoster.set(String(r.creator_id),r);
  const normalizedGroups=Object.fromEntries(Object.entries(groups).map(([k,v])=>[k.toLowerCase().replace(/[^a-z0-9]/g,''),v]));
  const observedDates=new Set(values.map(r=>String(r.stat_date)));
  const matchedDays=Array.from({length:cutoff},(_,i)=>String(i+1).padStart(2,'0')).filter(d=>observedDates.has(month+'-'+d)&&observedDates.has(previous+'-'+d));
  const creators=[...latestRoster.values()].filter(r=>scope?managerKey(r)===scope:allAgencies||firstClassStarCreator(r,normalizedGroups)).map(r=>{
   const id=String(r.creator_id),history=values.filter(x=>String(x.creator_id)===id),current=history.filter(x=>String(x.stat_date).startsWith(month)),prev=history.filter(x=>String(x.stat_date).startsWith(previous));
-  const sum=(rs:Stat[],key:string)=>rs.reduce((s,x)=>s+n(x[key]),0),week=history.filter(x=>String(x.stat_date)>=weekStart),prior=history.filter(x=>String(x.stat_date)>=priorStart&&String(x.stat_date)<weekStart),today=history.find(x=>x.stat_date===latest);
+  const sum=(rs:Stat[],key:string)=>rs.reduce((s,x)=>s+n(x[key]),0),today=history.find(x=>x.stat_date===latest);
   const raw=String(r.manager_email||r.creator_network_manager||r.email||'');
   const potential=creatorPotential(history.map(x=>({date:String(x.stat_date),known:true,hours:n(x.live_hours),diamonds:n(x.diamonds),battles:n(x.matches),streams:n(x.live_streams)})),month,sum(current,'diamonds'),latest,Array.from({length:date.getUTCDate()},(_,i)=>{const date=month+'-'+String(i+1).padStart(2,'0'),x=current.find(r=>r.stat_date===date);return {date,known:observedDates.has(date),hours:x?n(x.live_hours):0,diamonds:x?n(x.diamonds):0,battles:x?n(x.matches):0,streams:x?n(x.live_streams):0};}));
   return {id,potential,agencyDays:r.days_since_joining!==null&&r.days_since_joining!==undefined&&Number.isFinite(Number(r.days_since_joining))?Math.max(0,Number(r.days_since_joining)+Math.floor((new Date(new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())+'T12:00:00Z').getTime()-date.getTime())/86400000)):null,hasPreviousRecords:prev.length>0,graduationStatus:String(r.graduation_status||''),validDays:sum(current,'valid_live_days'),managerKey:managerKey(r),group:Object.entries(groups).find(([k])=>recruitmentManagerIdentity(k)===managerKey(r))?.[1]||'Unassigned',username:String(r.creator_username||'').replace(/^@/,''),manager:Object.entries(names).find(([k])=>recruitmentManagerIdentity(k)===managerKey(r))?.[1]||raw,
    diamonds:sum(current,'diamonds'),previousDiamonds:sum(prev,'diamonds'),previousComparable:sum(prev.filter(x=>Number(String(x.stat_date).slice(-2))<=cutoff),'diamonds'),hours:sum(current,'live_hours'),liveDays:current.filter(x=>n(x.live_hours)>0||n(x.diamonds)>0).length,
    comparedCurrent:sum(current.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))),'diamonds'),comparedPrevious:sum(prev.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))),'diamonds'),comparedHours:sum(current.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))),'live_hours'),previousHours:sum(prev.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))),'live_hours'),comparedLiveDays:current.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))&&n(x.live_hours)>0).length,previousLiveDays:prev.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))&&n(x.live_hours)>0).length,
-   weekBattles:sum(week,'matches'),priorWeekBattles:sum(prior,'matches'),
+   comparedBattles:sum(current.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))),'matches'),previousBattles:sum(prev.filter(x=>matchedDays.includes(String(x.stat_date).slice(-2))),'matches'),
    potentialTimeline:Array.from({length:date.getUTCDate()},(_,i)=>{const date=month+'-'+String(i+1).padStart(2,'0'),r=current.find(x=>x.stat_date===date);return {date,known:observedDates.has(date),hours:r?n(r.live_hours):0,diamonds:r?n(r.diamonds):0,battles:r?n(r.matches):0,streams:r?n(r.live_streams):0};}),
    timeline:Array.from({length:14},(_,i)=>{const date=day(new Date(new Date(latest+'T12:00:00Z').getTime()-(13-i)*86400000)),r=history.find(x=>x.stat_date===date);return {date,known:observedDates.has(date),hours:r?n(r.live_hours):0,diamonds:r?n(r.diamonds):0,battles:r?n(r.matches):0,streams:r?n(r.live_streams):0};}),
-   latestHours:today?n(today.live_hours):null,weekHours:sum(week,'live_hours'),priorWeekHours:sum(prior,'live_hours'),lastLive:history.filter(x=>n(x.live_hours)>0).map(x=>String(x.stat_date)).sort().at(-1)||null};
+   latestHours:today?n(today.live_hours):null,lastLive:history.filter(x=>n(x.live_hours)>0).map(x=>String(x.stat_date)).sort().at(-1)||null};
  }).sort((a,b)=>b.diamonds-a.diamonds);
  const total=creators.reduce((s,c)=>s+c.diamonds,0),previousTotal=creators.reduce((s,c)=>s+c.previousComparable,0);
  const dates=new Set(values.map(r=>String(r.stat_date)));
  const complete=(start:string,end:string)=>{for(let d=new Date(start+'T12:00:00Z');day(d)<=end;d.setUTCDate(d.getUTCDate()+1))if(!dates.has(day(d)))return false;return true;};
  const comparable=complete(month+'-01',latest)&&complete(previous+'-01',previous+'-'+String(cutoff).padStart(2,'0'));
- const weeklyComplete=complete(priorStart,latest);
  const priorities=creators.flatMap(c=>{
   if(c.hours===0&&c.potentialTimeline.every(d=>d.known&&d.hours===0&&d.streams===0))return [];
   if(Math.max(c.previousDiamonds,c.diamonds)<20000)return [];
   const loss=c.comparedPrevious-c.comparedCurrent,drop=c.comparedPrevious?loss/c.comparedPrevious:0,hoursLoss=c.previousHours-c.comparedHours,daysLoss=c.previousLiveDays-c.comparedLiveDays;
   const diamondDrop=loss>=5000&&drop>=.2,hoursDrop=c.previousHours>=5&&hoursLoss>=3&&hoursLoss/c.previousHours>=.3,daysDrop=daysLoss>=2;
-  const inactive=c.latestHours===0,battlesDrop=weeklyComplete&&c.priorWeekBattles>=5&&c.weekBattles<c.priorWeekBattles*.7;
+  const inactive=c.latestHours===0,battlesDrop=comparable&&c.previousBattles>=5&&c.comparedBattles<c.previousBattles*.7;
   if(!diamondDrop&&!hoursDrop&&!daysDrop&&!inactive&&!battlesDrop)return [];
   const f=(n:number)=>n.toLocaleString('en-GB'),reasons:string[]=[];
   const away=c.lastLive?Math.round((new Date(latest+'T12:00:00Z').getTime()-new Date(c.lastLive+'T12:00:00Z').getTime())/86400000):null;
@@ -55,7 +53,7 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
   if(diamondDrop)reasons.push(`Diamonds are down ${Math.round(drop*100)}% (${f(c.comparedPrevious)} → ${f(c.comparedCurrent)}).`);
   if(hoursDrop)reasons.push(`LIVE time: ${c.previousHours.toFixed(1)} → ${c.comparedHours.toFixed(1)} hours.`);
   if(daysDrop)reasons.push(`LIVE days: ${c.previousLiveDays} → ${c.comparedLiveDays}.`);
-  if(battlesDrop)reasons.push(`Battles: ${c.priorWeekBattles} → ${c.weekBattles} over the last two weeks.`);
+  if(battlesDrop)reasons.push(`Battles: ${c.previousBattles} → ${c.comparedBattles} this month versus last month, through day ${cutoff}.`);
   let insight='',action='';
   if(inactive&&away&&away>=3){insight=diamondDrop?'The diamond drop comes alongside a sharp slowdown in activity. Getting them back is the first thing to tackle.':'They’ve been away for a few days. Start by finding out what’s keeping them off LIVE.';action='Check in with them, ask what’s changed and when they next plan to go live. Work out a manageable return with them before pushing for more hours or matches.';}
   else if(diamondDrop&&(hoursDrop||daysDrop)){insight='They’re spending less time live, which may be a big part of the lost diamonds.';action='Ask what’s made it harder to get on this month. Look at the days that worked for them before and agree a routine they can realistically keep.';}
@@ -69,6 +67,6 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
 
  const rosterIds=new Set(creators.map(c=>c.id));let running=0;
  const dailyTotals=[...new Set(values.filter(r=>String(r.stat_date).startsWith(month)).map(r=>String(r.stat_date)))].sort().map(date=>{running+=values.filter(r=>r.stat_date===date&&rosterIds.has(String(r.creator_id))).reduce((s,r)=>s+n(r.diamonds),0);return {day:Number(date.slice(-2)),diamonds:running};});
- return {quoteSeed:0,filterGroup:'',filterManager:'',newCreatorTotals:[] as {managerKey:string;group:string;count:number;diamonds:number}[],dailyTotals,previousRoster:[] as {managerKey:string;group:string;count:number}[],previousRosterDate:null as string|null,latest,creators,total,previousTotal,comparable,priorities,coverage:dates.size,excludedPeriodRows:rows.length-daily.length,weekStart,month,previous,matchedComparisonDays:matchedDays.length,scope:scope?'Your team':'First Class',topThreeShare:total?Math.round(creators.slice(0,3).reduce((s,c)=>s+c.diamonds,0)/total*100):0};
+ return {quoteSeed:0,filterGroup:'',filterManager:'',newCreatorTotals:[] as {managerKey:string;group:string;count:number;diamonds:number}[],dailyTotals,previousRoster:[] as {managerKey:string;group:string;count:number}[],previousRosterDate:null as string|null,latest,creators,total,previousTotal,comparable,priorities,coverage:dates.size,excludedPeriodRows:rows.length-daily.length,month,previous,matchedComparisonDays:matchedDays.length,scope:scope?'Your team':'First Class',topThreeShare:total?Math.round(creators.slice(0,3).reduce((s,c)=>s+c.diamonds,0)/total*100):0};
 }
 export type Overview=ReturnType<typeof overview>;
