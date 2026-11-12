@@ -423,13 +423,15 @@ export function Summary({
                   <div key={c.id} className={"profile-update-person" + (taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed) ? " completed" : "")}>
                     <Picture username={c.username} />
                     <div>
-                      <strong>@{c.username}</strong>
+                      <div className="profile-update-name-row">
+                        <strong>@{c.username}</strong>
+                        <span className="profile-picture-change">
+                          <img src="/branding/chat-profiles/blue.png" alt="Blue profile picture" />
+                          <span>→</span>
+                          <img src="/branding/chat-profiles/bronze.png" alt="Bronze profile picture" />
+                        </span>
+                      </div>
                       <span className="manager-muted">{c.manager}</span>
-                      <span className="profile-picture-change">
-                        <img src="/branding/chat-profiles/blue.png" alt="Blue profile picture" />
-                        <span>→</span>
-                        <img src="/branding/chat-profiles/bronze.png" alt="Bronze profile picture" />
-                      </span>
                     </div>
                     <span className="profile-update-colours">
                       <i />→<i />
