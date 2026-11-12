@@ -200,10 +200,9 @@ export function Summary({
   onUnmanagedChange?: (records: UnmanagedRecord[]) => void;
 }) {
   const [tab, setTab] = useState<
-    "today" | "daily" | "inactive" | "graduation" | "mature" | "maintain" | "unmanaged"
+    "today" | "daily" | "inactive" | "graduation" | "mature" | "maintain" | "unmanaged" | "master-tasks"
   >("today");
   const [morningTasks, setMorningTasks] = useState<{ total: number; completed: number } | null>(null);
-  const [showMasterTasks, setShowMasterTasks] = useState(false);
   const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
@@ -386,7 +385,7 @@ export function Summary({
           {morningTasks !== null && (
             <div className="today-task-actions">
               <p className="today-task-count">{taskCompleted} / {taskTotal} completed</p>
-              {owner && <button type="button" onClick={() => setShowMasterTasks((open) => !open)}>View tasks</button>}
+              {owner && <button type="button" onClick={() => setTab("master-tasks")}>View tasks</button>}
             </div>
           )}
         </div>
@@ -403,7 +402,7 @@ export function Summary({
           onCount={setMorningTasks}
         />
       )}
-      {tab === "today" && owner && showMasterTasks && <MasterTaskSummary data={data} />}
+      {tab === "master-tasks" && owner && <MasterTaskSummary data={data} onBack={() => setTab("today")} />}
       {tab === "today" && (
         <ManagerReminders
           owner={owner}
@@ -456,7 +455,7 @@ export function Summary({
             </div>
           </section>
         )}
-      {tab === "today" ? null : tab === "unmanaged" ? (
+      {tab === "today" || tab === "master-tasks" ? null : tab === "unmanaged" ? (
         <UnmanagedPanel
           records={unmanaged}
           onChanged={onUnmanagedChange}
@@ -503,7 +502,7 @@ export function Summary({
     </>
   );
 }
-function MasterTaskSummary({ data }: { data: Overview }) {
+function MasterTaskSummary({ data, onBack }: { data: Overview; onBack: () => void }) {
   const [morning, setMorning] = useState<Array<{ id: string; username: string; manager: string; managerKey: string; completed: boolean }>>([]);
   const [saved, setSaved] = useState<TaskRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -531,7 +530,7 @@ function MasterTaskSummary({ data }: { data: Overview }) {
   morning.forEach((item) => register(item.managerKey, item.manager, "Morning messages", `@${item.username}`, item.completed));
   data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, "Change profile picture", `@${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
   const entries = [...team.entries()].sort(([, a], [, b]) => a.name.localeCompare(b.name));
-  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Manager task summary</h2></div></header>{entries.map(([key, entry]) => { const remaining = Object.values(entry.groups).flat().length, total = entry.completed + remaining; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{remaining} remaining</em></summary>{remaining ? <div className="master-task-groups">{Object.entries(entry.groups).map(([group, tasks]) => <details key={group}><summary>{group}: {tasks.length}</summary><ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul></details>)}</div> : <p>All tasks complete.</p>}</details>; })}</section>;
+  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Manager task summary</h2></div><button type="button" onClick={onBack}>← Today’s tasks</button></header>{entries.map(([key, entry]) => { const remaining = Object.values(entry.groups).flat().length, total = entry.completed + remaining; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{remaining} remaining</em></summary>{remaining ? <div className="master-task-groups">{Object.entries(entry.groups).map(([group, tasks]) => <details key={group}><summary>{group}: {tasks.length}</summary><ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul></details>)}</div> : <p>All tasks complete.</p>}</details>; })}</section>;
 }
 export default function Dashboard({
   creators = false,
