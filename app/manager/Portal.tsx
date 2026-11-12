@@ -433,9 +433,6 @@ export function Summary({
                       </div>
                       <span className="manager-muted">{c.manager}</span>
                     </div>
-                    <span className="profile-update-colours">
-                      <i />→<i />
-                    </span>
                     <label className="morning-complete">
                       <span>Done</span>
                       <input type="checkbox" checked={taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed)} onChange={() => void toggleProfileTask(c)} />
