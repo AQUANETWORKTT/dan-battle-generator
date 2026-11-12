@@ -44,7 +44,7 @@ export default function MorningMessages({
 }: {
   owner?: boolean;
   managerKeys?: string[];
-  onCount?: (count: number) => void;
+  onCount?: (summary: { total: number; completed: number }) => void;
   mainTeamOnly?: boolean;
   showHeading?: boolean;
 }) {
@@ -148,9 +148,14 @@ export default function MorningMessages({
   const selected = items.filter(
     (i) => !managerKeys || managerKeys.includes(i.managerKey),
   );
+  const selectedCompleted = selected.filter((item) => item.completed).length;
   useEffect(() => {
-    if (loaded && !error) onCount?.(selected.length);
-  }, [loaded, error, selected.length, onCount]);
+    if (loaded && !error)
+      onCount?.({
+        total: selected.length,
+        completed: selectedCompleted,
+      });
+  }, [loaded, error, selected.length, selectedCompleted, onCount]);
   if (error && !loaded) return <p className="manager-error">{error}</p>;
   if (!loaded)
     return (

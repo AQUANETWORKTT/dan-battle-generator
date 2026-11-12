@@ -202,13 +202,18 @@ export function Summary({
   const [tab, setTab] = useState<
     "today" | "daily" | "inactive" | "graduation" | "mature" | "maintain" | "unmanaged"
   >("today");
-  const [morningCount, setMorningCount] = useState<number | null>(null);
+  const [morningTasks, setMorningTasks] = useState<{ total: number; completed: number } | null>(null);
   const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
       : null,
     priorRoster = data.previousRoster.reduce((n, r) => n + r.count, 0),
-    delta = data.creators.length - priorRoster;
+    delta = data.creators.length - priorRoster,
+    profileCreators = data.creators.filter((creator) => creator.agencyDays === 15),
+    profileCompleted = profileCreators.filter((creator) => taskRecords.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)).length,
+    taskTotal = (morningTasks?.total || 0) + profileCreators.length,
+    taskCompleted = (morningTasks?.completed || 0) + profileCompleted,
+    tasksRemaining = taskTotal - taskCompleted;
   useEffect(() => {
     void fetch("/api/manager-tasks", { cache: "no-store" })
       .then((response) => response.json())
@@ -376,7 +381,14 @@ export function Summary({
           </div>
       </div>
       {tab === "today" && (
-        <h2 className="today-reminders-title">Today’s reminders</h2>
+        <div className="today-tasks-heading">
+          <h2 className="today-reminders-title">Today’s tasks</h2>
+          {morningTasks !== null && (
+            <p className={tasksRemaining ? "remaining" : "complete"}>
+              {taskCompleted} / {taskTotal} complete · {tasksRemaining ? `${tasksRemaining} tasks remaining` : "All tasks done"}
+            </p>
+          )}
+        </div>
       )}
       {tab === "today" && (
         <MorningMessages
@@ -387,7 +399,7 @@ export function Summary({
               ? Array.from(new Set(data.creators.map((c) => c.managerKey)))
               : undefined
           }
-          onCount={setMorningCount}
+          onCount={setMorningTasks}
         />
       )}
       {tab === "today" && (
@@ -396,8 +408,8 @@ export function Summary({
           showToday
           hasProfileUpdates={
             data.creators.some((c) => c.agencyDays === 15) ||
-            morningCount === null ||
-            morningCount > 0
+            morningTasks === null ||
+            morningTasks.total > 0
           }
           managerKeys={
             owner
