@@ -6,6 +6,7 @@ import {recruitmentManagerIdentity} from './recruitment-manager-aliases';
 
 const assignmentKey=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]/g,'');
 export const firstClassManagerGroup=(group:unknown)=>group==='Team Dan / James';
+export async function managerAndJuniorKeys(manager:string){const r=await database().from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle();check(r.error);const assignments=r.data?.template_json?.assignments||{},parents:Record<string,string>=assignments.managerParents||{},root=recruitmentManagerIdentity(manager),keys=new Set([root]);let changed=true;while(changed){changed=false;for(const [child,parent] of Object.entries(parents))if(keys.has(recruitmentManagerIdentity(parent))&&!keys.has(recruitmentManagerIdentity(child))){keys.add(recruitmentManagerIdentity(child));changed=true;}}return [...keys];}
 async function allowedManagerKeys(){const r=await database().from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle();check(r.error);const a=r.data?.template_json?.assignments||{},deleted=new Set((a.deletedManagers||[]).map(assignmentKey));return new Set<string>(Object.entries(a.managerGroups||{}).filter(([k,g])=>firstClassManagerGroup(g)&&!deleted.has(assignmentKey(k))).map(([k])=>recruitmentManagerIdentity(k)));}
 
 export const MANAGER_COOKIE='first-class-manager-session';

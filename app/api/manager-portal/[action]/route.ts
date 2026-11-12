@@ -30,6 +30,7 @@ import {
   updateAccount,
   adminAccounts,
   resetDefaultPasswords,
+  managerAndJuniorKeys,
 } from "@/lib/manager-portal";
 import { loginActivity, londonDate } from "@/lib/manager-login-activity";
 import { loadCreatorDevelopment } from "@/lib/creator-development-server";
@@ -285,8 +286,9 @@ async function handle(
             (r.all || r.managerKeys.includes(account.manager_key)),
         ),
       });
+    const managedKeys = await managerAndJuniorKeys(account.manager_key);
     if (action === "inactive" && req.method === "GET")
-      return json(await loadInactiveCreators(account.manager_key));
+      return json(await loadInactiveCreators(managedKeys));
     if (action === "leaderboard" && req.method === "GET") {
       const saved = await database()
         .from("poster_templates")
@@ -321,10 +323,10 @@ async function handle(
       });
     }
     if (action === "development" && req.method === "GET")
-      return json(await loadCreatorDevelopment(account.manager_key));
+      return json(await loadCreatorDevelopment(managedKeys));
     if (action === "overview" && req.method === "GET")
       return json({
-        ...(await loadOverview(account.manager_key)),
+        ...(await loadOverview(managedKeys)),
         quoteSeed: Number(account.number),
       });
     return json({ error: "Not found" }, 404);

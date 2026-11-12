@@ -4,7 +4,7 @@ import {database} from './creator-api-search/db';
 import {loadOverview} from './manager-overview-server';
 import {unstable_cache} from 'next/cache';
 type Row={id:string;creator_id:string;stat_date:string;data_period:string|null;diamonds:number;live_hours:number};
-async function read(scope:string|null){
+async function read(scope:string|string[]|null){
  const overview=await loadOverview(scope),elapsed=Number(overview.latest.slice(-2));
  const inactive=overview.creators.filter(c=>c.hours===0&&c.potentialTimeline.length===elapsed&&c.potentialTimeline.every(d=>d.known&&d.hours===0&&d.streams===0));
  const history:Row[]=[];
