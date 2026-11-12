@@ -58,3 +58,12 @@ The owner overview displays 100 original motivational quotes, selected determini
 Branding asset: `public/branding/first-class-management.png`, generated with the built-in image tool. Prompt: preserve the supplied FIRST CLASS angular metallic-gold lettering and black background; replace SPACE with centred MANAGEMENT in matching widely spaced uppercase gold lettering, with no extra decoration. The entrance now uses this wordmark.
 
 Local development also stores the compressed snapshot under the ignored `.next/cache/first-class-portal` directory. This avoids Next development mode bypassing its normal cache when the browser sends `Cache-Control: no-cache`. Upload invalidation rotates a local revision as well as invalidating the production cache tag. The first local build remains slower; repeat hard-refresh testing returned 0.10 seconds. Clearing `.next` removes these development snapshots. Quotes are original app text, not externally fetched or attributed quotations.
+
+## Limited manager launch
+
+The manager login page has two independent entry points:
+
+- **Poster Generator** issues only the signed poster cookie and clears manager cookies, so all other navigation stays disabled.
+- The temporary manager username **DA07** is checked on the server and opens the enabled `firstclassagencydan` account through its normal opaque session. No other manager account has full access in this launch mode. Existing account passwords are unchanged.
+
+`MANAGER_POSTER_ONLY` remains enabled. `fullManagerAccess` permits the Dan / James account as the sole preview exception; KJB access remains disabled. Manager APIs still validate the account and assignment scope. The manager leaderboard chooses A/B membership from Manager Assignments and returns First Class leaderboard rows without individual recruitment records.
