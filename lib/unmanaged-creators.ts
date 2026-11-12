@@ -7,6 +7,7 @@ export type UnmanagedCreator = {
   username: string;
   managerKey: string;
   reason: "leave-request" | "no-contact" | "away" | "other";
+  note?: string;
   hoursAtMove: number;
   createdAt: string;
 };

@@ -21,6 +21,7 @@ type UnmanagedRecord = {
   username: string;
   managerKey: string;
   reason: "leave-request" | "no-contact" | "away" | "other";
+  note?: string;
   hoursAtMove: number;
   createdAt: string;
 };
@@ -791,6 +792,17 @@ export function ManageCreator({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
+  const [showOtherReason, setShowOtherReason] = useState(false);
+  const [otherReason, setOtherReason] = useState("");
+  function openDialog() {
+    const element = dialog.current;
+    if (!element) return;
+    element.style.setProperty("position", "fixed", "important");
+    element.style.setProperty("inset", "50% auto auto 50%", "important");
+    element.style.setProperty("margin", "0", "important");
+    element.style.setProperty("transform", "translate(-50%, -50%)", "important");
+    element.showModal();
+  }
   async function move(
     reason: "leave-request" | "no-contact" | "away" | "other",
   ) {
@@ -800,10 +812,13 @@ export function ManageCreator({
         action: "move",
         creator,
         reason,
+        note: reason === "other" ? otherReason.trim() : undefined,
       });
       if (onChanged) onChanged(data.records || []);
       else window.location.reload();
       dialog.current?.close();
+      setShowOtherReason(false);
+      setOtherReason("");
     } finally {
       setBusy(false);
     }
@@ -813,7 +828,7 @@ export function ManageCreator({
       <button
         type="button"
         className="creator-manage-button"
-        onClick={() => dialog.current?.showModal()}
+        onClick={openDialog}
       >
         Manage
       </button>
@@ -833,7 +848,11 @@ export function ManageCreator({
             type="button"
             className="creator-manage-close"
             aria-label="Close manage options"
-            onClick={() => dialog.current?.close()}
+            onClick={() => {
+              dialog.current?.close();
+              setShowOtherReason(false);
+              setOtherReason("");
+            }}
           >
             ×
           </button>
@@ -844,7 +863,6 @@ export function ManageCreator({
             ["leave-request", "Leave request"],
             ["no-contact", "No contact"],
             ["away", "Away"],
-            ["other", "Other reason"],
           ] as const
         ).map(([reason, label]) => (
           <button
@@ -855,7 +873,41 @@ export function ManageCreator({
             {label}
           </button>
         ))}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setShowOtherReason(true)}
+          >
+            Other reason
+          </button>
         </div>
+        {showOtherReason && (
+          <form
+            className="creator-manage-other-reason"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (otherReason.trim()) void move("other");
+            }}
+          >
+            <label htmlFor={`other-reason-${creator.id}`}>Reason</label>
+            <textarea
+              id={`other-reason-${creator.id}`}
+              value={otherReason}
+              autoFocus
+              placeholder="Add a short reason…"
+              onChange={(event) => setOtherReason(event.target.value)}
+              maxLength={500}
+            />
+            <div>
+              <button type="button" onClick={() => setShowOtherReason(false)}>
+                Cancel
+              </button>
+              <button type="submit" disabled={busy || !otherReason.trim()}>
+                Move to unmanaged
+              </button>
+            </div>
+          </form>
+        )}
       </dialog>
     </>
   );
@@ -898,6 +950,7 @@ function UnmanagedPanel({
             <div>
               <strong>@{item.username}</strong>
               <span>{label(item.reason)}</span>
+              {item.note && <span>{item.note}</span>}
               {showTeams && <span>Team: {teams[item.managerKey] || item.managerKey}</span>}
             </div>
             <button onClick={() => void restore(item.id)}>

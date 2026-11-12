@@ -170,11 +170,16 @@ async function handle(
           return json({ error: "Invalid creator." }, 400);
         if (!owner && body.creator.managerKey !== account!.manager_key)
           return json({ error: "Not allowed." }, 403);
+        const note =
+          typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
+        if (body.reason === "other" && !note)
+          return json({ error: "Add a reason before moving this creator." }, 400);
         const record: UnmanagedCreator = {
           id: body.creator.id,
           username: body.creator.username,
           managerKey: body.creator.managerKey,
           reason: body.reason,
+          ...(note ? { note } : {}),
           hoursAtMove: Number(body.creator.hours) || 0,
           createdAt: new Date().toISOString(),
         };

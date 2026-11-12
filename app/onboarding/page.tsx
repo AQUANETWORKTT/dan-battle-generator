@@ -1,3 +1,3 @@
-import Tracker from "./Tracker";
+import { redirect } from "next/navigation";
 
-export default function Page() { return <Tracker />; }
+export default function Page() { redirect("/login/manager"); }
