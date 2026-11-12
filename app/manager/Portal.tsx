@@ -25,6 +25,7 @@ type UnmanagedRecord = {
   hoursAtMove: number;
   createdAt: string;
 };
+type TaskRecord = { id: string; managerKey: string; completed: boolean };
 const warmRequests = new Map<
   string,
   { at: number; promise: Promise<any>; value?: any }
@@ -202,11 +203,38 @@ export function Summary({
     "today" | "daily" | "inactive" | "graduation" | "mature" | "maintain" | "unmanaged"
   >("today");
   const [morningCount, setMorningCount] = useState<number | null>(null);
+  const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
       : null,
     priorRoster = data.previousRoster.reduce((n, r) => n + r.count, 0),
     delta = data.creators.length - priorRoster;
+  useEffect(() => {
+    void fetch("/api/manager-tasks", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((result) => setTaskRecords(result.records || []))
+      .catch(() => {});
+  }, []);
+  async function toggleProfileTask(creator: Overview["creators"][number]) {
+    const id = `profile:${data.month}:${creator.id}`;
+    const current = taskRecords.some((task) => task.id === id && task.managerKey === creator.managerKey && task.completed);
+    const completed = !current;
+    setTaskRecords((records) => [
+      ...records.filter((task) => !(task.id === id && task.managerKey === creator.managerKey)),
+      { id, managerKey: creator.managerKey, completed },
+    ]);
+    try {
+      const response = await fetch("/api/manager-tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, managerKey: creator.managerKey, completed }) });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Could not save task.");
+      setTaskRecords(result.records || []);
+    } catch {
+      setTaskRecords((records) => [
+        ...records.filter((task) => !(task.id === id && task.managerKey === creator.managerKey)),
+        { id, managerKey: creator.managerKey, completed: current },
+      ]);
+    }
+  }
   return (
     <>
       <div className="review-tabs" role="tablist">
@@ -378,9 +406,9 @@ export function Summary({
           }
         />
       )}
-      {(tab === "today" || tab === "daily") &&
+      {tab === "today" &&
         data.creators.some((c) => c.agencyDays === 15) && (
-          <section className="profile-update-reminder">
+          <section className="profile-update-reminder profile-update-compact">
             <div>
               <h2>Profile picture changes</h2>
               <div className="profile-reminder-downloads">
@@ -409,7 +437,7 @@ export function Summary({
               {data.creators
                 .filter((c) => c.agencyDays === 15)
                 .map((c) => (
-                  <div key={c.id} className="profile-update-person">
+                  <div key={c.id} className={"profile-update-person" + (taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed) ? " completed" : "")}>
                     <Picture username={c.username} />
                     <div>
                       <strong>@{c.username}</strong>
@@ -418,6 +446,10 @@ export function Summary({
                     <span className="profile-update-colours">
                       <i />→<i />
                     </span>
+                    <label className="morning-complete">
+                      <span>Done</span>
+                      <input type="checkbox" checked={taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed)} onChange={() => void toggleProfileTask(c)} />
+                    </label>
                   </div>
                 ))}
             </div>
