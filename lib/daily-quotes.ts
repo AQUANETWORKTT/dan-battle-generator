@@ -100,6 +100,5 @@ const BASE_QUOTES=[
 'Your next step matters more than your last setback.',
 'Build something today that you can build on tomorrow.',
 ] as const;
-const FOLLOWUPS=['Keep the next step clear and achievable.','Choose one useful action and follow it through.','Let steady habits do their work.','Make time for the people behind the numbers.','Notice the effort that is worth repeating.','A clear plan gives today some direction.','Listen first, then decide what support will help.','Build on what worked and adjust what did not.','Be consistent with the encouragement you give.','Keep progress practical and recognise it along the way.'];
-export const DAILY_QUOTES=Array.from({length:1000},(_,i)=>BASE_QUOTES[i%BASE_QUOTES.length]+' '+FOLLOWUPS[Math.floor(i/BASE_QUOTES.length)]);
+export const DAILY_QUOTES=[...BASE_QUOTES];
 export function dailyQuote(date=new Date(),managerSeed=0){const key=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(date),day=Math.floor(Date.parse(key+'T00:00:00Z')/86400000),index=((day+managerSeed*37)%DAILY_QUOTES.length+DAILY_QUOTES.length)%DAILY_QUOTES.length;return DAILY_QUOTES[index];}

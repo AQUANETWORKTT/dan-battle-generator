@@ -1,7 +1,9 @@
+import {starterFocus} from './starter-focus';
 import {creatorPotential} from './creator-potential';
 import {recruitmentManagerIdentity} from './recruitment-manager-aliases';
 import {firstClassStarCreator} from './star-tracker';
 export type Stat = Record<string,unknown>;
+export const portalCreatorActive=(row:Stat)=>! /creator\s+has\s+quit\s+(?:the\s+)?network|quit\s+(?:the\s+)?creator\s+network/i.test(JSON.stringify(row));
 export const managerKey=(r:Stat)=>recruitmentManagerIdentity(String(r.manager_email||r.creator_network_manager||r.email||''));
 const n=(v:unknown)=>Number(String(v??0).replace(/,/g,''))||0;
 const day=(d:Date)=>d.toISOString().slice(0,10);
@@ -19,7 +21,7 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
  const unique=new Map<string,Stat>();for(const r of daily)if(r.creator_id)unique.set(String(r.creator_id)+':'+r.stat_date,r);
  const values=[...unique.values()],date=new Date(latest+'T12:00:00Z'),month=latest.slice(0,7),previous=day(new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()-1,1))).slice(0,7);
  const cutoff=Math.min(date.getUTCDate(),new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),0)).getUTCDate());
- const latestRoster=new Map<string,Stat>();for(const r of rows)if(String(r.stat_date)===latest&&r.creator_id)latestRoster.set(String(r.creator_id),r);
+ const latestRoster=new Map<string,Stat>();for(const r of rows)if(String(r.stat_date)===latest&&r.creator_id){if(portalCreatorActive(r))latestRoster.set(String(r.creator_id),r);else latestRoster.delete(String(r.creator_id));}
  const normalizedGroups=Object.fromEntries(Object.entries(groups).map(([k,v])=>[k.toLowerCase().replace(/[^a-z0-9]/g,''),v]));
  const observedDates=new Set(values.map(r=>String(r.stat_date)));
  const matchedDays=Array.from({length:cutoff},(_,i)=>String(i+1).padStart(2,'0')).filter(d=>observedDates.has(month+'-'+d)&&observedDates.has(previous+'-'+d));
@@ -40,7 +42,7 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
  const dates=new Set(values.map(r=>String(r.stat_date)));
  const complete=(start:string,end:string)=>{for(let d=new Date(start+'T12:00:00Z');day(d)<=end;d.setUTCDate(d.getUTCDate()+1))if(!dates.has(day(d)))return false;return true;};
  const comparable=complete(month+'-01',latest)&&complete(previous+'-01',previous+'-'+String(cutoff).padStart(2,'0'));
- const priorities=creators.flatMap(c=>{
+ const establishedPriorities=creators.flatMap(c=>{
   if(c.hours===0&&c.potentialTimeline.every(d=>d.known&&d.hours===0&&d.streams===0))return [];
   if(Math.max(c.previousDiamonds,c.diamonds)<10000)return [];
   const loss=c.comparedPrevious-c.comparedCurrent,drop=c.comparedPrevious?loss/c.comparedPrevious:0,hoursLoss=c.previousHours-c.comparedHours,daysLoss=c.previousLiveDays-c.comparedLiveDays;
@@ -62,8 +64,10 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
   else if(hoursDrop||daysDrop){insight='Their usual LIVE pattern has slipped. A quick conversation now could help stop it becoming a longer break.';action='Find out which days and session lengths work for them now, then agree what their next week could look like.';}
   else{insight='One missed day isn’t necessarily a problem, but it’s worth a quick check-in.';action='Ask how they’re getting on and when they next plan to go live. If it was just a one-off, keep the conversation light.';}
   const badges=[...(inactive?['Not LIVE']:[]),...(diamondDrop?['Diamonds ↓ '+Math.round(drop*100)+'%']:[]),...(hoursDrop?['Hours ↓ '+hoursLoss.toFixed(1)]:[]),...(daysDrop?['LIVE days ↓ '+daysLoss]:[]),...(battlesDrop?['Battles ↓']:[])];
-  return [{observations:reasons,insight,action,badges,username:c.username,manager:c.manager,title:inactive?(away&&away>1?'Get them back LIVE':'Check their next LIVE'):diamondDrop?'Diamonds are down':hoursDrop?'LIVE hours are down':'Fewer LIVE days',detail:reasons.join(' ')+' '+insight+' '+action,comparison:`${month} vs ${previous}, through day ${cutoff}${matchedDays.length<cutoff?' · '+matchedDays.length+' dates available in both months':''}`,weight:Math.max(loss,0)+(inactive?Math.max(c.diamonds,c.previousDiamonds)/Math.max(cutoff,1):0)}];
+  return [{category:'established' as const,observations:reasons,insight,action,badges,username:c.username,manager:c.manager,title:inactive?(away&&away>1?'Get them back LIVE':'Check their next LIVE'):diamondDrop?'Diamonds are down':hoursDrop?'LIVE hours are down':'Fewer LIVE days',detail:reasons.join(' ')+' '+insight+' '+action,comparison:`${month} vs ${previous}, through day ${cutoff}${matchedDays.length<cutoff?' · '+matchedDays.length+' dates available in both months':''}`,weight:Math.max(loss,0)+(inactive?Math.max(c.diamonds,c.previousDiamonds)/Math.max(cutoff,1):0)}];
  }).sort((a,b)=>b.weight-a.weight);
+
+ const priorities=[...establishedPriorities,...starterFocus(creators,latest)];
 
  const rosterIds=new Set(creators.map(c=>c.id));let running=0;
  const dailyTotals=[...new Set(values.filter(r=>String(r.stat_date).startsWith(month)).map(r=>String(r.stat_date)))].sort().map(date=>{running+=values.filter(r=>r.stat_date===date&&rosterIds.has(String(r.creator_id))).reduce((s,r)=>s+n(r.diamonds),0);return {day:Number(date.slice(-2)),diamonds:running};});

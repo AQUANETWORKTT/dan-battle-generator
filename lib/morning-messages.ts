@@ -1,0 +1,5 @@
+import {chatProfileColour} from './chat-profile-colour';
+type Creator={id:string;username:string;manager:string;managerKey:string;agencyDays:number|null;previousDiamonds:number;potentialTimeline:{date:string;known:boolean;diamonds:number}[]};
+export function morningMessages(creators:Creator[],latest:string){return creators.flatMap(c=>{const colour=chatProfileColour(c.agencyDays,c.previousDiamonds).key,day=c.potentialTimeline.find(d=>d.date===latest&&d.known);if(!day||colour==='unknown')return [];const eligible=colour==='gold'?day.diamonds>10000:colour==='silver'?day.diamonds>5000:day.diamonds>=3000;if(!eligible)return [];return [{id:c.id,date:latest,username:c.username,manager:c.manager,managerKey:c.managerKey,diamonds:day.diamonds,colour}];}).sort((a,b)=>b.diamonds-a.diamonds);}
+
+export function morningEarningsDate(now=new Date()){const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(now),previous=new Date(today+'T12:00:00Z');previous.setUTCDate(previous.getUTCDate()-1);return previous.toISOString().slice(0,10);}
