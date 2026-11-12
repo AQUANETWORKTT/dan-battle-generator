@@ -42,7 +42,7 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
  const comparable=complete(month+'-01',latest)&&complete(previous+'-01',previous+'-'+String(cutoff).padStart(2,'0'));
  const priorities=creators.flatMap(c=>{
   if(c.hours===0&&c.potentialTimeline.every(d=>d.known&&d.hours===0&&d.streams===0))return [];
-  if(c.diamonds<=10000)return [];
+  if(Math.max(c.previousDiamonds,c.diamonds)<10000)return [];
   const loss=c.comparedPrevious-c.comparedCurrent,drop=c.comparedPrevious?loss/c.comparedPrevious:0,hoursLoss=c.previousHours-c.comparedHours,daysLoss=c.previousLiveDays-c.comparedLiveDays;
   const diamondDrop=loss>=5000&&drop>=.2,hoursDrop=c.previousHours>=5&&hoursLoss>=3&&hoursLoss/c.previousHours>=.3,daysDrop=daysLoss>=2;
   const inactive=c.latestHours===0,battlesDrop=comparable&&c.previousBattles>=5&&c.comparedBattles<c.previousBattles*.7;
