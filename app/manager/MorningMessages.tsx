@@ -232,16 +232,19 @@ export default function MorningMessages({
               (item.junior ? " junior-morning-message" : "") +
               (item.completed ? " completed" : "")
             }
+            onClick={(event) => {
+              if (!(event.target as HTMLElement).closest("button, input, a, label")) void toggle(item);
+            }}
           >
             <Picture username={item.username} />
             <div className="morning-message-content">
               <div className="morning-message-inline">
                 <h3>@{item.username}</h3>
+                {item.junior && <small className="junior-morning-label">Junior manager · {item.manager}</small>}
                 <strong>
                   {item.diamonds.toLocaleString("en-GB")} <span>diamonds</span>
                 </strong>
               </div>
-              {item.junior && <small className="junior-morning-label">Junior manager · {item.manager}</small>}
               {owner && (
                 <>
                   <div className="morning-message-sample">
