@@ -240,7 +240,7 @@ export default function MorningMessages({
             <div className="morning-message-content">
               <div className="morning-message-inline">
                 <h3>@{item.username}</h3>
-                {item.junior && <small className="junior-morning-label">Junior manager · {item.manager}</small>}
+                {item.junior && <small className="junior-morning-label">Junior manager · {item.manager.replace(/^Team\s+/i, "")}</small>}
                 <strong>
                   {item.diamonds.toLocaleString("en-GB")} <span>diamonds</span>
                 </strong>
