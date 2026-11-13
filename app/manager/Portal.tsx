@@ -536,8 +536,10 @@ function MasterTaskSummary({ data, onBack }: { data: Overview; onBack: () => voi
   };
   morning.forEach((item) => register(item.managerKey, item.manager, "Morning messages", `@${item.username}`, item.completed));
   data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, "Change profile picture", `@${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
-  const entries = [...team.entries()].sort(([, a], [, b]) => a.name.localeCompare(b.name));
-  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Manager task summary</h2></div><button type="button" onClick={onBack}>← Today’s tasks</button></header>{entries.map(([key, entry]) => { const remaining = Object.values(entry.groups).flat().length, total = entry.completed + remaining; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{remaining} remaining</em></summary>{remaining ? <div className="master-task-groups">{Object.entries(entry.groups).map(([group, tasks]) => <details key={group}><summary>{group}: {tasks.length}</summary><ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul></details>)}</div> : <p>All tasks complete.</p>}</details>; })}</section>;
+  const entries = [...team.entries()]
+    .filter(([, entry]) => Object.values(entry.groups).flat().length > 0)
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Manager task summary</h2></div><button type="button" onClick={onBack}>← Today’s tasks</button></header>{entries.length ? entries.map(([key, entry]) => { const remaining = Object.values(entry.groups).flat().length, total = entry.completed + remaining; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{remaining} remaining</em></summary><div className="master-task-groups">{Object.entries(entry.groups).map(([group, tasks]) => <details key={group}><summary>{group}: {tasks.length}</summary><ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul></details>)}</div></details>; }) : <p className="manager-muted">No tasks are currently remaining.</p>}</section>;
 }
 export default function Dashboard({
   creators = false,
