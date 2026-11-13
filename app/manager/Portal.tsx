@@ -667,7 +667,7 @@ export default function Dashboard({
       {error && <p className="manager-error">{error}</p>}
       {source && (
         <div className="manager-filters">
-          <label className="manager-muted">
+          {owner && <label className="manager-muted">
             Group
             <select
               className="manager-input"
@@ -688,9 +688,9 @@ export default function Dashboard({
                   <option key={g}>{g}</option>
                 ))}
             </select>
-          </label>
+          </label>}
           <label className="manager-muted">
-            Manager
+            Select manager
             <select
               className="manager-input"
               value={manager}
