@@ -55,6 +55,8 @@ export default function MorningMessages({
     [loaded, setLoaded] = useState(false),
     [error, setError] = useState(""),
     [copied, setCopied] = useState(""),
+    [reloadKey, setReloadKey] = useState(0),
+    [sourceDate, setSourceDate] = useState(""),
     [choices, setChoices] = useState<Record<string, number>>({});
   async function toggle(item: Message) {
     const completed = !item.completed;
@@ -91,6 +93,7 @@ export default function MorningMessages({
         if (!r.ok) throw Error(d.error || "Unable to load morning messages.");
         if (active) {
           setItems(d.calendarDay === ukDay() ? d.items : []);
+          setSourceDate(d.date || "");
           if (owner)
             setChoices((current) =>
               Object.fromEntries(
@@ -144,7 +147,7 @@ export default function MorningMessages({
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [endpoint]);
+  }, [endpoint, reloadKey]);
   const selected = items.filter(
     (i) => !managerKeys || managerKeys.includes(i.managerKey),
   );
@@ -163,7 +166,18 @@ export default function MorningMessages({
         Loading morning messages…
       </p>
     );
-  if (!selected.length) return null;
+  if (!selected.length)
+    return (
+      <section className="morning-message-empty">
+        <div>
+          <h3>Morning messages</h3>
+          <p>No eligible morning messages are currently loaded{sourceDate ? ` from ${sourceDate}` : ""}.</p>
+        </div>
+        <button type="button" onClick={() => setReloadKey((key) => key + 1)}>
+          Refresh morning messages
+        </button>
+      </section>
+    );
   return (
     <section className="morning-messages">
       {error && (

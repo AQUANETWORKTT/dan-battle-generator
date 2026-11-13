@@ -93,6 +93,7 @@
 @media(max-width:650px){.morning-message{grid-template-columns:36px minmax(0,1fr)}}
 
 .morning-message-actions{display:flex;gap:8px;flex-shrink:0}.morning-message-actions button{min-height:38px}.morning-message-sample p{line-height:1.7}@media(max-width:850px){.morning-message-sample{flex-direction:column;align-items:stretch}.morning-message-actions{justify-content:flex-end;flex-wrap:wrap}}
+.morning-message-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0;padding:16px;border:1px solid #c9797255;border-radius:12px;background:#25161255}.morning-message-empty h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#efcf85}.morning-message-empty p{margin-top:6px;color:#c3baaa;font-size:12px}.morning-message-empty button{flex:0 0 auto;padding:9px 12px;border:1px solid #c9797255;border-radius:8px;color:#f2bbb6;font-size:12px;font-weight:700}@media(max-width:550px){.morning-message-empty{align-items:flex-start;flex-direction:column}.morning-message-empty button{width:100%}}
 
 .inactive-stat-label{display:inline-block;min-width:86px;margin:4px 8px 4px 0;color:#ddc58f;font-family:Arial,sans-serif;font-weight:700;font-size:11px;line-height:1.5;letter-spacing:.07em;text-transform:uppercase}.inactive-last-live{color:#eee8db;font-weight:600;font-size:14px}
 
