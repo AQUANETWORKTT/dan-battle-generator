@@ -70,7 +70,19 @@ export function middleware(req: NextRequest) {
   if(!isEventsSpace&&(path==='/star-tracker'||path==='/api/star-tracker'))return NextResponse.next();
   // The server page and scoped API validate this separate signed session.
   // No leadership access is granted by visiting the Poster Generator.
-  if(!isEventsSpace&&(path==='/manager'||path.startsWith('/manager/')||path.startsWith('/api/manager-portal/')))return NextResponse.next();
+  // Manager-only accounts have their own signed session. The portal and all
+  // of its scoped data endpoints must pass through together; otherwise a
+  // browser receives the regular login HTML where the portal expects JSON.
+  const isManagerPortalRequest =
+    path === "/manager" ||
+    path.startsWith("/manager/") ||
+    path.startsWith("/api/manager-portal/") ||
+    path === "/api/morning-messages" ||
+    path === "/api/manager-notes" ||
+    path === "/api/manager-tasks" ||
+    path === "/api/manager-strikes" ||
+    path === "/api/portal-resources";
+  if (!isEventsSpace && isManagerPortalRequest) return NextResponse.next();
   if(!isEventsSpace&&(path==='/poster-generator'||path.startsWith('/api/poster-generator/')))return NextResponse.next();
   const isBLeaderboard = path === "/recruitment-leaderboard-b" || path.startsWith("/recruitment-leaderboard-b/");
   const isRecruitmentLeaderboard = path === "/recruitment-leaderboard" || path.startsWith("/recruitment-leaderboard/") || isBLeaderboard;
