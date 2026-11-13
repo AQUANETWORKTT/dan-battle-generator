@@ -70,7 +70,6 @@ export default function MorningMessages({
     [reloadKey, setReloadKey] = useState(0),
     [sourceDate, setSourceDate] = useState(""),
     [canDismiss, setCanDismiss] = useState(false),
-    [confirmDismiss, setConfirmDismiss] = useState(false),
     [choices, setChoices] = useState<Record<string, number>>({});
   async function toggle(item: Message) {
     const completed = !item.completed;
@@ -174,7 +173,7 @@ export default function MorningMessages({
   );
   const selectedCompleted = selected.filter((item) => item.completed).length;
   const allComplete = selected.length > 0 && selectedCompleted === selected.length;
-  async function dismiss() { const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dismiss" }) }); const d = await readMessagesResponse(r); if (!r.ok) return setError(d.error || "Could not complete the list."); setItems([]); setConfirmDismiss(false); }
+  async function dismiss() { const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dismiss" }) }); const d = await readMessagesResponse(r); if (!r.ok) return setError(d.error || "Could not complete the list."); setItems([]); }
   useEffect(() => {
     if (loaded && !error)
       onCount?.({
@@ -215,7 +214,7 @@ export default function MorningMessages({
         <h3>Morning messages</h3>
         <span>{selected.length} creators</span>
       </header>
-      {canDismiss && allComplete && <button type="button" className="morning-finish" onClick={() => setConfirmDismiss(true)}>Complete morning messages</button>}
+      {canDismiss && allComplete && <button type="button" className="morning-finish" onClick={() => void dismiss()}>Complete morning messages</button>}
       {selected.map((item) => {
         const choiceKey = item.date + ":" + item.id,
           sample = congratulationsMessage(
@@ -298,7 +297,6 @@ export default function MorningMessages({
           </article>
         );
       })}
-      {confirmDismiss && <div className="morning-dismiss-backdrop"><div className="morning-dismiss-dialog"><h3>Complete morning messages?</h3><p>This will hide the completed list for you and your junior managers.</p><button type="button" onClick={() => setConfirmDismiss(false)}>Cancel</button><button type="button" onClick={() => void dismiss()}>Yes, complete</button></div></div>}
     </section>
   );
 }
