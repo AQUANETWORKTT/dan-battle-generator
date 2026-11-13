@@ -43,19 +43,19 @@ export function overview(rows:Stat[],latest:string,scope:string|null,groups:Reco
  const complete=(start:string,end:string)=>{for(let d=new Date(start+'T12:00:00Z');day(d)<=end;d.setUTCDate(d.getUTCDate()+1))if(!dates.has(day(d)))return false;return true;};
  const comparable=complete(month+'-01',latest)&&complete(previous+'-01',previous+'-'+String(cutoff).padStart(2,'0'));
  const establishedPriorities=creators.flatMap(c=>{
-  if(c.hours===0&&c.potentialTimeline.every(d=>d.known&&d.hours===0&&d.streams===0))return [];
+  const away=c.lastLive?Math.round((new Date(latest+'T12:00:00Z').getTime()-new Date(c.lastLive+'T12:00:00Z').getTime())/86400000):null;
+  if(away!==null&&away>=14)return [];
   if(Math.max(c.previousDiamonds,c.diamonds)<10000)return [];
   const loss=c.comparedPrevious-c.comparedCurrent,drop=c.comparedPrevious?loss/c.comparedPrevious:0,hoursLoss=c.previousHours-c.comparedHours,daysLoss=c.previousLiveDays-c.comparedLiveDays;
   const diamondDrop=loss>=5000&&drop>=.2,hoursDrop=c.previousHours>=5&&hoursLoss>=3&&hoursLoss/c.previousHours>=.3,daysDrop=daysLoss>=2;
   const inactive=c.latestHours===0,battlesDrop=comparable&&c.previousBattles>=5&&c.comparedBattles<c.previousBattles*.7;
   if(!diamondDrop&&!hoursDrop&&!daysDrop&&!inactive&&!battlesDrop)return [];
   const f=(n:number)=>n.toLocaleString('en-GB'),reasons:string[]=[];
-  const away=c.lastLive?Math.round((new Date(latest+'T12:00:00Z').getTime()-new Date(c.lastLive+'T12:00:00Z').getTime())/86400000):null;
   if(inactive)reasons.push(away&&away>1?`They haven’t been live for ${away} days.`:`They missed the latest LIVE day.`);
   if(diamondDrop)reasons.push(`Diamonds are down ${Math.round(drop*100)}% (${f(c.comparedPrevious)} → ${f(c.comparedCurrent)}).`);
   if(hoursDrop)reasons.push(`LIVE time: ${c.previousHours.toFixed(1)} → ${c.comparedHours.toFixed(1)} hours.`);
   if(daysDrop)reasons.push(`LIVE days: ${c.previousLiveDays} → ${c.comparedLiveDays}.`);
-  if(battlesDrop)reasons.push(`Battles: ${c.previousBattles} → ${c.comparedBattles} this month versus last month, through day ${cutoff}.`);
+  if(battlesDrop)reasons.push(`Battles: ${c.previousBattles} → ${c.comparedBattles} this month versus last month.`);
   let insight='',action='';
   if(inactive&&away&&away>=3){insight=diamondDrop?'The diamond drop comes alongside a sharp slowdown in activity. Getting them back is the first thing to tackle.':'They’ve been away for a few days. Start by finding out what’s keeping them off LIVE.';action='Check in with them, ask what’s changed and when they next plan to go live. Work out a manageable return with them before pushing for more hours or matches.';}
   else if(diamondDrop&&(hoursDrop||daysDrop)){insight='They’re spending less time live, which may be a big part of the lost diamonds.';action='Ask what’s made it harder to get on this month. Look at the days that worked for them before and agree a routine they can realistically keep.';}

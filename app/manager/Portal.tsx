@@ -746,7 +746,7 @@ export default function Dashboard({
               </span>
               <span className="key-silver">
                 <img src="/branding/chat-profiles/silver.png" alt="" />
-                Silver · 100,001–499,999
+                Silver · 100k–499,999
               </span>
               <span className="key-gold">
                 <img src="/branding/chat-profiles/gold.png" alt="" />

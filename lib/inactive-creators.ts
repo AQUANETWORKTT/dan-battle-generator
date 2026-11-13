@@ -5,8 +5,8 @@ import {loadOverview} from './manager-overview-server';
 import {unstable_cache} from 'next/cache';
 type Row={id:string;creator_id:string;stat_date:string;data_period:string|null;diamonds:number;live_hours:number};
 async function read(scope:string|string[]|null){
- const overview=await loadOverview(scope),elapsed=Number(overview.latest.slice(-2));
- const inactive=overview.creators.filter(c=>c.hours===0&&c.potentialTimeline.length===elapsed&&c.potentialTimeline.every(d=>d.known&&d.hours===0&&d.streams===0));
+ const overview=await loadOverview(scope);
+ const inactive=overview.creators.filter(c=>c.lastLive&&Math.floor((Date.parse(overview.latest+'T12:00:00Z')-Date.parse(c.lastLive+'T12:00:00Z'))/86400000)>=14);
  const history:Row[]=[];
  for(let i=0;i<inactive.length;i+=50){const ids=inactive.slice(i,i+50).map(c=>c.id);for(let offset=0;;offset+=1000){const r=await database().from('creator_daily_stats').select('id,creator_id,stat_date,data_period,diamonds,live_hours').in('creator_id',ids).lt('stat_date',overview.month+'-01').order('stat_date').order('id').range(offset,offset+999);if(r.error)throw Error(r.error.message);history.push(...r.data);if(r.data.length<1000)break;}}
  const creators=inactive.map(c=>{
