@@ -2,6 +2,7 @@
 import ManagerReminders from "./ManagerReminders";
 import ManagerNotes from "./ManagerNotes";
 import MorningMessages from "./MorningMessages";
+import AppLinkReminder from "./AppLinkReminder";
 import { chatProfileColour } from "@/lib/chat-profile-colour";
 import {
   MANAGER_POSTER_ONLY,
@@ -212,17 +213,19 @@ export function Summary({
     priorRoster = data.previousRoster.reduce((n, r) => n + r.count, 0),
     delta = data.creators.length - priorRoster,
     profileCreators = data.creators.filter((creator) => creator.agencyDays === 15),
+    appLinkCreators = data.creators.filter((creator) => creator.agencyDays === 3),
     profileCompleted = profileCreators.filter((creator) => taskRecords.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)).length,
-    taskTotal = (morningTasks?.total || 0) + profileCreators.length,
-    taskCompleted = (morningTasks?.completed || 0) + profileCompleted;
+    appLinkCompleted = appLinkCreators.filter((creator) => taskRecords.some((task) => task.id === `app-link:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)).length,
+    taskTotal = (morningTasks?.total || 0) + profileCreators.length + appLinkCreators.length,
+    taskCompleted = (morningTasks?.completed || 0) + profileCompleted + appLinkCompleted;
   useEffect(() => {
     void fetch("/api/manager-tasks", { cache: "no-store" })
       .then((response) => response.json())
       .then((result) => setTaskRecords(result.records || []))
       .catch(() => {});
   }, []);
-  async function toggleProfileTask(creator: Overview["creators"][number]) {
-    const id = `profile:${data.month}:${creator.id}`;
+  async function toggleTask(creator: Overview["creators"][number], kind: "profile" | "app-link") {
+    const id = `${kind}:${data.month}:${creator.id}`;
     const current = taskRecords.some((task) => task.id === id && task.managerKey === creator.managerKey && task.completed);
     const completed = !current;
     setTaskRecords((records) => [
@@ -421,6 +424,13 @@ export function Summary({
           }
         />
       )}
+      {tab === "today" && new Date(data.latest + "T12:00:00Z").getUTCDay() === 1 && (
+        <section className="manager-card recurring-reminder">
+          <p className="manager-eyebrow">Weekly reminder</p>
+          <h2>Monday morning motivational message</h2>
+          <p className="manager-muted">Send your Monday morning motivational message to your creators.</p>
+        </section>
+      )}
       {tab === "today" &&
         data.creators.some((c) => c.agencyDays === 15) && (
           <section className="profile-update-reminder profile-update-compact">
@@ -450,13 +460,20 @@ export function Summary({
                     </span>
                     <label className="morning-complete">
                       <span>Done</span>
-                      <input type="checkbox" checked={taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed)} onChange={() => void toggleProfileTask(c)} />
+                      <input type="checkbox" checked={taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed)} onChange={() => void toggleTask(c, "profile")} />
                     </label>
                   </div>
                 ))}
             </div>
           </section>
         )}
+      {tab === "today" && data.latest.endsWith("-01") && (
+        <section className="profile-update-reminder profile-update-compact">
+          <div><h2>Monthly profile picture review</h2><p className="manager-muted">Use last month’s diamonds to check each established creator’s new chat profile category.</p></div>
+          <div className="profile-update-people">{data.creators.filter((creator) => (creator.agencyDays || 0) >= 15).map((creator) => <div key={creator.id} className="profile-update-person"><div><strong>@{creator.username}</strong><span className="manager-muted">{chatProfileColour(creator.agencyDays, creator.previousDiamonds).label}</span></div></div>)}</div>
+        </section>
+      )}
+      {tab === "today" && <AppLinkReminder creators={data.creators} month={data.month} records={taskRecords} onToggle={(creator) => { const fullCreator = data.creators.find((item) => item.id === creator.id); if (fullCreator) void toggleTask(fullCreator, "app-link"); }} />}
       {tab === "today" && !owner && <ManagerNotes />}
       {tab === "today" || tab === "master-tasks" ? null : tab === "unmanaged" ? (
         <UnmanagedPanel
@@ -536,6 +553,7 @@ function MasterTaskSummary({ data, onBack }: { data: Overview; onBack: () => voi
   };
   morning.forEach((item) => register(item.managerKey, item.manager, "Morning messages", `@${item.username}`, item.completed));
   data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, "Change profile picture", `@${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
+  data.creators.filter((creator) => creator.agencyDays === 3).forEach((creator) => register(creator.managerKey, creator.manager, "Send First Class app link", `@${creator.username}`, saved.some((task) => task.id === `app-link:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
   const entries = [...team.entries()]
     .filter(([, entry]) => Object.values(entry.groups).flat().length > 0)
     .sort(([, a], [, b]) => a.name.localeCompare(b.name));
