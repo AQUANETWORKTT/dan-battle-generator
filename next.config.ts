@@ -21,6 +21,26 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Manager work is shared live between devices. Never allow a browser,
+        // proxy, or phone web view to reuse an earlier portal shell here.
+        source: "/manager/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0, must-revalidate",
+          },
+        ],
+      },
     ];
   },
 };

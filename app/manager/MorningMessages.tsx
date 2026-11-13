@@ -51,6 +51,17 @@ export default function MorningMessages({
   const endpoint =
     "/api/morning-messages" +
     (owner ? "?scope=owner" + (mainTeamOnly ? "&group=dan-james" : "") : "");
+  async function readMessagesResponse(response: Response) {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw Error(
+        response.status === 401
+          ? "Your sign-in has expired. Refresh the portal and sign in again."
+          : "The portal is updating. Refresh the page and try again.",
+      );
+    }
+    return response.json();
+  }
   const [items, setItems] = useState<Message[]>([]),
     [loaded, setLoaded] = useState(false),
     [error, setError] = useState(""),
@@ -71,7 +82,7 @@ export default function MorningMessages({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, date: item.date, completed }),
       });
-      const d = await r.json();
+      const d = await readMessagesResponse(r);
       if (!r.ok) throw Error(d.error || "Could not update message.");
     } catch (e) {
       setItems((all) =>
@@ -88,8 +99,9 @@ export default function MorningMessages({
     let active = true;
     async function load() {
       try {
-        const r = await fetch(endpoint, { cache: "no-store" }),
-          d = await r.json();
+        const separator = endpoint.includes("?") ? "&" : "?";
+        const r = await fetch(endpoint + separator + "fresh=" + Date.now(), { cache: "no-store", credentials: "same-origin" }),
+          d = await readMessagesResponse(r);
         if (!r.ok) throw Error(d.error || "Unable to load morning messages.");
         if (active) {
           // The server is the authority for London time. Device clocks can be
