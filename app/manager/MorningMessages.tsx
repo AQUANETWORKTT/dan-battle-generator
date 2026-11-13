@@ -77,7 +77,10 @@ export default function MorningMessages({
       ),
     );
     try {
-      const r = await fetch("/api/morning-messages", {
+      // Keep the same scope for the update as was used to load the list.
+      // In particular, a master user must post as owner rather than being
+      // checked against an individual manager's team.
+      const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, date: item.date, completed }),
