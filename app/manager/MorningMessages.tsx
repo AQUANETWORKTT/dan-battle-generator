@@ -188,18 +188,7 @@ export default function MorningMessages({
         Loading morning messages…
       </p>
     );
-  if (!selected.length)
-    return (
-      <section className="morning-message-empty">
-        <div>
-          <h3>Morning messages</h3>
-          <p>No eligible morning messages are currently loaded{sourceDate ? ` from ${sourceDate}` : ""}.</p>
-        </div>
-        <button type="button" onClick={() => setReloadKey((key) => key + 1)}>
-          Refresh morning messages
-        </button>
-      </section>
-    );
+  if (!selected.length) return null;
   return (
     <section className="morning-messages">
       {error && (
