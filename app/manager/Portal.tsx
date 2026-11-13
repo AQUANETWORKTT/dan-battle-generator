@@ -1,5 +1,6 @@
 "use client";
 import ManagerReminders from "./ManagerReminders";
+import ManagerNotes from "./ManagerNotes";
 import MorningMessages from "./MorningMessages";
 import { chatProfileColour } from "@/lib/chat-profile-colour";
 import {
@@ -456,6 +457,7 @@ export function Summary({
             </div>
           </section>
         )}
+      {tab === "today" && !owner && <ManagerNotes />}
       {tab === "today" || tab === "master-tasks" ? null : tab === "unmanaged" ? (
         <UnmanagedPanel
           records={unmanaged}
