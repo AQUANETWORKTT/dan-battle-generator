@@ -92,7 +92,9 @@ export default function MorningMessages({
           d = await r.json();
         if (!r.ok) throw Error(d.error || "Unable to load morning messages.");
         if (active) {
-          setItems(d.calendarDay === ukDay() ? d.items : []);
+          // The server is the authority for London time. Device clocks can be
+          // wrong, so never hide a valid server response based on local time.
+          setItems(d.items || []);
           setSourceDate(d.date || "");
           if (owner)
             setChoices((current) =>
