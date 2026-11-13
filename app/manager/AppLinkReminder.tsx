@@ -30,7 +30,7 @@ export default function AppLinkReminder({ creators, month, records, onToggle }: 
   }
   return <section className="profile-update-reminder app-link-reminder">
     <div className="app-link-heading">
-      <div><p className="manager-eyebrow">Day 3 onboarding</p><h2>Send First Class app link</h2><p className="manager-muted">Send this to each creator listed below once they have been with First Class for three days.</p></div>
+      <div><p className="manager-eyebrow">Day 3 onboarding</p><h2>Send First Class app link 🔗</h2></div>
       <button type="button" className="manager-button" onClick={() => void copyMessage()}>{copied ? "Copied" : "Copy First Class message"}</button>
     </div>
     <div className="profile-update-people">

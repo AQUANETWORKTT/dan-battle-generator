@@ -444,8 +444,7 @@ export function Summary({
             <div>
               <h2>Profile picture changes</h2>
               <p className="manager-muted">
-                These creators have reached day 15. Change their chat profile
-                picture from blue to bronze.
+                Profile picture changes
               </p>
             </div>
             <div className="profile-update-people">
