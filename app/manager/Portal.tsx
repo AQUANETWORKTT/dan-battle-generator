@@ -431,6 +431,13 @@ export function Summary({
           <p className="manager-muted">Send your Monday morning motivational message to your creators.</p>
         </section>
       )}
+      {tab === "today" && data.latest.endsWith("-15") && (
+        <section className="manager-card recurring-reminder">
+          <p className="manager-eyebrow">Mid-month review</p>
+          <h2>Review creator progress</h2>
+          <p className="manager-muted">Review each creator’s progress towards maintenance, graduation and rank-up, then plan how you will help them reach their targets.</p>
+        </section>
+      )}
       {tab === "today" &&
         data.creators.some((c) => c.agencyDays === 15) && (
           <section className="profile-update-reminder profile-update-compact">
