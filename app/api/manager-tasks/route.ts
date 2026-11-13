@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SEARCH_COOKIE, searchSessionValid } from "@/lib/creator-api-search/auth";
-import { accountForSession, MANAGER_COOKIE } from "@/lib/manager-portal";
+import { accountForSession, managerAndJuniorKeys, MANAGER_COOKIE } from "@/lib/manager-portal";
 import { fullManagerAccess } from "@/lib/manager-portal-mode";
 import { database } from "@/lib/creator-api-search/db";
 
@@ -24,15 +24,16 @@ async function handle(request: NextRequest) {
   const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
   if (!owner && !fullManagerAccess(account)) return json({ error: "Please sign in." }, 401);
   try {
+    const managedKeys = owner ? null : new Set(await managerAndJuniorKeys(account!.manager_key));
     const all = await tasks();
-    if (request.method === "GET") return json({ records: all.filter((task) => owner || task.managerKey === account!.manager_key) });
+    if (request.method === "GET") return json({ records: all.filter((task) => owner || managedKeys!.has(task.managerKey)) });
     const body = await request.json();
     if (typeof body.id !== "string" || typeof body.managerKey !== "string" || typeof body.completed !== "boolean" || !body.id.startsWith("profile:")) return json({ error: "Invalid task." }, 400);
-    if (!owner && body.managerKey !== account!.manager_key) return json({ error: "Not allowed." }, 403);
+    if (!owner && !managedKeys!.has(body.managerKey)) return json({ error: "Not allowed." }, 403);
     const record: Task = { id: body.id, managerKey: body.managerKey, completed: body.completed, ...(body.completed ? { completedAt: new Date().toISOString() } : {}) };
     const next = [...all.filter((task) => !(task.id === record.id && task.managerKey === record.managerKey)), record];
     await save(next);
-    return json({ records: next.filter((task) => owner || task.managerKey === account!.manager_key) });
+    return json({ records: next.filter((task) => owner || managedKeys!.has(task.managerKey)) });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Could not save task." }, 400);
   }
