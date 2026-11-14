@@ -299,7 +299,7 @@ export function Summary({
           Unmanaged <span>View</span>
         </button>
       </div>
-      <div className="manager-grid manager-summary-grid">
+      {tab === "today" && <div className="manager-grid manager-summary-grid">
           {[
             ["Month to date", data.total.toLocaleString("en-GB")],
             [
@@ -383,7 +383,7 @@ export function Summary({
                 .toLocaleString("en-GB")}
             </p>
           </div>
-      </div>
+      </div>}
       {tab === "today" && (
         <div className="today-tasks-heading">
           <h2 className="today-reminders-title">Today’s tasks</h2>
