@@ -719,7 +719,7 @@ export default function Dashboard({
                 ))}
             </select>
           </label>}
-          <label className="manager-muted">
+          {(owner || (source.juniorManagerKeys?.length || 0) > 0) && <label className="manager-muted">
             Select manager
             <select
               className="manager-input"
@@ -743,11 +743,11 @@ export default function Dashboard({
                 .sort((a, b) => a[1].localeCompare(b[1]))
                 .map(([key, name]) => (
                   <option key={key} value={key}>
-                    {source.executiveKey === key ? `${name} · My creators` : `${name} · Junior manager`}
+                    {!owner && source.executiveKey !== key ? `${name} · Junior manager` : name}
                   </option>
                 ))}
             </select>
-          </label>
+          </label>}
         </div>
       )}
       {data &&
