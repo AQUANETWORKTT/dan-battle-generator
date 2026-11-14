@@ -188,6 +188,8 @@ export default function MorningMessages({
         Loading morning messages…
       </p>
     );
+  if (allComplete)
+    return <details className="profile-update-reminder task-section-complete"><summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',fontFamily:'var(--font-norwester), Impact, sans-serif',fontSize:20,color:'#eed397'}}><span>Morning messages</span><span>✅</span></summary><div className="task-section-content morning-messages">{selected.map((item) => <article key={item.id} className="morning-message completed"><Picture username={item.username} /><div className="morning-message-content"><h3>@{item.username}</h3></div></article>)}</div></details>;
   if (!selected.length) return null;
   return (
     <section className="morning-messages">

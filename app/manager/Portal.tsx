@@ -186,7 +186,7 @@ export function PortalShell({
       </header>
       <main className="manager-wrap">
         {name && path !== "/manager/posters" && (
-          <p className="manager-team-name">{name.replace(/^Team\s+/i, "")} <span className={role === "junior" ? "manager-role junior" : "manager-role"}>— {role === "owner" ? "Owner" : role === "executive" ? "Executive manager" : role === "junior" ? "Junior manager" : "Senior manager"}</span></p>
+          <p className="manager-team-name">{name.replace(/^Team\s+/i, "")} <span className={role === "junior" ? "manager-role junior" : "manager-role"}>— {role === "owner" ? "Owner / Head of Operations" : role === "executive" ? "Executive manager" : role === "junior" ? "Junior manager" : "Senior manager"}</span></p>
         )}
         {children}
       </main>
@@ -209,6 +209,7 @@ export function Summary({
   >("today");
   const [morningTasks, setMorningTasks] = useState<{ total: number; completed: number } | null>(null);
   const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
+  const executiveKey = (data as PortalOverview).executiveKey;
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
       : null,
@@ -391,7 +392,7 @@ export function Summary({
           <h2 className="today-reminders-title">Today’s tasks</h2>
           {morningTasks !== null && (
             <div className="today-task-actions">
-              <p className="today-task-count">{taskCompleted} / {taskTotal} completed</p>
+              <p className="today-task-count" style={taskTotal > 0 && taskCompleted === taskTotal ? { color: "#9de7bd", borderColor: "#72c9a266", background: "#173a2926" } : undefined}>{taskCompleted} / {taskTotal} completed</p>
               {owner && <button type="button" onClick={() => setTab("master-tasks")}>View tasks</button>}
             </div>
           )}
@@ -453,13 +454,13 @@ export function Summary({
               {data.creators
                 .filter((c) => c.agencyDays === 15)
                 .map((c) => (
-                  <div key={c.id} className={"profile-update-person" + (taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed) ? " completed" : "")}>
+                  <div key={c.id} className={"profile-update-person" + (taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed) ? " completed" : "") + (executiveKey && executiveKey !== c.managerKey ? " junior-task" : "")}>
                     <Picture username={c.username} />
                     <div>
                       <div className="profile-update-name-row">
                         <strong>@{c.username}</strong>
                       </div>
-                      <span className="manager-muted">{c.manager}</span>
+                      <span className="manager-muted">{executiveKey && executiveKey !== c.managerKey ? `Junior manager · ${c.manager.replace(/^Team\s+/i, "")}` : c.manager}</span>
                     </div>
                     <span className="profile-picture-change" aria-label="Change blue profile picture to bronze">
                       <img src="/branding/chat-profiles/blue.png" alt="Blue profile picture" />
@@ -481,7 +482,7 @@ export function Summary({
           <div className="profile-update-people">{data.creators.filter((creator) => (creator.agencyDays || 0) >= 15).map((creator) => <div key={creator.id} className="profile-update-person"><div><strong>@{creator.username}</strong><span className="manager-muted">{chatProfileColour(creator.agencyDays, creator.previousDiamonds).label}</span></div></div>)}</div>
         </section>
       )}
-      {tab === "today" && <AppLinkReminder creators={data.creators} month={data.month} records={taskRecords} onToggle={(creator) => { const fullCreator = data.creators.find((item) => item.id === creator.id); if (fullCreator) void toggleTask(fullCreator, "app-link"); }} />}
+      {tab === "today" && <AppLinkReminder creators={data.creators} month={data.month} records={taskRecords} executiveKey={executiveKey} onToggle={(creator) => { const fullCreator = data.creators.find((item) => item.id === creator.id); if (fullCreator) void toggleTask(fullCreator, "app-link"); }} />}
       {tab === "today" && !owner && <ManagerNotes />}
       {tab === "today" || tab === "master-tasks" ? null : tab === "unmanaged" ? (
         <UnmanagedPanel
