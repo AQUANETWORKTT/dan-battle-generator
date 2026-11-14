@@ -360,7 +360,7 @@ export function Summary({
             </div>
           ))}
           <div className="manager-card">
-            <p className="manager-eyebrow">Current roster</p>
+            <p className="manager-eyebrow">Managed creators</p>
             <p className="manager-metric">{data.creators.length}</p>
             {data.previousRosterDate && (
               <p
