@@ -100,10 +100,12 @@ export function Picture({ username }: { username: string }) {
 export function PortalShell({
   children,
   name,
+  role,
   fullAccess = false,
 }: {
   children: React.ReactNode;
   name?: string;
+  role?: "owner" | "executive" | "junior" | "senior";
   fullAccess?: boolean;
 }) {
   const path = usePathname();
@@ -184,7 +186,7 @@ export function PortalShell({
       </header>
       <main className="manager-wrap">
         {name && path !== "/manager/posters" && (
-          <p className="manager-team-name">{name}</p>
+          <p className="manager-team-name">{name.replace(/^Team\s+/i, "")} <span className={role === "junior" ? "manager-role junior" : "manager-role"}>— {role === "owner" ? "Owner" : role === "executive" ? "Executive manager" : role === "junior" ? "Junior manager" : "Senior manager"}</span></p>
         )}
         {children}
       </main>
