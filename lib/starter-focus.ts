@@ -5,9 +5,9 @@ export function starterFocus(creators:Creator[],latest:string){
   if(Math.max(c.diamonds,c.previousDiamonds)>=10000)return [];
   const days=c.potentialTimeline.filter(d=>d.known),streams=days.reduce((sum,d)=>sum+d.streams,0),battles=days.reduce((sum,d)=>sum+d.battles,0),last=days.at(-1),away=c.lastLive?Math.floor((Date.parse(latest+'T12:00:00Z')-Date.parse(c.lastLive+'T12:00:00Z'))/86400000):null;
   let title='',observations:string[]=[],insight='',action='',badge='',weight=0;
-  if(c.agencyDays!==null&&c.agencyDays>=3&&c.agencyDays<=14&&!c.lastLive&&streams===0&&days.length>=Math.min(c.agencyDays,3)){
-   title='Help them get started';badge='First LIVE';weight=500;
-   observations=[`Joined ${c.agencyDays} days ago. No LIVE recorded in the available history.`];insight='A first session can feel like a big step. Find out what would make it easier.';action='Check what’s holding them back and help them choose a first session. Offer a setup check if they need one.';
+  if(c.agencyDays===3&&!c.lastLive&&streams===0&&days.length>=3){
+   title='Encourage their first LIVE';badge='New creator · First LIVE';weight=500;
+   observations=['Day 3 in the agency. No LIVE has been recorded since they joined.'];insight='They are still new and may need a little encouragement to take the first step.';action='Encourage them to go LIVE for the first time with First Class. Ask what would help them feel ready and offer practical support if they need it.';
   }else if(c.liveDays>0&&away!==null&&away>=3){
    title='Build on a good start';badge='Restart the routine';weight=400+Math.min(away,30);
    observations=[`${c.diamonds.toLocaleString('en-GB')} diamonds across ${c.liveDays} LIVE days this month.`,`No LIVE recorded for ${away} days.`];insight='They’ve made a start. A check-in could help them keep it going.';action='Ask how their sessions felt and what’s kept them away. Find out when they next plan to go live and help them make a manageable return.';
