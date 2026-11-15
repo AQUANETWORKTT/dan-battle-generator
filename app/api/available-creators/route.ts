@@ -25,7 +25,6 @@ async function handle(req:NextRequest){
       return NextResponse.json(body.action==='dismiss'?await dismissAvailableCreator(identity):body.action==='hide'?await hideAvailableCreator(identity):await markAvailableCreatorMessaged(body.username,body.messaged,identity),{headers});
     }
     if(!admin)return NextResponse.json({error:'Leadership access required.'},{status:401,headers});
-    if(body.action==='share')return NextResponse.json({path:'/available-creators?access='+encodeURIComponent(managerViewToken()),expiresInDays:30},{headers});
     if(body.action==='enrich')return NextResponse.json(await updateAvailableCreator(body.username,body.includeHistory===true,body.historyDays??3),{headers});
     return NextResponse.json({error:'Choose a valid panel action.'},{status:400,headers});
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Could not load Available Creators.',...(error instanceof ProviderError?{retryAt:error.retryAt,quota:error.quota,retryable:error.retryable}:{})},{status:error instanceof SearchError||error instanceof ProviderError?error.status:500,headers});}
