@@ -631,15 +631,19 @@ export default function Dashboard({
       .then((data) => setUnmanaged(data.records || []))
       .catch(() => {});
   }, [source, unmanaged]);
-  const selected =
+  // Unmanaged creators leave the active roster, but their activity still belongs
+  // in this team's month-to-date performance.
+  const filteredCreators =
     source?.creators.filter(
       (c) =>
         (!group || c.group === group) &&
-        (!manager || c.managerKey === manager) &&
-        !unmanaged.some((item) => item.id === c.id),
+        (!manager || c.managerKey === manager),
     ) || [];
+  const selected = filteredCreators.filter(
+    (creator) => !unmanaged.some((item) => item.id === creator.id),
+  );
   const chosen = new Set(selected.map((c) => c.username));
-  const total = selected.reduce((s, c) => s + c.diamonds, 0);
+  const total = filteredCreators.reduce((s, c) => s + c.diamonds, 0);
   const data = source
     ? {
         ...source,
@@ -657,7 +661,7 @@ export default function Dashboard({
         ),
         creators: selected,
         total,
-        previousTotal: selected.reduce((s, c) => s + c.previousComparable, 0),
+        previousTotal: filteredCreators.reduce((s, c) => s + c.previousComparable, 0),
         priorities: source.priorities.filter((p) => chosen.has(p.username)),
         topThreeShare: total
           ? Math.round(

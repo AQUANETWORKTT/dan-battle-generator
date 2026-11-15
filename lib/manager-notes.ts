@@ -18,3 +18,13 @@ export async function addManagerNote(input: Omit<ManagerNote, "id" | "createdAt"
   if (result.error) throw Error(result.error.message);
   return record;
 }
+
+export async function deleteManagerNote(id: string, managerKey: string) {
+  const notes = await managerNotes();
+  const record = notes.find((note) => note.id === id);
+  if (!record || record.managerKey !== managerKey) return false;
+
+  const result = await database().from("poster_templates").upsert({ name: NAME, template_json: { records: notes.filter((note) => note.id !== id) }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
+  if (result.error) throw Error(result.error.message);
+  return true;
+}
