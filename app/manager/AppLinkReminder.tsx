@@ -16,7 +16,7 @@ SIGN UP TODAY👀🏆
 
 Once you’re in, get familiar with it. This is going to play a big role in how you progress. A chance to see your analytics daily, reach your goals and explore our training modules`;
 
-type Creator = { id: string; username: string; managerKey: string; agencyDays: number | null };
+type Creator = { id: string; username: string; managerKey: string; manager: string; agencyDays: number | null };
 type Task = { id: string; managerKey: string; completed: boolean };
 
 export default function AppLinkReminder({ creators, month, records, onToggle, executiveKey }: { creators: Creator[]; month: string; records: Task[]; onToggle: (creator: Creator) => void; executiveKey?: string }) {
@@ -35,7 +35,7 @@ export default function AppLinkReminder({ creators, month, records, onToggle, ex
       <button type="button" className="manager-button" onClick={() => void copyMessage()}>{copied ? "Copied" : "Copy First Class message"}</button>
     </div>
     <div className="profile-update-people">
-      {due.map((creator) => { const id = `app-link:${month}:${creator.id}`, completed = records.some((task) => task.id === id && task.managerKey === creator.managerKey && task.completed), junior = executiveKey && creator.managerKey !== executiveKey; return <div key={creator.id} className={'profile-update-person' + (completed ? ' completed' : '') + (junior ? ' junior-task' : '')}><div><strong>@{creator.username}</strong><span className="manager-muted">{junior ? 'Junior manager task' : 'Send First Class app link'}</span></div><label className="morning-complete"><span>Done</span><input type="checkbox" checked={completed} onChange={() => onToggle(creator)} /></label></div>; })}
+      {due.map((creator) => { const id = `app-link:${month}:${creator.id}`, completed = records.some((task) => task.id === id && task.managerKey === creator.managerKey && task.completed), junior = executiveKey && creator.managerKey !== executiveKey; return <div key={creator.id} className={'profile-update-person' + (completed ? ' completed' : '') + (junior ? ' junior-task' : '')}><div><strong>@{creator.username}</strong><span className="manager-muted">{junior ? creator.manager.replace(/^Team\s+/i, '') : 'Send First Class app link'}</span></div><label className="morning-complete"><span>Done</span><input type="checkbox" checked={completed} onChange={() => onToggle(creator)} /></label></div>; })}
     </div>
     </div>;
   if (complete) return <details className="profile-update-reminder app-link-reminder task-section-complete"><summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',fontFamily:'var(--font-norwester), Impact, sans-serif',fontSize:20,color:'#eed397'}}><span>Send First Class app link</span><span>✅</span></summary>{content}</details>;
