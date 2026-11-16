@@ -482,7 +482,7 @@ export function Summary({
           <div className="profile-update-people">{data.creators.filter((creator) => (creator.agencyDays || 0) >= 15).map((creator) => <div key={creator.id} className="profile-update-person"><div><strong>@{creator.username}</strong><span className="manager-muted">{chatProfileColour(creator.agencyDays, creator.previousDiamonds).label}</span></div></div>)}</div>
         </section>
       )}
-      {tab === "today" && <AppLinkReminder creators={data.creators} month={data.month} records={taskRecords} executiveKey={executiveKey} onToggle={(creator) => { const fullCreator = data.creators.find((item) => item.id === creator.id); if (fullCreator) void toggleTask(fullCreator, "app-link"); }} />}
+      {tab === "today" && <AppLinkReminder creators={data.creators} month={data.month} records={taskRecords} executiveKey={executiveKey} showManager={owner} onToggle={(creator) => { const fullCreator = data.creators.find((item) => item.id === creator.id); if (fullCreator) void toggleTask(fullCreator, "app-link"); }} />}
       {tab === "today" && !owner && <ManagerNotes />}
       {tab === "today" || tab === "master-tasks" ? null : tab === "unmanaged" ? (
         <UnmanagedPanel
