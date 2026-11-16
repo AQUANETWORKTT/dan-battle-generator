@@ -3,20 +3,24 @@ import {database} from './creator-api-search/db';
 import {starRoster,minimumStarValue,type StarAward,type StarCreator,type CampaignId,type StarBulkInput} from './star-tracker';
 
 export const STAR_PREFIX='streamer-star-tracker-v1:';
+export const STAR_EXTRA_ROSTER='streamer-star-tracker-extra-creators-v1';
 type Roster={latestDate:string;creators:{id:string;username:string}[]};
 let cached:{at:number;value:Roster}|undefined;
 function fail(error:{message:string}|null){if(error)throw Error(error.message);}
 export async function trackerRoster(refresh=false):Promise<Roster>{
  if(!refresh&&cached&&Date.now()-cached.at<15000)return cached.value;
  const db=database();
- const [latest,settings]=await Promise.all([
+ const [latest,settings,extras]=await Promise.all([
   db.from('creator_daily_stats').select('stat_date').or('data_period.is.null,data_period.neq.mature_month_total').order('stat_date',{ascending:false}).limit(1).maybeSingle(),
   db.from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle(),
+  db.from('poster_templates').select('template_json').eq('name',STAR_EXTRA_ROSTER).maybeSingle(),
  ]);fail(latest.error);fail(settings.error);
  const latestDate=String(latest.data?.stat_date||'');const rows:Record<string,unknown>[]=[];
  if(latestDate)for(let from=0;;from+=1000){const r=await db.from('creator_daily_stats').select('creator_id,creator_username,manager_email,email,agency,team,group_name').eq('stat_date',latestDate).or('data_period.is.null,data_period.neq.mature_month_total').order('creator_id').range(from,from+999);fail(r.error);rows.push(...(r.data||[]));if((r.data||[]).length<1000)break;}
- const groups=settings.data?.template_json?.assignments?.managerGroups||{};
- const value={latestDate,creators:starRoster(rows,groups)};cached={at:Date.now(),value};return value;
+ const groups=settings.data?.template_json?.assignments?.managerGroups||{},creators=starRoster(rows,groups),names=new Set(creators.map(creator=>creator.username.toLowerCase())),ids=new Set(creators.map(creator=>creator.id));
+ const extraRows=extras.data?.template_json?.creators;
+ if(Array.isArray(extraRows))for(const extra of extraRows)if(extra&&typeof extra.id==='string'&&typeof extra.username==='string'&&!ids.has(extra.id)&&!names.has(extra.username.toLowerCase())){creators.push({id:extra.id,username:extra.username});ids.add(extra.id);names.add(extra.username.toLowerCase());}
+ const value={latestDate,creators};cached={at:Date.now(),value};return value;
 }
 export async function readTracker(){
  const roster=await trackerRoster(true);const creators:StarCreator[]=roster.creators.map(row=>({...row,awards:{}}));const byId=new Map(creators.map(row=>[row.id,row]));
