@@ -29,6 +29,9 @@ import {
   syncAccounts,
   updateAccount,
   adminAccounts,
+  applyManagerCredentialPlan,
+  deleteAccount,
+  reactivateMikeIndiAccounts,
   resetDefaultPasswords,
   managerAndJuniorKeys,
 } from "@/lib/manager-portal";
@@ -174,7 +177,10 @@ async function handle(
         const note =
           typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
         if (body.reason === "other" && !note)
-          return json({ error: "Add a reason before moving this creator." }, 400);
+          return json(
+            { error: "Add a reason before moving this creator." },
+            400,
+          );
         const record: UnmanagedCreator = {
           id: body.creator.id,
           username: body.creator.username,
@@ -246,6 +252,16 @@ async function handle(
         );
       if (action === "accounts" && req.method === "POST") {
         const b = await req.json();
+        if (b.action === "reactivate-mike-indi")
+          return json({ accounts: await reactivateMikeIndiAccounts() });
+        if (b.action === "apply-credential-plan")
+          return json({ accounts: await applyManagerCredentialPlan() });
+        if (b.action === "delete") {
+          if (typeof b.id !== "string" || !Number.isSafeInteger(b.version))
+            return json({ error: "Invalid account deletion." }, 400);
+          await deleteAccount(b.id, b.version);
+          return json({ deleted: b.id });
+        }
         if (
           typeof b.id !== "string" ||
           !Number.isSafeInteger(b.version) ||
@@ -329,7 +345,9 @@ async function handle(
         ...(await loadOverview(managedKeys)),
         quoteSeed: Number(account.number),
         executiveKey: account.manager_key,
-        juniorManagerKeys: managedKeys.filter((key) => key !== account.manager_key),
+        juniorManagerKeys: managedKeys.filter(
+          (key) => key !== account.manager_key,
+        ),
       });
     return json({ error: "Not found" }, 404);
   } catch (e) {
