@@ -65,6 +65,7 @@ export default function IncrementalPreview() {
             ),
           )
         : 100,
+      remaining: next ? Math.max(0, next.dayTarget - entry.diamonds) : 0,
     };
   }, [data, month]);
   return (
@@ -92,6 +93,11 @@ export default function IncrementalPreview() {
                 style={{ width: `${detail.progress}%` }}
               />
             </div>
+            <p className="mt-3 text-xs font-bold text-white/60">
+              {detail.next
+                ? `${new Intl.NumberFormat("en-GB").format(Math.round(detail.remaining))} diamonds to ${detail.next.label}`
+                : "Highest incremental level reached"}
+            </p>
           </div>
         </>
       )}
