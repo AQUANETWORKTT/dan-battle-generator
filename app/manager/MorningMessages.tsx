@@ -105,7 +105,10 @@ export default function MorningMessages({
     async function load() {
       try {
         const separator = endpoint.includes("?") ? "&" : "?";
-        const r = await fetch(endpoint + separator + "fresh=" + Date.now(), { cache: "no-store", credentials: "same-origin" }),
+        const r = await fetch(endpoint + separator + "fresh=" + Date.now(), {
+            cache: "no-store",
+            credentials: "same-origin",
+          }),
           d = await readMessagesResponse(r);
         if (!r.ok) throw Error(d.error || "Unable to load morning messages.");
         if (active) {
@@ -172,8 +175,18 @@ export default function MorningMessages({
     (i) => !managerKeys || managerKeys.includes(i.managerKey),
   );
   const selectedCompleted = selected.filter((item) => item.completed).length;
-  const allComplete = selected.length > 0 && selectedCompleted === selected.length;
-  async function dismiss() { const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dismiss" }) }); const d = await readMessagesResponse(r); if (!r.ok) return setError(d.error || "Could not complete the list."); setItems([]); }
+  const allComplete =
+    selected.length > 0 && selectedCompleted === selected.length;
+  async function dismiss() {
+    const r = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "dismiss" }),
+    });
+    const d = await readMessagesResponse(r);
+    if (!r.ok) return setError(d.error || "Could not complete the list.");
+    setItems([]);
+  }
   useEffect(() => {
     if (loaded && !error)
       onCount?.({
@@ -189,23 +202,72 @@ export default function MorningMessages({
       </p>
     );
   if (allComplete)
-    return <details className="profile-update-reminder task-section-complete"><summary style={{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',fontFamily:'var(--font-norwester), Impact, sans-serif',fontSize:20,color:'#eed397'}}><span>Morning messages</span><span>✅</span></summary><div className="task-section-content morning-messages">{selected.map((item) => <article key={item.id} className="morning-message completed"><Picture username={item.username} /><div className="morning-message-content"><h3>@{item.username}</h3></div></article>)}</div></details>;
+    return (
+      <details className="profile-update-reminder task-section-complete">
+        <summary
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
+            fontFamily: "var(--font-norwester), Impact, sans-serif",
+            fontSize: 20,
+            color: "#eed397",
+          }}
+        >
+          <span>Morning messages</span>
+          <span>✅</span>
+        </summary>
+        <div className="task-section-content morning-messages">
+          {selected.map((item) => (
+            <article key={item.id} className="morning-message completed">
+              <Picture username={item.username} />
+              <div className="morning-message-content">
+                <h3>@{item.username}</h3>
+              </div>
+            </article>
+          ))}
+        </div>
+      </details>
+    );
   if (!selected.length) return null;
   return (
-    <section className="morning-messages">
+    <details className="morning-messages" open={!owner}>
       {error && (
         <p role="alert" className="manager-error">
           {error}
         </p>
       )}
-      {showHeading && (
+      {showHeading && !owner && (
         <h2 className="today-reminders-title">Today’s reminders</h2>
       )}
-      <header>
-        <h3>Morning messages</h3>
-        <span>{selected.length} creators</span>
-      </header>
-      {canDismiss && allComplete && <button type="button" className="morning-finish" onClick={() => void dismiss()}>Complete morning messages</button>}
+      {owner ? (
+        <summary
+          style={{
+            cursor: "pointer",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <h3>Morning messages</h3>
+          <span>{selected.length} creators</span>
+        </summary>
+      ) : (
+        <header>
+          <h3>Morning messages</h3>
+          <span>{selected.length} creators</span>
+        </header>
+      )}
+      {canDismiss && allComplete && (
+        <button
+          type="button"
+          className="morning-finish"
+          onClick={() => void dismiss()}
+        >
+          Complete morning messages
+        </button>
+      )}
       {selected.map((item) => {
         const choiceKey = item.date + ":" + item.id,
           sample = congratulationsMessage(
@@ -223,14 +285,23 @@ export default function MorningMessages({
               (item.completed ? " completed" : "")
             }
             onClick={(event) => {
-              if (!(event.target as HTMLElement).closest("button, input, a, label")) void toggle(item);
+              if (
+                !(event.target as HTMLElement).closest(
+                  "button, input, a, label",
+                )
+              )
+                void toggle(item);
             }}
           >
             <Picture username={item.username} />
             <div className="morning-message-content">
               <div className="morning-message-inline">
                 <h3>@{item.username}</h3>
-                {item.junior && <small className="junior-morning-label">Junior manager · {item.manager.replace(/^Team\s+/i, "")}</small>}
+                {item.junior && (
+                  <small className="junior-morning-label">
+                    Junior manager · {item.manager.replace(/^Team\s+/i, "")}
+                  </small>
+                )}
                 <strong>
                   {item.diamonds.toLocaleString("en-GB")} <span>diamonds</span>
                 </strong>
@@ -288,6 +359,6 @@ export default function MorningMessages({
           </article>
         );
       })}
-    </section>
+    </details>
   );
 }

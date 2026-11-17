@@ -61,17 +61,15 @@ async function tasks() {
   };
 }
 async function save(records: Task[], customTasks: CustomTask[]) {
-  const result = await database()
-    .from("poster_templates")
-    .upsert(
-      {
-        name: NAME,
-        template_json: { records, customTasks },
-        background_url: null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "name" },
-    );
+  const result = await database().from("poster_templates").upsert(
+    {
+      name: NAME,
+      template_json: { records, customTasks },
+      background_url: null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "name" },
+  );
   if (result.error) throw Error(result.error.message);
 }
 
@@ -99,8 +97,11 @@ async function handle(request: NextRequest) {
       ? all.customTasks.filter((task) => task.scope === "master")
       : all.customTasks.filter(
           (task) =>
-            task.scope === "manager" &&
-            task.managerKey === account!.manager_key,
+            (task.scope === "manager" &&
+              task.managerKey === account!.manager_key) ||
+            (task.scope === "master" &&
+              task.managerKey &&
+              managedKeys!.has(task.managerKey)),
         );
     if (request.method === "GET")
       return json({ records: visibleRecords, customTasks: visibleCustom });
@@ -112,11 +113,13 @@ async function handle(request: NextRequest) {
         body.text.length > 500
       )
         return json({ error: "Enter a task up to 500 characters." }, 400);
+      if (owner && (typeof body.managerKey !== "string" || !body.managerKey))
+        return json({ error: "Choose a manager for this task." }, 400);
       const task: CustomTask = {
         id: `custom:${randomUUID()}`,
         text: body.text.trim(),
         scope: owner ? "master" : "manager",
-        ...(owner ? {} : { managerKey: account!.manager_key }),
+        managerKey: owner ? body.managerKey : account!.manager_key,
         completed: false,
         createdAt: new Date().toISOString(),
       };
@@ -128,8 +131,11 @@ async function handle(request: NextRequest) {
           ? next.filter((item) => item.scope === "master")
           : next.filter(
               (item) =>
-                item.scope === "manager" &&
-                item.managerKey === account!.manager_key,
+                (item.scope === "manager" &&
+                  item.managerKey === account!.manager_key) ||
+                (item.scope === "master" &&
+                  item.managerKey &&
+                  managedKeys!.has(item.managerKey)),
             ),
       });
     }
@@ -141,8 +147,9 @@ async function handle(request: NextRequest) {
         !target ||
         (owner
           ? target.scope !== "master"
-          : target.scope !== "manager" ||
-            target.managerKey !== account!.manager_key)
+          : target.scope === "manager"
+            ? target.managerKey !== account!.manager_key
+            : !target.managerKey || !managedKeys!.has(target.managerKey))
       )
         return json({ error: "Not allowed." }, 403);
       const next = all.customTasks.map((task) =>
@@ -163,8 +170,11 @@ async function handle(request: NextRequest) {
           ? next.filter((item) => item.scope === "master")
           : next.filter(
               (item) =>
-                item.scope === "manager" &&
-                item.managerKey === account!.manager_key,
+                (item.scope === "manager" &&
+                  item.managerKey === account!.manager_key) ||
+                (item.scope === "master" &&
+                  item.managerKey &&
+                  managedKeys!.has(item.managerKey)),
             ),
       });
     }

@@ -28,7 +28,13 @@ type UnmanagedRecord = {
   createdAt: string;
 };
 type TaskRecord = { id: string; managerKey: string; completed: boolean };
-type CustomTask = { id: string; text: string; completed: boolean };
+type CustomTask = {
+  id: string;
+  text: string;
+  completed: boolean;
+  scope?: "manager" | "master";
+  managerKey?: string;
+};
 type PortalOverview = Overview & {
   executiveKey?: string;
   juniorManagerKeys?: string[];
@@ -242,6 +248,13 @@ export function Summary({
   const [customTasks, setCustomTasks] = useState<CustomTask[]>([]);
   const [londonDate, setLondonDate] = useState("");
   const executiveKey = (data as PortalOverview).executiveKey;
+  const managerOptions = Array.from(
+    new Map(
+      data.creators.map((creator) => [creator.managerKey, creator.manager]),
+    ),
+  )
+    .map(([key, name]) => ({ key, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
       : null,
@@ -342,10 +355,30 @@ export function Summary({
       owner ? "Add a Master Portal task" : "Add a task",
     );
     if (!text?.trim()) return;
+    let managerKey: string | undefined;
+    if (owner) {
+      const selected = window.prompt(
+        `Assign this task to:\n${managerOptions.map((manager) => manager.name.replace(/^Team\s+/i, "")).join("\n")}`,
+      );
+      const match = managerOptions.find(
+        (manager) =>
+          manager.name.replace(/^Team\s+/i, "").toLowerCase() ===
+          selected
+            ?.trim()
+            .replace(/^Team\s+/i, "")
+            .toLowerCase(),
+      );
+      if (!match) return window.alert("Choose a manager from the list.");
+      managerKey = match.key;
+    }
     const response = await fetch("/api/manager-tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create-custom", text }),
+      body: JSON.stringify({
+        action: "create-custom",
+        text,
+        ...(managerKey ? { managerKey } : {}),
+      }),
     });
     const result = await response.json();
     if (!response.ok)
@@ -609,6 +642,16 @@ export function Summary({
                 }}
               >
                 {task.text}
+                {owner && task.managerKey && (
+                  <small
+                    className="manager-muted"
+                    style={{ display: "block", marginTop: 4 }}
+                  >
+                    {managerOptions
+                      .find((manager) => manager.key === task.managerKey)
+                      ?.name.replace(/^Team\s+/i, "") || "Manager"}
+                  </small>
+                )}
               </span>
               <input
                 type="checkbox"
