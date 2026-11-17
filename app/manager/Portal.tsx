@@ -28,7 +28,10 @@ type UnmanagedRecord = {
   createdAt: string;
 };
 type TaskRecord = { id: string; managerKey: string; completed: boolean };
-type PortalOverview = Overview & { executiveKey?: string; juniorManagerKeys?: string[] };
+type PortalOverview = Overview & {
+  executiveKey?: string;
+  juniorManagerKeys?: string[];
+};
 const warmRequests = new Map<
   string,
   { at: number; promise: Promise<any>; value?: any }
@@ -186,7 +189,23 @@ export function PortalShell({
       </header>
       <main className="manager-wrap">
         {name && path !== "/manager/posters" && (
-          <p className="manager-team-name">{name.replace(/^Team\s+/i, "")} <span className={role === "junior" ? "manager-role junior" : "manager-role"}>— {role === "owner" ? "Owner / Head of Operations" : role === "executive" ? "Executive manager" : role === "junior" ? "Junior manager" : "Senior manager"}</span></p>
+          <p className="manager-team-name">
+            {name.replace(/^Team\s+/i, "")}{" "}
+            <span
+              className={
+                role === "junior" ? "manager-role junior" : "manager-role"
+              }
+            >
+              —{" "}
+              {role === "owner"
+                ? "Owner / Head of Operations"
+                : role === "executive"
+                  ? "Executive manager"
+                  : role === "junior"
+                    ? "Junior manager"
+                    : "Senior manager"}
+            </span>
+          </p>
         )}
         {children}
       </main>
@@ -205,44 +224,106 @@ export function Summary({
   onUnmanagedChange?: (records: UnmanagedRecord[]) => void;
 }) {
   const [tab, setTab] = useState<
-    "today" | "daily" | "inactive" | "graduation" | "mature" | "maintain" | "unmanaged" | "master-tasks"
+    | "today"
+    | "daily"
+    | "inactive"
+    | "graduation"
+    | "mature"
+    | "maintain"
+    | "unmanaged"
+    | "master-tasks"
   >("today");
-  const [morningTasks, setMorningTasks] = useState<{ total: number; completed: number } | null>(null);
+  const [morningTasks, setMorningTasks] = useState<{
+    total: number;
+    completed: number;
+  } | null>(null);
   const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
+  const [londonDate, setLondonDate] = useState("");
   const executiveKey = (data as PortalOverview).executiveKey;
   const change = data.previousTotal
       ? (data.total / data.previousTotal - 1) * 100
       : null,
     priorRoster = data.previousRoster.reduce((n, r) => n + r.count, 0),
     delta = data.creators.length - priorRoster,
-    profileCreators = data.creators.filter((creator) => creator.agencyDays === 15),
-    appLinkCreators = data.creators.filter((creator) => creator.agencyDays === 3),
-    profileCompleted = profileCreators.filter((creator) => taskRecords.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)).length,
-    appLinkCompleted = appLinkCreators.filter((creator) => taskRecords.some((task) => task.id === `app-link:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)).length,
-    taskTotal = (morningTasks?.total || 0) + profileCreators.length + appLinkCreators.length,
-    taskCompleted = (morningTasks?.completed || 0) + profileCompleted + appLinkCompleted;
+    profileCreators = data.creators.filter(
+      (creator) => creator.agencyDays === 15,
+    ),
+    appLinkCreators = data.creators.filter(
+      (creator) => creator.agencyDays === 3,
+    ),
+    profileCompleted = profileCreators.filter((creator) =>
+      taskRecords.some(
+        (task) =>
+          task.id === `profile:${data.month}:${creator.id}` &&
+          task.managerKey === creator.managerKey &&
+          task.completed,
+      ),
+    ).length,
+    appLinkCompleted = appLinkCreators.filter((creator) =>
+      taskRecords.some(
+        (task) =>
+          task.id === `app-link:${data.month}:${creator.id}` &&
+          task.managerKey === creator.managerKey &&
+          task.completed,
+      ),
+    ).length,
+    taskTotal =
+      (morningTasks?.total || 0) +
+      profileCreators.length +
+      appLinkCreators.length,
+    taskCompleted =
+      (morningTasks?.completed || 0) + profileCompleted + appLinkCompleted;
   useEffect(() => {
     void fetch("/api/manager-tasks", { cache: "no-store" })
       .then((response) => response.json())
       .then((result) => setTaskRecords(result.records || []))
       .catch(() => {});
   }, []);
-  async function toggleTask(creator: Overview["creators"][number], kind: "profile" | "app-link") {
+  useEffect(() => {
+    setLondonDate(
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/London",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date()),
+    );
+  }, []);
+  const londonWeekday = londonDate
+    ? new Date(`${londonDate}T12:00:00Z`).getUTCDay()
+    : null;
+  async function toggleTask(
+    creator: Overview["creators"][number],
+    kind: "profile" | "app-link",
+  ) {
     const id = `${kind}:${data.month}:${creator.id}`;
-    const current = taskRecords.some((task) => task.id === id && task.managerKey === creator.managerKey && task.completed);
+    const current = taskRecords.some(
+      (task) =>
+        task.id === id &&
+        task.managerKey === creator.managerKey &&
+        task.completed,
+    );
     const completed = !current;
     setTaskRecords((records) => [
-      ...records.filter((task) => !(task.id === id && task.managerKey === creator.managerKey)),
+      ...records.filter(
+        (task) => !(task.id === id && task.managerKey === creator.managerKey),
+      ),
       { id, managerKey: creator.managerKey, completed },
     ]);
     try {
-      const response = await fetch("/api/manager-tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, managerKey: creator.managerKey, completed }) });
+      const response = await fetch("/api/manager-tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, managerKey: creator.managerKey, completed }),
+      });
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Could not save task.");
       setTaskRecords(result.records || []);
     } catch {
       setTaskRecords((records) => [
-        ...records.filter((task) => !(task.id === id && task.managerKey === creator.managerKey)),
+        ...records.filter(
+          (task) => !(task.id === id && task.managerKey === creator.managerKey),
+        ),
         { id, managerKey: creator.managerKey, completed: current },
       ]);
     }
@@ -302,7 +383,8 @@ export function Summary({
           Unmanaged <span>View</span>
         </button>
       </div>
-      {tab === "today" && <div className="manager-grid manager-summary-grid">
+      {tab === "today" && (
+        <div className="manager-grid manager-summary-grid">
           {[
             ["Month to date", data.total.toLocaleString("en-GB")],
             [
@@ -386,14 +468,32 @@ export function Summary({
                 .toLocaleString("en-GB")}
             </p>
           </div>
-      </div>}
+        </div>
+      )}
       {tab === "today" && (
         <div className="today-tasks-heading">
           <h2 className="today-reminders-title">Today’s tasks</h2>
           {morningTasks !== null && (
             <div className="today-task-actions">
-              <p className="today-task-count" style={taskTotal > 0 && taskCompleted === taskTotal ? { color: "#9de7bd", borderColor: "#72c9a266", background: "#173a2926" } : undefined}>{taskCompleted} / {taskTotal} completed</p>
-              {owner && <button type="button" onClick={() => setTab("master-tasks")}>View tasks</button>}
+              <p
+                className="today-task-count"
+                style={
+                  taskTotal > 0 && taskCompleted === taskTotal
+                    ? {
+                        color: "#9de7bd",
+                        borderColor: "#72c9a266",
+                        background: "#173a2926",
+                      }
+                    : undefined
+                }
+              >
+                {taskCompleted} / {taskTotal} completed
+              </p>
+              {owner && (
+                <button type="button" onClick={() => setTab("master-tasks")}>
+                  View tasks
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -410,7 +510,9 @@ export function Summary({
           onCount={setMorningTasks}
         />
       )}
-      {tab === "master-tasks" && owner && <MasterTaskSummary data={data} onBack={() => setTab("today")} />}
+      {tab === "master-tasks" && owner && (
+        <MasterTaskSummary data={data} onBack={() => setTab("today")} />
+      )}
       {tab === "today" && (
         <ManagerReminders
           owner={owner}
@@ -427,64 +529,143 @@ export function Summary({
           }
         />
       )}
-      {tab === "today" && new Date(data.latest + "T12:00:00Z").getUTCDay() === 1 && (
+      {tab === "today" && londonWeekday === 1 && (
         <section className="manager-card recurring-reminder">
           <p className="manager-eyebrow">Weekly reminder</p>
           <h2>Monday morning motivational message</h2>
-          <p className="manager-muted">Send your Monday morning motivational message to your creators.</p>
+          <p className="manager-muted">
+            Send your Monday morning motivational message to your creators.
+          </p>
         </section>
       )}
-      {tab === "today" && data.latest.endsWith("-15") && (
+      {tab === "today" && londonWeekday === 2 && (
         <section className="manager-card recurring-reminder">
-          <p className="manager-eyebrow">Mid-month review</p>
+          <p className="manager-eyebrow">Tuesday progress review</p>
           <h2>Review creator progress</h2>
-          <p className="manager-muted">Review each creator’s progress towards maintenance, graduation and rank-up, then plan how you will help them reach their targets.</p>
+          <p className="manager-muted">
+            Review your graduation and mature creators, check their progress,
+            and plan the next steps to help them reach their targets.
+          </p>
         </section>
       )}
-      {tab === "today" &&
-        data.creators.some((c) => c.agencyDays === 15) && (
-          <section className="profile-update-reminder profile-update-compact">
-            <div>
-              <h2>Profile picture changes</h2>
-              <p className="manager-muted">
-                Profile picture changes
-              </p>
-            </div>
-            <div className="profile-update-people">
-              {data.creators
-                .filter((c) => c.agencyDays === 15)
-                .map((c) => (
-                  <div key={c.id} className={"profile-update-person" + (taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed) ? " completed" : "") + (executiveKey && executiveKey !== c.managerKey ? " junior-task" : "")}>
-                    <Picture username={c.username} />
-                    <div>
-                      <div className="profile-update-name-row">
-                        <strong>@{c.username}</strong>
-                      </div>
-                      <span className="manager-muted">{executiveKey && executiveKey !== c.managerKey ? `Junior manager · ${c.manager.replace(/^Team\s+/i, "")}` : c.manager}</span>
-                    </div>
-                    <span className="profile-picture-change" aria-label="Change blue profile picture to bronze">
-                      <img src="/branding/chat-profiles/blue.png" alt="Blue profile picture" />
-                      <span>→</span>
-                      <img src="/branding/chat-profiles/bronze.png" alt="Bronze profile picture" />
-                    </span>
-                    <label className="morning-complete">
-                      <span>Done</span>
-                      <input type="checkbox" checked={taskRecords.some((task) => task.id === `profile:${data.month}:${c.id}` && task.managerKey === c.managerKey && task.completed)} onChange={() => void toggleTask(c, "profile")} />
-                    </label>
-                  </div>
-                ))}
-            </div>
-          </section>
-        )}
-      {tab === "today" && data.latest.endsWith("-01") && (
+      {tab === "today" && data.creators.some((c) => c.agencyDays === 15) && (
         <section className="profile-update-reminder profile-update-compact">
-          <div><h2>Monthly profile picture review</h2><p className="manager-muted">Use last month’s diamonds to check each established creator’s new chat profile category.</p></div>
-          <div className="profile-update-people">{data.creators.filter((creator) => (creator.agencyDays || 0) >= 15).map((creator) => <div key={creator.id} className="profile-update-person"><div><strong>@{creator.username}</strong><span className="manager-muted">{chatProfileColour(creator.agencyDays, creator.previousDiamonds).label}</span></div></div>)}</div>
+          <div>
+            <h2>Profile picture changes</h2>
+            <p className="manager-muted">Profile picture changes</p>
+          </div>
+          <div className="profile-update-people">
+            {data.creators
+              .filter((c) => c.agencyDays === 15)
+              .map((c) => (
+                <div
+                  key={c.id}
+                  className={
+                    "profile-update-person" +
+                    (taskRecords.some(
+                      (task) =>
+                        task.id === `profile:${data.month}:${c.id}` &&
+                        task.managerKey === c.managerKey &&
+                        task.completed,
+                    )
+                      ? " completed"
+                      : "") +
+                    (executiveKey && executiveKey !== c.managerKey
+                      ? " junior-task"
+                      : "")
+                  }
+                >
+                  <Picture username={c.username} />
+                  <div>
+                    <div className="profile-update-name-row">
+                      <strong>@{c.username}</strong>
+                    </div>
+                    <span className="manager-muted">
+                      {executiveKey && executiveKey !== c.managerKey
+                        ? `Junior manager · ${c.manager.replace(/^Team\s+/i, "")}`
+                        : c.manager}
+                    </span>
+                  </div>
+                  <span
+                    className="profile-picture-change"
+                    aria-label="Change blue profile picture to bronze"
+                  >
+                    <img
+                      src="/branding/chat-profiles/blue.png"
+                      alt="Blue profile picture"
+                    />
+                    <span>→</span>
+                    <img
+                      src="/branding/chat-profiles/bronze.png"
+                      alt="Bronze profile picture"
+                    />
+                  </span>
+                  <label className="morning-complete">
+                    <span>Done</span>
+                    <input
+                      type="checkbox"
+                      checked={taskRecords.some(
+                        (task) =>
+                          task.id === `profile:${data.month}:${c.id}` &&
+                          task.managerKey === c.managerKey &&
+                          task.completed,
+                      )}
+                      onChange={() => void toggleTask(c, "profile")}
+                    />
+                  </label>
+                </div>
+              ))}
+          </div>
         </section>
       )}
-      {tab === "today" && <AppLinkReminder creators={data.creators} month={data.month} records={taskRecords} executiveKey={executiveKey} showManager={owner} onToggle={(creator) => { const fullCreator = data.creators.find((item) => item.id === creator.id); if (fullCreator) void toggleTask(fullCreator, "app-link"); }} />}
+      {tab === "today" && londonDate.endsWith("-01") && (
+        <section className="profile-update-reminder profile-update-compact">
+          <div>
+            <h2>Monthly profile picture review</h2>
+            <p className="manager-muted">
+              Use last month’s diamonds to check each established creator’s new
+              chat profile category.
+            </p>
+          </div>
+          <div className="profile-update-people">
+            {data.creators
+              .filter((creator) => (creator.agencyDays || 0) >= 15)
+              .map((creator) => (
+                <div key={creator.id} className="profile-update-person">
+                  <div>
+                    <strong>@{creator.username}</strong>
+                    <span className="manager-muted">
+                      {
+                        chatProfileColour(
+                          creator.agencyDays,
+                          creator.previousDiamonds,
+                        ).label
+                      }
+                    </span>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+      {tab === "today" && (
+        <AppLinkReminder
+          creators={data.creators}
+          month={data.month}
+          records={taskRecords}
+          executiveKey={executiveKey}
+          showManager={owner}
+          onToggle={(creator) => {
+            const fullCreator = data.creators.find(
+              (item) => item.id === creator.id,
+            );
+            if (fullCreator) void toggleTask(fullCreator, "app-link");
+          }}
+        />
+      )}
       {tab === "today" && !owner && <ManagerNotes />}
-      {tab === "today" || tab === "master-tasks" ? null : tab === "unmanaged" ? (
+      {tab === "today" || tab === "master-tasks" ? null : tab ===
+        "unmanaged" ? (
         <UnmanagedPanel
           records={unmanaged}
           onChanged={onUnmanagedChange}
@@ -496,9 +677,7 @@ export function Summary({
           )}
           showTeams={owner}
         />
-      ) : tab === "graduation" ||
-        tab === "mature" ||
-        tab === "maintain" ? (
+      ) : tab === "graduation" || tab === "mature" || tab === "maintain" ? (
         <DevelopmentCreators
           owner={owner}
           group={data.filterGroup || ""}
@@ -531,42 +710,171 @@ export function Summary({
     </>
   );
 }
-function MasterTaskSummary({ data, onBack }: { data: Overview; onBack: () => void }) {
-  const [morning, setMorning] = useState<Array<{ id: string; username: string; manager: string; managerKey: string; completed: boolean }>>([]);
+function MasterTaskSummary({
+  data,
+  onBack,
+}: {
+  data: Overview;
+  onBack: () => void;
+}) {
+  const [morning, setMorning] = useState<
+    Array<{
+      id: string;
+      username: string;
+      manager: string;
+      managerKey: string;
+      completed: boolean;
+    }>
+  >([]);
   const [saved, setSaved] = useState<TaskRecord[]>([]);
-  const [managers, setManagers] = useState<Array<{ key: string; name: string; group: string }>>([]);
+  const [managers, setManagers] = useState<
+    Array<{ key: string; name: string; group: string }>
+  >([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let active = true;
     Promise.all([
-      fetch("/api/morning-messages?scope=owner", { cache: "no-store" }).then((response) => response.json()),
-      fetch("/api/manager-tasks", { cache: "no-store" }).then((response) => response.json()),
-      fetch("/api/data-analysis/manager-assignments", { cache: "no-store" }).then((response) => response.json()),
-    ]).then(([messages, tasks, assignments]) => {
-      if (!active) return;
-      setMorning(messages.items || []);
-      setSaved(tasks.records || []);
-      setManagers((assignments.managers || []).filter((manager: { group: string }) => manager.group === "Team Dan / James"));
-      setLoaded(true);
-    }).catch(() => active && setLoaded(true));
-    return () => { active = false; };
+      fetch("/api/morning-messages?scope=owner", { cache: "no-store" }).then(
+        (response) => response.json(),
+      ),
+      fetch("/api/manager-tasks", { cache: "no-store" }).then((response) =>
+        response.json(),
+      ),
+      fetch("/api/data-analysis/manager-assignments", {
+        cache: "no-store",
+      }).then((response) => response.json()),
+    ])
+      .then(([messages, tasks, assignments]) => {
+        if (!active) return;
+        setMorning(messages.items || []);
+        setSaved(tasks.records || []);
+        setManagers(
+          (assignments.managers || []).filter(
+            (manager: { group: string }) =>
+              manager.group === "Team Dan / James",
+          ),
+        );
+        setLoaded(true);
+      })
+      .catch(() => active && setLoaded(true));
+    return () => {
+      active = false;
+    };
   }, []);
   if (!loaded) return <p className="manager-muted">Loading task summary…</p>;
-  const team = new Map<string, { name: string; completed: number; groups: Record<string, string[]> }>();
-  managers.forEach((manager) => team.set(manager.key, { name: manager.name, completed: 0, groups: {} }));
-  const register = (managerKey: string, manager: string, group: string, label: string, completed: boolean) => {
-    const entry = team.get(managerKey) || { name: manager, completed: 0, groups: {} };
+  const team = new Map<
+    string,
+    { name: string; completed: number; groups: Record<string, string[]> }
+  >();
+  managers.forEach((manager) =>
+    team.set(manager.key, { name: manager.name, completed: 0, groups: {} }),
+  );
+  const register = (
+    managerKey: string,
+    manager: string,
+    group: string,
+    label: string,
+    completed: boolean,
+  ) => {
+    const entry = team.get(managerKey) || {
+      name: manager,
+      completed: 0,
+      groups: {},
+    };
     if (completed) entry.completed += 1;
     else (entry.groups[group] ||= []).push(label);
     team.set(managerKey, entry);
   };
-  morning.forEach((item) => register(item.managerKey, item.manager, "Morning messages", `@${item.username}`, item.completed));
-  data.creators.filter((creator) => creator.agencyDays === 15).forEach((creator) => register(creator.managerKey, creator.manager, "Change profile picture", `@${creator.username}`, saved.some((task) => task.id === `profile:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
-  data.creators.filter((creator) => creator.agencyDays === 3).forEach((creator) => register(creator.managerKey, creator.manager, "Send First Class app link", `@${creator.username}`, saved.some((task) => task.id === `app-link:${data.month}:${creator.id}` && task.managerKey === creator.managerKey && task.completed)));
+  morning.forEach((item) =>
+    register(
+      item.managerKey,
+      item.manager,
+      "Morning messages",
+      `@${item.username}`,
+      item.completed,
+    ),
+  );
+  data.creators
+    .filter((creator) => creator.agencyDays === 15)
+    .forEach((creator) =>
+      register(
+        creator.managerKey,
+        creator.manager,
+        "Change profile picture",
+        `@${creator.username}`,
+        saved.some(
+          (task) =>
+            task.id === `profile:${data.month}:${creator.id}` &&
+            task.managerKey === creator.managerKey &&
+            task.completed,
+        ),
+      ),
+    );
+  data.creators
+    .filter((creator) => creator.agencyDays === 3)
+    .forEach((creator) =>
+      register(
+        creator.managerKey,
+        creator.manager,
+        "Send First Class app link",
+        `@${creator.username}`,
+        saved.some(
+          (task) =>
+            task.id === `app-link:${data.month}:${creator.id}` &&
+            task.managerKey === creator.managerKey &&
+            task.completed,
+        ),
+      ),
+    );
   const entries = [...team.entries()]
     .filter(([, entry]) => Object.values(entry.groups).flat().length > 0)
     .sort(([, a], [, b]) => a.name.localeCompare(b.name));
-  return <section className="master-task-summary"><header><div><p className="manager-eyebrow">Master Portal</p><h2>Manager task summary</h2></div><button type="button" onClick={onBack}>← Today’s tasks</button></header>{entries.length ? entries.map(([key, entry]) => { const remaining = Object.values(entry.groups).flat().length, total = entry.completed + remaining; return <details key={key}><summary><span>{entry.name}</span><b>{entry.completed} / {total} complete</b><em>{remaining} remaining</em></summary><div className="master-task-groups">{Object.entries(entry.groups).map(([group, tasks]) => <details key={group}><summary>{group}: {tasks.length}</summary><ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul></details>)}</div></details>; }) : <p className="manager-muted">No tasks are currently remaining.</p>}</section>;
+  return (
+    <section className="master-task-summary">
+      <header>
+        <div>
+          <p className="manager-eyebrow">Master Portal</p>
+          <h2>Manager task summary</h2>
+        </div>
+        <button type="button" onClick={onBack}>
+          ← Today’s tasks
+        </button>
+      </header>
+      {entries.length ? (
+        entries.map(([key, entry]) => {
+          const remaining = Object.values(entry.groups).flat().length,
+            total = entry.completed + remaining;
+          return (
+            <details key={key}>
+              <summary>
+                <span>{entry.name}</span>
+                <b>
+                  {entry.completed} / {total} complete
+                </b>
+                <em>{remaining} remaining</em>
+              </summary>
+              <div className="master-task-groups">
+                {Object.entries(entry.groups).map(([group, tasks]) => (
+                  <details key={group}>
+                    <summary>
+                      {group}: {tasks.length}
+                    </summary>
+                    <ul>
+                      {tasks.map((task) => (
+                        <li key={task}>{task}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            </details>
+          );
+        })
+      ) : (
+        <p className="manager-muted">No tasks are currently remaining.</p>
+      )}
+    </section>
+  );
 }
 export default function Dashboard({
   creators = false,
@@ -624,7 +932,9 @@ export default function Dashboard({
     if (!source || !unmanaged.length) return;
     const returned = unmanaged.find((item) => {
       const creator = source.creators.find((creator) => creator.id === item.id);
-      return item.reason === "away" && creator && creator.hours > item.hoursAtMove;
+      return (
+        item.reason === "away" && creator && creator.hours > item.hoursAtMove
+      );
     });
     if (!returned) return;
     void portalRequest("unmanaged", { action: "return", id: returned.id })
@@ -636,8 +946,7 @@ export default function Dashboard({
   const filteredCreators =
     source?.creators.filter(
       (c) =>
-        (!group || c.group === group) &&
-        (!manager || c.managerKey === manager),
+        (!group || c.group === group) && (!manager || c.managerKey === manager),
     ) || [];
   const selected = filteredCreators.filter(
     (creator) => !unmanaged.some((item) => item.id === creator.id),
@@ -661,7 +970,10 @@ export default function Dashboard({
         ),
         creators: selected,
         total,
-        previousTotal: filteredCreators.reduce((s, c) => s + c.previousComparable, 0),
+        previousTotal: filteredCreators.reduce(
+          (s, c) => s + c.previousComparable,
+          0,
+        ),
         priorities: source.priorities.filter((p) => chosen.has(p.username)),
         topThreeShare: total
           ? Math.round(
@@ -702,57 +1014,63 @@ export default function Dashboard({
       {error && <p className="manager-error">{error}</p>}
       {source && (
         <div className="manager-filters">
-          {owner && <label className="manager-muted">
-            Group
-            <select
-              className="manager-input"
-              value={group}
-              onChange={(e) => {
-                setGroup(e.target.value);
-                setManager("");
-                sessionStorage.setItem(
-                  "owner-focus-filters",
-                  JSON.stringify({ group: e.target.value, manager: "" }),
-                );
-              }}
-            >
-              <option value="">All managed groups</option>
-              {[...new Set(source.creators.map((c) => c.group))]
-                .sort()
-                .map((g) => (
-                  <option key={g}>{g}</option>
-                ))}
-            </select>
-          </label>}
-          {(owner || (source.juniorManagerKeys?.length || 0) > 0) && <label className="manager-muted">
-            Select manager
-            <select
-              className="manager-input"
-              value={manager}
-              onChange={(e) => {
-                setManager(e.target.value);
-                sessionStorage.setItem(
-                  "owner-focus-filters",
-                  JSON.stringify({ group, manager: e.target.value }),
-                );
-              }}
-            >
-              <option value="">All managed creators</option>
-              {[
-                ...new Map(
-                  source.creators
-                    .filter((c) => !group || c.group === group)
-                    .map((c) => [c.managerKey, c.manager]),
-                ).entries(),
-              ]
-                .sort((a, b) => a[1].localeCompare(b[1]))
-                .map(([key, name]) => (
-                  <option key={key} value={key}>
-                    {!owner && source.executiveKey !== key ? `${name} · Junior manager` : name}
-                  </option>
-                ))}
-            </select>
-          </label>}
+          {owner && (
+            <label className="manager-muted">
+              Group
+              <select
+                className="manager-input"
+                value={group}
+                onChange={(e) => {
+                  setGroup(e.target.value);
+                  setManager("");
+                  sessionStorage.setItem(
+                    "owner-focus-filters",
+                    JSON.stringify({ group: e.target.value, manager: "" }),
+                  );
+                }}
+              >
+                <option value="">All managed groups</option>
+                {[...new Set(source.creators.map((c) => c.group))]
+                  .sort()
+                  .map((g) => (
+                    <option key={g}>{g}</option>
+                  ))}
+              </select>
+            </label>
+          )}
+          {(owner || (source.juniorManagerKeys?.length || 0) > 0) && (
+            <label className="manager-muted">
+              Select manager
+              <select
+                className="manager-input"
+                value={manager}
+                onChange={(e) => {
+                  setManager(e.target.value);
+                  sessionStorage.setItem(
+                    "owner-focus-filters",
+                    JSON.stringify({ group, manager: e.target.value }),
+                  );
+                }}
+              >
+                <option value="">All managed creators</option>
+                {[
+                  ...new Map(
+                    source.creators
+                      .filter((c) => !group || c.group === group)
+                      .map((c) => [c.managerKey, c.manager]),
+                  ).entries(),
+                ]
+                  .sort((a, b) => a[1].localeCompare(b[1]))
+                  .map(([key, name]) => (
+                    <option key={key} value={key}>
+                      {!owner && source.executiveKey !== key
+                        ? `${name} · Junior manager`
+                        : name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
       {data &&
@@ -819,7 +1137,11 @@ export default function Dashboard({
                     <Picture username={c.username} />
                     <div className="creator-roster-name">
                       <h2>@{c.username}</h2>
-                      <span>{data.executiveKey && data.executiveKey !== c.managerKey ? `${c.manager} · Junior manager` : "This month"}</span>
+                      <span>
+                        {data.executiveKey && data.executiveKey !== c.managerKey
+                          ? `${c.manager} · Junior manager`
+                          : "This month"}
+                      </span>
                     </div>
                     <div className="creator-roster-stat main">
                       <span>Diamonds</span>
@@ -892,7 +1214,10 @@ export function ManageCreator({
   creator,
   onChanged,
 }: {
-  creator: Pick<Overview["creators"][number], "id" | "username" | "managerKey" | "hours">;
+  creator: Pick<
+    Overview["creators"][number],
+    "id" | "username" | "managerKey" | "hours"
+  >;
   onChanged?: (records: UnmanagedRecord[]) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -905,7 +1230,11 @@ export function ManageCreator({
     element.style.setProperty("position", "fixed", "important");
     element.style.setProperty("inset", "50% auto auto 50%", "important");
     element.style.setProperty("margin", "0", "important");
-    element.style.setProperty("transform", "translate(-50%, -50%)", "important");
+    element.style.setProperty(
+      "transform",
+      "translate(-50%, -50%)",
+      "important",
+    );
     element.showModal();
   }
   async function move(
@@ -963,21 +1292,21 @@ export function ManageCreator({
           </button>
         </div>
         <div className="creator-manage-options">
-        {(
-          [
-            ["leave-request", "Leave request"],
-            ["no-contact", "No contact"],
-            ["away", "Away"],
-          ] as const
-        ).map(([reason, label]) => (
-          <button
-            key={reason}
-            disabled={busy}
-            onClick={() => void move(reason)}
-          >
-            {label}
-          </button>
-        ))}
+          {(
+            [
+              ["leave-request", "Leave request"],
+              ["no-contact", "No contact"],
+              ["away", "Away"],
+            ] as const
+          ).map(([reason, label]) => (
+            <button
+              key={reason}
+              disabled={busy}
+              onClick={() => void move(reason)}
+            >
+              {label}
+            </button>
+          ))}
           <button
             type="button"
             disabled={busy}
@@ -1056,7 +1385,9 @@ function UnmanagedPanel({
               <strong>@{item.username}</strong>
               <span>{label(item.reason)}</span>
               {item.note && <span>{item.note}</span>}
-              {showTeams && <span>Team: {teams[item.managerKey] || item.managerKey}</span>}
+              {showTeams && (
+                <span>Team: {teams[item.managerKey] || item.managerKey}</span>
+              )}
             </div>
             <button onClick={() => void restore(item.id)}>
               Return to managed
