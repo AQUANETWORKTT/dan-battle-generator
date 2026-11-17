@@ -28,6 +28,7 @@ type UnmanagedRecord = {
   createdAt: string;
 };
 type TaskRecord = { id: string; managerKey: string; completed: boolean };
+type CustomTask = { id: string; text: string; completed: boolean };
 type PortalOverview = Overview & {
   executiveKey?: string;
   juniorManagerKeys?: string[];
@@ -238,6 +239,7 @@ export function Summary({
     completed: number;
   } | null>(null);
   const [taskRecords, setTaskRecords] = useState<TaskRecord[]>([]);
+  const [customTasks, setCustomTasks] = useState<CustomTask[]>([]);
   const [londonDate, setLondonDate] = useState("");
   const executiveKey = (data as PortalOverview).executiveKey;
   const change = data.previousTotal
@@ -270,13 +272,20 @@ export function Summary({
     taskTotal =
       (morningTasks?.total || 0) +
       profileCreators.length +
-      appLinkCreators.length,
+      appLinkCreators.length +
+      customTasks.length,
     taskCompleted =
-      (morningTasks?.completed || 0) + profileCompleted + appLinkCompleted;
+      (morningTasks?.completed || 0) +
+      profileCompleted +
+      appLinkCompleted +
+      customTasks.filter((task) => task.completed).length;
   useEffect(() => {
     void fetch("/api/manager-tasks", { cache: "no-store" })
       .then((response) => response.json())
-      .then((result) => setTaskRecords(result.records || []))
+      .then((result) => {
+        setTaskRecords(result.records || []);
+        setCustomTasks(result.customTasks || []);
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -326,6 +335,51 @@ export function Summary({
         ),
         { id, managerKey: creator.managerKey, completed: current },
       ]);
+    }
+  }
+  async function addCustomTask() {
+    const text = window.prompt(
+      owner ? "Add a Master Portal task" : "Add a task",
+    );
+    if (!text?.trim()) return;
+    const response = await fetch("/api/manager-tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create-custom", text }),
+    });
+    const result = await response.json();
+    if (!response.ok)
+      return window.alert(result.error || "Could not add task.");
+    setTaskRecords(result.records || []);
+    setCustomTasks(result.customTasks || []);
+  }
+  async function toggleCustomTask(task: CustomTask) {
+    const completed = !task.completed;
+    setCustomTasks((tasks) =>
+      tasks.map((item) =>
+        item.id === task.id ? { ...item, completed } : item,
+      ),
+    );
+    try {
+      const response = await fetch("/api/manager-tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle-custom",
+          id: task.id,
+          completed,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Could not save task.");
+      setTaskRecords(result.records || []);
+      setCustomTasks(result.customTasks || []);
+    } catch {
+      setCustomTasks((tasks) =>
+        tasks.map((item) =>
+          item.id === task.id ? { ...item, completed: task.completed } : item,
+        ),
+      );
     }
   }
   return (
@@ -489,6 +543,9 @@ export function Summary({
               >
                 {taskCompleted} / {taskTotal} completed
               </p>
+              <button type="button" onClick={() => void addCustomTask()}>
+                + Add task
+              </button>
               {owner && (
                 <button type="button" onClick={() => setTab("master-tasks")}>
                   View tasks
@@ -528,6 +585,39 @@ export function Summary({
               : undefined
           }
         />
+      )}
+      {tab === "today" && customTasks.length > 0 && (
+        <section className="manager-card" style={{ marginTop: 20 }}>
+          <p className="manager-eyebrow">
+            {owner ? "Master Portal tasks" : "My tasks"}
+          </p>
+          {customTasks.map((task) => (
+            <label
+              key={task.id}
+              className="morning-complete"
+              style={{
+                justifyContent: "space-between",
+                width: "100%",
+                padding: "12px 0",
+                borderTop: "1px solid #ffffff14",
+              }}
+            >
+              <span
+                style={{
+                  textDecoration: task.completed ? "line-through" : undefined,
+                  opacity: task.completed ? 0.6 : 1,
+                }}
+              >
+                {task.text}
+              </span>
+              <input
+                type="checkbox"
+                checked={task.completed}
+                onChange={() => void toggleCustomTask(task)}
+              />
+            </label>
+          ))}
+        </section>
       )}
       {tab === "today" && londonWeekday === 1 && (
         <section className="manager-card recurring-reminder">
