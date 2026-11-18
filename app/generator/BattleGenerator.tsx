@@ -1789,6 +1789,12 @@ export default function BattleGenerator({
         }),
       });
       const result = await response.json().catch(() => ({}));
+      if(response.status===409){
+        const refreshed=await fetch('/api/poster-templates',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+        if(Array.isArray(refreshed?.templates))setTemplates(refreshed.templates);
+        setTemplateStatus(result.error||'That name is already saved. Select the existing template or choose a different name.');
+        return;
+      }
       if (!response.ok || !result.template)
         throw new Error(result.error || "unknown error");
       const row = {
