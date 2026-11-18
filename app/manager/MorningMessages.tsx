@@ -232,33 +232,16 @@ export default function MorningMessages({
     );
   if (!selected.length) return null;
   return (
-    <details className="morning-messages" open={!owner}>
-      {error && (
-        <p role="alert" className="manager-error">
-          {error}
-        </p>
-      )}
-      {showHeading && !owner && (
-        <h2 className="today-reminders-title">Today’s reminders</h2>
-      )}
-      {owner ? (
-        <summary
-          style={{
-            cursor: "pointer",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h3>Morning messages</h3>
-          <span>{selected.length} creators</span>
+    <>
+      {showHeading && !owner && <h2 className="today-reminders-title">Today’s reminders</h2>}
+      <details className="morning-messages morning-messages-panel">
+        <summary className="morning-messages-summary">
+          <span className="morning-messages-title">Morning messages</span>
+          <span className="morning-messages-count">{selected.length} creators</span>
+          <svg className="morning-messages-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 7 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </summary>
-      ) : (
-        <header>
-          <h3>Morning messages</h3>
-          <span>{selected.length} creators</span>
-        </header>
-      )}
+        <div className="morning-message-list">
+          {error && <p role="alert" className="manager-error">{error}</p>}
       {canDismiss && allComplete && (
         <button
           type="button"
@@ -359,6 +342,8 @@ export default function MorningMessages({
           </article>
         );
       })}
-    </details>
+        </div>
+      </details>
+    </>
   );
 }

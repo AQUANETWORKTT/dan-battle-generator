@@ -356,14 +356,12 @@ function teamPosterCategoryLabel(category: TeamPosterCategory) {
 }
 
 async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
-  const supabase = getPosterSupabaseClient();
-  if (!supabase) return [];
-
-  const { data, error } = await supabase
-    .from("poster_templates")
-    .select("name,template_json,background_url")
-    .order("updated_at", { ascending: false });
-  if (error || !data) return [];
+  // Filter in the database before applying its row limit. Other shared settings
+  // must never crowd older saved team presets out of the downloader.
+  const response=await fetch('/api/team-poster-templates',{cache:'no-store'});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||'Could not load saved team presets.');
+  const data=(Array.isArray(result.templates)?result.templates:[]) as {name:string;template_json:TeamPosterTemplate|null;background_url:string|null}[];
 
   const templates = await Promise.all(
     data
@@ -592,6 +590,7 @@ export default function TeamDiamondsYesterdayPage() {
     let cancelled = false;
 
     async function loadTemplate() {
+      try {
       const [publicTemplate, savedTemplates] = await Promise.all([
         getPublicSavedTemplate(),
         getTeamPosterTemplates(),
@@ -604,6 +603,7 @@ export default function TeamDiamondsYesterdayPage() {
         : savedTemplates;
       if (publicTemplate) setSavedTemplate(publicTemplate);
       setTemplates(allSavedTemplates);
+      } catch(error){if(!cancelled)setMessage(error instanceof Error?error.message:"Could not load saved team presets. Please reload.");}
     }
 
     loadTemplate();
