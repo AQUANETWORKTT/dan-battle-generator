@@ -24,4 +24,4 @@ async function read(scope:string|string[]|null){
  }).sort((a,b)=>b.bestDiamonds-a.bestDiamonds||a.username.localeCompare(b.username));
  return {month:overview.month,latest:overview.latest,creators};
 }
-export const loadInactiveCreators=unstable_cache(read,['inactive-creators-v2'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+export const loadInactiveCreators=unstable_cache(read,['inactive-creators-v3'],{revalidate:false,tags:[PORTAL_DATA_TAG]});

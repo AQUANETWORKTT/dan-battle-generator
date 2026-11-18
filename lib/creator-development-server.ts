@@ -23,4 +23,4 @@ async function read(scope:string|string[]|null){const overview=await loadOvervie
  const sort=(a:{status:string;remaining:number},b:{status:string;remaining:number})=>(order[a.status]-order[b.status])||b.remaining-a.remaining;
  return {month,latest:overview.latest,graduation:graduation.sort(sort),mature:matureCreators.sort(sort),maintain:maintain.sort(sort)};
 }
-export const loadCreatorDevelopment=unstable_cache(read,['manager-creator-development-v5'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+export const loadCreatorDevelopment=unstable_cache(read,['manager-creator-development-v6'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
