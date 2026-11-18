@@ -121,13 +121,13 @@ export default function DevelopmentCreators({
           {rankedOpen && (
             <div>
               {rankedUp.map((c) => (
-                <article key={c.id}>
+                <article className="ranked-up-person" key={c.id}>
                   <Picture username={c.username} />
                   <div>
                     <strong>@{c.username}</strong>
                     <small>{c.manager}</small>
                   </div>
-                  <span>{c.diamonds.toLocaleString("en-GB")} diamonds</span>
+                  <span className="ranked-up-diamonds">{c.diamonds.toLocaleString("en-GB")} diamonds</span>
                 </article>
               ))}
             </div>
@@ -150,7 +150,7 @@ export default function DevelopmentCreators({
       </div>
       {!data && !error && (
         <div role="status" className="manager-loading-creators">
-          Loading creator progress…
+          Preparing latest creator progress…
         </div>
       )}
       {error && <p className="manager-error">{error}</p>}

@@ -1,10 +1,10 @@
 import {invalidatePortalData} from '@/lib/manager-portal-cache';
-import {loadOverview} from '@/lib/manager-overview-server';
-import {after, NextResponse } from "next/server";
+import {NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 type ParsedRow = {
   stat_date: string;
@@ -672,7 +672,6 @@ export async function POST(req: Request) {
     ).length;
 
     invalidatePortalData();
-    after(async()=>{const results=await Promise.allSettled([loadOverview(null),loadOverview(null,true)]);for(const r of results)if(r.status==='rejected')console.error('Portal cache warm failed',r.reason instanceof Error?r.reason.message:'Unknown error');});
     return NextResponse.json({
       success: true,
       filesImported: fileSummaries.length,

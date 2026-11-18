@@ -1,3 +1,4 @@
+import {loadManagerLeaderboard} from '@/lib/manager-leaderboard-server';
 import {
   listReminders,
   saveReminder,
@@ -319,24 +320,8 @@ async function handle(
         )
           ? "B"
           : "A",
-        response = await recruitmentLeaderboard(
-          new Request(
-            req.nextUrl.origin +
-              "/api/data-analysis/recruitment-leaderboard?period=month&tier=" +
-              tier,
-          ),
-        );
-      if (!response.ok)
-        throw Error("Could not load the manager leaderboard. Please retry.");
-      const data = await response.json();
-      return json({
-        tier,
-        endDate: data.endDate,
-        managers: (data.managers || []).filter(
-          (m: { group: string }) =>
-            m.group === "Team Dan / James" || m.group === "Team Mike / Indi",
-        ),
-      });
+        result = await loadManagerLeaderboard(tier);
+      return json(result);
     }
     if (action === "development" && req.method === "GET")
       return json(await loadCreatorDevelopment(managedKeys));

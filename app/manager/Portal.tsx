@@ -1,4 +1,5 @@
 "use client";
+import {managerPageFetch,clearManagerPageData} from "@/lib/manager-page-data";
 import ManagerReminders from "./ManagerReminders";
 import ManagerNotes from "./ManagerNotes";
 import MorningMessages from "./MorningMessages";
@@ -39,6 +40,7 @@ type PortalOverview = Overview & {
   executiveKey?: string;
   juniorManagerKeys?: string[];
 };
+const overviewVersions = new Map<string,string>();
 const warmRequests = new Map<
   string,
   { at: number; promise: Promise<any>; value?: any }
@@ -50,20 +52,18 @@ export async function portalRequest(path: string, body?: unknown) {
   const cacheable =
       body === undefined &&
       [
+        "overview",
+        "agency-overview",
+        "leaderboard",
         "development",
         "agency-development",
         "inactive",
         "agency-inactive",
       ].includes(path),
     cached = warmRequests.get(path);
-  if (
-    cacheable &&
-    cached &&
-    (["inactive", "agency-inactive"].includes(path) ||
-      Date.now() - cached.at < 90000)
-  )
+  if (cacheable && cached)
     return cached.promise;
-  if (path === "logout") warmRequests.clear();
+  if (path === "logout") {warmRequests.clear();overviewVersions.clear();clearManagerPageData();}
   const promise = (async () => {
     const r = await fetch("/api/manager-portal/" + path, {
       method: body === undefined ? "GET" : "POST",
@@ -74,6 +74,18 @@ export async function portalRequest(path: string, body?: unknown) {
     });
     const data = await r.json();
     if (!r.ok) throw Error(data.error || "Please try again.");
+    if ((path === "overview" || path === "agency-overview") && data.snapshotVersion) {
+      if (overviewVersions.get(path) !== data.snapshotVersion) {
+        // A replaced upload can keep the same date. Compare snapshot versions,
+        // not dates, before reusing previously opened progress/inactive tabs.
+        const prefix = path === "agency-overview" ? "agency-" : "";
+        warmRequests.delete(prefix + "development");
+        warmRequests.delete(prefix + "inactive");
+        warmRequests.delete("leaderboard");
+        clearManagerPageData();
+        overviewVersions.set(path, data.snapshotVersion);
+      }
+    }
     return data;
   })();
   if (cacheable) {
@@ -121,6 +133,19 @@ export function PortalShell({
   const path = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [path]);
+  useEffect(() => {
+    if (!fullAccess) return;
+    let active=true;
+    // Start with the same overview used by Daily Overview and My Creators.
+    // Only warm after its revision has cleared any previous page results.
+    void portalRequest("overview").then(()=>{
+      if(!active)return;
+      for(const section of ["development","inactive","leaderboard"])
+        void portalRequest(section).catch(()=>{});
+      void managerPageFetch("/api/poster-generator/templates").catch(()=>{});
+    }).catch(()=>{});
+    return()=>{active=false;};
+  },[fullAccess,name]);
   return (
     <div className="manager-shell gold-stage">
       <GoldBackdrop />
@@ -1134,14 +1159,14 @@ export default function Dashboard({
               aria-live="polite"
             >
               <span aria-hidden="true" />
-              Loading creators…
+              Preparing latest data…
             </div>
           )}
         </div>
       )}
       {hideQuote && !source && !error && (
         <div className="manager-loading-creators" role="status">
-          Loading data…
+          Preparing latest data…
         </div>
       )}
       {error && <p className="manager-error">{error}</p>}

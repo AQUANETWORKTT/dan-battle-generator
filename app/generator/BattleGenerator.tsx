@@ -1,4 +1,5 @@
 "use client";
+import {managerPageFetch} from "@/lib/manager-page-data";
 import { h2hTeamSlots } from "@/lib/h2h-2v2";
 
 import {
@@ -1535,12 +1536,9 @@ export default function BattleGenerator({
   }
 
   async function loadPosterTemplates() {
-    const response = await fetch(
-      generationOnly
-        ? "/api/poster-generator/templates"
-        : "/api/poster-templates",
-      { cache: "no-store" },
-    );
+    const response = await (generationOnly
+      ? managerPageFetch("/api/poster-generator/templates")
+      : fetch("/api/poster-templates", {cache:"no-store"}));
     const result = await response.json().catch(() => ({}));
 
     if (!generationOnly)

@@ -1,4 +1,5 @@
 import 'server-only';
+import {randomUUID} from 'node:crypto';
 import {agencyDiamondLedger} from './agency-diamond-ledger';
 import {localPortalSnapshot} from './local-portal-snapshot';
 import {gzipSync,gunzipSync} from 'node:zlib';
@@ -27,12 +28,16 @@ async function readOverview(scope:string|null,allAgencies=false,_day?:string,inc
  {const totals=await recruitmentTotals();result.newCreatorTotals=totals.filter(m=>scope?recruitmentManagerIdentity(m.key)===scope:(m.group==='Team Dan / James'||includeAllFirstClass&&m.group==='Team Mike / Indi')).map(m=>({managerKey:recruitmentManagerIdentity(m.key),group:m.group,count:m.recruits,diamonds:m.diamonds}));}
  return {...result,reconciliation:ledger?.reconciliation||null};
 }
-// Auth is checked before entering this cache. Each manager scope has a separate key.
+// Auth is checked by the API. Shared snapshots are filtered to the manager scope before returning.
 // Compress the shared snapshot to keep large agencies below hosting cache-entry limits.
-const cachedOverview=unstable_cache(async(allAgencies:boolean,day:string,includeAllFirstClass:boolean)=>gzipSync(JSON.stringify(await readOverview(null,allAgencies,day,includeAllFirstClass))).toString('base64'),['manager-overview-snapshot-v12'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
-export async function loadOverview(scope:string|string[]|null,allAgencies=false){
+const cachedOverview=unstable_cache(async(allAgencies:boolean,day:string,includeAllFirstClass:boolean)=>gzipSync(JSON.stringify({...await readOverview(null,allAgencies,day,includeAllFirstClass),snapshotVersion:randomUUID()})).toString('base64'),['manager-overview-snapshot-v13'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+export async function loadOverviewSnapshot(includeAllFirstClass:boolean,allAgencies=false){
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const base=JSON.parse(gunzipSync(Buffer.from(await localPortalSnapshot(['overview-snapshot-v12',allAgencies,day,Boolean(scope)],()=>cachedOverview(allAgencies,day,Boolean(scope))),'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>;
+ const base=JSON.parse(gunzipSync(Buffer.from(await localPortalSnapshot(['overview-snapshot-v13',allAgencies,day,includeAllFirstClass],()=>cachedOverview(allAgencies,day,includeAllFirstClass)),'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>&{snapshotVersion:string};
+ return base;
+}
+export async function loadOverview(scope:string|string[]|null,allAgencies=false){
+ const base=await loadOverviewSnapshot(Boolean(scope),allAgencies);
  if(!scope)return base;
  const scopes=new Set(Array.isArray(scope)?scope:[scope]),creators=base.creators.filter(c=>scopes.has(c.managerKey)),ids=new Set(creators.map(c=>c.username)),total=creators.reduce((s,c)=>s+c.diamonds,0);
  return {...base,scope:'Your team',creators,total,previousTotal:creators.reduce((s,c)=>s+c.previousComparable,0),priorities:base.priorities.filter(p=>ids.has(p.username)),previousRoster:base.previousRoster.filter(r=>scopes.has(r.managerKey)),newCreatorTotals:base.newCreatorTotals.filter(r=>scopes.has(r.managerKey)),topThreeShare:total?Math.round(creators.slice(0,3).reduce((s,c)=>s+c.diamonds,0)/total*100):0,dailyTotals:base.dailyTotals.map(d=>({day:d.day,diamonds:creators.reduce((s,c)=>s+c.potentialTimeline.filter(x=>Number(x.date.slice(-2))<=d.day).reduce((sum,x)=>sum+x.diamonds,0),0)}))};

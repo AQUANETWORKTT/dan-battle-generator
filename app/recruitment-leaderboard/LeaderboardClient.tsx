@@ -1,4 +1,5 @@
 "use client";
+import {portalRequest} from "@/app/manager/Portal";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -21,7 +22,7 @@ export default function LeaderboardClient({ tier = "A", portal=false }: { tier?:
     }
 
     setHasTabAccess(true);
-    fetch(portal?'/api/manager-portal/leaderboard':`/api/data-analysis/recruitment-leaderboard?period=month&tier=${tier}`, { cache: "no-store" })
+    (portal ? portalRequest('leaderboard').then(data=>({ok:true,json:async()=>data})) : fetch(`/api/data-analysis/recruitment-leaderboard?period=month&tier=${tier}`, { cache: "no-store" }))
       .then(async (response) => {
         const result = await response.json() as Data;
         if (!response.ok) throw new Error(result.error || "Could not load the leaderboard.");

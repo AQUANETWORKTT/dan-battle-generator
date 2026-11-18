@@ -1,11 +1,11 @@
 import 'server-only';
-import {PORTAL_DATA_TAG} from './manager-portal-cache';
 import {database} from './creator-api-search/db';
-import {loadOverview} from './manager-overview-server';
-import {unstable_cache} from 'next/cache';
+import {loadOverviewSnapshot} from './manager-overview-server';
+import {portalResultCache} from './portal-result-cache';
+
 type Row={id:string;creator_id:string;stat_date:string;data_period:string|null;diamonds:number;live_hours:number};
-async function read(scope:string|string[]|null){
- const overview=await loadOverview(scope);
+async function read(includeAllFirstClass:boolean){
+ const overview=await loadOverviewSnapshot(includeAllFirstClass);
  const inactive=overview.creators.filter(c=>c.lastLive&&Math.floor((Date.parse(overview.latest+'T12:00:00Z')-Date.parse(c.lastLive+'T12:00:00Z'))/86400000)>=14);
  const history:Row[]=[];
  for(let i=0;i<inactive.length;i+=50){const ids=inactive.slice(i,i+50).map(c=>c.id);for(let offset=0;;offset+=1000){const r=await database().from('creator_daily_stats').select('id,creator_id,stat_date,data_period,diamonds,live_hours').in('creator_id',ids).lt('stat_date',overview.month+'-01').order('stat_date').order('id').range(offset,offset+999);if(r.error)throw Error(r.error.message);history.push(...r.data);if(r.data.length<1000)break;}}
@@ -24,4 +24,8 @@ async function read(scope:string|string[]|null){
  }).sort((a,b)=>b.bestDiamonds-a.bestDiamonds||a.username.localeCompare(b.username));
  return {month:overview.month,latest:overview.latest,creators};
 }
-export const loadInactiveCreators=unstable_cache(read,['inactive-creators-v3'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+const snapshot=portalResultCache(read,'inactive-creators-v4');
+export async function loadInactiveCreators(scope:string|string[]|null){
+ const base=await snapshot(Boolean(scope));if(!scope)return base;
+ const keys=new Set(Array.isArray(scope)?scope:[scope]);return {...base,creators:base.creators.filter(c=>keys.has(c.managerKey))};
+}

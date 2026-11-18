@@ -1,3 +1,4 @@
+import {unstable_cache,revalidateTag} from 'next/cache';
 import { NextResponse } from "next/server";
 import { cookies } from 'next/headers';
 import { submissionsSupabase } from "@/lib/submissions-supabase";
@@ -28,8 +29,7 @@ async function battleTemplates(){
  }return rows;
 }
 
-export async function GET() {
-  try {
+const savedTemplateData=unstable_cache(async()=>{
     const [templates,defaultsResult,accessResult]=await Promise.all([
       battleTemplates(),
       submissionsSupabase.from('poster_template_defaults').select('setting_key,template_id').in('setting_key',DEFAULT_SETTING_KEYS),
@@ -41,11 +41,15 @@ export async function GET() {
       (defaultsResult.data || []).map((item) => [item.setting_key, item.template_id])
     );
 
-    return NextResponse.json({
+    return {
       templates,
       defaults,
       managerTemplateIds: accessResult.data?.template_json?.allowedIds || [],
-    });
+    };
+},['poster-generator-saved-templates-v1'],{revalidate:false,tags:['poster-generator-templates']});
+
+export async function GET() {
+  try {return NextResponse.json(await savedTemplateData());
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not load poster templates." },
@@ -54,7 +58,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: Request) {
+async function writePATCH(request: Request) {
   if((await cookies()).get('first-class-space-auth')?.value!=='true')return NextResponse.json({error:'Leadership access required.'},{status:403});
   try {
     const body=await request.json();
@@ -69,7 +73,7 @@ export async function PATCH(request: Request) {
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Could not save manager template access.'},{status:500});}
 }
 
-export async function POST(request: Request) {
+async function writePOST(request: Request) {
   try {
     const body = await request.json();
     const template = body?.template;
@@ -99,7 +103,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+async function writePUT(request: Request) {
   try {
     const body = await request.json();
     const settingKey = String(body?.settingKey || "");
@@ -122,7 +126,7 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+async function writeDELETE(request: Request) {
   try {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: "Missing template ID." }, { status: 400 });
@@ -136,3 +140,14 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+// Saved designs must refresh immediately after an editor saves or changes access.
+async function saveAndRefresh(write:(request:Request)=>Promise<Response>,request:Request){
+ const response=await write(request);
+ if(response.ok)revalidateTag('poster-generator-templates',{expire:0});
+ return response;
+}
+export async function PATCH(request:Request){return saveAndRefresh(writePATCH,request);}
+export async function POST(request:Request){return saveAndRefresh(writePOST,request);}
+export async function PUT(request:Request){return saveAndRefresh(writePUT,request);}
+export async function DELETE(request:Request){return saveAndRefresh(writeDELETE,request);}

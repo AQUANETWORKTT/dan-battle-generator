@@ -1,10 +1,10 @@
 import 'server-only';
-import {PORTAL_DATA_TAG} from './manager-portal-cache';
-import {loadOverview} from './manager-overview-server';
+import {loadOverviewSnapshot} from './manager-overview-server';
+import {portalResultCache} from './portal-result-cache';
 import {database} from './creator-api-search/db';
 import {developmentProgress,graduationEligible,creatorDevelopmentTargets} from './creator-development';
-import {unstable_cache} from 'next/cache';
-async function read(scope:string|string[]|null){const overview=await loadOverview(scope),month=overview.month,day=Number(overview.latest.slice(-2)),days=new Date(Number(month.slice(0,4)),Number(month.slice(5)),0).getDate();
+
+async function read(includeAllFirstClass:boolean){const overview=await loadOverviewSnapshot(includeAllFirstClass),month=overview.month,day=Number(overview.latest.slice(-2)),days=new Date(Number(month.slice(0,4)),Number(month.slice(5)),0).getDate();
  const mature=await database().from('mature_creator_month_totals').select('*').eq('month',overview.previous);if(mature.error)throw Error(mature.error.message);
  const previous=new Map<string,number>(),legacyNames=new Map<string,string>();
  for(const c of overview.creators)legacyNames.set(c.username.toLowerCase(),c.id);
@@ -23,4 +23,9 @@ async function read(scope:string|string[]|null){const overview=await loadOvervie
  const sort=(a:{status:string;remaining:number},b:{status:string;remaining:number})=>(order[a.status]-order[b.status])||b.remaining-a.remaining;
  return {month,latest:overview.latest,graduation:graduation.sort(sort),mature:matureCreators.sort(sort),maintain:maintain.sort(sort)};
 }
-export const loadCreatorDevelopment=unstable_cache(read,['manager-creator-development-v6'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+const snapshot=portalResultCache(read,'manager-creator-development-v7');
+export async function loadCreatorDevelopment(scope:string|string[]|null){
+ const base=await snapshot(Boolean(scope));if(!scope)return base;
+ const keys=new Set(Array.isArray(scope)?scope:[scope]),filter=(rows:typeof base.maintain)=>rows.filter(c=>keys.has(c.managerKey));
+ return {...base,graduation:base.graduation.filter(c=>keys.has(c.managerKey)),mature:filter(base.mature),maintain:filter(base.maintain)};
+}

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const SETTINGS_NAME = "manager-assignment-settings";
 const GROUPS = ["Team Dan / James", "Team Mike / Indi", "Exempt", "Trident", "Horizon", "Paradise", "Aqua", "Respawn", "Recruitment", "New Managers", "Excluded"] as const;
