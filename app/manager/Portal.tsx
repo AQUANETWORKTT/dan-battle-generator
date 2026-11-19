@@ -220,9 +220,6 @@ export function PortalShell({
         </nav>
       </header>
       <main className="manager-wrap">
-        <p className="portal-performance-update">
-          <span aria-hidden="true" />PORTAL PERFORMANCE UPDATE 19/11/26
-        </p>
         {name && path !== "/manager/posters" && (
           <p className="manager-team-name">
             {name.replace(/^Team\s+/i, "")}{" "}

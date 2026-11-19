@@ -4,7 +4,7 @@ import {database,checked,JOBS,RUNS} from './creator-api-search/db';
 import {SearchError} from './creator-api-search/service';
 import {reportDates,reportHistory} from './creator-api-search/reports';
 import {username,allowedRecruitmentName} from './creator-api-search/types';
-import {hiddenUntilRescan,availableDirectory,latestObservations,safeAvatar,type AvailableCreator,type AvailabilityJob} from './available-creators';
+import {hiddenUntilRescan,availableDirectory,latestScanObservations,safeAvatar,type AvailableCreator,type AvailabilityJob} from './available-creators';
 
 const MESSAGED='available-creator-messaged-v1:';
 const messageKey=(row:{username:string;creatorId?:string})=>MESSAGED+(row.creatorId?'id:'+row.creatorId:'name:'+row.username);
@@ -17,7 +17,7 @@ let pending:Promise<Directory>|undefined;
 async function load(){
   const jobs:AvailabilityJob[]=[];
   for(let offset=0;;offset+=500){const {data}=await checked(database().from(JOBS).select('id,run_id,created_at,results').order('created_at').order('id').range(offset,offset+499));jobs.push(...data||[]);if((data?.length||0)<500)break;}
-  const observations=latestObservations(jobs),ids=[...new Set(observations.filter(entry=>entry.result.status==='Available').map(entry=>entry.runId))],runs:any[]=[];
+  const observations=latestScanObservations(jobs),ids=[...new Set(observations.filter(entry=>entry.result.status==='Available').map(entry=>entry.runId))],runs:any[]=[];
   for(let i=0;i<ids.length;i+=25){const {data}=await checked(database().from(RUNS).select('id,payload,updated_at').in('id',ids.slice(i,i+25)));runs.push(...data||[]);}
   const directory=availableDirectory(observations,runs),dates=reportDates();
   // Read existing performance caches; merely viewing the board never spends API credits.

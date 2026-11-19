@@ -22,6 +22,15 @@ assert.equal(model.recentDiamondTotal(historyRow,4,Date.parse('2026-11-05T12:00:
 const stamp='2026-11-04T12:00:00Z',later='2026-11-04T13:00:00Z';
 function job(id,name,status,checkedAt=stamp,extra={}){return {id,run_id:'run',created_at:later,results:{[name]:{username:name,status,checkedAt,invitationType:'Regular',...extra}}};}
 const jobs=[job('1','gone','Available'),job('2','gone','Ineligible',later),job('3','good','Available',stamp,{name:'Sam ⭐ .𖥔 ݁ ཐི༏ཋྀ .𖥔 ݁'}),job('4','excluded','Available',later,{name:'محمد ⭐'}),job('5','failed','Available'),job('6','failed','Failed',later),{...job('7','good','Pending'),results:{good:{username:'good',status:'Pending'}}},job('8','renamed_old','Available',stamp,{creatorId:'12345'}),job('9','renamed_new','Ineligible',later,{creatorId:'12345'})];
+// Latest scan keeps every batch, but never carries creators from a prior scan.
+const oldScan={...job('old','old_only','Available'),created_at:'2026-11-03T12:00:00Z'};
+const batchA={...job('a','first_batch','Available'),created_at:'2026-11-04T12:00:00.000Z'};
+const batchB={...job('b','last_batch','Available'),created_at:'2026-11-04T12:00:00.001Z'};
+assert.equal(model.latestScanObservations([oldScan,batchA,batchB]).map(x=>x.result.username).sort().join(','),'first_batch,last_batch');
+const tagged=(j,id)=>({...j,results:{...j.results,$scan:{id}}});
+assert.equal(model.latestScanObservations([tagged(batchA,'earlier'),tagged(batchB,'latest')]).map(x=>x.result.username).join(','),'last_batch');
+const queued={id:'queued',run_id:'run',created_at:'2026-11-05T12:00:00Z',results:{$scan:{id:'new'}}};
+assert.equal(model.latestScanObservations([oldScan,tagged(batchB,'latest'),queued]).length,0,'A pending latest scan must not display old available results');
 const rankings=['gone','good','excluded','failed','renamed_old','renamed_new'].map((username,index)=>({username,league:'A1',rank:index+1,diamonds:1000-index}));
 const run={id:'run',updated_at:stamp,payload:{region:'GB',results:{A1:rankings,A2:[{...rankings[1],league:'A2'}]}}};
 const directory=model.availableDirectory(model.latestObservations(jobs.slice().reverse()),[run],Date.parse('2026-11-05T12:00:00Z'));
@@ -37,6 +46,9 @@ let reads=0,updates=0,marks=0;
 const route=load('app/api/available-creators/route.ts',{'@/lib/available-creators':model,'next/server':{NextResponse:Reply},'@/lib/creator-api-search/auth':{SEARCH_COOKIE:'signed',searchSessionValid:value=>value==='valid'},'@/lib/available-creators-auth':auth,'@/lib/available-creators-store':{readAvailableCreators:async()=>{reads++;return directory;},dismissAvailableCreator:async()=>({hiddenAt:stamp}),hideAvailableCreator:async()=>({hiddenAt:stamp}),markAvailableCreatorMessaged:async()=>{marks++;return {messagedAt:'2026-11-04T12:00:00Z'};},updateAvailableCreator:async()=>{updates++;return {ok:true};}},'@/lib/creator-api-search/service':{SearchError},'@/lib/creator-api-search/provider':{ProviderError}});
 function request(method='GET',access='',admin=false,body={}){return {method,nextUrl:new URL('https://firstclassagency.management/api/available-creators'+(access?'?access='+access:'')),cookies:{get:key=>({value:admin?(key==='signed'?'valid':'true'):'true'})},headers:new Headers({origin:'https://firstclassagency.management'}),json:async()=>body};}
 (async()=>{
+ const premium={...directory.rows[0],username:'premium_test',invitationType:'Premium'};directory.rows.push(premium);
+ for(const admin of [true,false]){const result=await (await route.GET(request('GET',admin?'':token,admin))).json();assert(result.rows.every(row=>row.invitationType==='Regular'));assert(!result.rows.some(row=>row.username==='premium_test'));}
+ directory.rows.pop();
  let body='{"avatarLarger":"https:\\u002F\\u002Fexample.test/a?x=1\\u0026y=2"}';
  const scraper=load('lib/tiktok-profile-avatar.ts',{}, {AbortSignal,fetch:async()=>({ok:true,text:async()=>body})});
  assert.equal(await scraper.scrapeTikTokAvatar('sample'),'https://example.test/a?x=1&y=2');

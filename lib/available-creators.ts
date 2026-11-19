@@ -21,6 +21,17 @@ export function latestObservations(jobs:AvailabilityJob[]){
   return [...names.values()];
 }
 
+// Each queue request is one scan, even when split into many worker batches.
+// Legacy queues used adjacent millisecond timestamps instead of a scan marker.
+export function latestScanObservations(jobs:AvailabilityJob[]){
+ const ordered=jobs.filter(job=>Number.isFinite(Date.parse(job.created_at))).slice().sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)||b.id.localeCompare(a.id));
+ const newest=ordered[0];if(!newest)return [];
+ const marker=(job:AvailabilityJob)=>(job.results?.['$scan'] as unknown as {id?:string}|undefined)?.id;
+ const scanId=marker(newest),time=Date.parse(newest.created_at);
+ const selected=ordered.filter(job=>scanId?marker(job)===scanId:job.run_id===newest.run_id&&!marker(job)&&time-Date.parse(job.created_at)<1000);
+ return latestObservations(selected);
+}
+
 export function availableDirectory(observations:ReturnType<typeof latestObservations>,runs:Run[],now=Date.now()){
   const byRun=new Map(runs.map(run=>[run.id,run])),rows:AvailableCreator[]=[];
   let lastCheck:string|null=null,excluded=0;
