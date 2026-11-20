@@ -77,6 +77,7 @@ export function middleware(req: NextRequest) {
     path === "/manager" ||
     path.startsWith("/manager/") ||
     path.startsWith("/api/manager-portal/") ||
+    path === "/api/manager-activity" ||
     path === "/api/morning-messages" ||
     path === "/api/manager-notes" ||
     path === "/api/manager-tasks" ||

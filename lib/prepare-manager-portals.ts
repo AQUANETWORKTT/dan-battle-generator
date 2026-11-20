@@ -10,7 +10,7 @@ export async function prepareManagerPortals(){
  // Manager requests filter that prepared snapshot using their authenticated keys.
  const tasks:[string,()=>Promise<unknown>][]=[
   ['manager overview',()=>loadOverviewSnapshot(true)],
-  ['owner overview',()=>loadOverviewSnapshot(false)],
+  ['owner overview',()=>loadOverviewSnapshot(true)],
   ['agency incremental',()=>loadOverviewSnapshot(false,true)],
   ['manager development',()=>loadCreatorDevelopment([])],
   ['owner development',()=>loadCreatorDevelopment(null)],

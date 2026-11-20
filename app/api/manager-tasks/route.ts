@@ -94,7 +94,7 @@ async function handle(request: NextRequest) {
       (task) => owner || managedKeys!.has(task.managerKey),
     );
     const visibleCustom = owner
-      ? all.customTasks.filter((task) => task.scope === "master")
+      ? all.customTasks.filter((task) => task.scope === "master" || (request.method === "GET" && request.nextUrl.searchParams.get("summary") === "1"))
       : all.customTasks.filter(
           (task) =>
             (task.scope === "manager" &&

@@ -25,7 +25,7 @@ async function read(includeAllFirstClass:boolean){const overview=await loadOverv
 }
 const snapshot=portalResultCache(read,'manager-creator-development-v7');
 export async function loadCreatorDevelopment(scope:string|string[]|null){
- const base=await snapshot(Boolean(scope));if(!scope)return base;
+ const base=await snapshot(true);if(!scope)return base;
  const keys=new Set(Array.isArray(scope)?scope:[scope]),filter=(rows:typeof base.maintain)=>rows.filter(c=>keys.has(c.managerKey));
  return {...base,graduation:base.graduation.filter(c=>keys.has(c.managerKey)),mature:filter(base.mature),maintain:filter(base.maintain)};
 }

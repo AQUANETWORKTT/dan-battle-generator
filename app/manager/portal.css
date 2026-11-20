@@ -120,3 +120,4 @@
  .ranked-up-section .ranked-up-person{grid-template-areas:"avatar identity" "avatar diamonds";column-gap:12px;row-gap:4px}
  .ranked-up-person>.ranked-up-diamonds{justify-self:start}
 }
+.master-task-summary details.master-tasks-complete{border:1px solid #70cf9955;border-radius:12px;padding:14px;background:linear-gradient(110deg,#163a26,#10251b)}.master-task-summary .master-tasks-complete>summary span,.master-task-summary .master-tasks-complete>summary em,.master-tasks-complete-label{color:#9ce4b5}.master-tasks-complete-label{margin-top:14px;font-size:13px}

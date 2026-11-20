@@ -1,3 +1,4 @@
+import {recruitmentTeamOwner} from "@/lib/recruitment-team-owner";
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 import { KYRAN_ASH_KEY, recruitmentManagerIdentity } from "@/lib/recruitment-manager-aliases";
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
     const deleted = new Set((assignment.deletedManagers || []).map(managerIdentity).filter(manager => recruitmentManagerIdentity(manager) === manager));
     const groupForManager = (manager: string) => Object.entries(groups).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "Unassigned";
     const nameForManager = (manager: string) => Object.entries(names).find(([savedManager]) => managerIdentity(savedManager) === managerIdentity(manager))?.[1] || "";
-    const recruitmentAdjustmentForManager = (manager: string) => Object.entries(recruitmentAdjustments).filter(([savedManager]) => recruitmentManagerIdentity(savedManager) === managerIdentity(manager)).reduce((sum,[,amount]) => sum + Number(amount || 0),0);
+    const recruitmentAdjustmentForManager = (manager: string) => Object.entries(recruitmentAdjustments).filter(([savedManager]) => recruitmentTeamOwner(savedManager) === recruitmentTeamOwner(manager)).reduce((sum,[,amount]) => sum + Number(amount || 0),0);
 
     // Every upload in the period is used. This means a creator who leaves later
     // still contributes the diamonds they earned before disappearing.
@@ -103,7 +104,7 @@ export async function GET(request: Request) {
       // recruitment credit and diamonds even if they disappear on a later upload.
       if (lastDays < 15 && (hasQuitNetwork(last) || !activeCreatorIds.has(id))) continue;
 
-      const sourceManagerKey = recruitmentManagerIdentity(managerRaw(first));
+      const sourceManagerKey = recruitmentTeamOwner(managerRaw(first));
       const managerKey = isKjbManager(sourceManagerKey) ? KJB_TEAM_KEY : sourceManagerKey;
       if (!sourceManagerKey || deleted.has(sourceManagerKey) || isExcludedManager(sourceManagerKey)) continue;
       const diamonds = rows.reduce((sum, row) => sum + number(row.diamonds || row.Diamonds), 0);
@@ -124,7 +125,8 @@ export async function GET(request: Request) {
     recruits.sort((a, b) => b.diamonds - a.diamonds || a.username.localeCompare(b.username));
     const managers = new Map<string, { key: string; manager: string; group: string; recruits: number; diamonds: number; hours: number; dph: number }>();
     for (const [savedManager, group] of Object.entries(groups)) {
-      const managerKey = recruitmentManagerIdentity(savedManager);
+      const managerKey = recruitmentTeamOwner(savedManager);
+      if (recruitmentManagerIdentity(savedManager) !== managerKey) continue;
       if (!managerKey || deleted.has(managerKey) || isExcludedManager(managerKey) || isKjbManager(managerKey) || group === "Excluded") continue;
       managers.set(managerKey, { key: managerKey, manager: nameForManager(managerKey) || (managerKey === KYRAN_ASH_KEY ? "Team Kyran & Ash" : label(savedManager)), group: groupForManager(managerKey) === "Unassigned" ? group : groupForManager(managerKey), recruits: 0, diamonds: 0, hours: 0, dph: 0 });
     }

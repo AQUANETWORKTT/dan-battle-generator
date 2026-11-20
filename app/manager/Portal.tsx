@@ -1,4 +1,5 @@
 "use client";
+import ActivityTracker from "./ActivityTracker";
 import {managerPageFetch,clearManagerPageData} from "@/lib/manager-page-data";
 import ManagerReminders from "./ManagerReminders";
 import ManagerNotes from "./ManagerNotes";
@@ -148,6 +149,7 @@ export function PortalShell({
   },[fullAccess,name]);
   return (
     <div className="manager-shell gold-stage">
+      <ActivityTracker enabled={Boolean(name)} />
       <GoldBackdrop />
       <header className="manager-bar">
         <Link className="manager-brand" href="/manager">
@@ -885,31 +887,36 @@ function MasterTaskSummary({
     }>
   >([]);
   const [saved, setSaved] = useState<TaskRecord[]>([]);
+  const [customSummary,setCustomSummary]=useState<Array<CustomTask & {completedAt?:string}>>([]);
   const [managers, setManagers] = useState<
     Array<{ key: string; name: string; group: string }>
   >([]);
   const [loaded, setLoaded] = useState(false);
+  const [summaryData,setSummaryData]=useState<Overview|null>(null);
   useEffect(() => {
     let active = true;
     Promise.all([
-      fetch("/api/morning-messages?scope=owner", { cache: "no-store" }).then(
+      fetch("/api/morning-messages?scope=owner&summary=1", { cache: "no-store" }).then(
         (response) => response.json(),
       ),
-      fetch("/api/manager-tasks", { cache: "no-store" }).then((response) =>
+      fetch("/api/manager-tasks?summary=1", { cache: "no-store" }).then((response) =>
         response.json(),
       ),
       fetch("/api/data-analysis/manager-assignments", {
         cache: "no-store",
       }).then((response) => response.json()),
+      portalRequest("agency-overview?allManagers=1"),
     ])
-      .then(([messages, tasks, assignments]) => {
+      .then(([messages, tasks, assignments, allManagers]) => {
         if (!active) return;
+        setSummaryData(allManagers);
         setMorning(messages.items || []);
         setSaved(tasks.records || []);
+        setCustomSummary(tasks.customTasks || []);
         setManagers(
           (assignments.managers || []).filter(
             (manager: { group: string }) =>
-              manager.group === "Team Dan / James",
+              manager.group === "Team Dan / James" || manager.group === "Team Mike / Indi",
           ),
         );
         setLoaded(true);
@@ -952,7 +959,7 @@ function MasterTaskSummary({
       item.completed,
     ),
   );
-  data.creators
+  (summaryData||data).creators
     .filter((creator) => creator.agencyDays === 15)
     .forEach((creator) =>
       register(
@@ -962,13 +969,13 @@ function MasterTaskSummary({
         `@${creator.username}`,
         saved.some(
           (task) =>
-            task.id === `profile:${data.month}:${creator.id}` &&
+            task.id === `profile:${(summaryData||data).month}:${creator.id}` &&
             task.managerKey === creator.managerKey &&
             task.completed,
         ),
       ),
     );
-  data.creators
+  (summaryData||data).creators
     .filter((creator) => creator.agencyDays === 3)
     .forEach((creator) =>
       register(
@@ -978,14 +985,20 @@ function MasterTaskSummary({
         `@${creator.username}`,
         saved.some(
           (task) =>
-            task.id === `app-link:${data.month}:${creator.id}` &&
+            task.id === `app-link:${(summaryData||data).month}:${creator.id}` &&
             task.managerKey === creator.managerKey &&
             task.completed,
         ),
       ),
     );
+  const todayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  customSummary.forEach(task=>{
+    if(!task.managerKey||!team.has(task.managerKey))return;
+    if(task.completed&&task.completedAt&&new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(task.completedAt))!==todayKey)return;
+    register(task.managerKey,team.get(task.managerKey)!.name,'Other tasks',task.text,task.completed);
+  });
   const entries = [...team.entries()]
-    .filter(([, entry]) => Object.values(entry.groups).flat().length > 0)
+    .filter(([, entry]) => entry.completed + Object.values(entry.groups).flat().length > 0)
     .sort(([, a], [, b]) => a.name.localeCompare(b.name));
   return (
     <section className="master-task-summary">
@@ -1003,15 +1016,16 @@ function MasterTaskSummary({
           const remaining = Object.values(entry.groups).flat().length,
             total = entry.completed + remaining;
           return (
-            <details key={key}>
+            <details key={key} className={remaining === 0 ? "master-tasks-complete" : ""}>
               <summary>
                 <span>{entry.name}</span>
                 <b>
                   {entry.completed} / {total} complete
                 </b>
-                <em>{remaining} remaining</em>
+                <em>{remaining === 0 ? "✓ All tasks complete" : `${remaining} remaining`}</em>
               </summary>
               <div className="master-task-groups">
+                {remaining === 0 && <p className="master-tasks-complete-label">All {total} tasks completed today.</p>}
                 {Object.entries(entry.groups).map(([group, tasks]) => (
                   <details key={group}>
                     <summary>

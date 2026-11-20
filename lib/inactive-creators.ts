@@ -26,6 +26,6 @@ async function read(includeAllFirstClass:boolean){
 }
 const snapshot=portalResultCache(read,'inactive-creators-v4');
 export async function loadInactiveCreators(scope:string|string[]|null){
- const base=await snapshot(Boolean(scope));if(!scope)return base;
+ const base=await snapshot(true);if(!scope)return base;
  const keys=new Set(Array.isArray(scope)?scope:[scope]);return {...base,creators:base.creators.filter(c=>keys.has(c.managerKey))};
 }

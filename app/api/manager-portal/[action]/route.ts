@@ -39,7 +39,7 @@ import {
 import { loginActivity, londonDate } from "@/lib/manager-login-activity";
 import { loadCreatorDevelopment } from "@/lib/creator-development-server";
 import { loadInactiveCreators } from "@/lib/inactive-creators";
-import { loadOverview } from "@/lib/manager-overview-server";
+import { loadOverview, loadOverviewSnapshot } from "@/lib/manager-overview-server";
 import {
   unmanagedCreators,
   saveUnmanagedCreators,
@@ -249,7 +249,7 @@ async function handle(
         return json(
           action === "accounts"
             ? { accounts: await adminAccounts() }
-            : await loadOverview(null),
+            : await loadOverviewSnapshot(true),
         );
       if (action === "accounts" && req.method === "POST") {
         const b = await req.json();

@@ -9,7 +9,7 @@ import {recruitmentManagerIdentity} from './recruitment-manager-aliases';
 import {database} from './creator-api-search/db';
 import {overview,Stat,managerKey,portalCreatorActive} from './manager-overview';
 import {unstable_cache} from 'next/cache';
-const recruitmentTotals=unstable_cache(async()=>{const r=await recruitmentLeaderboard(new Request('https://firstclassagency.management/api/data-analysis/recruitment-leaderboard?period=month'));if(!r.ok)throw Error('Could not load new creator totals.');return (await r.json()).managers as {key:string;group:string;recruits:number;diamonds:number}[];},['portal-recruitment-totals-v2'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+const recruitmentTotals=unstable_cache(async()=>{const r=await recruitmentLeaderboard(new Request('https://firstclassagency.management/api/data-analysis/recruitment-leaderboard?period=month'));if(!r.ok)throw Error('Could not load new creator totals.');return (await r.json()).managers as {key:string;group:string;recruits:number;diamonds:number}[];},['portal-recruitment-totals-v3'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
 const fields='id,creator_id,creator_username,manager_email,email,agency,team,group_name,stat_date,data_period,diamonds,live_hours,matches,live_streams,graduation_status,valid_live_days,days_since_joining';
 async function readOverview(scope:string|null,allAgencies=false,_day?:string,includeAllFirstClass=false){
  const db=database();const latest=await db.from('creator_daily_stats').select('stat_date').or('data_period.is.null,data_period.neq.mature_month_total').order('stat_date',{ascending:false}).limit(1).maybeSingle();
@@ -30,14 +30,14 @@ async function readOverview(scope:string|null,allAgencies=false,_day?:string,inc
 }
 // Auth is checked by the API. Shared snapshots are filtered to the manager scope before returning.
 // Compress the shared snapshot to keep large agencies below hosting cache-entry limits.
-const cachedOverview=unstable_cache(async(allAgencies:boolean,day:string,includeAllFirstClass:boolean)=>gzipSync(JSON.stringify({...await readOverview(null,allAgencies,day,includeAllFirstClass),snapshotVersion:randomUUID()})).toString('base64'),['manager-overview-snapshot-v13'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+const cachedOverview=unstable_cache(async(allAgencies:boolean,day:string,includeAllFirstClass:boolean)=>gzipSync(JSON.stringify({...await readOverview(null,allAgencies,day,includeAllFirstClass),snapshotVersion:randomUUID()})).toString('base64'),['manager-overview-snapshot-v14'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
 export async function loadOverviewSnapshot(includeAllFirstClass:boolean,allAgencies=false){
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const base=JSON.parse(gunzipSync(Buffer.from(await localPortalSnapshot(['overview-snapshot-v13',allAgencies,day,includeAllFirstClass],()=>cachedOverview(allAgencies,day,includeAllFirstClass)),'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>&{snapshotVersion:string};
+ const base=JSON.parse(gunzipSync(Buffer.from(await localPortalSnapshot(['overview-snapshot-v14',allAgencies,day,includeAllFirstClass],()=>cachedOverview(allAgencies,day,includeAllFirstClass)),'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>&{snapshotVersion:string};
  return base;
 }
 export async function loadOverview(scope:string|string[]|null,allAgencies=false){
- const base=await loadOverviewSnapshot(Boolean(scope),allAgencies);
+ const base=await loadOverviewSnapshot(true,allAgencies);
  if(!scope)return base;
  const scopes=new Set(Array.isArray(scope)?scope:[scope]),creators=base.creators.filter(c=>scopes.has(c.managerKey)),ids=new Set(creators.map(c=>c.username)),total=creators.reduce((s,c)=>s+c.diamonds,0);
  return {...base,scope:'Your team',creators,total,previousTotal:creators.reduce((s,c)=>s+c.previousComparable,0),priorities:base.priorities.filter(p=>ids.has(p.username)),previousRoster:base.previousRoster.filter(r=>scopes.has(r.managerKey)),newCreatorTotals:base.newCreatorTotals.filter(r=>scopes.has(r.managerKey)),topThreeShare:total?Math.round(creators.slice(0,3).reduce((s,c)=>s+c.diamonds,0)/total*100):0,dailyTotals:base.dailyTotals.map(d=>({day:d.day,diamonds:creators.reduce((s,c)=>s+c.potentialTimeline.filter(x=>Number(x.date.slice(-2))<=d.day).reduce((sum,x)=>sum+x.diamonds,0),0)}))};

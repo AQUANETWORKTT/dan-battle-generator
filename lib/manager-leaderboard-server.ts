@@ -8,5 +8,5 @@ const snapshot=portalResultCache(async isB=>{
  if(!response.ok)throw Error('Could not load the manager leaderboard. Please retry.');
  const data=await response.json();
  return {tier,endDate:data.endDate,managers:(data.managers||[]).filter((m:{group:string})=>m.group==='Team Dan / James'||m.group==='Team Mike / Indi')};
-},'manager-leaderboard-v1');
+},'manager-leaderboard-v2');
 export function loadManagerLeaderboard(tier:'A'|'B'){return snapshot(tier==='B');}
