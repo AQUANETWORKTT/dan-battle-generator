@@ -1,4 +1,5 @@
 "use client";
+import {appLinkDue,appLinkCompleted as isAppLinkCompleted,appLinkTaskId} from "@/lib/app-link-reminder";
 import ActivityTracker from "./ActivityTracker";
 import {managerPageFetch,clearManagerPageData} from "@/lib/manager-page-data";
 import ManagerReminders from "./ManagerReminders";
@@ -290,9 +291,7 @@ export function Summary({
     profileCreators = data.creators.filter(
       (creator) => creator.agencyDays === 15,
     ),
-    appLinkCreators = data.creators.filter(
-      (creator) => creator.agencyDays === 3,
-    ),
+    appLinkCreators = data.creators.filter(appLinkDue),
     profileCompleted = profileCreators.filter((creator) =>
       taskRecords.some(
         (task) =>
@@ -302,12 +301,7 @@ export function Summary({
       ),
     ).length,
     appLinkCompleted = appLinkCreators.filter((creator) =>
-      taskRecords.some(
-        (task) =>
-          task.id === `app-link:${data.month}:${creator.id}` &&
-          task.managerKey === creator.managerKey &&
-          task.completed,
-      ),
+      isAppLinkCompleted(creator,taskRecords),
     ).length,
     taskTotal =
       (morningTasks?.total || 0) +
@@ -345,8 +339,8 @@ export function Summary({
     creator: Overview["creators"][number],
     kind: "profile" | "app-link",
   ) {
-    const id = `${kind}:${data.month}:${creator.id}`;
-    const current = taskRecords.some(
+    const id = kind === "app-link" ? appLinkTaskId(creator) : `${kind}:${data.month}:${creator.id}`;
+    const current = kind === "app-link" ? isAppLinkCompleted(creator,taskRecords) : taskRecords.some(
       (task) =>
         task.id === id &&
         task.managerKey === creator.managerKey &&
@@ -976,19 +970,14 @@ function MasterTaskSummary({
       ),
     );
   (summaryData||data).creators
-    .filter((creator) => creator.agencyDays === 3)
+    .filter(appLinkDue)
     .forEach((creator) =>
       register(
         creator.managerKey,
         creator.manager,
         "Send First Class app link",
         `@${creator.username}`,
-        saved.some(
-          (task) =>
-            task.id === `app-link:${(summaryData||data).month}:${creator.id}` &&
-            task.managerKey === creator.managerKey &&
-            task.completed,
-        ),
+        isAppLinkCompleted(creator,saved),
       ),
     );
   const todayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());

@@ -1,3 +1,4 @@
+import {creatorJoiningDate} from './creator-joining-date';
 type Row = Record<string, unknown>;
 const value = (v: unknown) => String(v ?? "").trim();
 const name = (r: Row) => value(r.creator_username).replace(/^@/, "");
@@ -10,14 +11,8 @@ export function buildCreatorHistory(rows: Row[]) {
   const first = ordered[0];
   let joinedDate = "";
   if (first) {
-    const days = Number(first.days_since_joining ?? first["Days since joining"]);
-    const observed = value(first.stat_date);
-    if (days >= 1 && /^\d{4}-\d{2}-\d{2}$/.test(observed)) {
-      const joined = new Date(`${observed}T12:00:00Z`);
-      joined.setUTCDate(joined.getUTCDate() - (days - 1));
-      joinedDate = joined.toISOString().slice(0, 10);
-      timeline.push({date: joinedDate, title: "Joined the agency", detail: "Estimated from days since joining in the earliest saved record."});
-    }
+    const observed = value(first.stat_date),joined=creatorJoiningDate(ordered);
+    if(joined.date){joinedDate=joined.date;timeline.push({date:joinedDate,title:"Joined the agency",detail:joined.estimated?"Estimated from days since joining in the earliest saved record.":"Joining date from the saved Backstage upload."});}
     timeline.push({date: observed, title: "First saved record", detail: "History before this upload may not be available."});
   }
   for (const row of ordered) {
