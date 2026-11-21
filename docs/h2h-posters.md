@@ -14,3 +14,9 @@ Invalid names/times, self-matchups and duplicate/reversed pairs at the same time
 Validation: `npm run test:h2h`, `npx tsc --noEmit`, and `npm run build`. `scripts/check_h2h_ui.py` tests a local production server using fixture templates/pictures: date dropdowns, all 32 automatic full previews, uppercase text, exact 8:07PM, both PNG orientations, ZIP manifest, missing-picture drag/drop reflected on both sides, duplicates, and existing Single/2v2 navigation. Set `TEST_PORTAL_PASSWORD` and optionally `H2H_TEST_URL` (localhost only). Artifacts go under `tmp/h2h-ui`. Live read-only lookups returned pictures for penii1722 and dad.of.286; availability of every other live picture is not assumed.
 
 Main files: `app/generator/page.tsx` (tab and renderer integration), `app/generator/H2HPosterBuilder.tsx` (H2H controls/export), `lib/h2h-posters.ts` (parsing/timing/validation/orientations), `scripts/test-h2h-posters.cjs` and `scripts/check_h2h_ui.py` (checks).
+
+## Agency-only export
+
+Tick **In agency only** above the download buttons to export only orientations led by a creator recognised in the current uploaded agency roster. Their opponents remain on the poster. Each sub-agency gets a single ZIP folder; First Class creators are grouped under `First Class/<manager>/`. Direct owner creators use the owner team folder. Unrecognised, excluded, recruitment-only and unassigned creators are skipped. An unavailable roster or an empty result stops the download with an explanation. The CSV lists complete folder paths. Leaving the box unticked preserves the existing flat export. Agency-only matching requires the Leadership login and returns group/manager labels only for the requested usernames.
+
+Grouping validation: `node scripts/test-h2h-export-groups.cjs`.
