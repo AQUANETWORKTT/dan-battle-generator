@@ -1,3 +1,4 @@
+import {invalidatePortalData} from '@/lib/manager-portal-cache';
 import {loadOverview} from '@/lib/manager-overview-server';
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
@@ -50,6 +51,7 @@ export async function PATCH(request:Request){
   if(!validMonth(month)||!Number.isSafeInteger(agencyTarget)||agencyTarget<=0||agencyTarget>1000000000000)return NextResponse.json({error:'ENTER A POSITIVE WHOLE-NUMBER AGENCY TARGET.'},{status:400});
   const result=await submissionsSupabase.from('poster_templates').upsert({name:targetName(month),template_json:{agencyTarget},background_url:null,updated_at:new Date().toISOString()},{onConflict:'name'});
   if(result.error)return NextResponse.json({error:result.error.message},{status:500});
+  invalidatePortalData();
   return NextResponse.json({agencyTarget});
  }catch{return NextResponse.json({error:'COULD NOT SAVE THE AGENCY TARGET.'},{status:400});}
 }

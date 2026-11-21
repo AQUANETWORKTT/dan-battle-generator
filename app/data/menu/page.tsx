@@ -23,6 +23,7 @@ const accentStyles: Record<Accent, string> = {
 const originalGroups: Array<{ title: string; description: string; accent: Accent; workspaces: Workspace[] }> = [
   { title: "Our Data Space", description: "A shared place for the team to keep live working notes.", accent: "sky", workspaces: [
     { href: "/data/our-team", number: "44", label: "Master Portal", title: "Master Portal", description: "Every team, creator focus and development.", accent: "sky" },
+    { href: "/data/team-earnings", number: "46", label: "Earnings & splits", title: "Team Dan / James Earnings", description: "Creator earnings, owner and manager splits, junior teams, incentives and earnings opportunities.", accent: "emerald" },
     { href: "/data/notepad", number: "27", label: "Shared live notes", title: "Notepad", description: "One large shared page. Type freely and it saves automatically five seconds after you stop.", accent: "sky" },
   ] },
   { title: "Data Settings", description: "Controls, creator visibility and reusable daily-poster assets.", accent: "red", workspaces: [
