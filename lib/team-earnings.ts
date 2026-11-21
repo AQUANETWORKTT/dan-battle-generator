@@ -91,6 +91,14 @@ export function earningsPounds(nodes:ReturnType<typeof calculateTeamEarnings>['n
  }
  return new Map(nodes.map(n=>{const total=totals.get(n.key)||0,core=Math.round(n.corePayoutCents*rate);return [n.key,{total,core,split:total-core}];}));
 }
+// Split the displayed received total without introducing rounding differences.
+export function creatorEarningsBreakdown(rates:{incremental:number;activity:number;bonus:number},receivedCents:number){
+ const percentages=[rates.incremental,rates.activity,rates.bonus],total=percentages.reduce((sum,rate)=>sum+rate,0);
+ const exact=percentages.map(rate=>total>0?receivedCents*rate/total:0),amounts=exact.map(Math.floor);
+ const order=exact.map((value,index)=>({index,remainder:value-amounts[index]})).sort((a,b)=>b.remainder-a.remainder);
+ for(let left=receivedCents-amounts.reduce((sum,value)=>sum+value,0),i=0;left>0;left--,i++)amounts[order[i%3].index]++;
+ return amounts;
+}
 export function earningsOpportunities(creators:EarningsCreator[],agencyCreators:EarningsAgency,managerList:EarningsManager[],settings:EarningsSettings,automaticIncremental:number,daysRemaining=Infinity,monthProgress=0){
  const managers=resolveEarningsManagers(managerList,settings),success=matureSuccess(agencyCreators),incremental=settings.incrementalOverride??automaticIncremental;
  const qualifiedDiamonds=Array.isArray(agencyCreators)?earningsAgencySummary(agencyCreators).qualifiedDiamonds:agencyCreators.qualifiedDiamonds;

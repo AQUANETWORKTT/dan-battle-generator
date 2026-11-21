@@ -46,3 +46,8 @@ assert.equal(customAllocation.payouts.get('owner:'+group),2800,'The remaining 40
 customManager.overrides.manager=0;
 assert.equal(m.allocateCreator(10000,'manager',tree,customManager).payouts.get('owner:'+group),7000,'A zero manager split leaves all owner receipts with Dan / James');
 console.log('Editable manager splits passed: 60/40 remainder and zero-percent override.');
+
+assert.equal(m.creatorEarningsBreakdown({incremental:5,activity:2.5,bonus:3},71489).reduce((a,b)=>a+b,0),71489);
+for(let received=0;received<500;received++){const parts=m.creatorEarningsBreakdown({incremental:5,activity:2,bonus:0},received);assert.equal(parts.reduce((a,b)=>a+b,0),received);assert.equal(parts[2],0);}
+assert.equal(m.creatorEarningsBreakdown({incremental:0,activity:0,bonus:0},0).join(','),'0,0,0');
+console.log('Creator breakdown passed: components reconcile to the received total, including conversion pennies and zero bonus.');
