@@ -9,3 +9,6 @@ assert.equal(m.h2hExportFolder({username:'x',group:'Team Mike / Indi',manager:'T
 assert.equal(m.h2hExportFolder({username:'x',group:'First Class',manager:'../Team : slash/test'}),'First Class/..-Team - slash-test');
 assert.equal(m.h2hExportPlan(posters,[]).length,0);
 console.log('H2H export grouping passed: agency orientations only, opponents retained, sub-agency folders, First Class managers and safe ZIP paths.');
+
+assert.equal(m.h2hExportFolder({username:'exempt',group:'Exempt',manager:'Unused'}),'Unsorted');
+assert.equal(m.h2hExportPlan([{name1:'exempt',name2:'external'}],[{username:'exempt',group:'Exempt',manager:'Unused'}])[0].folder,'Unsorted');

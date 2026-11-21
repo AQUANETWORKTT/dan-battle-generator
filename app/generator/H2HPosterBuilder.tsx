@@ -150,11 +150,17 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
       if(targets.some(p=>!p.image1||!p.image2||(twoVTwo&&(!p.image3||!p.image4))))throw Error('Some exported posters still need pictures. Load or upload them before downloading.');
       await document.fonts.ready;
       const zip=new JSZip();
+      const skipped=candidates.filter(p=>!targets.includes(p));
+      const exportSummary=inAgencyOnly?`${candidates.length} total · ${targets.length} agency posters to export · ${skipped.length} unmatched versions skipped. `:'';
+      if(inAgencyOnly&&skipped.length){
+        const skippedNames=[...new Set(skipped.map(p=>p.name1))];
+        zip.file('skipped-creators.csv',['Creator,Reason',...skippedNames.map(name=>'"'+name.replace(/"/g,'""')+'","Not matched to an eligible creator/group in the current agency data"')].join('\n'));
+      }
       const manifest=[twoVTwo?'File,Top left,Top right,Bottom left,Bottom right,Date,Time':'File,Creator 1,Creator 2,Date,Time'];
       for(let i=0;i<targets.length;i++) {
         if(abort.signal.aborted)throw Error('Download cancelled. No incomplete ZIP was saved.');
         const poster={...targets[i],id:'h2h-export-'+targets[i].id};
-        setStatus(`Rendering poster ${i+1}/${targets.length}: ${poster.name1} vs ${poster.name2}`);
+        setStatus(`${exportSummary}Rendering poster ${i+1}/${targets.length}: ${poster.name1} vs ${poster.name2}`);
         flushSync(()=>setExportBattle(poster));
         await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
         const elements=Array.from(frame.current?.querySelectorAll('img') || []);
@@ -168,11 +174,11 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
         manifest.push([path,poster.name1,poster.name2,...(twoVTwo?[poster.name3,poster.name4]:[]),date,poster.time].map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(','));
       }
       zip.file('matchups.csv',manifest.join('\n'));
-      setStatus('Preparing ZIP…');
+      setStatus(exportSummary+'Preparing ZIP…');
       const blob=await zip.generateAsync({type:'blob'});
       if(abort.signal.aborted)throw Error('Download cancelled.');
       saveAs(blob,`H2H-${twoVTwo?'2V2-':''}${date}-${targets.length}-posters${inAgencyOnly?'-in-agency':''}.zip`);
-      setStatus(`Downloaded ${targets.length} posters${inAgencyOnly?` in agency/manager folders · ${candidates.length-targets.length} non-agency orientations skipped`:''}.`);
+      setStatus(`Downloaded ${targets.length} posters${inAgencyOnly?` in agency/manager folders · ${candidates.length-targets.length} unmatched versions skipped (see skipped-creators.csv)`:''}.`);
     } catch(error) {setStatus(error instanceof Error?error.message:'Download failed.');}
     finally {setExportBattle(null);markBusy(false);}
   }

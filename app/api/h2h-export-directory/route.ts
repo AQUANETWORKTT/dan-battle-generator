@@ -12,9 +12,9 @@ export async function POST(request:NextRequest){
   const members=overview.creators.flatMap(creator=>{
    if(!wanted.has(h2hUsername(creator.username)))return [];
    const ownerDan=['firstclassagencydan','firstclassagencyjames'].includes(creator.managerKey),ownerMike=['firstclassindi','mikehalesjb'].includes(creator.managerKey);
-   const group=ownerDan?'Team Dan / James':ownerMike?'Team Mike / Indi':creator.group;
-   if(!group||['Unassigned','Excluded','Exempt','New Managers','Recruitment'].includes(group))return [];
-   return [{username:creator.username,group,manager:ownerDan?'Team Dan & James':ownerMike?'Team Mike & Indi':creator.manager||'Unassigned manager'}];
+   const group=ownerDan?'Team Dan / James':ownerMike||creator.group==='Unassigned'?'Team Mike / Indi':creator.group;
+   if(!group||['Excluded','New Managers','Recruitment'].includes(group))return [];
+   return [{username:creator.username,group,manager:ownerDan?'Team Dan & James':ownerMike?'Team Mike & Indi':creator.manager||'Team Mike & Indi'}];
   });
   return NextResponse.json({members,latest:overview.latest},{headers:{'Cache-Control':'no-store'}});
  }catch{return NextResponse.json({error:'Could not check agency creators. No export was started.'},{status:500});}
