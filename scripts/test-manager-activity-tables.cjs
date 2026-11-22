@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript'),assert=require('node:assert/strict');
+const m={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/manager-activity-tables.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:m});
+const make=(name,group,tier,seconds,count=0,sessions=0)=>({name,group,tier,activeSeconds:seconds,count,sessions:Array.from({length:sessions},()=>({})),lastActive:null});
+const dan='Team Dan / James',mike='Team Mike / Indi',rows=[make('Abbie',dan,'A',30),make('Zoe',dan,'A',300),make('Bob',dan,'B',900),make('Rach',mike,'A',600),make('Megan',mike,'B',800),make('Cam',dan,'A',30,1,2)];
+assert.equal(m.activityTableManagers(rows,dan,'A').map(m=>m.name).join(','),'Zoe,Cam,Abbie','Active seconds first, then sessions and sign-ins');
+assert.equal(m.activityTableManagers(rows,dan,'B').map(m=>m.name).join(','),'Bob');
+assert.equal(m.activityTableManagers(rows,mike,'A').map(m=>m.name).join(','),'Rach');assert.equal(m.activityTableManagers(rows,mike,'B').map(m=>m.name).join(','),'Megan');
+assert.equal(rows[0].name,'Abbie','Switching tables never mutates the loaded data');assert.equal(m.activityTableManagers([],dan,'A').length,0);
+const page=fs.readFileSync('app/data/manager-login-activity/page.tsx','utf8');assert(page.includes('[day,refresh]'),'Loading depends on date/refresh, not the selected table');assert(!/portalRequest\([^;]+\[side|portalRequest\([^;]+\[tier/.test(page));
+console.log('Activity tables passed: both sides, A/B separation, most-active sorting, tie-breaks and local tab filtering.');

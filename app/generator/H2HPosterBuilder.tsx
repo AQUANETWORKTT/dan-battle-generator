@@ -144,18 +144,13 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
         if(!response.ok)throw Error(body.error||'Could not check agency creators.');
         if(!Array.isArray(body.members))throw Error('Invalid agency directory response.');
         plan=h2hExportPlan(candidates,body.members as H2HExportMember[]);
-        if(!plan.length)throw Error('No agency creators were found for this export. No ZIP was saved.');
       }
       const targets=plan.map(entry=>entry.poster);
       if(targets.some(p=>!p.image1||!p.image2||(twoVTwo&&(!p.image3||!p.image4))))throw Error('Some exported posters still need pictures. Load or upload them before downloading.');
       await document.fonts.ready;
       const zip=new JSZip();
-      const skipped=candidates.filter(p=>!targets.includes(p));
-      const exportSummary=inAgencyOnly?`${candidates.length} total · ${targets.length} agency posters to export · ${skipped.length} unmatched versions skipped. `:'';
-      if(inAgencyOnly&&skipped.length){
-        const skippedNames=[...new Set(skipped.map(p=>p.name1))];
-        zip.file('skipped-creators.csv',['Creator,Reason',...skippedNames.map(name=>'"'+name.replace(/"/g,'""')+'","Not matched to an eligible creator/group in the current agency data"')].join('\n'));
-      }
+      const unsorted=plan.filter(entry=>entry.folder==='Unsorted').length;
+      const exportSummary=inAgencyOnly?`${targets.length} posters to export · ${unsorted} in Unsorted. `:'';
       const manifest=[twoVTwo?'File,Top left,Top right,Bottom left,Bottom right,Date,Time':'File,Creator 1,Creator 2,Date,Time'];
       for(let i=0;i<targets.length;i++) {
         if(abort.signal.aborted)throw Error('Download cancelled. No incomplete ZIP was saved.');
@@ -178,7 +173,7 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
       const blob=await zip.generateAsync({type:'blob'});
       if(abort.signal.aborted)throw Error('Download cancelled.');
       saveAs(blob,`H2H-${twoVTwo?'2V2-':''}${date}-${targets.length}-posters${inAgencyOnly?'-in-agency':''}.zip`);
-      setStatus(`Downloaded ${targets.length} posters${inAgencyOnly?` in agency/manager folders · ${candidates.length-targets.length} unmatched versions skipped (see skipped-creators.csv)`:''}.`);
+      setStatus(`Downloaded ${targets.length} posters${inAgencyOnly?` in agency/manager folders · ${unsorted} in Unsorted · none skipped`:''}.`);
     } catch(error) {setStatus(error instanceof Error?error.message:'Download failed.');}
     finally {setExportBattle(null);markBusy(false);}
   }
@@ -208,7 +203,7 @@ export default function H2HPosterBuilder({templateControls,renderPoster,getAvata
       {!!errors.length && <div role="alert" className="rounded-xl border border-red-300/30 bg-red-950/30 p-4 text-sm text-red-200">{errors.map((error,i)=><p key={i}>{error}</p>)}</div>}
       {!!checks.warnings.length && <div className="rounded-xl border border-amber-300/30 p-4 text-sm text-amber-200">{checks.warnings.map(w=><p key={w}>{w}</p>)}</div>}
       <label className="flex items-center gap-3 rounded-xl border border-yellow-300/25 bg-yellow-300/5 p-4 text-sm font-bold text-yellow-200"><input type="checkbox" checked={inAgencyOnly} disabled={busy} onChange={e=>setInAgencyOnly(e.target.checked)}/>In agency only</label>
-      {inAgencyOnly&&<p className="text-xs text-white/60">Export agency creators’ orientations only. Sub-agencies get one folder each; First Class is split by manager. Opponents stay on the posters.</p>}
+      {inAgencyOnly&&<p className="text-xs text-white/60">Export every poster. Sub-agencies get one folder each; First Class is split by manager. Anything unmatched goes into Unsorted. Nothing is skipped.</p>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><button className={button} disabled={busy||!posters.length||(!inAgencyOnly&&!!missing.length)} onClick={()=>void download(true)}>Download all {posters.length || parsed.rows.length*count} posters</button><button className={button} disabled={busy||!previews.length||(!inAgencyOnly&&selectedMissing)} onClick={()=>void download(false)}>Download selected matchup</button></div>
       {!!names.length && <details className="rounded-xl border border-white/15 p-4" open={previewRequested && missing.length>0}><summary className="cursor-pointer font-bold text-yellow-200">Creator pictures · {names.length}</summary>
         <div className="mt-3 grid grid-cols-2 gap-3">{names.map(name=><label key={name.toLowerCase()} data-h2h-photo={name.toLowerCase()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(!busy)void upload(name,e.dataTransfer.files?.[0]);}} className={`flex min-h-44 min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-3 text-center ${images[name.toLowerCase()]?'border-white/20 bg-white/5':'border-yellow-300/60 bg-yellow-300/5'} ${busy?'opacity-60':''}`}>

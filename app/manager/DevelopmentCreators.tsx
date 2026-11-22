@@ -1,4 +1,5 @@
 "use client";
+import MasterCreatorNotes from '@/app/data/our-team/MasterCreatorNotes';
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ManageCreator, Picture, portalRequest } from "./Portal";
@@ -128,6 +129,7 @@ export default function DevelopmentCreators({
                     <small>{c.manager}</small>
                   </div>
                   <span className="ranked-up-diamonds">{c.diamonds.toLocaleString("en-GB")} diamonds</span>
+                  {owner&&<MasterCreatorNotes creatorId={c.id} username={c.username}/>}
                 </article>
               ))}
             </div>
@@ -242,6 +244,7 @@ export default function DevelopmentCreators({
               <ManageCreator creator={c} />
             </div>
           }
+          {owner&&<MasterCreatorNotes creatorId={c.id} username={c.username}/>}
         </article>
       ))}
       {data && !rows.length && (

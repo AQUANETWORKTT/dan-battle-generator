@@ -14,5 +14,5 @@ export async function loginActivity(day:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(d
   for(const row of r.data){const id=row.key.split(':')[2];if(!byId.has(id))continue;const list=samples.get(id)||[];list.push({at:row.started_at,seconds:row.attempts});samples.set(id,list);}
   if(r.data.length<1000)break;
  }
- return {day,dayStart,dayEnd,managers:accounts.map(a=>{const logins=events.filter(e=>e.accountId===a.id),activity=summarizeManagerActivity(samples.get(a.id)||[],dayStart,dayEnd);return {id:a.id,name:a.name,username:a.username,enabled:a.enabled,loggedIn:logins.length>0||activity.sessions.length>0,count:logins.length,lastLogin:logins[0]?.at||null,...activity};}),events};
+ return {day,dayStart,dayEnd,managers:accounts.map(a=>{const logins=events.filter(e=>e.accountId===a.id),activity=summarizeManagerActivity(samples.get(a.id)||[],dayStart,dayEnd);return {id:a.id,name:a.name,username:a.username,group:a.group,tier:a.tier,enabled:a.enabled,loggedIn:logins.length>0||activity.sessions.length>0,count:logins.length,lastLogin:logins[0]?.at||null,...activity};}),events};
 }

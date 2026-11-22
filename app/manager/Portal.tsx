@@ -1,5 +1,7 @@
 "use client";
 import {appLinkDue,appLinkCompleted as isAppLinkCompleted,appLinkTaskId} from "@/lib/app-link-reminder";
+import MasterCreatorNotes from '@/app/data/our-team/MasterCreatorNotes';
+import DecliningCreators from '@/app/data/our-team/DecliningCreators';
 import ActivityTracker from "./ActivityTracker";
 import {managerPageFetch,clearManagerPageData} from "@/lib/manager-page-data";
 import ManagerReminders from "./ManagerReminders";
@@ -1038,11 +1040,13 @@ function MasterTaskSummary({
   );
 }
 export default function Dashboard({
+  declining = false,
   creators = false,
   owner = false,
   hideQuote = false,
 }: {
   creators?: boolean;
+  declining?: boolean;
   owner?: boolean;
   hideQuote?: boolean;
 }) {
@@ -1235,7 +1239,7 @@ export default function Dashboard({
         </div>
       )}
       {data &&
-        (creators ? (
+        (owner && declining ? <DecliningCreators data={data}/> : creators ? (
           <>
             <input
               className="manager-input"
@@ -1353,6 +1357,7 @@ export default function Dashboard({
                       </Link>
                       <ManageCreator creator={c} onChanged={setUnmanaged} />
                     </div>
+                    {owner&&<MasterCreatorNotes creatorId={c.id} username={c.username}/>}
                   </article>
                 ))}
             </div>

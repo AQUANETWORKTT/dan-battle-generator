@@ -1,0 +1,12 @@
+'use client';
+import {useState} from 'react';
+import type {Overview} from '@/lib/manager-overview';
+import {decliningCreators} from '@/lib/declining-creators';
+import {Picture} from '@/app/manager/Portal';
+import MasterCreatorNotes from './MasterCreatorNotes';
+export default function DecliningCreators({data}:{data:Overview}){
+ const [search,setSearch]=useState('');
+ const rows=decliningCreators(data).filter(({creator})=>creator.username.toLowerCase().includes(search.trim().toLowerCase().replace(/^@/,'')));
+ const month=(value:string)=>new Date(value+'-01T12:00:00Z').toLocaleDateString('en-GB',{month:'long'});
+ return <section><header className="master-declining-heading"><h1 className="manager-title">Declining creators · {rows.length}</h1><p>{month(data.previous)} → {month(data.month)} · matching dates through day {Number(data.latest.slice(-2))}{!data.comparable?' · partial comparison':''}. Any decrease in diamonds, LIVE hours, LIVE days or battles.</p></header><input className="manager-input" style={{marginTop:18}} placeholder="Find a declining creator…" aria-label="Find a declining creator" value={search} onChange={e=>setSearch(e.target.value)}/><div className="master-declining-list">{rows.map(({creator,stats})=><article key={creator.id} className="master-declining-row"><header><Picture username={creator.username}/><div><h2>@{creator.username}</h2><p>{creator.manager}</p></div></header><div className="master-declining-stats">{stats.map(stat=><div key={stat.label} className={'master-declining-stat '+(!stat.down?'neutral':'')}><span>{stat.label}</span><strong>{stat.down?'↓ '+Math.round(stat.drop)+'%':stat.current===stat.previous?'No change':'↑'}</strong><small>{stat.previous.toLocaleString('en-GB',{maximumFractionDigits:stat.decimals})} → {stat.current.toLocaleString('en-GB',{maximumFractionDigits:stat.decimals})}</small></div>)}</div><MasterCreatorNotes creatorId={creator.id} username={creator.username}/></article>)}</div>{!rows.length&&<p className="manager-muted" style={{marginTop:24}}>{data.matchedComparisonDays>0?'No declining creators match these filters.':'No matching dates from last month are available to compare yet.'}</p>}</section>;
+}

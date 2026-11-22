@@ -392,9 +392,10 @@ export async function syncAccounts() {
     }
   const result = await db.from(accounts).select("*").order("number");
   check(result.error);
+  const bTierKeys=new Set<string>((assignment.bTierManagers||[]).map(norm));
   return (result.data as ManagerAccount[])
     .filter((a) => candidates.has(a.manager_key))
-    .map(publicAccount);
+    .map(a=>({...publicAccount(a),group:mikeIndiKeys.has(a.manager_key)?'Team Mike / Indi':'Team Dan / James',tier:bTierKeys.has(norm(a.manager_key))?'B' as const:'A' as const}));
 }
 export async function accountForSession(token?: string) {
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;

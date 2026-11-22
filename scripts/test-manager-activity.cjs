@@ -26,8 +26,8 @@ assert.equal(summary.summarizeManagerActivity([sample('10:00:00',0)],start,end).
 
  const rows=[{key:'audit:login:enabled:one',started_at:'2026-11-20T08:00:00Z'},...['enabled','disabled'].map(id=>({key:'audit:activity:'+id+':session:one',started_at:'2026-11-20T10:00:30Z',attempts:30}))];
  const db={from:()=>{let prefix,from,to;const q={select(){return q},like(_,v){prefix=v.slice(0,-1);return q},gte(_,v){from=v;return q},lt(_,v){to=v;return q},order(){return q},async range(){return {data:rows.filter(r=>r.key.startsWith(prefix)&&r.started_at>=from&&r.started_at<to),error:null}}};return q;}};
- const activity=load('lib/manager-login-activity.ts',{'./creator-api-search/db':{database:()=>db},'./manager-portal':{syncAccounts:async()=>[{id:'enabled',name:'Team A',enabled:true},{id:'disabled',name:'Team B',enabled:false}]},'./manager-activity-summary':summary});
- const day=await activity.loginActivity('2026-11-20');assert.equal(day.managers.length,1);assert.equal(day.managers[0].activeSeconds,30);assert.equal(day.managers[0].count,1);assert.equal(day.managers[0].loggedIn,true);
+ const activity=load('lib/manager-login-activity.ts',{'./creator-api-search/db':{database:()=>db},'./manager-portal':{syncAccounts:async()=>[{id:'enabled',name:'Team A',enabled:true,group:'Team Dan / James',tier:'B'},{id:'disabled',name:'Team B',enabled:false}]},'./manager-activity-summary':summary});
+ const day=await activity.loginActivity('2026-11-20');assert.equal(day.managers.length,1);assert.equal(day.managers[0].group,'Team Dan / James');assert.equal(day.managers[0].tier,'B');assert.equal(day.managers[0].activeSeconds,30);assert.equal(day.managers[0].count,1);assert.equal(day.managers[0].loggedIn,true);
  const spring=await activity.loginActivity('2026-03-29');assert.equal((Date.parse(spring.dayEnd)-Date.parse(spring.dayStart))/3600000,23);
  const autumn=await activity.loginActivity('2026-10-25');assert.equal((Date.parse(autumn.dayEnd)-Date.parse(autumn.dayStart))/3600000,25);
  console.log('Manager activity passed: existing sessions, unique buckets, bounded time, overlap union, visits, midnight/DST, separate sign-ins, disabled accounts and origin/auth checks.');
