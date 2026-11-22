@@ -1,3 +1,4 @@
+export const ADVANCED_SUCCESS_RATE=.3;
 export const EARNINGS_GROUPS=['Team Dan / James','Team Mike / Indi'] as const;
 export const EARNINGS_LEVELS=[{days:8,hours:20,rate:.5},{days:11,hours:30,rate:1},{days:15,hours:40,rate:2},{days:18,hours:60,rate:2.5},{days:22,hours:80,rate:4}];
 const TIERS=[100000,200000,300000,500000,700000,1000000,1600000,2500000,5000000];
@@ -36,9 +37,9 @@ export function earningsAgencySummary(creators:EarningsCreator[]):EarningsAgency
  return {eligible:success.eligible,successful:success.successful,qualifiedDiamonds};
 }
 export function matureSuccess(creators:EarningsAgency){
- if(!Array.isArray(creators))return {...creators,percent:creators.eligible?creators.successful/creators.eligible*100:0,boosted:creators.eligible>0&&creators.successful/creators.eligible>.5};
+ if(!Array.isArray(creators))return {...creators,percent:creators.eligible?creators.successful/creators.eligible*100:0,boosted:creators.eligible>0&&creators.successful/creators.eligible>=ADVANCED_SUCCESS_RATE};
  const eligible=creators.filter(c=>c.previousDiamonds>=200000),successful=eligible.filter(c=>{const r=creatorEarningRates(c,0,false);return r.maintained||r.ranked;});
- return {eligible:eligible.length,successful:successful.length,percent:eligible.length?successful.length/eligible.length*100:0,boosted:eligible.length>0&&successful.length/eligible.length>.5};
+ return {eligible:eligible.length,successful:successful.length,percent:eligible.length?successful.length/eligible.length*100:0,boosted:eligible.length>0&&successful.length/eligible.length>=ADVANCED_SUCCESS_RATE};
 }
 export function resolveEarningsManagers(managers:EarningsManager[],settings:EarningsSettings){
  const map=new Map(managers.map(m=>[m.key,{...m,parent:Object.hasOwn(settings.parents,m.key)?settings.parents[m.key]:m.parent}]));
@@ -114,7 +115,7 @@ export function earningsOpportunities(creators:EarningsCreator[],agencyCreators:
    const progress=Math.min(1,option.category==='activeness'?1:option.target>0?c.diamonds/option.target:1,option.days>0?c.validDays/option.days:1,option.hours>0?c.hours/option.hours:1);
    if(option.category!=='diamonds'&&progress+1e-9<Math.max(0,Math.min(1,monthProgress))*.8)return [];
    const future={...c,diamonds:Math.max(c.diamonds,option.target),validDays:Math.max(c.validDays,option.days),hours:Math.max(c.hours,option.hours)};
-   const futureBase=creatorEarningRates(future,incremental,false),unlocksBoost=!success.boosted&&c.previousDiamonds>=200000&&!current.maintained&&!current.ranked&&(futureBase.maintained||futureBase.ranked)&&success.eligible>0&&(success.successful+1)/success.eligible>.5;
+   const futureBase=creatorEarningRates(future,incremental,false),unlocksBoost=!success.boosted&&c.previousDiamonds>=200000&&!current.maintained&&!current.ranked&&(futureBase.maintained||futureBase.ranked)&&success.eligible>0&&(success.successful+1)/success.eligible>=ADVANCED_SUCCESS_RATE;
    const after=creatorEarningRates(future,incremental,success.boosted||unlocksBoost),upliftCents=after.grossCents-current.grossCents;
    if(upliftCents<=0)return [];
    const beforeAllocation=allocateCreator(current.grossCents,c.managerKey,managers,settings),afterAllocation=allocateCreator(after.grossCents,c.managerKey,managers,settings);

@@ -11,7 +11,7 @@ assert.equal(m.creatorEarningRates(c({previousDiamonds:3000000,diamonds:3000000}
 assert.equal(m.creatorEarningRates(c({previousDiamonds:10000000,diamonds:7999999}),0,true).bonus,0);assert.equal(m.creatorEarningRates(c({previousDiamonds:10000000,diamonds:8000000}),0,true).bonus,3.5);
 assert.equal(m.creatorEarningRates(c({hours:14}),10,true).bonus,0);assert.equal(m.creatorEarningRates(c({validDays:6}),10,true).bonus,0);
 assert.equal(m.creatorEarningRates(c({hours:79}),0,false).activity,2.5);assert.equal(m.creatorEarningRates(c({hours:80}),0,false).activity,4);
-const success=c({id:'success',previousDiamonds:200000,diamonds:200000}),failed=c({id:'failed',previousDiamonds:200000,diamonds:0});assert.equal(m.matureSuccess([success,failed]).boosted,false);assert.equal(m.matureSuccess([success,{...success,id:'two'},failed]).boosted,true);
+const success=c({id:'success',previousDiamonds:200000,diamonds:200000}),failed=c({id:'failed',previousDiamonds:200000,diamonds:0});assert.equal(m.matureSuccess([success,failed]).boosted,true);assert.equal(m.matureSuccess([success,{...success,id:'two'},failed]).boosted,true);
 const tree=m.resolveEarningsManagers(managers,settings),allocation=m.allocateCreator(10000,'junior',tree,settings);
 assert.equal(allocation.ownerPoolCents,7000);assert.equal(allocation.payouts.get('owner:'+group),2100);assert.equal(allocation.payouts.get('manager'),2940);assert.equal(allocation.payouts.get('junior'),1960);assert.equal([...allocation.payouts.values()].reduce((a,b)=>a+b,0),7000);
 const edited=m.defaultEarningsSettings();edited.groups[group].ownerPercent=80;assert.equal(m.allocateCreator(10000,'junior',tree,edited).payouts.get('junior'),2240);
@@ -20,10 +20,10 @@ const loop=m.defaultEarningsSettings();loop.parents.manager='junior';assert.thro
 for(let value=0;value<1000;value++){const a=m.allocateCreator(value,'junior',tree,settings);assert.equal([...a.payouts.values()].reduce((sum,v)=>sum+v,0),a.ownerPoolCents,'Every penny must reconcile');}
 const calculated=m.calculateTeamEarnings([c()],[],managers,settings,10);assert.equal(calculated.nodes.reduce((sum,n)=>sum+n.payoutCents,0),calculated.ownerPoolCents);assert.equal(calculated.nodes.find(n=>n.key==='manager').corePayoutCents,0);assert(calculated.nodes.find(n=>n.key==='manager').splitPayoutCents>0);
 const gbp=m.earningsPounds(calculated.nodes,.76192);assert.equal([...gbp.values()].reduce((sum,n)=>sum+n.total,0),Math.round(calculated.ownerPoolCents*.76192));for(const n of gbp.values())assert.equal(n.core+n.split,n.total);
-const almost=c({diamonds:199999,previousDiamonds:200000,hours:15,validDays:7});const opportunities=m.earningsOpportunities([almost],[success,almost],managers,settings,10);const maintain=opportunities.find(o=>o.kind==='Maintain');assert.equal(maintain.diamondsNeeded,1);assert.equal(maintain.unlocksBoost,true);assert.equal(maintain.agencyBoostCents,2000);
+const almost=c({diamonds:199999,previousDiamonds:200000,hours:15,validDays:7});const opportunities=m.earningsOpportunities([almost],[success,{...success,id:'second'},...Array.from({length:7},(_,i)=>({...failed,id:'failed-'+i})),almost],managers,settings,10);const maintain=opportunities.find(o=>o.kind==='Maintain');assert.equal(maintain.diamondsNeeded,1);assert.equal(maintain.unlocksBoost,true);assert.equal(maintain.agencyBoostCents,4000);
 assert.equal(Object.values(maintain.teamUplifts).reduce((sum,n)=>sum+n,0),maintain.ownerPoolUpliftCents);
 const impossible=m.earningsOpportunities([c({validDays:17,hours:60})],[],managers,settings,10,0);assert(!impossible.some(o=>o.daysNeeded>0),'Do not recommend impossible valid-day targets');
-console.log('Team earnings passed: all tier rates, highest crossed rate, 80% top-tier rule, activity qualification, strict >50% Advanced, $2,150 example, 70/70/40 splits, overrides, cycles, cent reconciliation and ranked opportunities.');
+console.log('Team earnings passed: all tier rates, highest crossed rate, 80% top-tier rule, activity qualification, at least 30% Advanced, $2,150 example, 70/70/40 splits, overrides, cycles, cent reconciliation and ranked opportunities.');
 
 const paced=(patch={})=>c({diamonds:64000,hours:15,validDays:7,...patch});
 const paceOptions=creator=>m.earningsOpportunities([creator],[],managers,settings,10,6,.8);
@@ -51,3 +51,15 @@ assert.equal(m.creatorEarningsBreakdown({incremental:5,activity:2.5,bonus:3},714
 for(let received=0;received<500;received++){const parts=m.creatorEarningsBreakdown({incremental:5,activity:2,bonus:0},received);assert.equal(parts.reduce((a,b)=>a+b,0),received);assert.equal(parts[2],0);}
 assert.equal(m.creatorEarningsBreakdown({incremental:0,activity:0,bonus:0},0).join(','),'0,0,0');
 console.log('Creator breakdown passed: components reconcile to the received total, including conversion pennies and zero bonus.');
+
+assert.equal(m.matureSuccess({eligible:100,successful:29,qualifiedDiamonds:0}).boosted,false);
+assert.equal(m.matureSuccess({eligible:100,successful:30,qualifiedDiamonds:0}).boosted,true,'Exactly 30% qualifies');
+assert.equal(m.matureSuccess({eligible:0,successful:0,qualifiedDiamonds:0}).boosted,false);
+const thirtyPercent=[...Array.from({length:3},(_,i)=>({...success,id:'success-'+i})),...Array.from({length:7},(_,i)=>({...failed,id:'failure-'+i}))];
+assert.equal(m.matureSuccess(thirtyPercent).boosted,true,'Creator rows and cached agency summaries share the same 30% threshold');
+console.log('Advanced threshold passed: below 30%, exactly 30%, empty roster and the next creator unlocking Advanced at 3 out of 10.');
+
+const shortMonth=c({validDays:5,hours:60,diamonds:100000});
+const lateTargets=m.earningsOpportunities([shortMonth],[],managers,settings,10,9,21/30);
+assert(lateTargets.every(target=>target.daysNeeded<=9),'No target may ask for 17 days with only 9 days left');
+assert(!lateTargets.some(target=>target.daysNeeded===17));

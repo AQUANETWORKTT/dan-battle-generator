@@ -11,6 +11,7 @@ const source=evaluate('lib/team-earnings-server.ts',{
  './manager-overview-server':{loadOverview:async()=>({creators:agency,month:'2026-11',previous:'2026-10',latest:'2026-11-20',total:1200000})},
  './portal-result-cache':{portalResultCache:fn=>fn},'./recruitment-team-owner':{recruitmentTeamOwner:key=>key},
  './recruitment-manager-aliases':{recruitmentManagerIdentity:key=>key},
+ './earnings-manager-assignments':evaluate('lib/earnings-manager-assignments.ts',{'./recruitment-manager-aliases':{recruitmentManagerIdentity:key=>key}}),
  './incremental-targets':{DEFAULT_AGENCY_TARGET:10000000,incrementalTargets:()=>[],incrementalPrediction:()=>5},'./team-earnings':engine,
 });
 (async()=>{
@@ -19,6 +20,10 @@ const source=evaluate('lib/team-earnings-server.ts',{
  assert(!result.managers.some(m=>m.key==='removed'),'Deleted assignments must not reappear in earnings');
  assert.equal(result.managers.find(m=>m.key==='abbie').parent,'owner:Team Dan / James','Deleted parents fall back to the owner');
  assert(result.managers.every(m=>m.group==='Team Dan / James'));
+ assert.equal(result.forecast.creators.map(c=>c.username).join(','),'dan,abbie,mike,megan','Forecast alone includes both First Class sides');
+ assert(result.forecast.managers.some(m=>m.key==='megan'&&m.group==='Team Mike / Indi'));
+ assert(!result.managers.some(m=>m.key==='megan'),'Mike / Indi stays out of earnings tables');
+ assert(!result.forecast.managers.some(m=>m.key==='removed'),'Deleted managers stay excluded from forecasts too');
  assert.equal(Array.isArray(result.agencyCreators),false,'Other agency creators must not be returned to the page');
  assert.equal(result.agencyCreators.eligible,4,'Advanced eligibility still uses the whole agency');
  const settings=engine.defaultEarningsSettings();

@@ -1,0 +1,8 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),assert=require('node:assert/strict');
+function load(file){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,Map,Set,require:name=>load(path.resolve(path.dirname(file),name+'.ts'))});return exports;}
+const {earningsManagerAssignments}=load('lib/earnings-manager-assignments.ts');
+const combined='firstclassagencykyranashoutlookcom',ash='firstclassagencyashoutlookcom',kyran='firstclassagencykyranoutlookcom',old='ashwalbridgeaolcom',canonical='firstclassagencykyranash';
+const result=earningsManagerAssignments({managerGroups:{[combined]:'Team Dan / James',[ash]:'Team Dan / James',[kyran]:'Team Dan / James',[old]:'Excluded',removed:'Team Dan / James'},managerNames:{[combined]:'Team Kyran & Ash',[ash]:'Team Ash',[kyran]:'Team Kyran',[old]:'Team Ash'},deletedManagers:[old,ash,kyran,'removed'],managerParents:{demi:combined}});
+assert.equal(result.groups[canonical],'Team Dan / James');assert.equal(result.names[canonical],'Team Kyran & Ash');assert(!result.deleted.has(canonical));assert(result.deleted.has('removed'));assert(!result.groups.removed);assert.equal(result.parents.demi,canonical);
+const deleted=earningsManagerAssignments({managerGroups:{[combined]:'Team Dan / James'},deletedManagers:[combined]});assert(deleted.deleted.has(canonical));assert(!deleted.groups[canonical],'An actually deleted combined account must stay removed');
+console.log('Earnings assignments passed: retired aliases cannot hide the active Kyran & Ash team; canonical names, parent links and real deletions are preserved.');
