@@ -1,0 +1,13 @@
+'use client';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import type {earningsOpportunities,EarningsManager} from '@/lib/team-earnings';
+import {earningForecastMessage,forecastCreators,type ForecastCategory} from '@/lib/earning-forecast';
+export default function EarningForecast({opportunities,managers,team,latest}:{opportunities:ReturnType<typeof earningsOpportunities>;managers:EarningsManager[];team:string;latest:string}){
+ const [category,setCategory]=useState<ForecastCategory>('all'),[count,setCount]=useState(10),[status,setStatus]=useState('');
+ const preview=useRef<HTMLTextAreaElement>(null);
+ const rows=useMemo(()=>forecastCreators(opportunities,team,category),[opportunities,team,category]);
+ const limit=Math.min(count,rows.length),message=useMemo(()=>earningForecastMessage(rows,managers,team,limit,latest),[rows,managers,team,limit,latest]);
+ useEffect(()=>setStatus(''),[message]);
+ async function copy(){try{await navigator.clipboard.writeText(message);setStatus('Message copied');}catch{preview.current?.focus();preview.current?.select();setStatus('Select and copy the message below.');}}
+ return <section className="earn-section earn-forecast"><header><div><h2>Earning forecast</h2><p>Use the team filter above. Choose how many creators to include, then copy their priorities for WhatsApp.</p></div></header><div className="earn-toolbar"><label>Targets<select value={category} onChange={e=>setCategory(e.target.value as ForecastCategory)}><option value="all">All realistic targets</option><option value="activeness">Activeness</option><option value="rankup">Rank-up</option><option value="maintenance">Maintenance</option><option value="diamonds">Diamond growth</option></select></label><label>Number of creators<input type="number" min={1} max={Math.max(1,rows.length)} value={limit||1} disabled={!rows.length} onChange={e=>setCount(Math.max(1,Math.min(rows.length,Math.floor(Number(e.target.value)||1))))}/></label><button disabled={!rows.length} onClick={()=>setCount(rows.length)}>Include all</button></div><div className="earn-forecast-actions"><span>{limit} / {rows.length} creators · biggest impact first</span><button className="earn-primary" disabled={!message} onClick={()=>void copy()}>Copy WhatsApp message</button></div>{message?<textarea ref={preview} className="earn-forecast-preview" aria-label="Earning forecast message" value={message} readOnly rows={Math.min(28,Math.max(12,message.split('\n').length+1))}/>:<p>No realistic targets match this team and filter.</p>}<p className="earn-forecast-status" role="status">{status}</p></section>;
+}
