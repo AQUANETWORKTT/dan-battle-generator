@@ -1,0 +1,1 @@
+const fs=require('fs');let s=fs.readFileSync('tmp/second-manager-list.cjs','utf8');s=s.replace('raw:k,date:row?.stat_date','raw:k,group:normalized.groups[k]||row?.group_name,agency:row?.agency,team:row?.team,date:row?.stat_date');fs.writeFileSync('tmp/first-class-list.cjs',s);
