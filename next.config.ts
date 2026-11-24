@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
+  outputFileTracingIncludes: {"/api/team-poster-preparation/**/*": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/fonts/**/*", "./public/avatars/**/*"], "/api/data-analysis/**/*": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/fonts/**/*", "./public/avatars/**/*"], "/api/team-poster-templates": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/fonts/**/*", "./public/avatars/**/*"]},
   async headers() {
     return [
       {

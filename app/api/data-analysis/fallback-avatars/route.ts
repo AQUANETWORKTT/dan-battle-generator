@@ -1,3 +1,4 @@
+import {queueTeamPosterPreparation} from "@/lib/team-poster-preparation";
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
       );
       if (error) throw new Error(error.message);
     }
+    await queueTeamPosterPreparation(new URL(request.url).origin);
     return NextResponse.json({ avatars: await readAvatars() });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not queue fallback pictures." }, { status: 500 });
@@ -109,8 +111,12 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    return NextResponse.json({ avatars: await saveAvatars(normalize((await request.json())?.avatars)) });
+    const avatars=await saveAvatars(normalize((await request.json())?.avatars));
+    await queueTeamPosterPreparation(new URL(request.url).origin);
+    return NextResponse.json({ avatars });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not save fallback pictures." }, { status: 500 });
   }
 }
+
+export const maxDuration=300;

@@ -1,3 +1,4 @@
+import {queueTeamPosterPreparation} from "@/lib/team-poster-preparation";
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -27,14 +28,29 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const name = String(body?.name || "");
     if (!isTeamTemplate(name) || !body?.template) return NextResponse.json({ error: "Invalid team poster template." }, { status: 400 });
+    const previousName=String(body.previousName||'');
+    if(previousName&&(!isTeamTemplate(previousName)||previousName===ORIGINAL_TEMPLATE))return NextResponse.json({error:'Invalid previous template.'},{status:400});
     const { data, error } = await submissionsSupabase
       .from("poster_templates")
       .upsert({ name, background_url: body.template.backgroundUrl || null, template_json: body.template, updated_at: new Date().toISOString() }, { onConflict: "name" })
       .select("name,template_json,background_url,updated_at")
       .single();
     if (error) throw new Error(error.message);
+    if(previousName&&previousName!==name){const removed=await submissionsSupabase.from('poster_templates').delete().eq('name',previousName);if(removed.error)throw Error(removed.error.message);}
+    await queueTeamPosterPreparation(new URL(request.url).origin);
     return NextResponse.json({ template: data });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not save team poster template." }, { status: 500 });
   }
 }
+
+export async function DELETE(request:Request){
+  try{
+    const name=String((await request.json())?.name||'');
+    if(!isTeamTemplate(name)||name===ORIGINAL_TEMPLATE)return NextResponse.json({error:'This template cannot be deleted.'},{status:400});
+    const result=await submissionsSupabase.from('poster_templates').delete().eq('name',name);if(result.error)throw Error(result.error.message);
+    await queueTeamPosterPreparation(new URL(request.url).origin);return NextResponse.json({deleted:true});
+  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Could not delete template.'},{status:500});}
+}
+
+export const maxDuration=300;

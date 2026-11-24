@@ -1,0 +1,190 @@
+{
+  "sourceRows": 2092,
+  "current": 438,
+  "former": 1654,
+  "assigned": 422,
+  "review": [
+    {
+      "plan": "Plan 1",
+      "row": 45,
+      "creator": "justjess0905",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Push now",
+      "missing": "6 more Star Creator qualifying days to reach 20 (2 behind pace).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 1",
+      "row": 90,
+      "creator": "[missing handle]",
+      "membership": "Current",
+      "manager": "",
+      "group": "",
+      "category": "On track",
+      "missing": "On track. Maintain qualifying-day pace; the sheet does not give an exact remaining-day count.",
+      "reason": "The sheet has no creator handle"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 223,
+      "creator": "rebeccakinsley",
+      "membership": "Current",
+      "manager": "",
+      "group": "",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 20 more qualifying days (cannot reach 20 this month); Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "Not found in latest roster"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 270,
+      "creator": "joshtuff2",
+      "membership": "Current",
+      "manager": "",
+      "group": "Respawn Sub Agency",
+      "category": "Not reachable this month",
+      "missing": "Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 371,
+      "creator": "jillybean82x",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 20 more qualifying days (cannot reach 20 this month); Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 839,
+      "creator": "_k1eaehanne_",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 6 more qualifying days (behind pace); Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1048,
+      "creator": "chloelee292025xx",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 20 more qualifying days (cannot reach 20 this month); Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1541,
+      "creator": "dionenicole97",
+      "membership": "Current",
+      "manager": "",
+      "group": "",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 20 more qualifying days (cannot reach 20 this month); Active interaction: 11 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "Not found in latest roster"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1584,
+      "creator": "js.wrld04",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 11 more qualifying days (cannot reach 20 this month); Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1766,
+      "creator": "jakeandbailey0",
+      "membership": "Current",
+      "manager": "",
+      "group": "Not in a group",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 20 more qualifying days (cannot reach 20 this month); Active interaction: 6 more qualifying days (behind pace); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1813,
+      "creator": "tashaxx02",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Not reachable this month",
+      "missing": "Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1837,
+      "creator": "gracinvetf6",
+      "membership": "Current",
+      "manager": "",
+      "group": "",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 20 more qualifying days (cannot reach 20 this month); Active interaction: 20 more qualifying days (cannot reach 20 this month); Star Creator: 20 more qualifying days (cannot reach 20 this month).",
+      "reason": "Not found in latest roster"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1905,
+      "creator": "channy_2209",
+      "membership": "Current",
+      "manager": "",
+      "group": "",
+      "category": "Not reachable this month",
+      "missing": "Steady presence: 3 more qualifying days; Star Creator: 8 more qualifying days (cannot reach 20 this month).",
+      "reason": "Not found in latest roster"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1916,
+      "creator": "couchpotatoash",
+      "membership": "Current",
+      "manager": "",
+      "group": "",
+      "category": "Push now",
+      "missing": "Steady presence: 5 more qualifying days (behind pace); Star Creator: 5 more qualifying days (behind pace).",
+      "reason": "Not found in latest roster"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1917,
+      "creator": "liv_mc3",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "Push now",
+      "missing": "Star Creator: 5 more qualifying days (behind pace).",
+      "reason": "No saved manager display name"
+    },
+    {
+      "plan": "Plan 2",
+      "row": 1923,
+      "creator": "crazyjess_5",
+      "membership": "Current",
+      "manager": "",
+      "group": "Horizon Sub-Agency",
+      "category": "On track",
+      "missing": "All three milestones have reached 20 qualifying days.",
+      "reason": "No saved manager display name"
+    }
+  ],
+  "plan1OffTrack": 8,
+  "plan2OffTrack": 329,
+  "plan2Reachable": 9,
+  "plan2Unreachable": 320,
+  "managerCount": 34,
+  "rosterDate": "2026-11-23"
+}

@@ -1,3 +1,4 @@
+import {queueTeamPosterPreparation} from "@/lib/team-poster-preparation";
 import {invalidatePortalData} from '@/lib/manager-portal-cache';
 import {NextResponse } from "next/server";
 import * as XLSX from "xlsx";
@@ -672,6 +673,7 @@ export async function POST(req: Request) {
     ).length;
 
     invalidatePortalData();
+    await queueTeamPosterPreparation(new URL(req.url).origin);
     return NextResponse.json({
       success: true,
       filesImported: fileSummaries.length,

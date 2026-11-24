@@ -3,54 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { saveAs } from "file-saver";
-import { toBlob } from "html-to-image";
-import JSZip from "jszip";
 import { flushSync } from "react-dom";
+import {CreatorStat, TeamPosterElement, TeamPosterCategory, TeamPosterTemplate, safeNumber, formatCompactDiamonds, getLiveHours, formatPosterHours, dailyPosterRows, getUsername, matchesTemplateManager, createDefaultTemplate, normalizeTemplate, templateLabel, templateSlug, teamPosterCategoryLabel, fallbackAvatarFor} from "@/lib/team-poster-model";
+import {firstClassPosterSide} from "@/lib/team-poster-preparation-model";
+import PreparedTeamPosters, {type PreparedTeamPostersHandle} from "./PreparedTeamPosters";
 import DataAccessGuard from "../../components/DataAccessGuard";
-
-type CreatorStat = {
-  [key: string]: unknown;
-  stat_date: string;
-  creator_username?: string | null;
-  "Creator's username"?: string | null;
-  agency?: string | null;
-  team?: string | null;
-  group_name?: string | null;
-  manager_email?: string | null;
-  creator_network_manager?: string | null;
-  "Creator Network manager"?: string | null;
-  diamonds?: number | string | null;
-  live_hours?: number | string | null;
-  live_duration?: string | number | null;
-  "LIVE duration"?: string | number | null;
-};
-
-type TeamPosterElement = {
-  id: string;
-  kind: "avatar" | "username" | "diamonds" | "hours" | "text";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  value: string;
-  imageUrl?: string;
-  fontFamily?: string;
-  fontSize?: number;
-  color?: string;
-  fontWeight?: number;
-};
-
-type TeamPosterCategory = "dan" | "mike-indi" | "sub-agencies" | "paradise" | "horizon" | "trident" | "respawn";
-
-type TeamPosterTemplate = {
-  backgroundUrl: string;
-  backgroundPath?: string;
-  managerKey?: string;
-  /** Saved download category, chosen in the Team Poster Builder. */
-  teamSide?: TeamPosterCategory;
-  elements: TeamPosterElement[];
-};
 
 const TEMPLATE_STORAGE_KEY = "dan-team-diamonds-poster-template-v1";
 const TEAM_DAN_POSTER_TEMPLATE_NAME = "team-dan-poster";
@@ -67,46 +24,6 @@ const LOCAL_AVATAR_PATHS: Record<string, string> = {
 };
 const sessionAvatarCache = new Map<string, string>();
 
-function safeNumber(value: unknown) {
-  return Number(String(value || "0").replace(/[^\d.-]/g, "")) || 0;
-}
-
-function formatCompactDiamonds(value: number) {
-  if (value >= 1000000) {
-    const millions = value / 1000000;
-    return `${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    const thousands = value / 1000;
-    return `${thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)}K`;
-  }
-  return value.toLocaleString("en-GB");
-}
-
-function durationToHours(value: unknown) {
-  const text = String(value || "").trim().toLowerCase();
-  if (!text) return 0;
-
-  const hours = Number(text.match(/(\d+(?:\.\d+)?)\s*h/)?.[1] || 0);
-  const minutes = Number(text.match(/(\d+(?:\.\d+)?)\s*m/)?.[1] || 0);
-  const seconds = Number(text.match(/(\d+(?:\.\d+)?)\s*s/)?.[1] || 0);
-
-  if (hours || minutes || seconds) {
-    return Number((hours + minutes / 60 + seconds / 3600).toFixed(2));
-  }
-
-  return safeNumber(value);
-}
-
-function getLiveHours(row: CreatorStat) {
-  return durationToHours(row.live_hours ?? row.live_duration ?? row["LIVE duration"]);
-}
-
-function formatPosterHours(value: number) {
-  if (value <= 0) return "0H";
-  return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}H`;
-}
-
 function getCurrentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -116,157 +33,6 @@ function getYesterdayDateKey() {
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function dailyPosterRows(rows: CreatorStat[], statDate: string) {
-  const byCreator = new Map<string, CreatorStat[]>();
-  for (const row of rows) {
-    const creatorKey = String((row as CreatorStat & { creator_id?: string | null }).creator_id || getUsername(row));
-    if (!creatorKey) continue;
-    byCreator.set(creatorKey, [...(byCreator.get(creatorKey) || []), row]);
-  }
-  return rows.filter((row) => row.stat_date === statDate).map((row) => {
-    const period = String((row as CreatorStat & { data_period?: string | null }).data_period || "");
-    const match = period.match(/^(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})$/);
-    if (!match || match[1] === match[2]) return row;
-    const creatorKey = String((row as CreatorStat & { creator_id?: string | null }).creator_id || getUsername(row));
-    const priorDaily = (byCreator.get(creatorKey) || []).filter((candidate) => {
-      const candidatePeriod = String((candidate as CreatorStat & { data_period?: string | null }).data_period || "");
-      return candidate.stat_date >= match[1] && candidate.stat_date < statDate && candidatePeriod === `${candidate.stat_date} ~ ${candidate.stat_date}`;
-    });
-    return {
-      ...row,
-      diamonds: Math.max(0, safeNumber(row.diamonds) - priorDaily.reduce((sum, candidate) => sum + safeNumber(candidate.diamonds), 0)),
-      live_hours: Math.max(0, getLiveHours(row) - priorDaily.reduce((sum, candidate) => sum + getLiveHours(candidate), 0)),
-    };
-  });
-}
-
-function getUsername(row: CreatorStat) {
-  return String(row.creator_username || row["Creator's username"] || "")
-    .replace("@", "")
-    .trim()
-    .toLowerCase();
-}
-
-function isTeamDanRow(row: CreatorStat) {
-  const managerEmail = String(
-    row.manager_email ||
-      row.creator_network_manager ||
-      row["Creator Network manager"] ||
-      ""
-  )
-    .trim()
-    .toLowerCase();
-
-  const directTeamKey = managerEmail
-    .replace(/[^a-z0-9]/g, "")
-    .replace(/(outlook|gmail|mail)com$/, "");
-  return ["firstclassagencydan", "firstclassagencyjames"].includes(directTeamKey);
-}
-
-function getManagerKey(row: CreatorStat) {
-  return String(row.manager_email || row.creator_network_manager || row["Creator Network manager"] || "")
-    .trim()
-    .toLowerCase();
-}
-
-// Managers can move between agency mail domains while remaining the same team.
-// Compare their stable local-name identity as well as the exact source address.
-function getManagerIdentity(value: string) {
-  const localPart = value.trim().toLowerCase().split("@")[0] || "";
-  return localPart
-    .replace(/^firstclassagency[_.-]?/, "")
-    .replace(/[_.-]?(aquaagency|respawnagency|paradiseagency)$/i, "")
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function managerKeysMatch(rowManagerKey: string, templateManagerKey: string) {
-  const normalizeManagerKey = (value: string) => {
-    const normalized = value.replace(/[^a-z0-9]/g, "");
-    // Templates saved before the split referred to Kayden as "kaydenmads".
-    // Keep those templates working without ever including BMW E46 / Mads.
-    return ["kaydenmads", "firstclassagencykaydenoutlookcom"].includes(normalized)
-      ? "firstclassagencykaydenoutlookcom"
-      : normalized;
-  };
-  const normalizedRowKey = normalizeManagerKey(rowManagerKey);
-  const normalizedTemplateKey = normalizeManagerKey(templateManagerKey);
-  if (normalizedRowKey === normalizedTemplateKey) return true;
-  const rowIdentity = getManagerIdentity(rowManagerKey);
-  const templateIdentity = getManagerIdentity(templateManagerKey);
-  if (rowIdentity && templateIdentity && rowIdentity === templateIdentity) return true;
-  return normalizedRowKey.replace(/(outlook|gmail|mail)com$/, "") === normalizedTemplateKey.replace(/(outlook|gmail|mail)com$/, "");
-}
-
-const TEAM_POSTER_GROUP_SOURCES: Record<string, string> = {
-  "group:respawn": "Respawn",
-  "group:paradise": "Paradise",
-  "group:horizon": "Horizon",
-  "group:trident": "Trident",
-};
-// The upload currently identifies Georgia as georgialilly.glow@gmail.com
-// (with a double "l"), so retain both known spellings for Team Gee.
-const TEAM_LISA_G_MANAGER_KEYS = ["georgialilyglow", "georgialillyglow", "lisaruss1988"];
-const BRANDY_MANAGER_KEYS = ["brandyfalconer33", "brandyfalconer35"];
-const KYRAN_MANAGER_KEY = "firstclassagencykyranoutlookcom";
-
-function effectiveManagerKey(row: CreatorStat) {
-  const raw = getManagerKey(row).replace(/[^a-z0-9]/g, "");
-  return BRANDY_MANAGER_KEYS.some((key) => raw.includes(key)) ? KYRAN_MANAGER_KEY : raw;
-}
-
-function matchesTemplateManager(row: CreatorStat, template: TeamPosterTemplate, managerGroups: Record<string, string> = {}) {
-  const managerKey = (template.managerKey || "team-dan").trim().toLowerCase();
-  if (managerKey === "team-dan") return isTeamDanRow(row);
-  if (managerKey === "combined:lisa-g") {
-    const rowManagerKey = effectiveManagerKey(row);
-    return TEAM_LISA_G_MANAGER_KEYS.some((key) => rowManagerKey.includes(key));
-  }
-  const selectedGroup = TEAM_POSTER_GROUP_SOURCES[managerKey];
-  if (selectedGroup) {
-    return managerGroups[effectiveManagerKey(row)] === selectedGroup;
-  }
-  if (managerKey === "first-class-all") {
-    // The whole-agency poster follows the current Manager Assignments
-    // configuration, rather than a possibly stale agency value on the row.
-    const group = managerGroups[effectiveManagerKey(row)];
-    return group === "Team Dan / James" || group === "Team Mike / Indi";
-  }
-  return managerKeysMatch(effectiveManagerKey(row), managerKey);
-}
-
-function createDefaultTemplate(): TeamPosterTemplate {
-  const elements: TeamPosterElement[] = [];
-  const rowGap = 98;
-
-  const addLeaderboardRow = (group: "diamonds" | "hours", index: number, rowY: number) => {
-    const suffix = group === "diamonds" ? `${index + 1}` : `hours-${index + 1}`;
-    const valueId = group === "diamonds" ? `diamonds-${index + 1}` : `hours-${index + 1}`;
-    const valueColor = group === "diamonds" ? "#FACC15" : "#38BDF8";
-    elements.push({ id: `avatar-${suffix}`, kind: "avatar", x: 145, y: rowY, width: 92, height: 92, value: "" });
-    elements.push({ id: `username-${suffix}`, kind: "username", x: 275, y: rowY + 15, width: 430, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 37, color: "#FFFFFF", fontWeight: 900 });
-    elements.push({ id: valueId, kind: group, x: 725, y: rowY + 15, width: 210, height: 58, value: "", fontFamily: "Luckiest Guy", fontSize: 37, color: valueColor, fontWeight: 900 });
-  };
-
-  for (let index = 0; index < 5; index += 1) {
-    addLeaderboardRow("diamonds", index, 390 + index * rowGap);
-    addLeaderboardRow("hours", index, 925 + index * rowGap);
-  }
-
-  return { backgroundUrl: "", elements };
-}
-
-function normalizeTemplate(input: Partial<TeamPosterTemplate> | null): TeamPosterTemplate {
-  const base = createDefaultTemplate();
-  const byId = new Map((input?.elements || []).map((element) => [element.id, element]));
-  return {
-    backgroundUrl: input?.backgroundUrl || "",
-    backgroundPath: input?.backgroundPath || "",
-    managerKey: input?.managerKey || "team-dan",
-    teamSide: input?.teamSide || "dan",
-    elements: base.elements.map((element) => ({ ...element, ...(byId.get(element.id) || {}), fontSize: element.kind === "avatar" ? undefined : 37 })),
-  };
 }
 
 function getPosterSupabaseClient() {
@@ -329,48 +95,25 @@ function isTeamPosterTemplate(name: string) {
   return name === TEAM_DAN_POSTER_TEMPLATE_NAME || name.startsWith("team-poster-");
 }
 
-function templateLabel(name: string) {
-  if (name === TEAM_DAN_POSTER_TEMPLATE_NAME) return "Team Dan + James";
-  return name
-    .replace(/^team-poster-/, "")
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function templateSlug(label: string) {
-  return `team-poster-${label.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-team"}`;
-}
-
-const TEAM_POSTER_CATEGORY_LABELS: Record<TeamPosterCategory, string> = {
-  dan: "Team Dan + James",
-  "mike-indi": "Team Mike + Indi",
-  "sub-agencies": "Whole Agencies",
-  paradise: "Paradise",
-  horizon: "Horizon",
-  trident: "Trident",
-  respawn: "Respawn",
-};
-
-function teamPosterCategoryLabel(category: TeamPosterCategory) {
-  return TEAM_POSTER_CATEGORY_LABELS[category];
-}
-
 async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
   // Filter in the database before applying its row limit. Other shared settings
   // must never crowd older saved team presets out of the downloader.
-  const response=await fetch('/api/team-poster-templates',{cache:'no-store'});
+  const [response,assignmentsResponse]=await Promise.all([fetch('/api/team-poster-templates',{cache:'no-store'}),fetch('/api/data-analysis/manager-assignments',{cache:'no-store'})]);
+  const assignments=await assignmentsResponse.json();if(!assignmentsResponse.ok)throw Error(assignments.error||'Could not load manager assignments.');
+  const managerGroups=assignments.managerGroups||assignments.assignments?.managerGroups||{};
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||'Could not load saved team presets.');
   const data=(Array.isArray(result.templates)?result.templates:[]) as {name:string;template_json:TeamPosterTemplate|null;background_url:string|null}[];
 
   const templates = await Promise.all(
     data
-      .filter((row) => isTeamPosterTemplate(String(row.name || "")) && row.template_json)
+      .filter((row) => isTeamPosterTemplate(String(row.name || "")) && row.template_json && firstClassPosterSide(row.template_json,managerGroups))
       .map(async (row) => ({
         name: String(row.name),
         template: await resolveTemplateBackground(
           normalizeTemplate({
             ...(row.template_json as TeamPosterTemplate),
+            teamSide:firstClassPosterSide(row.template_json as TeamPosterTemplate,managerGroups) as TeamPosterCategory,
             backgroundUrl: (row.template_json as TeamPosterTemplate).backgroundUrl || row.background_url || "",
           })
         ),
@@ -388,26 +131,6 @@ function getSavedTemplate() {
   } catch {
     return null;
   }
-}
-
-function fallbackAvatarFor(username: string, fallbackAvatars: Record<string, string> = {}) {
-  const exact = username.trim().replace(/^@/, "").toLowerCase();
-  if (fallbackAvatars[exact]) return fallbackAvatars[exact];
-  const normalized = username.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  if (fallbackAvatars[normalized]) return fallbackAvatars[normalized];
-  const nearMatches = Object.entries(fallbackAvatars).filter(([candidate, imageUrl]) => {
-    if (!imageUrl || Math.abs(candidate.length - normalized.length) > 1) return false;
-    let changes = 0; let left = 0; let right = 0;
-    while (left < candidate.length && right < normalized.length) {
-      if (candidate[left] === normalized[right]) { left += 1; right += 1; continue; }
-      changes += 1; if (changes > 1) return false;
-      if (candidate.length > normalized.length) left += 1;
-      else if (candidate.length < normalized.length) right += 1;
-      else { left += 1; right += 1; }
-    }
-    return changes + (candidate.length - left) + (normalized.length - right) <= 1;
-  });
-  return nearMatches.length === 1 ? nearMatches[0][1] : "";
 }
 
 async function fetchTikTokAvatar(username: string, fallbackAvatars: Record<string, string> = {}) {
@@ -467,30 +190,6 @@ async function resolveAvatarForPoster(username: string, fallbackAvatars: Record<
   // so a successful Picture Check and the following download stay consistent.
   if (embeddedAvatar) sessionAvatarCache.set(normalizedUsername, embeddedAvatar);
   return embeddedAvatar;
-}
-
-async function waitForImages(node: HTMLElement) {
-  await Promise.all(
-    Array.from(node.querySelectorAll("img")).map((image) => {
-      if (image.complete) return Promise.resolve();
-      return new Promise<void>((resolve) => {
-        image.onload = () => resolve();
-        image.onerror = () => resolve();
-      });
-    })
-  );
-}
-
-// CSS backgrounds are not included in querySelectorAll("img"). Preloading
-// them prevents a batch download from capturing the previous poster's image.
-function waitForBackground(url: string) {
-  if (!url) return Promise.resolve();
-  return new Promise<void>((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve();
-    image.onerror = () => resolve();
-    image.src = url;
-  });
 }
 
 function PosterPreview({ template, renderSignature }: { template: TeamPosterTemplate; renderSignature: string }) {
@@ -563,8 +262,10 @@ export default function TeamDiamondsYesterdayPage() {
   const [latestStatDate, setLatestStatDate] = useState("");
   const [posterRenderSignature, setPosterRenderSignature] = useState("");
   const posterRenderSignatureRef = useRef("");
-  const [showSubAgencies, setShowSubAgencies] = useState(false);
+  const [missedTeams,setMissedTeams]=useState<string[]>([]);
+  const [readyTeams,setReadyTeams]=useState<string[]>([]);
 
+  const preparedPosters=useRef<PreparedTeamPostersHandle>(null);
   const previewScale = 0.42;
   // A browser-local template should enhance the poster, not be required for it.
   // This lets every signed-in user build a poster even when no public custom template exists yet.
@@ -582,9 +283,7 @@ export default function TeamDiamondsYesterdayPage() {
     trident: templateCards.filter((item) => item.template.teamSide === "trident"),
     respawn: templateCards.filter((item) => item.template.teamSide === "respawn"),
   };
-  const visibleSides: TeamPosterCategory[] = showSubAgencies
-    ? ["dan", "mike-indi", "sub-agencies", "paradise", "horizon", "trident", "respawn"]
-    : ["dan", "mike-indi", "sub-agencies"];
+  const visibleSides: TeamPosterCategory[] = ["dan", "mike-indi", "sub-agencies"];
 
   useEffect(() => {
     let cancelled = false;
@@ -765,80 +464,9 @@ export default function TeamDiamondsYesterdayPage() {
     }
   }
 
-  async function downloadPoster() {
-    const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
-    if (!node) {
-      await buildPreview();
-      return;
-    }
-
-    await waitForImages(node);
-    const blob = await toBlob(node, {
-      cacheBust: true,
-      pixelRatio: 1,
-      width: POSTER_WIDTH,
-      height: POSTER_HEIGHT,
-      backgroundColor: "#000000",
-    });
-    if (!blob) return;
-    saveAs(blob, `${selectedTemplateName}-${latestStatDate || getYesterdayDateKey()}.png`);
-  }
-
   async function downloadAllPosters(side?: TeamPosterCategory | "first-class") {
-    const allItems = templates.length
-      ? templates
-      : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
-    const items = side === "first-class" ? allItems.filter(item => ["dan", "mike-indi"].includes(item.template.teamSide || "dan")) : side ? allItems.filter((item) => (item.template.teamSide || "dan") === side) : allItems;
-    if (!items.length) {
-      const categoryLabel = side === "first-class" ? "All First Class" : side ? teamPosterCategoryLabel(side) : "All Teams";
-      setMessage(`No saved presets in ${categoryLabel} yet.`);
-      return;
-    }
-    setLoading(true);
-    setMessage("");
-    try {
-      const zip = new JSZip();
-      const failedAvatars = new Set<string>();
-      const skippedPosters: string[] = [];
-      for (const [index, item] of items.entries()) {
-        try {
-          setDownloadProgress({ current: index, total: items.length, label: templateLabel(item.name) });
-          setSelectedTemplateName(item.name);
-          const failedForPoster = await buildPreview(item.template, true);
-          if (!failedForPoster) throw new Error("No current creator data.");
-          failedForPoster.forEach((username) => failedAvatars.add(username));
-          // buildPreview switches the live poster to this template.  Wait for
-          // that template's background afterwards, otherwise a fast batch can
-          // capture the previous agency's background in the new PNG.
-          await waitForBackground(item.template.backgroundUrl);
-          await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-          const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
-          if (!node) throw new Error("Could not prepare preview.");
-          if (node.dataset.posterSignature !== posterRenderSignatureRef.current) throw new Error("The current poster preview did not finish refreshing. Please download again.");
-          await waitForImages(node);
-          const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000000" });
-          if (!blob) throw new Error("Could not create image.");
-          zip.file(`${templateLabel(item.name)}.png`, blob);
-        } catch {
-          skippedPosters.push(templateLabel(item.name));
-        }
-        setDownloadProgress({ current: index + 1, total: items.length, label: templateLabel(item.name) });
-      }
-      const sideLabel = side === "first-class" ? "All First Class" : side ? teamPosterCategoryLabel(side) : "All teams";
-      setDownloadProgress({ current: items.length, total: items.length, label: "Creating ZIP file" });
-      const archive = await zip.generateAsync({ type: "blob" });
-      saveAs(archive, `${sideLabel.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "").toLowerCase()}-${latestStatDate || getYesterdayDateKey()}.zip`);
-      const failedText = failedAvatars.size
-        ? ` Picture not found for: ${[...failedAvatars].join(", ")}. Add any of these in Fallback Pictures if needed.`
-        : " All creator pictures loaded.";
-      const savedCount = items.length - skippedPosters.length;
-      setMessage(`${sideLabel}: ${savedCount} poster${savedCount === 1 ? "" : "s"} saved in one ZIP file.${skippedPosters.length ? ` Skipped: ${skippedPosters.join(", ")}.` : ""}${failedText}`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not download all posters.");
-    } finally {
-      setLoading(false);
-      setDownloadProgress(null);
-    }
+    if(!preparedPosters.current){setMessage('Checking prepared posters…');return;}
+    await preparedPosters.current.download(side||'first-class');
   }
 
   async function checkPictures() {
@@ -929,27 +557,8 @@ export default function TeamDiamondsYesterdayPage() {
   }
 
   async function downloadTemplate(item: SavedTemplateRow) {
-    setSelectedTemplateName(item.name);
-    setLoading(true);
-    try {
-      const failedForPoster = await buildPreview(item.template, true);
-      if (!failedForPoster) throw new Error(`No current creator data was found for ${templateLabel(item.name)}.`);
-      // Keep the standalone route identical to the grouped download route:
-      // render this template first, then wait for its own background to paint.
-      await waitForBackground(item.template.backgroundUrl);
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-      const node = document.getElementById("team-dan-poster-preview") as HTMLElement | null;
-      if (!node) throw new Error("Could not prepare the poster.");
-      if (node.dataset.posterSignature !== posterRenderSignatureRef.current) throw new Error("The current poster preview did not finish refreshing. Please download again.");
-      await waitForImages(node);
-      const blob = await toBlob(node, { cacheBust: true, pixelRatio: 1, width: POSTER_WIDTH, height: POSTER_HEIGHT, backgroundColor: "#000" });
-      if (blob) saveAs(blob, `${item.name}-${latestStatDate || getYesterdayDateKey()}.png`);
-      setMessage(`${templateLabel(item.name)} downloaded.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not download this poster.");
-    } finally {
-      setLoading(false);
-    }
+    if(!preparedPosters.current){setMessage('Checking prepared posters…');return;}
+    await preparedPosters.current.download('first-class',item.name);
   }
 
   return (
@@ -974,7 +583,7 @@ export default function TeamDiamondsYesterdayPage() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" onClick={() => void checkPictures()} disabled={loading} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-5 py-3 text-sm font-black uppercase text-sky-100 hover:bg-sky-300/20 disabled:opacity-50">Check Pictures</button>
-                <button type="button" onClick={() => void downloadAllPosters()} disabled={loading} className="rounded-xl border border-yellow-300/40 bg-black/30 px-5 py-3 text-sm font-black uppercase text-yellow-100 hover:bg-black/50 disabled:opacity-50">Download All Teams</button>
+
               </div>
             </div>
             <p className="mt-3 max-w-3xl text-white/60">
@@ -982,6 +591,7 @@ export default function TeamDiamondsYesterdayPage() {
             </p>
           </section>
 
+          <PreparedTeamPosters ref={preparedPosters} onMissingTeamsChange={setMissedTeams} onReadyTeamsChange={setReadyTeams}/>
           <section className="mt-6 space-y-5">
             <div className="grid gap-6 xl:grid-cols-2">
               {visibleSides.map((side) => (
@@ -997,18 +607,13 @@ export default function TeamDiamondsYesterdayPage() {
                 <article key={item.name} className="rounded-3xl border border-yellow-300/20 bg-black/50 p-5">
                   <p className="text-xs font-black uppercase tracking-widest text-white/45">Saved preset</p>
                   <h2 className="mt-2 text-2xl font-black uppercase text-yellow-200">{templateLabel(item.name)}</h2>
-                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading} className="mt-5 w-full rounded-xl bg-green-400 px-5 py-4 text-sm font-black uppercase text-black hover:bg-green-300 disabled:opacity-50">Download {templateLabel(item.name)}</button>
+                  <button type="button" onClick={() => downloadTemplate(item)} disabled={loading || !readyTeams.includes(item.name)} className={`mt-5 w-full rounded-xl px-5 py-4 text-sm font-black uppercase ${readyTeams.includes(item.name)?"bg-green-400 text-black hover:bg-green-300":"bg-red-500 text-white hover:bg-red-400"}`}>{missedTeams.includes(item.name)?"Team missed":`Download ${templateLabel(item.name)}`}</button>
                 </article>
                     ))}
                     {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="flex justify-center">
-              <button type="button" onClick={() => setShowSubAgencies((current) => !current)} className="rounded-xl border border-yellow-300/35 bg-yellow-300/10 px-5 py-3 text-xs font-black uppercase tracking-widest text-yellow-100 hover:bg-yellow-300/20">
-                {showSubAgencies ? "Hide Sub-Agencies" : "Show Sub-Agencies"}
-              </button>
             </div>
             {message ? <p className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{message}</p> : null}
             {pictureCheck ? <div className="rounded-2xl border border-sky-300/25 bg-sky-300/10 p-5"><p className="text-xs font-black uppercase tracking-widest text-sky-100">Picture check — {pictureCheck.checked} creators</p>{pictureCheck.failed.length ? <><p className="mt-2 text-sm text-white/80">Add fallback pictures for these usernames, then run the check again:</p><textarea readOnly value={pictureCheck.failed.join("\n")} rows={Math.min(Math.max(pictureCheck.failed.length, 3), 10)} aria-label="Missing creator usernames" className="mt-3 w-full rounded-xl border border-rose-300/30 bg-black/30 px-3 py-2 font-mono text-sm text-rose-100"/><div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={() => void copyMissingCreatorList()} className="rounded-xl border border-sky-300/40 bg-sky-300/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-sky-100 hover:bg-sky-300/20">Copy list</button><Link href="/data/fallback-pictures" className="inline-flex rounded-xl bg-sky-300 px-4 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-sky-200">Open Fallback Pictures</Link></div></> : <p className="mt-2 text-sm font-bold text-green-200">Every creator who will appear in the posters has a picture ready.</p>}</div> : null}

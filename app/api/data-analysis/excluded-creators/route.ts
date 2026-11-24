@@ -1,3 +1,4 @@
+import {queueTeamPosterPreparation} from "@/lib/team-poster-preparation";
 import { NextResponse } from "next/server";
 import { submissionsSupabase } from "@/lib/submissions-supabase";
 
@@ -40,8 +41,11 @@ export async function PUT(request: Request) {
     const creators = normalize(body?.creators);
     const { error } = await submissionsSupabase.from("poster_templates").upsert({ name: SETTINGS_NAME, template_json: { creators }, background_url: null, updated_at: new Date().toISOString() }, { onConflict: "name" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await queueTeamPosterPreparation(new URL(request.url).origin);
     return NextResponse.json({ creators });
   } catch {
     return NextResponse.json({ error: "Invalid excluded creator settings." }, { status: 400 });
   }
 }
+
+export const maxDuration=300;

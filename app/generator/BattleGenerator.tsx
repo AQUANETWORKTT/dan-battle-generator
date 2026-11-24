@@ -2069,14 +2069,9 @@ export default function BattleGenerator({
     }
 
     setTeamPosterStatus("Deleting team poster template...");
-    const { error } = await supabase
-      .from("poster_templates")
-      .delete()
-      .eq("name", teamPosterTemplateName);
-    if (error) {
-      setTeamPosterStatus(`Template delete failed: ${error.message}`);
-      return;
-    }
+    const response=await fetch('/api/team-poster-templates',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:teamPosterTemplateName})});
+    const result=await response.json();
+    if(!response.ok){setTeamPosterStatus(`Template delete failed: ${result.error||'Please retry.'}`);return;}
 
     const remaining = teamPosterTemplates.filter(
       (item) => item.name !== teamPosterTemplateName,
@@ -2114,25 +2109,9 @@ export default function BattleGenerator({
     const supabase = getPosterSupabaseClient();
     if (!supabase) return;
     const template = normalizeTeamDanPosterTemplate(teamPosterTemplate);
-    const { error } = await supabase
-      .from("poster_templates")
-      .upsert(
-        {
-          name: nextName,
-          background_url: template.backgroundUrl || null,
-          template_json: template,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "name" },
-      );
-    if (error) {
-      setTeamPosterStatus(`Template rename failed: ${error.message}`);
-      return;
-    }
-    await supabase
-      .from("poster_templates")
-      .delete()
-      .eq("name", teamPosterTemplateName);
+    const response=await fetch('/api/team-poster-templates',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nextName,previousName:teamPosterTemplateName,template})});
+    const result=await response.json();
+    if(!response.ok){setTeamPosterStatus(`Template rename failed: ${result.error||'Please retry.'}`);return;}
     setTeamPosterTemplates((current) =>
       current.map((item) =>
         item.name === teamPosterTemplateName

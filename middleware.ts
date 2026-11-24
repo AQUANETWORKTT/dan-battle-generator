@@ -146,6 +146,7 @@ export function middleware(req: NextRequest) {
   // Only the new outbound Backstage worker endpoints bypass the portal cookie.
   // Their route handler requires a separate server-side Bearer secret.
   if (path.startsWith("/api/creator-api-search/worker/")) return NextResponse.next();
+  if(path.startsWith("/api/team-poster-preparation")) return NextResponse.next(); // Each route verifies its own signed owner/worker credentials.
   const publicRoutes = ["/login", "/start-your-journey", "/api/start-your-journey", "/battle-network", "/api/login", "/api/recruitment-login", "/api/battle-network", "/api/data-analysis/manager-assignments", "/api/management-onboarding", "/api/management-onboarding-upload", "/api/battle-calendar/reminders"];
 
   const onboardingRoute = path === "/onboarding" || path.startsWith("/api/onboarding") || path.startsWith("/api/tiktok-avatar");

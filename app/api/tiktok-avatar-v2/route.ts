@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       `https://www.tiktok.com/@${cleanUsername}?_t=${refreshKey}&_r=${randomKey}`,
       {
         method: "GET",
+        signal: AbortSignal.timeout(15000),
         cache: "no-store",
         next: { revalidate: 0 },
         headers: {
