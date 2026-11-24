@@ -13,3 +13,14 @@ assert.equal(reminder.appLinkTaskId(creator),'app-link:123','Onboarding completi
 assert(reminder.appLinkCompleted(creator,[{id:'app-link:2026-10:123',managerKey:'abbie',completed:true}]),'Preserve previously completed month-based reminders');
 assert(!reminder.appLinkCompleted(creator,[{id:'app-link:2026-10:123',managerKey:'abbie',completed:true},{id:'app-link:123',managerKey:'abbie',completed:false}]),'New explicit undo overrides old completion');
 console.log('App-link reminder passed: actual join date, 18th/19th/20th cutoff on 21st, overdue tasks, lookup consistency, DST and persistent completion.');
+
+const due={...creator,joinedDate:'2026-11-18'};
+const done=[{id:'app-link:123',managerKey:'abbie',completed:true,completedAt:'2026-11-23T14:00:00Z'}];
+assert(reminder.appLinkVisible(due,done,new Date('2026-11-23T23:59:59Z')),'Show completion for the rest of that day');
+assert(!reminder.appLinkVisible(due,done,new Date('2026-11-24T00:00:00Z')),'Hide at next UK midnight');
+assert(reminder.appLinkVisible(due,[],new Date('2026-11-24T00:00:00Z')),'Unfinished reminders carry forward');
+assert(!reminder.appLinkVisible(due,[{...done[0],completedAt:undefined}],new Date('2026-11-24T00:00:00Z')),'Legacy completions do not linger');
+assert(reminder.appLinkVisible(due,[{...done[0],completedAt:'2026-07-01T23:30:00Z'}],new Date('2026-07-02T12:00:00Z')),'Completion date uses UK summer time');
+assert(!reminder.appLinkVisible(due,[{...done[0],completedAt:'2026-07-01T23:30:00Z'}],new Date('2026-07-02T23:00:00Z')),'Summer midnight rollover');
+assert(reminder.appLinkVisible({id:'new',managerKey:'abbie',joinedDate:'2026-11-21',appLinkDays:3},done,new Date('2026-11-24T10:00:00Z')),'Newly due creators appear independently');
+console.log('Completion rollover passed: same day, next day, UK DST, legacy completions and new reminders.');

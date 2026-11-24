@@ -1,5 +1,5 @@
 "use client";
-import {appLinkDue,appLinkCompleted} from "@/lib/app-link-reminder";
+import {appLinkVisible,appLinkCompleted} from "@/lib/app-link-reminder";
 import { useState } from "react";
 
 const APP_LINK_MESSAGE = `Hey! Just checking in, now you have been with us 3 days it’s time to get you registered on our FIRST CLASS APP 🤍✈️
@@ -18,11 +18,11 @@ SIGN UP TODAY👀🏆
 Once you’re in, get familiar with it. This is going to play a big role in how you progress. A chance to see your analytics daily, reach your goals and explore our training modules`;
 
 type Creator = { id: string; username: string; managerKey: string; manager: string; agencyDays: number | null; appLinkDays?: number | null; joinedDate?:string|null };
-type Task = { id: string; managerKey: string; completed: boolean };
+type Task = { id: string; managerKey: string; completed: boolean; completedAt?: string };
 
 export default function AppLinkReminder({ creators, month, records, onToggle, executiveKey, showManager = false }: { creators: Creator[]; month: string; records: Task[]; onToggle: (creator: Creator) => void; executiveKey?: string; showManager?: boolean }) {
   const [copied, setCopied] = useState(false);
-  const due = creators.filter(appLinkDue);
+  const due = creators.filter(creator => appLinkVisible(creator,records));
   const complete = due.length > 0 && due.every((creator) => appLinkCompleted(creator,records));
   if (!due.length) return null;
   async function copyMessage() {

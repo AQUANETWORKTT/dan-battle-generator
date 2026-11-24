@@ -1,0 +1,1 @@
+const fs=require('fs');let s=fs.readFileSync('tmp/rewrite-battle-check-ins.cjs','utf8').replaceAll('battle-check-in-messages-2026-11-21.txt','battle-check-in-messages-2026-11-24.txt');fs.writeFileSync('tmp/write-current-battle-messages.cjs',s);

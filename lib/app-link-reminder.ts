@@ -1,5 +1,5 @@
 type Creator={id:string;managerKey:string;appLinkDays?:number|null;joinedDate?:string|null};
-type Task={id:string;managerKey:string;completed:boolean};
+type Task={id:string;managerKey:string;completed:boolean;completedAt?:string};
 // Launch on 21 November: the first eligible joining date is 18 November.
 // This fixed boundary prevents a historic backlog from appearing on later days.
 export const APP_LINK_FIRST_JOINING_DATE='2026-11-18';
@@ -9,3 +9,15 @@ export function appLinkTaskRecord(creator:Creator,records:Task[]){
  return records.find(t=>t.managerKey===creator.managerKey&&t.id===appLinkTaskId(creator))||records.find(t=>t.managerKey===creator.managerKey&&t.completed&&/^app-link:\d{4}-\d{2}:/.test(t.id)&&t.id.endsWith(':'+creator.id));
 }
 export const appLinkCompleted=(creator:Creator,records:Task[])=>appLinkTaskRecord(creator,records)?.completed===true;
+
+// Completion remains visible on its UK calendar day, never on later days.
+export function appLinkVisible(creator:Creator,records:Task[],now=new Date()){
+ if(!appLinkDue(creator))return false;
+ const task=appLinkTaskRecord(creator,records);
+ if(!task?.completed)return true;
+ if(!task.completedAt)return false;
+ const completed=new Date(task.completedAt);
+ if(!Number.isFinite(completed.getTime()))return false;
+ const day=(date:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+ return day(completed)===day(now);
+}

@@ -1,5 +1,5 @@
 "use client";
-import {appLinkDue,appLinkCompleted as isAppLinkCompleted,appLinkTaskId} from "@/lib/app-link-reminder";
+import {appLinkVisible,appLinkCompleted as isAppLinkCompleted,appLinkTaskId} from "@/lib/app-link-reminder";
 import MasterCreatorNotes from '@/app/data/our-team/MasterCreatorNotes';
 import DecliningCreators from '@/app/data/our-team/DecliningCreators';
 import ActivityTracker from "./ActivityTracker";
@@ -32,7 +32,7 @@ type UnmanagedRecord = {
   hoursAtMove: number;
   createdAt: string;
 };
-type TaskRecord = { id: string; managerKey: string; completed: boolean };
+type TaskRecord = { id: string; managerKey: string; completed: boolean; completedAt?: string };
 type CustomTask = {
   id: string;
   text: string;
@@ -293,7 +293,7 @@ export function Summary({
     profileCreators = data.creators.filter(
       (creator) => creator.agencyDays === 15,
     ),
-    appLinkCreators = data.creators.filter(appLinkDue),
+    appLinkCreators = data.creators.filter(creator => appLinkVisible(creator,taskRecords)),
     profileCompleted = profileCreators.filter((creator) =>
       taskRecords.some(
         (task) =>
@@ -353,7 +353,7 @@ export function Summary({
       ...records.filter(
         (task) => !(task.id === id && task.managerKey === creator.managerKey),
       ),
-      { id, managerKey: creator.managerKey, completed },
+      { id, managerKey: creator.managerKey, completed, ...(completed ? {completedAt:new Date().toISOString()} : {}) },
     ]);
     try {
       const response = await fetch("/api/manager-tasks", {
@@ -972,7 +972,7 @@ function MasterTaskSummary({
       ),
     );
   (summaryData||data).creators
-    .filter(appLinkDue)
+    .filter(creator => appLinkVisible(creator,saved))
     .forEach((creator) =>
       register(
         creator.managerKey,
