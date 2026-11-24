@@ -55,7 +55,11 @@ async function continueJob(state:State){
 }
 export async function queueTeamPosterPreparation(origin:string){
  if(process.env.SITE_MODE==='atlas'||process.env.SITE_MODE==='events')return;
- const now=new Date().toISOString();const state:State={generation:randomUUID(),revision:randomUUID(),phase:'queued',posters:[],origin:new URL(origin).origin,updatedAt:now};
+ const previous=await readState();
+ // Keep the real team list while a new snapshot is being assembled. Old PNGs
+ // are deliberately not marked ready for this new generation.
+ const posters=(previous?.template_json.posters||[]).filter(p=>posterInScope(p,'first-class')).map(p=>({...p,path:undefined,error:undefined,noData:undefined,missingPictures:undefined}));
+ const now=new Date().toISOString();const state:State={generation:randomUUID(),revision:randomUUID(),phase:'queued',date:previous?.template_json.date,posters,origin:new URL(origin).origin,updatedAt:now};
  checked(await database().from('poster_templates').upsert({name:STATE,template_json:state,background_url:null,updated_at:now},{onConflict:'name'}));
  after(async()=>{await runTeamPosterPreparation();});
 }

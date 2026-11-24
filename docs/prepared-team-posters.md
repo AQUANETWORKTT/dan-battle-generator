@@ -12,9 +12,10 @@ The Data Space Team Posters page offers only First Class: Dan/James, Mike/Indi a
 
 - Existing `SUBMISSIONS_SUPABASE_SERVICE_ROLE_KEY` is required for the private storage bucket and job leases.
 - `playwright-core` and `@sparticuz/chromium` provide the server renderer. Linux serverless bundles include Chromium through `next.config.ts`; local Windows development uses installed Chrome or Edge. `POSTER_CHROME_EXECUTABLE` optionally selects a persistent host's Chrome executable.
+- All seven worker entry points explicitly trace the complete browser packages, including Playwright's dynamically loaded `browsers.json`. Run `npm run build` followed by `node scripts/test-poster-renderer-bundle.cjs` to check the deployment manifests and load the traced Playwright package in an isolated folder. A successful development render alone does not verify the deployed package.
 - Server continuation calls the upload request's origin. A preview deployment with hosting-level password protection must allow these authenticated callbacks (or run the resume endpoint from a trusted scheduler).
 - For additional recovery after a host is terminated, a scheduler can call `GET /api/team-poster-preparation/run` with `Authorization: Bearer <CRON_SECRET>`. The endpoint only resumes an existing pending job and does not create new generations. No external scheduler is provisioned by this change.
 - The web server must stay running for local preparation. Production preparation runs on the deployed server.
 - Old generations stay private in Storage. Apply the normal storage retention policy to historical generation folders if required; the application only serves the current generation.
 
-Checks: `node scripts/test-team-poster-preparation.cjs`, `node scripts/test-team-poster-preparation-api.cjs`, `node scripts/test-team-poster-loading.cjs`, and `npx tsc --noEmit`.
+Checks: `node scripts/test-team-poster-preparation.cjs`, `node scripts/test-team-poster-preparation-api.cjs`, `node scripts/test-prepared-poster-status.cjs`, `node scripts/test-team-poster-loading.cjs`, and `npx tsc --noEmit`. After a production build, also run `node scripts/test-poster-renderer-bundle.cjs`.

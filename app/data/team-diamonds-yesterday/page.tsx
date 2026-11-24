@@ -110,13 +110,11 @@ async function getTeamPosterTemplates(): Promise<SavedTemplateRow[]> {
       .filter((row) => isTeamPosterTemplate(String(row.name || "")) && row.template_json && firstClassPosterSide(row.template_json,managerGroups))
       .map(async (row) => ({
         name: String(row.name),
-        template: await resolveTemplateBackground(
-          normalizeTemplate({
-            ...(row.template_json as TeamPosterTemplate),
-            teamSide:firstClassPosterSide(row.template_json as TeamPosterTemplate,managerGroups) as TeamPosterCategory,
-            backgroundUrl: (row.template_json as TeamPosterTemplate).backgroundUrl || row.background_url || "",
-          })
-        ),
+        template: normalizeTemplate({
+          ...(row.template_json as TeamPosterTemplate),
+          teamSide:firstClassPosterSide(row.template_json as TeamPosterTemplate,managerGroups) as TeamPosterCategory,
+          backgroundUrl:(row.template_json as TeamPosterTemplate).backgroundUrl||row.background_url||'',
+        })
       }))
   );
   return templates.sort((a, b) => (a.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? -1 : b.name === TEAM_DAN_POSTER_TEMPLATE_NAME ? 1 : a.name.localeCompare(b.name)));
@@ -252,6 +250,9 @@ export default function TeamDiamondsYesterdayPage() {
   const [template, setTemplate] = useState<TeamPosterTemplate | null>(null);
   const [savedTemplate, setSavedTemplate] = useState<TeamPosterTemplate | null>(null);
   const [templates, setTemplates] = useState<SavedTemplateRow[]>([]);
+  const [teamsLoading,setTeamsLoading]=useState(true);
+  const [teamsError,setTeamsError]=useState("");
+  const [teamsRetry,setTeamsRetry]=useState(0);
   const [selectedTemplateName, setSelectedTemplateName] = useState(TEAM_DAN_POSTER_TEMPLATE_NAME);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [showNewTemplate, setShowNewTemplate] = useState(false);
@@ -271,9 +272,7 @@ export default function TeamDiamondsYesterdayPage() {
   // This lets every signed-in user build a poster even when no public custom template exists yet.
   const selectedSavedTemplate = templates.find((item) => item.name === selectedTemplateName)?.template || savedTemplate;
   const visibleTemplate = useMemo(() => template || selectedSavedTemplate || getSavedTemplate() || createDefaultTemplate(), [template, selectedSavedTemplate]);
-  const templateCards = templates.length
-    ? templates
-    : [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: savedTemplate || createDefaultTemplate() }];
+  const templateCards = templates;
   const templatesBySide = {
     dan: templateCards.filter((item) => (item.template.teamSide || "dan") === "dan"),
     "mike-indi": templateCards.filter((item) => item.template.teamSide === "mike-indi"),
@@ -289,27 +288,22 @@ export default function TeamDiamondsYesterdayPage() {
     let cancelled = false;
 
     async function loadTemplate() {
+      setTeamsLoading(true);setTeamsError('');
       try {
-      const [publicTemplate, savedTemplates] = await Promise.all([
-        getPublicSavedTemplate(),
-        getTeamPosterTemplates(),
-      ]);
-      if (cancelled) return;
-      // Team Posters are driven solely by actual saved poster presets. They
-      // deliberately do not follow Manager Assignments.
-      const allSavedTemplates = publicTemplate && !savedTemplates.some((item) => item.name === TEAM_DAN_POSTER_TEMPLATE_NAME)
-        ? [{ name: TEAM_DAN_POSTER_TEMPLATE_NAME, template: publicTemplate }, ...savedTemplates]
-        : savedTemplates;
-      if (publicTemplate) setSavedTemplate(publicTemplate);
-      setTemplates(allSavedTemplates);
-      } catch(error){if(!cancelled)setMessage(error instanceof Error?error.message:"Could not load saved team presets. Please reload.");}
+        const savedTemplates=await getTeamPosterTemplates();
+        if(cancelled)return;
+        setTemplates(savedTemplates);
+        const original=savedTemplates.find(item=>item.name===TEAM_DAN_POSTER_TEMPLATE_NAME);
+        if(original)setSavedTemplate(original.template);
+      }catch(error){if(!cancelled)setTeamsError(error instanceof Error?error.message:'Could not load teams.');}
+      finally{if(!cancelled)setTeamsLoading(false);}
     }
 
     loadTemplate();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [teamsRetry]);
 
   async function saveTemplate(name: string, nextTemplate: TeamPosterTemplate) {
     const supabase = getPosterSupabaseClient();
@@ -593,6 +587,7 @@ export default function TeamDiamondsYesterdayPage() {
 
           <PreparedTeamPosters ref={preparedPosters} onMissingTeamsChange={setMissedTeams} onReadyTeamsChange={setReadyTeams}/>
           <section className="mt-6 space-y-5">
+            {teamsError?<div className="rounded-xl border border-red-400/40 p-4 text-red-200">{teamsError}<button type="button" onClick={()=>setTeamsRetry(n=>n+1)} className="ml-3 rounded-lg border px-3 py-2 font-bold">Retry loading teams</button></div>:null}
             <div className="grid gap-6 xl:grid-cols-2">
               {visibleSides.map((side) => (
                 <div key={side} className="rounded-3xl border border-yellow-300/20 bg-black/30 p-4">
@@ -610,7 +605,7 @@ export default function TeamDiamondsYesterdayPage() {
                   <button type="button" onClick={() => downloadTemplate(item)} disabled={loading || !readyTeams.includes(item.name)} className={`mt-5 w-full rounded-xl px-5 py-4 text-sm font-black uppercase ${readyTeams.includes(item.name)?"bg-green-400 text-black hover:bg-green-300":"bg-red-500 text-white hover:bg-red-400"}`}>{missedTeams.includes(item.name)?"Team missed":`Download ${templateLabel(item.name)}`}</button>
                 </article>
                     ))}
-                    {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">No saved presets on this side yet.</p> : null}
+                    {!templatesBySide[side].length ? <p className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-white/45">{teamsLoading?"Loading teams…":teamsError?"Teams could not be loaded.":"No saved presets on this side yet."}</p> : null}
                   </div>
                 </div>
               ))}

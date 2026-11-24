@@ -1,8 +1,25 @@
 import type { NextConfig } from "next";
 
+// External browser packages resolve runtime files dynamically. Include the
+// complete packages, not only the Chromium binary, in every worker entry point.
+const posterWorkerFiles = [
+  "./node_modules/playwright-core/**/*",
+  "./node_modules/@sparticuz/chromium/**/*",
+  "./public/fonts/**/*",
+  "./public/avatars/**/*",
+];
+const posterWorkerRoutes = [
+  "/api/team-poster-preparation",
+  "/api/team-poster-preparation/run",
+  "/api/team-poster-templates",
+  "/api/data-analysis/import",
+  "/api/data-analysis/manager-assignments",
+  "/api/data-analysis/excluded-creators",
+  "/api/data-analysis/fallback-avatars",
+];
 const nextConfig: NextConfig = {
   serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
-  outputFileTracingIncludes: {"/api/team-poster-preparation/**/*": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/fonts/**/*", "./public/avatars/**/*"], "/api/data-analysis/**/*": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/fonts/**/*", "./public/avatars/**/*"], "/api/team-poster-templates": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/fonts/**/*", "./public/avatars/**/*"]},
+  outputFileTracingIncludes: Object.fromEntries(posterWorkerRoutes.map(route=>[route,posterWorkerFiles])),
   async headers() {
     return [
       {
