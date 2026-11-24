@@ -5,7 +5,6 @@ import {posterInScope} from '@/lib/team-poster-preparation-model';
 type Poster={name:string;label:string;side:string;ready:boolean;missingPictures?:string[];error?:string;noData?:boolean};
 type Status={generation?:string;phase:string;date?:string;expectedDate?:string;error?:string;posters:Poster[]};
 export type PreparedTeamPostersHandle={download:(scope:string,name?:string)=>Promise<boolean>};
-type Folder={getFileHandle:(name:string,options:{create:boolean})=>Promise<{createWritable:()=>Promise<{write:(blob:Blob)=>Promise<void>;close:()=>Promise<void>}>}>};
 const API='/api/team-poster-preparation';
 export default forwardRef<PreparedTeamPostersHandle,{onMissingTeamsChange?:(names:string[])=>void;onReadyTeamsChange?:(names:string[])=>void}>(function PreparedTeamPosters({onMissingTeamsChange,onReadyTeamsChange},ref){
  const [status,setStatus]=useState<Status|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const downloading=useRef(false);
@@ -18,22 +17,27 @@ export default forwardRef<PreparedTeamPostersHandle,{onMissingTeamsChange?:(name
  async function download(scope:string,name?:string){
   if(downloading.current)return true;downloading.current=true;setBusy(true);setMessage('');
   try{
-   // Request a directory while the click still counts as a user gesture.
-   const picker=(window as Window & {showDirectoryPicker?:()=>Promise<Folder>}).showDirectoryPicker;
-   const folder=picker&&!name?await picker.call(window):null;
    const current=await refresh();if(current.date!==current.expectedDate)throw Error(current.error||'Posters are not ready for yesterday’s upload yet.');
    const posters=current.posters.filter(p=>!p.noData&&(name?p.name===name:posterInScope(p,scope)));
    if(!posters.length)throw Error('Team missed.');
    if(posters.some(p=>!p.ready))throw Error('These posters are still preparing or need a retry. Please check the preparation status.');
-   let count=0;for(const poster of posters){
-    setMessage(`Downloading ${count+1} of ${posters.length} · ${poster.label}`);
-    const url=`${API}?generation=${encodeURIComponent(current.generation||'')}&file=${encodeURIComponent(poster.name)}`;
-    const filename=`${poster.label.replace(/[^a-z0-9 _+-]/gi,'')}-${current.date}.png`;
-    if(folder){const response=await fetch(url,{cache:'no-store'});if(!response.ok){const error=await response.json();throw Error(error.error||'Download failed.');}const handle=await folder.getFileHandle(filename,{create:true});const writer=await handle.createWritable();try{await writer.write(await response.blob());}finally{await writer.close();}}
-    else{const response=await fetch(url,{cache:'no-store'});if(!response.ok){const error=await response.json();throw Error(error.error||'Download failed.');}const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);const a=document.createElement('a');a.href=objectUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);await new Promise(resolve=>setTimeout(resolve,200));}
-    count++;
+   const fetchImage=async(posterName:string)=>{
+    const url=`${API}?generation=${encodeURIComponent(current.generation||'')}&file=${encodeURIComponent(posterName)}`;
+    const response=await fetch(url,{cache:'no-store'});if(!response.ok){const error=await response.json();throw Error(error.error||'Download failed.');}
+    return new Uint8Array(await response.arrayBuffer());
+   };
+   let blob:Blob,filename:string;
+   if(name){blob=new Blob([await fetchImage(name)],{type:'image/png'});filename=`${posters[0].label.replace(/[^a-z0-9 _+-]/gi,'')}-${current.date}.png`;}
+   else{
+    setMessage(`Collecting prepared posters · 0 / ${posters.length}`);
+    const {preparedPosterArchive}=await import('@/lib/prepared-poster-archive');
+    const bytes=await preparedPosterArchive(posters,current.date||'',fetchImage,(done,total)=>setMessage(`Collecting prepared posters · ${done} / ${total}`));
+    blob=new Blob([new Uint8Array(bytes)],{type:'application/zip'});
+    const label=scope==='all'||scope==='first-class'?'all-first-class':scope==='dan'?'dan-james':scope==='mike-indi'?'mike-indi':'whole-agencies';
+    filename=`${label}-posters-${current.date}.zip`;
    }
-   setMessage(folder?`${count} poster${count===1?'':'s'} saved to your folder.`:`Downloads requested for ${count} poster${count===1?'':'s'}.${count>1?' If your browser asks, allow multiple downloads.':''}`);
+   const objectUrl=URL.createObjectURL(blob);const a=document.createElement('a');a.href=objectUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+   setMessage(name?'Poster download requested.':`ZIP download requested · ${posters.length} posters.`);
   }catch(e){if((e as Error).name!=='AbortError')setMessage(e instanceof Error?e.message:'Download failed.');}
   finally{downloading.current=false;setBusy(false);}return true;
  }
