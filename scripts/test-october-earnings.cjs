@@ -1,0 +1,14 @@
+const fs=require('fs'),vm=require('vm'),ts=require('typescript'),assert=require('node:assert/strict');
+const engine={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/team-earnings.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:engine});
+const managers=[{key:'owner',name:'Dan / James',group:'Team Dan / James',owner:true,parent:null}],settings=engine.defaultEarningsSettings();
+const creators=[{id:'maintain',username:'maintain',managerKey:'owner',diamonds:350000,previousDiamonds:300000,hours:20,validDays:8},{id:'rankup',username:'rankup',managerKey:'owner',diamonds:600000,previousDiamonds:300000,hours:20,validDays:8},{id:'top-tier',username:'top-tier',managerKey:'owner',diamonds:4200000,previousDiamonds:5000000,hours:20,validDays:8}];
+const october=engine.calculateTeamEarnings(creators,creators,managers,settings,10,'2026-10'),november=engine.calculateTeamEarnings(creators,creators,managers,settings,10,'2026-11');
+assert.equal(october.success.percent,100);assert.equal(october.success.boosted,false);assert.equal(november.success.boosted,true);
+assert.deepEqual(october.creators.map(c=>c.bonus),[3,6.5,2.5]);assert.deepEqual(november.creators.map(c=>c.bonus),[4,7.5,3.5]);
+assert.equal(october.creators[0].activity,november.creators[0].activity);assert.equal(october.incremental,november.incremental);
+const summary=engine.earningsAgencySummary(creators);assert.equal(engine.calculateTeamEarnings(creators,summary,managers,settings,10,'2026-10').grossCents,october.grossCents);
+const almost=[{id:'near',username:'near',managerKey:'owner',diamonds:250000,previousDiamonds:300000,hours:15,validDays:7}],agency={eligible:10,successful:2,qualifiedDiamonds:600000};
+const options=month=>engine.earningsOpportunities(almost,agency,managers,settings,10,7,.8,month).find(o=>o.category==='maintenance');
+assert.equal(options('2026-10').unlocksBoost,false);assert.equal(options('2026-10').agencyBoostCents,0);assert.equal(options('2026-10').targetPercent,13);
+assert.equal(options('2026-11').unlocksBoost,true);assert.equal(options('2026-11').targetPercent,14);
+console.log('PASS: October stays at base maintenance/rank-up rates despite 100% success, higher tiers retain 2.5%, forecasts cannot unlock Advanced, and November/incremental/activeness are unchanged.');

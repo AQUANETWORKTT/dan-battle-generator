@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript'),asser
 const exportsObject={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/team-earnings.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:exportsObject,Map,Set,Date});const m=exportsObject;
 const c=(patch={})=>({id:'creator',username:'example',managerKey:'junior',diamonds:1000000,previousDiamonds:0,hours:80,validDays:22,...patch});
 const settings=m.defaultEarningsSettings(),group='Team Dan / James',managers=[{key:'owner:'+group,name:'Dan / James',group,parent:null,owner:true},{key:'manager',name:'Manager',group,parent:'owner:'+group},{key:'junior',name:'Junior',group,parent:'manager'}];
-const advanced=m.creatorEarningRates(c(),10,true);assert.equal(advanced.total,21.5);assert.equal(advanced.grossCents,215000,'1M diamonds at 21.5% must be $2,150');
+const advanced=m.creatorEarningRates(c(),10,true);assert.equal(advanced.total,21);assert.equal(advanced.grossCents,210000,'1M diamonds at 21% must be $2,100');
 assert.equal(m.highestRankUpRate(0,2500000,true),7.5);assert.equal(m.highestRankUpRate(1000000,2500000,true),5.5);
 const rankRates=[6.5,6.5,6.5,6.5,6.5,5.5,4.5,3.5,3],last=[0,100000,200000,300000,500000,700000,1000000,1600000,2500000],next=[100000,200000,300000,500000,700000,1000000,1600000,2500000,5000000];
 last.forEach((previousDiamonds,i)=>{assert.equal(m.creatorEarningRates(c({previousDiamonds,diamonds:next[i]}),0,false).bonus,rankRates[i]);assert.equal(m.creatorEarningRates(c({previousDiamonds,diamonds:next[i]}),0,true).bonus,rankRates[i]+1);});
@@ -10,7 +10,7 @@ assert.equal(m.creatorEarningRates(c({previousDiamonds:100000,diamonds:150000}),
 assert.equal(m.creatorEarningRates(c({previousDiamonds:3000000,diamonds:3000000}),0,false).bonus,2.5);
 assert.equal(m.creatorEarningRates(c({previousDiamonds:10000000,diamonds:7999999}),0,true).bonus,0);assert.equal(m.creatorEarningRates(c({previousDiamonds:10000000,diamonds:8000000}),0,true).bonus,3.5);
 assert.equal(m.creatorEarningRates(c({hours:14}),10,true).bonus,0);assert.equal(m.creatorEarningRates(c({validDays:6}),10,true).bonus,0);
-assert.equal(m.creatorEarningRates(c({hours:79}),0,false).activity,2.5);assert.equal(m.creatorEarningRates(c({hours:80}),0,false).activity,4);
+assert.equal(m.creatorEarningRates(c({hours:79}),0,false).activity,2.5);assert.equal(m.creatorEarningRates(c({hours:80}),0,false).activity,3.5);
 const success=c({id:'success',previousDiamonds:200000,diamonds:200000}),failed=c({id:'failed',previousDiamonds:200000,diamonds:0});assert.equal(m.matureSuccess([success,failed]).boosted,true);assert.equal(m.matureSuccess([success,{...success,id:'two'},failed]).boosted,true);
 const tree=m.resolveEarningsManagers(managers,settings),allocation=m.allocateCreator(10000,'junior',tree,settings);
 assert.equal(allocation.ownerPoolCents,7000);assert.equal(allocation.payouts.get('owner:'+group),2100);assert.equal(allocation.payouts.get('manager'),2940);assert.equal(allocation.payouts.get('junior'),1960);assert.equal([...allocation.payouts.values()].reduce((a,b)=>a+b,0),7000);
@@ -23,7 +23,7 @@ const gbp=m.earningsPounds(calculated.nodes,.76192);assert.equal([...gbp.values(
 const almost=c({diamonds:199999,previousDiamonds:200000,hours:15,validDays:7});const opportunities=m.earningsOpportunities([almost],[success,{...success,id:'second'},...Array.from({length:7},(_,i)=>({...failed,id:'failed-'+i})),almost],managers,settings,10);const maintain=opportunities.find(o=>o.kind==='Maintain');assert.equal(maintain.diamondsNeeded,1);assert.equal(maintain.unlocksBoost,true);assert.equal(maintain.agencyBoostCents,4000);
 assert.equal(Object.values(maintain.teamUplifts).reduce((sum,n)=>sum+n,0),maintain.ownerPoolUpliftCents);
 const impossible=m.earningsOpportunities([c({validDays:17,hours:60})],[],managers,settings,10,0);assert(!impossible.some(o=>o.daysNeeded>0),'Do not recommend impossible valid-day targets');
-console.log('Team earnings passed: all tier rates, highest crossed rate, 80% top-tier rule, activity qualification, at least 30% Advanced, $2,150 example, 70/70/40 splits, overrides, cycles, cent reconciliation and ranked opportunities.');
+console.log('Team earnings passed: all tier rates, highest crossed rate, 80% top-tier rule, activity qualification, at least 30% Advanced, $2,100 example, 70/70/40 splits, overrides, cycles, cent reconciliation and ranked opportunities.');
 
 const paced=(patch={})=>c({diamonds:64000,hours:15,validDays:7,...patch});
 const paceOptions=creator=>m.earningsOpportunities([creator],[],managers,settings,10,6,.8);
@@ -63,3 +63,5 @@ const shortMonth=c({validDays:5,hours:60,diamonds:100000});
 const lateTargets=m.earningsOpportunities([shortMonth],[],managers,settings,10,9,21/30);
 assert(lateTargets.every(target=>target.daysNeeded<=9),'No target may ask for 17 days with only 9 days left');
 assert(!lateTargets.some(target=>target.daysNeeded===17));
+
+assert.equal(m.EARNINGS_LEVELS.map(level=>level.rate).join(','),'0.5,1,2,2.5,3.5','All five activity rates match the supplied schedule');

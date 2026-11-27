@@ -1,0 +1,14 @@
+const fs = require('fs');
+const excluded = `beccaauld2k0 callum_csmode26 cpj935 garciathepolarbear kayleigh.jade6 lilmegs26 livvey2 sophierobinsxx uknwn06 willjohno97 laurax932 xojayyy ellaaapaigeee ogcombo25 coach_trader_harry1 88echo elliex035 j111609 jake_pars lewistedeschi liamtojdd9o morgan.06 mumma_2_angels n0isy_blake connorpopham652 lozza2706 madmaxisbackbaby wildagencyinternational kingpranx aims.ad77 ashleygardner93 billy29361 jordangeldard8 oliviavarley phoebstrittv rainey_playz reecenevill1 steeekk3 kyranthegk1 yo.its.your.mush.aj bbyates0 maisxo99 user592929290 billie.anderson73 donna1572 haydglass1 joshgippamusic livmarie05xo markstatptg paiigeeey sammie_theshithouse staceychristine15 u.s.e.r_45346 unknownboyo.c miss.blue.eyes2 courtney_kylie01 lewisalanhardacre mrtoxicprince66 officialax3 xo_amyxox 1danboyy kay.pricex damian_d_david shay._x2 itsjustamy96 miss_laura05 tineasha55 will.8895 xxjodie.footexx jess_morgan4 ghost_protocol_26 lisagreen309 melissab.xo1 mezyloll miss_elite_lizzie sarahbear023 yvonne_lyne lillyharman1 _itsthat90sbaby ajduehdnkfoensnlfh anastasija.xo edgdd itschlo.xox megz.official08 reexzy3 roootsyy xxmegan_howells ash.lou07 milliehutchinson76 el1szq stopstalking305 bunnyjx cpcwarriorjimjan itsnatashajackson itznotlj19 itzyaboyjaxon moosicalmarshdawg bloodlpetal unknown_journey3 steakyyyyyyyyy 1truequeen01 georgialillyyy princesscherea unkowen196 chloe_louise0210 aiden.0820 caseymai0 em_2909 iamdan.h jeniiblossom.xo kingbobot681 levi.dragonarts mrenergy2.0 welovesofia.a alesha_alesha8 leahsharpless summersmainlivex.x1 bh_uk05`.split(/\s+/);
+const all=JSON.parse(fs.readFileSync('tmp/departed-creators-qualified.json','utf8')).filter(x=>x.name&&x.name!=='-');
+const names=new Set(all.map(x=>x.name));
+const unmatched=excluded.filter(x=>!names.has(x));
+if(unmatched.length) throw Error(JSON.stringify(unmatched));
+const set=new Set(excluded);
+const remaining=all.filter(x=>!set.has(x.name)).map(x=>x.name);
+const dir='outputs/departed-creators-2026-11-26/';
+fs.writeFileSync(dir+'remaining-creators.txt',remaining.join('\n')+'\n');
+fs.writeFileSync(dir+'ineligible-creators.txt',excluded.join('\n')+'\n');
+fs.writeFileSync(dir+'availability-checks.json',JSON.stringify({excludedAsIneligible:excluded,remainingNotYetConfirmedAvailable:remaining},null,2));
+console.log(JSON.stringify({total:all.length,excluded:set.size,remaining:remaining.length}));
+console.log(remaining.join('\n'));

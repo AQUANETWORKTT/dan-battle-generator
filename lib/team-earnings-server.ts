@@ -1,15 +1,15 @@
 import 'server-only';
 import {database} from './creator-api-search/db';
-import {loadOverview} from './manager-overview-server';
+import {loadOverview,loadOverviewForMonth} from './manager-overview-server';
 import {portalResultCache} from './portal-result-cache';
 import {recruitmentTeamOwner} from './recruitment-team-owner';
 import {DEFAULT_AGENCY_TARGET,incrementalTargets,incrementalPrediction} from './incremental-targets';
 import {earningsAgencySummary,type EarningsCreator,type EarningsManager} from './team-earnings';
 import {earningsManagerAssignments} from './earnings-manager-assignments';
 
-const snapshot=portalResultCache(async()=>{
+async function buildSources(month?:string){
  const db=database();
- const [overview,setting]=await Promise.all([loadOverview(null,true),db.from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle()]);
+ const [overview,setting]=await Promise.all([month?loadOverviewForMonth(month):loadOverview(null,true),db.from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle()]);
  if(setting.error)throw Error(setting.error.message);
  const assignments=setting.data?.template_json?.assignments||{};
  const {groups,names,parents,deleted}=earningsManagerAssignments(assignments);
@@ -37,8 +37,25 @@ const snapshot=portalResultCache(async()=>{
  // Match the existing Incremental Tracker's latest uploaded day and pace calculation.
  const automaticIncremental=incrementalPrediction(overview.total,incrementalTargets(agencyTarget,days,day));
  return {month:overview.month,latest:overview.latest,creators,agencyCreators:earningsAgencySummary(agencyCreators),managers:managerList,forecast:{creators:forecastCreators,managers:forecastManagers},automaticIncremental,agencyTarget,agencyDiamonds:overview.total};
-},'team-earnings-source-v5');
-export function loadTeamEarningsSources(){return snapshot(true);}
+}
+const snapshot=portalResultCache(()=>buildSources(),'team-earnings-source-v5');
+export function loadTeamEarningsSources(month?:string){
+ if(!month)return snapshot(true);
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Choose a valid earnings month.');
+ return portalResultCache(()=>buildSources(month),'team-earnings-month-v1:'+month)(true);
+}
+
+const monthOptions=portalResultCache(async()=>{
+ const db=database();
+ const query=()=>db.from('creator_daily_stats').select('stat_date').or('data_period.is.null,data_period.neq.mature_month_total');
+ const [first,last]=await Promise.all([query().order('stat_date',{ascending:true}).limit(1).maybeSingle(),query().order('stat_date',{ascending:false}).limit(1).maybeSingle()]);
+ if(first.error||last.error)throw Error(first.error?.message||last.error?.message);
+ if(!first.data||!last.data)return [] as string[];
+ const candidates:string[]=[];for(let d=new Date(String(first.data.stat_date).slice(0,7)+'-01T12:00:00Z');d.toISOString().slice(0,7)<=String(last.data.stat_date).slice(0,7);d.setUTCMonth(d.getUTCMonth()+1))candidates.push(d.toISOString().slice(0,7));
+ const available:string[]=[];for(let i=0;i<candidates.length;i+=12){await Promise.all(candidates.slice(i,i+12).map(async month=>{const end=new Date(month+'-01T12:00:00Z');end.setUTCMonth(end.getUTCMonth()+1);const r=await query().gte('stat_date',month+'-01').lt('stat_date',end.toISOString().slice(0,10)).limit(1).maybeSingle();if(r.error)throw Error(r.error.message);if(r.data)available.push(month);}));}
+ return available.sort().reverse();
+},'team-earnings-available-months-v1');
+export function earningsAvailableMonths(){return monthOptions(true);}
 
 export async function earningsExchangeRate(manual:number|null){
  if(manual!==null)return {rate:manual,date:new Date().toISOString().slice(0,10),source:'Manual'};

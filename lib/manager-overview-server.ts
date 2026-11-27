@@ -11,9 +11,11 @@ import {overview,Stat,managerKey,portalCreatorActive} from './manager-overview';
 import {unstable_cache} from 'next/cache';
 const recruitmentTotals=unstable_cache(async()=>{const r=await recruitmentLeaderboard(new Request('https://firstclassagency.management/api/data-analysis/recruitment-leaderboard?period=month'));if(!r.ok)throw Error('Could not load new creator totals.');return (await r.json()).managers as {key:string;group:string;recruits:number;diamonds:number}[];},['portal-recruitment-totals-v3'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
 const fields='id,creator_id,creator_username,manager_email,email,agency,team,group_name,stat_date,data_period,diamonds,live_hours,matches,live_streams,graduation_status,valid_live_days,days_since_joining,join_time';
-async function readOverview(scope:string|null,allAgencies=false,_day?:string,includeAllFirstClass=false){
- const db=database();const latest=await db.from('creator_daily_stats').select('stat_date').or('data_period.is.null,data_period.neq.mature_month_total').order('stat_date',{ascending:false}).limit(1).maybeSingle();
- if(latest.error)throw Error(latest.error.message);if(!latest.data)throw Error('No creator uploads yet.');
+async function readOverview(scope:string|null,allAgencies=false,_day?:string,includeAllFirstClass=false,month?:string){
+ const db=database();let latestQuery=db.from('creator_daily_stats').select('stat_date').or('data_period.is.null,data_period.neq.mature_month_total');
+ if(month){const end=new Date(month+'-01T12:00:00Z');end.setUTCMonth(end.getUTCMonth()+1);latestQuery=latestQuery.gte('stat_date',month+'-01').lt('stat_date',end.toISOString().slice(0,10));}
+ const latest=await latestQuery.order('stat_date',{ascending:false}).limit(1).maybeSingle();
+ if(latest.error)throw Error(latest.error.message);if(!latest.data)throw Error(month?`No creator uploads for ${month}.`:'No creator uploads yet.');
  const settings=await db.from('poster_templates').select('template_json').eq('name','manager-assignment-settings').maybeSingle();if(settings.error)throw Error(settings.error.message);
  const a=settings.data?.template_json?.assignments||{},groups=Object.fromEntries(Object.entries(a.managerGroups||{}).map(([k,v])=>[k.toLowerCase().replace(/[^a-z0-9]/g,''),String(v)])),inPortalGroup=(row:Stat)=>Object.entries(groups).some(([key,group])=>recruitmentManagerIdentity(key)===managerKey(row)&&(group==='Team Dan / James'||includeAllFirstClass&&group==='Team Mike / Indi'));
  const end=String(latest.data.stat_date),d=new Date(end+'T12:00:00Z');d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-1);const start=d.toISOString().slice(0,10),roster:Stat[]=[],rows:Stat[]=[];
@@ -25,7 +27,7 @@ async function readOverview(scope:string|null,allAgencies=false,_day?:string,inc
  const ledger=allAgencies?agencyDiamondLedger(rows,end):null;if(ledger){result.dailyTotals=ledger.dailyTotals;result.total=ledger.total;}
  const priorDate=await db.from('creator_daily_stats').select('stat_date').gte('stat_date',start).lt('stat_date',end.slice(0,7)+'-01').or('data_period.is.null,data_period.neq.mature_month_total').order('stat_date',{ascending:false}).limit(1).maybeSingle();if(priorDate.error)throw Error(priorDate.error.message);
  if(priorDate.data){result.previousRosterDate=String(priorDate.data.stat_date);const seen=new Set<string>(),counts=new Map<string,{managerKey:string;group:string;count:number}>();for(let from=0;;from+=1000){const r=await db.from('creator_daily_stats').select(fields).eq('stat_date',result.previousRosterDate).order('id').range(from,from+999);if(r.error)throw Error(r.error.message);for(const row of r.data){const id=String(row.creator_id||''),key=managerKey(row);if(!id||!portalCreatorActive(row)||!inPortalGroup(row)||seen.has(id)||!(scope?key===scope:true))continue;seen.add(id);const group=Object.entries(groups).find(([k])=>recruitmentManagerIdentity(k)===key)?.[1]||'Unassigned';const entry=counts.get(key)||{managerKey:key,group,count:0};entry.count++;counts.set(key,entry);}if(r.data.length<1000)break;}result.previousRoster=[...counts.values()];}
- {const totals=await recruitmentTotals();result.newCreatorTotals=totals.filter(m=>scope?recruitmentManagerIdentity(m.key)===scope:(m.group==='Team Dan / James'||includeAllFirstClass&&m.group==='Team Mike / Indi')).map(m=>({managerKey:recruitmentManagerIdentity(m.key),group:m.group,count:m.recruits,diamonds:m.diamonds}));}
+ if(!month){const totals=await recruitmentTotals();result.newCreatorTotals=totals.filter(m=>scope?recruitmentManagerIdentity(m.key)===scope:(m.group==='Team Dan / James'||includeAllFirstClass&&m.group==='Team Mike / Indi')).map(m=>({managerKey:recruitmentManagerIdentity(m.key),group:m.group,count:m.recruits,diamonds:m.diamonds}));}
  return {...result,reconciliation:ledger?.reconciliation||null};
 }
 // Auth is checked by the API. Shared snapshots are filtered to the manager scope before returning.
@@ -41,4 +43,11 @@ export async function loadOverview(scope:string|string[]|null,allAgencies=false)
  if(!scope)return base;
  const scopes=new Set(Array.isArray(scope)?scope:[scope]),creators=base.creators.filter(c=>scopes.has(c.managerKey)),ids=new Set(creators.map(c=>c.username)),total=creators.reduce((s,c)=>s+c.diamonds,0);
  return {...base,scope:'Your team',creators,total,previousTotal:creators.reduce((s,c)=>s+c.previousComparable,0),priorities:base.priorities.filter(p=>ids.has(p.username)),previousRoster:base.previousRoster.filter(r=>scopes.has(r.managerKey)),newCreatorTotals:base.newCreatorTotals.filter(r=>scopes.has(r.managerKey)),topThreeShare:total?Math.round(creators.slice(0,3).reduce((s,c)=>s+c.diamonds,0)/total*100):0,dailyTotals:base.dailyTotals.map(d=>({day:d.day,diamonds:creators.reduce((s,c)=>s+c.potentialTimeline.filter(x=>Number(x.date.slice(-2))<=d.day).reduce((sum,x)=>sum+x.diamonds,0),0)}))};
+}
+
+const historicalOverview=unstable_cache(async(month:string)=>gzipSync(JSON.stringify(await readOverview(null,true,undefined,true,month))).toString('base64'),['earnings-historical-overview-v1'],{revalidate:false,tags:[PORTAL_DATA_TAG]});
+export async function loadOverviewForMonth(month:string){
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Choose a valid earnings month.');
+ const value=await localPortalSnapshot(['earnings-historical-overview-v1',month],()=>historicalOverview(month));
+ return JSON.parse(gunzipSync(Buffer.from(value,'base64')).toString('utf8')) as Awaited<ReturnType<typeof readOverview>>;
 }

@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {randomUUID} from 'node:crypto';
 import {SEARCH_COOKIE,searchSessionValid} from '@/lib/creator-api-search/auth';
 import {database} from '@/lib/creator-api-search/db';
-import {loadTeamEarningsSources,earningsExchangeRate} from '@/lib/team-earnings-server';
+import {loadTeamEarningsSources,earningsExchangeRate,earningsAvailableMonths} from '@/lib/team-earnings-server';
 import {defaultEarningsSettings,EARNINGS_GROUPS,resolveEarningsManagers,type EarningsSettings} from '@/lib/team-earnings';
 export const dynamic='force-dynamic';
 export const maxDuration=120;
@@ -25,12 +25,14 @@ async function handle(request:NextRequest){
  const expected=request.nextUrl.protocol+'//'+(request.headers.get('host')||request.nextUrl.host);
  if(request.method!=='GET'&&request.headers.get('origin')&&request.headers.get('origin')!==expected)return json({error:'Invalid request origin.'},403);
  try{
-  const sources=await loadTeamEarningsSources(),db=database(),stored=await db.from('poster_templates').select('id,updated_at,template_json').eq('name',name(sources.month)).maybeSingle();if(stored.error)throw Error(stored.error.message);
+  const month=request.nextUrl.searchParams.get('month')||undefined;
+  if(month&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return json({error:'Choose a valid earnings month.'},400);
+  const sources=await loadTeamEarningsSources(month),db=database(),stored=await db.from('poster_templates').select('id,updated_at,template_json').eq('name',name(sources.month)).maybeSingle();if(stored.error)throw Error(stored.error.message);
   const settings={...defaultEarningsSettings(),...stored.data?.template_json} as EarningsSettings;
   if(request.method==='GET'){
    let fx:Awaited<ReturnType<typeof earningsExchangeRate>>|null=null,fxError='';
    try{fx=await earningsExchangeRate(settings.usdToGbpOverride);}catch(error){fxError=error instanceof Error?error.message:'Exchange rate unavailable.';}
-   return json({...sources,settings,updatedAt:stored.data?.updated_at||null,fx,fxError});
+   return json({...sources,months:await earningsAvailableMonths(),settings,updatedAt:stored.data?.updated_at||null,fx,fxError});
   }
   const body=await request.json();
   if(body.updatedAt!==(stored.data?.updated_at||null))return json({error:'Someone else updated these earnings settings. Reload before saving.'},409);

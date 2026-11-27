@@ -1,0 +1,12 @@
+const fs=require('fs');
+const list=require('./departed-creators-qualified.json').filter(r=>r.name&&r.name!=='-');
+if(list.length!==318||new Set(list.map(r=>r.name)).size!==318||list.some(r=>r.max<=50000))throw Error('Validation failed');
+const chunks=[];
+for(let i=0;i<list.length;i+=30)chunks.push('BATCH '+(Math.floor(i/30)+1)+'\n\n'+list.slice(i,i+30).map(r=>r.name).join('\n'));
+fs.mkdirSync('outputs/departed-creators-2026-11-26',{recursive:true});
+fs.writeFileSync('outputs/departed-creators-2026-11-26/quit-creators-over-50k-batches-of-30.txt',chunks.join('\n\n\n'),'utf8');
+const csv=s=>'"'+String(s).replaceAll('"','""')+'"';
+const audit=[['Username','Highest export-period diamonds','Period','Source file'],...list.map(r=>{const best=r.records.find(x=>x.diamonds===r.max);return[r.name,r.max,best.period,best.file];})];
+fs.writeFileSync('outputs/departed-creators-2026-11-26/quit-creators-evidence.csv','\ufeff'+audit.map(r=>r.map(csv).join(',')).join('\r\n'),'utf8');
+console.log(list.slice(0,30).map(r=>r.name).join('\n'));
+console.log('Verified 318 names; 11 batches; first batch 30.');

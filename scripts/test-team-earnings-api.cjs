@@ -7,7 +7,7 @@ const route=load('app/api/data/team-earnings/route.ts',{
  'next/server':{NextResponse:{json:(body,{status=200}={})=>({body,status})}},
  '@/lib/creator-api-search/auth':{SEARCH_COOKIE:'owner',searchSessionValid:value=>value==='yes'},
  '@/lib/creator-api-search/db':{database:()=>db},'@/lib/team-earnings':engine,
- '@/lib/team-earnings-server':{loadTeamEarningsSources:async()=>{sourceReads++;return sources;},earningsExchangeRate:async manual=>{if(fxFail&&manual===null)throw Error('FX unavailable');return {rate:manual??.8,date:'2026-11-20',source:'Test reference rate'};}},
+ '@/lib/team-earnings-server':{earningsAvailableMonths:async()=>['2026-11','2026-10'],loadTeamEarningsSources:async()=>{sourceReads++;return sources;},earningsExchangeRate:async manual=>{if(fxFail&&manual===null)throw Error('FX unavailable');return {rate:manual??.8,date:'2026-11-20',source:'Test reference rate'};}},
 });
 const request=(method,body={},owner=true,origin='https://example.com')=>({method,nextUrl:new URL('https://example.com/api/data/team-earnings'),headers:{get:key=>key==='host'?'example.com':key==='origin'?origin:null},cookies:{get:()=>({value:owner?'yes':undefined})},json:async()=>body});
 (async()=>{

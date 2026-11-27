@@ -1,0 +1,641 @@
+{
+  "blocks": [
+    {
+      "group": "Team Dan / James",
+      "range": "A1:I16",
+      "start": "A",
+      "end": "I",
+      "count": 42,
+      "managers": 9
+    },
+    {
+      "group": "Team Mike / Indi",
+      "range": "K1:O12",
+      "start": "K",
+      "end": "O",
+      "count": 16,
+      "managers": 5
+    },
+    {
+      "group": "Horizon",
+      "range": "Q1:R5",
+      "start": "Q",
+      "end": "R",
+      "count": 4,
+      "managers": 2
+    },
+    {
+      "group": "Respawn",
+      "range": "T1:Y7",
+      "start": "T",
+      "end": "Y",
+      "count": 15,
+      "managers": 6
+    },
+    {
+      "group": "Paradise",
+      "range": "AA1:AB7",
+      "start": "AA",
+      "end": "AB",
+      "count": 8,
+      "managers": 2
+    }
+  ],
+  "placed": [
+    {
+      "id": "7583648611892871169",
+      "cell": "A3",
+      "value": "._._lauren",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7644338789351014401",
+      "cell": "A4",
+      "value": "blondiebeingblondie",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7487192490576019473",
+      "cell": "A5",
+      "value": "doryelizabeth09",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7608226154201284625",
+      "cell": "A6",
+      "value": "dylanjinks",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7611651138215198721",
+      "cell": "A7",
+      "value": "emily17mc",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7618220734229479441",
+      "cell": "A8",
+      "value": "harryjonesey",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7620945113719750673",
+      "cell": "A9",
+      "value": "ifyoudontknowgettoknow7",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7535751210830151696",
+      "cell": "A10",
+      "value": "jamesintune",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7359138100993884166",
+      "cell": "A11",
+      "value": "joshuahurd1",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7619116300908101649",
+      "cell": "A12",
+      "value": "kenzo_theno1",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7453158353573838864",
+      "cell": "A13",
+      "value": "poppy_cooper06",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7472833172406042641",
+      "cell": "A14",
+      "value": "rubylou050",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7656449848878743568",
+      "cell": "A15",
+      "value": "tkaysx",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7479317574988070929",
+      "cell": "A16",
+      "value": "wh0is.crammy",
+      "manager": "Dan / James",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7506128919020453904",
+      "cell": "B3",
+      "value": "aymeesliveaccount",
+      "manager": "Abbie",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7648341637222989841",
+      "cell": "B4",
+      "value": "itssophie_xo19",
+      "manager": "Abbie",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7488113187779297296",
+      "cell": "C3",
+      "value": "boycalledjuan",
+      "manager": "CJ",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7677633742806073365",
+      "cell": "C4",
+      "value": "davegasparmusic",
+      "manager": "CJ",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7701035772824076309",
+      "cell": "C5",
+      "value": "flynn_307",
+      "manager": "CJ",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7697616535111843858",
+      "cell": "C6",
+      "value": "riocoulton",
+      "manager": "CJ",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7640956692502560785",
+      "cell": "D3",
+      "value": "alisha06",
+      "manager": "Demi",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7597478794546659344",
+      "cell": "D4",
+      "value": "vasa_bbx",
+      "manager": "Demi",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7483771441008328720",
+      "cell": "E3",
+      "value": "deaks89",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7647068926555209745",
+      "cell": "E4",
+      "value": "kyranjamess",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7466233994280026113",
+      "cell": "E5",
+      "value": "owenscrivens",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7560316074265329681",
+      "cell": "E6",
+      "value": "paigemae2005",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7622773764572348432",
+      "cell": "E7",
+      "value": "quotes4you88.com",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7581526056989933569",
+      "cell": "E8",
+      "value": "smokeandstilettos",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7710728094398562324",
+      "cell": "E9",
+      "value": "unknown_cam13",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7580449058649636865",
+      "cell": "E10",
+      "value": "x_cj_tokens_x",
+      "manager": "Kyran & Ash",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7660311511650369543",
+      "cell": "F3",
+      "value": "alfie.434",
+      "manager": "Liv",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7578341330003410961",
+      "cell": "F4",
+      "value": "cb_0211",
+      "manager": "Liv",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7562937386460758033",
+      "cell": "G3",
+      "value": "chrisinit89",
+      "manager": "Louise",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7704292143912714258",
+      "cell": "G4",
+      "value": "courtney04077",
+      "manager": "Louise",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7456548395789041681",
+      "cell": "G5",
+      "value": "tezz1994",
+      "manager": "Louise",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7708312554841341958",
+      "cell": "H3",
+      "value": "ahburneraccount1",
+      "manager": "Marcy",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7709973446796705800",
+      "cell": "H4",
+      "value": "kacey",
+      "manager": "Marcy",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7579734514398887937",
+      "cell": "H5",
+      "value": "keeaunj",
+      "manager": "Marcy",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7705829436800712724",
+      "cell": "H6",
+      "value": "paxxavp",
+      "manager": "Marcy",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7704310860377784338",
+      "cell": "H7",
+      "value": "rm.x18",
+      "manager": "Marcy",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7707292299272749074",
+      "cell": "H8",
+      "value": "user13586xxx",
+      "manager": "Marcy",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7471320589802979345",
+      "cell": "I3",
+      "value": "missmillieee",
+      "manager": "Millie",
+      "group": "Team Dan / James"
+    },
+    {
+      "id": "7592298452093091841",
+      "cell": "K3",
+      "value": "onemanstep2loose",
+      "manager": "Kash",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7613824101223776257",
+      "cell": "K4",
+      "value": "rborowik8",
+      "manager": "Kash",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7442990522622427152",
+      "cell": "L3",
+      "value": "k_mcardle02",
+      "manager": "Lauren",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7652366112000065553",
+      "cell": "M3",
+      "value": "zoejade417",
+      "manager": "Megan",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7690538371692904469",
+      "cell": "N3",
+      "value": "__ellsx",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7687302225961500679",
+      "cell": "N4",
+      "value": "_lola.sky",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7396952132378705937",
+      "cell": "N5",
+      "value": "aj_varrow",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7476859546733084688",
+      "cell": "N6",
+      "value": "benofwands",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7670982069777956871",
+      "cell": "N7",
+      "value": "jadejacksonxx",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7555865516762693649",
+      "cell": "N8",
+      "value": "kets540",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7517347421014474753",
+      "cell": "N9",
+      "value": "laurenleig.h",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7359135638177775621",
+      "cell": "N10",
+      "value": "megarmitage14",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7686134883843932167",
+      "cell": "N11",
+      "value": "nottsania18",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7383720787020267521",
+      "cell": "N12",
+      "value": "queeniesouthxx",
+      "manager": "Mikehales",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7686793786336493576",
+      "cell": "O3",
+      "value": "kodie.jane",
+      "manager": "Rach",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7668639051355963412",
+      "cell": "O4",
+      "value": "taylax.2",
+      "manager": "Rach",
+      "group": "Team Mike / Indi"
+    },
+    {
+      "id": "7703255171337404437",
+      "cell": "Q3",
+      "value": "hannahbentley27",
+      "manager": "—",
+      "group": "Horizon"
+    },
+    {
+      "id": "7434093948324462608",
+      "cell": "R3",
+      "value": "craigbowdenjr",
+      "manager": "Dens",
+      "group": "Horizon"
+    },
+    {
+      "id": "7702819063432495122",
+      "cell": "R4",
+      "value": "shanellelal",
+      "manager": "Dens",
+      "group": "Horizon"
+    },
+    {
+      "id": "7603114445409091600",
+      "cell": "R5",
+      "value": "stepbystepwithjack",
+      "manager": "Dens",
+      "group": "Horizon"
+    },
+    {
+      "id": "7562861553712922641",
+      "cell": "T3",
+      "value": "neversawrus",
+      "manager": "Astryx",
+      "group": "Respawn"
+    },
+    {
+      "id": "7689164015435825172",
+      "cell": "U3",
+      "value": ".its_ambz",
+      "manager": "Carrie",
+      "group": "Respawn"
+    },
+    {
+      "id": "7707462307424632839",
+      "cell": "U4",
+      "value": "francesca_emily",
+      "manager": "Carrie",
+      "group": "Respawn"
+    },
+    {
+      "id": "7543692575891357713",
+      "cell": "U5",
+      "value": "rhianna_l_7",
+      "manager": "Carrie",
+      "group": "Respawn"
+    },
+    {
+      "id": "7546696443361542161",
+      "cell": "V3",
+      "value": "lexi.williams.xo",
+      "manager": "Gemma Byrne",
+      "group": "Respawn"
+    },
+    {
+      "id": "7704636348954673172",
+      "cell": "W3",
+      "value": "bagzey_",
+      "manager": "Juggsy",
+      "group": "Respawn"
+    },
+    {
+      "id": "7623073115257618448",
+      "cell": "X3",
+      "value": "itsriverlea",
+      "manager": "Luke",
+      "group": "Respawn"
+    },
+    {
+      "id": "7630167099989737489",
+      "cell": "X4",
+      "value": "theoneinahat",
+      "manager": "Luke",
+      "group": "Respawn"
+    },
+    {
+      "id": "7711469514801659925",
+      "cell": "X5",
+      "value": "TR4IN",
+      "manager": "Luke",
+      "group": "Respawn"
+    },
+    {
+      "id": "7695443732899938322",
+      "cell": "X6",
+      "value": "verstimulateddad",
+      "manager": "Luke",
+      "group": "Respawn"
+    },
+    {
+      "id": "7498124566716448784",
+      "cell": "X7",
+      "value": "vib3s_33",
+      "manager": "Luke",
+      "group": "Respawn"
+    },
+    {
+      "id": "7567830398340907024",
+      "cell": "Y3",
+      "value": "captainbeard22",
+      "manager": "Paradox",
+      "group": "Respawn"
+    },
+    {
+      "id": "7671683896828018708",
+      "cell": "Y4",
+      "value": "cooperquestxp",
+      "manager": "Paradox",
+      "group": "Respawn"
+    },
+    {
+      "id": "7524007759579496449",
+      "cell": "Y5",
+      "value": "dylux_uk",
+      "manager": "Paradox",
+      "group": "Respawn"
+    },
+    {
+      "id": "7612551343945007121",
+      "cell": "Y6",
+      "value": "penii1722",
+      "manager": "Paradox",
+      "group": "Respawn"
+    },
+    {
+      "id": "7595218240876593153",
+      "cell": "AA3",
+      "value": "dens2511",
+      "manager": "Gee",
+      "group": "Paradise"
+    },
+    {
+      "id": "7658408090458669057",
+      "cell": "AA4",
+      "value": "offleashchaos",
+      "manager": "Gee",
+      "group": "Paradise"
+    },
+    {
+      "id": "7640058109372874769",
+      "cell": "AA5",
+      "value": "xlaurenj11x",
+      "manager": "Gee",
+      "group": "Paradise"
+    },
+    {
+      "id": "7694736727247929352",
+      "cell": "AB3",
+      "value": "christofs91",
+      "manager": "Lauren J",
+      "group": "Paradise"
+    },
+    {
+      "id": "7680492318205526024",
+      "cell": "AB4",
+      "value": "haydenpringle8",
+      "manager": "Lauren J",
+      "group": "Paradise"
+    },
+    {
+      "id": "7710348574814584850",
+      "cell": "AB5",
+      "value": "jxsslxuise",
+      "manager": "Lauren J",
+      "group": "Paradise"
+    },
+    {
+      "id": "7692035395801989138",
+      "cell": "AB6",
+      "value": "tattedtrucker0",
+      "manager": "Lauren J",
+      "group": "Paradise"
+    },
+    {
+      "id": "7670984505708085255",
+      "cell": "AB7",
+      "value": "zoobiesx",
+      "manager": "Lauren J",
+      "group": "Paradise"
+    }
+  ]
+}
