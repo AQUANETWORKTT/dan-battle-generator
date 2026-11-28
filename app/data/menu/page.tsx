@@ -75,6 +75,7 @@ const originalGroups: Array<{ title: string; description: string; accent: Accent
   ] },
   { title: "Management", description: "First Class manager onboarding and team completion progress.", accent: "yellow", workspaces: [
     { href: "/data/creator-id-lookup", number: "26", label: "Creator history", title: "Creator ID Lookup", description: "Find the username and the latest 30 saved daily records using a permanent Creator ID.", accent: "sky" },
+    { href: "/data/bulk-creator-lookup", number: "47", label: "Creator lookup", title: "Bulk Creator Lookup", description: "Paste usernames to find their currently assigned managers and copy the results.", accent: "sky" },
     { href: "/data/quitting-records", number: "28", label: "Creator history", title: "Quitting Records", description: "Quickly save and review shared quitting records, with optional reasons.", accent: "sky" },
     { href: "/data/manager-onboarding-progress", number: "15", label: "Creator care", title: "Manager Onboarding Progress", description: "Review onboarding work submitted by First Class managers.", accent: "yellow" },
     { href: "/data/manager-strikes", number: "21", label: "Owner only", title: "Manager Strikes", description: "Record up to three strikes for each Dan/James or Mike/Indi manager.", accent: "yellow" },
